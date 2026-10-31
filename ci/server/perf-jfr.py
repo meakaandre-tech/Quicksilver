@@ -122,6 +122,7 @@ def alloc_and_gc(path):
 def main(rec, out):
     n = 0
     self_c, incl = Counter(), Counter()
+    callers = {}  # top method -> Counter of the first caller outside the JDK
     phase_c = Counter()
     pats = [(name, re.compile(rx)) for name, rx in PHASES]
     for stack in samples(rec):
@@ -130,6 +131,8 @@ def main(rec, out):
             continue
         n += 1
         self_c[names[0]] += 1
+        caller = next((short(f) for f in stack[1:] if not f.startswith(("java.", "jdk.", "sun."))), "?")
+        callers.setdefault(names[0], Counter())[caller] += 1
         seen = set(names)
         for x in seen:
             incl[x] += 1
@@ -142,6 +145,9 @@ def main(rec, out):
         "phases": [{"phase": name, "share": round(phase_c[name] / n, 4) if n else 0} for name, _ in PHASES],
         "self": [{"method": k, "share": round(v / n, 4)} for k, v in self_c.most_common(60)] if n else [],
         "inclusive": [{"method": k, "share": round(v / n, 4)} for k, v in incl.most_common(120)] if n else [],
+        # for the 25 hottest methods: the first caller outside the JDK, top 4 each
+        "callers": {k: [{"caller": c, "share": round(w / n, 4)} for c, w in callers[k].most_common(4)]
+                    for k, _ in self_c.most_common(25)} if n else {},
     }
     try:
         res.update(alloc_and_gc(rec))

@@ -196,6 +196,11 @@ def perf(res, rep, lines, fails, owed, summary):
                      % (jv.get("allocMB"), jq.get("allocMB"), jv.get("gcPauseMs"), jq.get("gcPauseMs")))
             t.append("\nQuicksilver's allocation by frame (MB): %s" % ", ".join("%s %s" % (x["frame"], x["MB"]) for x in jq.get("allocTop", [])[:15]))
             for side, jj in (("vanilla", jv), ("Quicksilver", jq)):
+                cl = jj.get("callers", {})
+                if cl:
+                    t.append("\nCallers outside the JDK, %s: %s" % (side, "; ".join(
+                        "%s <- %s" % (m, ", ".join("%s %.1f%%" % (c["caller"], c["share"] * 100) for c in v)) for m, v in list(cl.items())[:12])))
+            for side, jj in (("vanilla", jv), ("Quicksilver", jq)):
                 t.append("\nTop methods, %s (self share of samples): %s" % (side, ", ".join(
                     "%s %.1f%%" % (x["method"], x["share"] * 100) for x in jj.get("self", [])[:25])))
             if not jv or not jq:

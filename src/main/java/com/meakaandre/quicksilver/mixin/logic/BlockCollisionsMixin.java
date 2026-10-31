@@ -29,6 +29,8 @@ public abstract class BlockCollisionsMixin implements SectionMasks.Memo {
     private long quicksilver$key = Long.MIN_VALUE;
     @Unique
     private LevelChunkSection quicksilver$sectionNow;
+    @Unique
+    private SectionMasks.Mask quicksilver$maskNow;
 
     @Shadow
     protected abstract BlockGetter getChunk(int x, int z);
@@ -44,9 +46,15 @@ public abstract class BlockCollisionsMixin implements SectionMasks.Memo {
     }
 
     @Override
-    public void quicksilver$remember(long key, LevelChunkSection section) {
+    public SectionMasks.Mask quicksilver$sectionMask() {
+        return quicksilver$maskNow;
+    }
+
+    @Override
+    public void quicksilver$remember(long key, LevelChunkSection section, SectionMasks.Mask m) {
         quicksilver$key = key;
         quicksilver$sectionNow = section;
+        quicksilver$maskNow = m;
     }
 
     @Redirect(method = "computeNext", at = @At(value = "INVOKE", target = "Lnet/minecraft/core/Cursor3D;getNextType()I"))

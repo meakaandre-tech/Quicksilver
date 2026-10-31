@@ -30,8 +30,8 @@ public final class SectionMasks {
     public static final String ID = "block-collisions";
     public static final Logic.Switch SWITCH = new Logic.Switch(ID);
 
-    /** A section that holds only air: no position can be kept. */
-    static final Mask ALL_AIR = new Mask(new long[64], new long[64], null, 0);
+    /** The (never written) masks of a section that holds only air: no position can be kept. */
+    private static final long[] NONE = new long[64];
 
     private SectionMasks() {
     }
@@ -70,13 +70,15 @@ public final class SectionMasks {
         void quicksilver$mask(Mask m);
     }
 
-    /** Per sweep: the last section asked about (BlockCollisions, mixin); null when it has none (left to vanilla). */
+    /** Per sweep: the last section asked about and its masks (BlockCollisions, mixin); null when it has none. */
     public interface Memo {
         long quicksilver$sectionKey();
 
         LevelChunkSection quicksilver$section();
 
-        void quicksilver$remember(long key, LevelChunkSection section);
+        Mask quicksilver$sectionMask();
+
+        void quicksilver$remember(long key, LevelChunkSection section, Mask m);
     }
 
     /**
@@ -89,17 +91,26 @@ public final class SectionMasks {
         if (!(chunk instanceof LevelChunk lc)) return type;
         long key = SectionPos.asLong(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(y), SectionPos.blockToSectionCoord(z));
         LevelChunkSection section;
+        Mask m;
         if (key == memo.quicksilver$sectionKey()) {
             section = memo.quicksilver$section();
+            if (section == null) return type;
+            m = memo.quicksilver$sectionMask();
+            // still current for this section's container (a write since counts it up)
+            PalettedContainer<BlockState> states = section.getStates();
+            if (m.container != states || m.writes != ((Writes) states).quicksilver$writes()) {
+                m = mask(section);
+                memo.quicksilver$remember(key, section, m);
+            }
         } else {
             section = null;
             int i = lc.getSectionIndex(y);
             LevelChunkSection[] sections = lc.getSections();
             if (i >= 0 && i < sections.length) section = sections[i];
-            memo.quicksilver$remember(key, section);
+            m = section == null ? null : mask(section);
+            memo.quicksilver$remember(key, section, m);
+            if (section == null) return type;
         }
-        if (section == null) return type;
-        Mask m = mask(section);
         int i = (y & 15) << 8 | (z & 15) << 4 | (x & 15);
         if (!m.solid(i)) return 3;
         if (type != 0 && !m.big(i)) return 3;
@@ -108,12 +119,17 @@ public final class SectionMasks {
 
     /** The section's masks, built again if its container changed since. */
     static Mask mask(LevelChunkSection section) {
-        if (section.hasOnlyAir()) return ALL_AIR;
         PalettedContainer<BlockState> states = section.getStates();
         int writes = ((Writes) states).quicksilver$writes();
         Holder h = (Holder) section;
         Mask m = h.quicksilver$mask();
         if (m != null && m.container == states && m.writes == writes) return m;
+        if (section.hasOnlyAir()) {
+            // vanilla reads air everywhere in such a section; it stays so until a write counts the container up
+            m = new Mask(NONE, NONE, states, writes);
+            h.quicksilver$mask(m);
+            return m;
+        }
         long[] solid = new long[64], big = new long[64];
         for (int y = 0; y < 16; y++) {
             for (int z = 0; z < 16; z++) {
@@ -150,6 +166,11 @@ public final class SectionMasks {
         Mask m = h.quicksilver$mask();
         PalettedContainer<BlockState> states = section.getStates();
         if (m == null || m.container != states) return;
+        if (m.solid == NONE) {
+            // an all-air section's masks are shared arrays: built again when next needed
+            h.quicksilver$mask(null);
+            return;
+        }
         int i = (y & 15) << 8 | (z & 15) << 4 | (x & 15);
         long bit = 1L << i;
         if (state.isAir()) m.solid[i >>> 6] &= ~bit;
