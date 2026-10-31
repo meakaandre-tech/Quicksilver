@@ -14,12 +14,6 @@ on:
 permissions:
   contents: write
 
-env:
-  # SIFTEC's suites (client and server) are report-only until SIFTEC starts with MapMod's latest release again (Andre,
-  # 2026-10-31; docs/progress.md, open bugs): their failures are listed as owed in the reports, not failed
-  # (ci/server/compare-p2.py). Set to 0 to gate SIFTEC again.
-  SIFTEC_REPORT_ONLY: "1"
-
 jobs:
   mode:
     # Quick mode on branch pushes: the core suite with vanilla a, vanilla b and Quicksilver on the old-GPU profile
@@ -61,7 +55,10 @@ jobs:
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "logs=ci-logs-$(echo "$GITHUB_REF_NAME" | tr '/' '-')" >> "$GITHUB_OUTPUT"
-          echo "siftec_report_only=$SIFTEC_REPORT_ONLY" >> "$GITHUB_OUTPUT"
+          # SIFTEC's suites (client and server) report only, failing nothing, until SIFTEC starts with MapMod's latest
+          # build again (Andre, 2026-10-31; docs/progress.md, open items). Core and Terralith gate as usual. Set to
+          # false to make SIFTEC gate again.
+          echo "siftec_report_only=true" >> "$GITHUB_OUTPUT"
           echo "CI mode: $mode" >> "$GITHUB_STEP_SUMMARY"
 
   build:
@@ -209,8 +206,7 @@ jobs:
     # (full mode only)
     needs: [mode]
     if: needs.mode.outputs.mode == 'full'
-    # SIFTEC report-only (SIFTEC_REPORT_ONLY): its failure doesn't fail the run or hold back the core client runs
-    continue-on-error: ${{ needs.mode.outputs.siftec_report_only == '1' }}
+    continue-on-error: ${{ needs.mode.outputs.siftec_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -302,9 +298,8 @@ jobs:
 
   client:
     needs: [mode, build, siftec-world, core-world]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.core-world.result == 'success' && (needs.siftec-world.result == 'success' || needs.siftec-world.result == 'skipped' || needs.mode.outputs.siftec_report_only == '1') }}
-    # SIFTEC report-only (SIFTEC_REPORT_ONLY): a SIFTEC job's failure doesn't fail the run; its results are owed
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == '1' }}
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.core-world.result == 'success' && (needs.siftec-world.result == 'success' || needs.siftec-world.result == 'skipped' || needs.mode.outputs.siftec_report_only == 'true') }}
+    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -386,15 +381,13 @@ jobs:
         run: |
           set +e
           python3 -m pip install --quiet --break-system-packages pillow numpy
-          CI_MODE="${{ needs.mode.outputs.mode }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
           st=$?
           cat /tmp/ci/compare/report.md >> "$GITHUB_STEP_SUMMARY"
-          # P2-2: the Logic module in the client runs (their integrated servers), and compare.py's verdict with SIFTEC's
-          # failures owed while SIFTEC is report-only (compare-p2.py fails on every other compare.py failure)
-          python3 -I ci/server/compare-p2.py client /tmp/res /tmp/ci/compare
+          # P2-2: the Logic module in the client runs (ci/server/compare-p2.py)
+          CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-p2.py client /tmp/res /tmp/ci/compare
           p2=$?
           cat /tmp/ci/compare/p2-client.md >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SIFTEC_REPORT_ONLY" = 1 ]; then st=0; fi
           echo "status=$(( st || p2 ))" >> "$GITHUB_OUTPUT"
       - name: Publish logs, bench results and screenshots to the branch's ci-logs-<branch> branch
         if: always()
@@ -421,8 +414,7 @@ jobs:
   server-base:
     # the world every scripted run of a suite starts from (vanilla, generated once per run of this workflow)
     needs: [mode, build]
-    # SIFTEC report-only (SIFTEC_REPORT_ONLY): a SIFTEC job's failure doesn't fail the run; its results are owed
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == '1' }}
+    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -469,8 +461,7 @@ jobs:
   server:
     needs: [mode, build, server-base]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
-    # SIFTEC report-only (SIFTEC_REPORT_ONLY): a SIFTEC job's failure doesn't fail the run; its results are owed
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == '1' }}
+    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -526,8 +517,8 @@ jobs:
     # goes; compared and gated in server-compare (ci/server/compare-p2.py)
     needs: [mode, build, server-base]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
-    # SIFTEC report-only (SIFTEC_REPORT_ONLY): a SIFTEC job's failure doesn't fail the run; its results are owed
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == '1' }}
+    # SIFTEC report-only (the mode job's siftec_report_only): a SIFTEC failure fails nothing
+    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -643,16 +634,14 @@ jobs:
           python3 -I ci/server/test_worlddiff.py > /tmp/sci/compare/worlddiff-selftest.txt 2>&1
           self=$?
           extra=$(echo '${{ needs.mode.outputs.server_suites }}' | python3 -c "import json,sys; print(','.join(json.load(sys.stdin)))")
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" python3 -I ci/server/compare-server.py /tmp/sres /tmp/sci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-server.py /tmp/sres /tmp/sci/compare
           cmp=$?
           cat /tmp/sci/compare/report.md >> "$GITHUB_STEP_SUMMARY"
           tail -1 /tmp/sci/compare/worlddiff-selftest.txt >> "$GITHUB_STEP_SUMMARY"
-          # P2-2: the perf job, the Logic module, and compare-server.py's verdict with SIFTEC's failures owed while
-          # SIFTEC is report-only (compare-p2.py fails on every other compare-server.py failure)
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" python3 -I ci/server/compare-p2.py server /tmp/sres /tmp/sci/compare
+          # P2-2: the perf job (same-runner MSPT, gated) and the Logic module (ci/server/compare-p2.py)
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-p2.py server /tmp/sres /tmp/sci/compare
           p2=$?
           cat /tmp/sci/compare/p2.md >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SIFTEC_REPORT_ONLY" = 1 ]; then cmp=0; fi
           echo "status=$(( self || cmp || p2 ))" >> "$GITHUB_OUTPUT"
       - name: Publish the server suite's logs to ci-logs-server-<branch>
         if: always()

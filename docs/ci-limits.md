@@ -954,10 +954,7 @@ run next to it, and takes the median of the seven ratios.
 MSPT by phase: the share of the server thread's JFR samples (1 ms) under each phase's frame, times that run's MSPT;
 `compare/p2.md` lists them with the top methods. Method names only are published.
 
-**SIFTEC report-only** (`SIFTEC_REPORT_ONLY: "1"` in `build.yml`, Andre 2026-10-31): until SIFTEC starts with MapMod's latest
-release again, `ci/server/compare-p2.py` lists compare-server.py's and compare.py's SIFTEC failures under "Owed" and
-fails on every other failure, and SIFTEC's jobs (`siftec-world`, SIFTEC's `client`, `server-base`, `server` and
-`server-perf` runs) are `continue-on-error`, so a SIFTEC failure doesn't fail the run or hold back the core client runs
-(on 2026-10-31 SIFTEC's latest release no longer matched `ci/pack-lock.txt`, which stops every SIFTEC job at its pack
-check; updating the lock is the pack's decision, not P2-2's). Set it to `"0"` to gate SIFTEC again.
-
+**SIFTEC report only** (main's `siftec_report_only` in the workflow's mode job, `ci/siftec_status.py`): SIFTEC's perf
+and Logic checks are listed under "Owed" in `compare/p2.md` and fail nothing, as compare-server.py and compare.py do
+with theirs; SIFTEC's `server-perf` run is `continue-on-error` like its other jobs. On 2026-10-31 SIFTEC's latest
+release no longer matched `ci/pack-lock.txt`, which stops every SIFTEC job at its pack check.

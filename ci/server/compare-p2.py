@@ -18,12 +18,11 @@ server:
   - Logic module (P2-2): every Quicksilver server start (server suite and perf) logs `Quicksilver logic:` with every
     optimisation on; no `Quicksilver logic fallback:` line in any run; no identity hash in the module's sources (P2-1's
     rule: an identity hash moves every later one, and with them the order of vanilla's hash sets).
-  - SIFTEC report-only (SIFTEC_REPORT_ONLY=1, Andre 2026-10-31: until SIFTEC starts with MapMod's latest again):
-    compare-server.py's failures for suite siftec are listed as owed, not failed; every other failure still fails.
+  - SIFTEC's own perf and Logic checks are listed as owed, not failed, while SIFTEC reports only
+    (CI_SIFTEC_REPORT_ONLY=true; compare-server.py and compare.py handle their own SIFTEC failures, ci/siftec_status.py).
 client:
   - Logic module in every client run's own log (client-*.log; the client joins a dedicated server, whose log is checked
     for fallbacks only): Quicksilver runs log it on, measure runs off; no fallback line in any log of the run.
-  - SIFTEC report-only for ci/compare.py's failures, as above.
 Writes REPORT_DIR/p2.md (server) or REPORT_DIR/p2-client.md (client) and exits 1 on any gated failure.
 """
 import glob
@@ -40,7 +39,8 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 GATED_SCENES = {("core", "mobs"), ("core", "random")}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"
-REPORT_ONLY_SUITES = ("siftec",) if os.environ.get("SIFTEC_REPORT_ONLY") == "1" else ()
+# SIFTEC's suites report only while the workflow's mode job says so (CI_SIFTEC_REPORT_ONLY, ci/siftec_status.py)
+REPORT_ONLY_SUITES = ("siftec",) if os.environ.get("CI_SIFTEC_REPORT_ONLY") == "true" else ()
 PLAIN_ROUNDS = (1, 2, 3, 4, 5, 6, 7)
 ALL_ROUNDS = (1, 2, 3, 4, 5, 6, 7, 8)
 JFR_ROUND = 8
@@ -277,16 +277,6 @@ def server(res, rep):
             if bad.search(l) and not l.strip().startswith(("*", "//", "/*")):
                 fails.append("identity hash in the Logic module: %s:%d: %s" % (os.path.basename(f), i, l.strip()[:120]))
 
-    # compare-server.py's verdict, with SIFTEC's failures owed while SIFTEC is report-only
-    srv = load(os.path.join(rep, "summary.json"))
-    if srv is None:
-        fails.append("no compare-server.py summary")
-    else:
-        for f in srv.get("fails", []):
-            if suite_of(f) in REPORT_ONLY_SUITES:
-                owed.append("compare-server: " + f)
-            else:
-                fails.append("compare-server: " + f)
     finish(rep, "p2.md", lines, fails, owed, summary)
     return 1 if fails else 0
 
@@ -318,22 +308,13 @@ def client(res, rep):
             sink.append("%s: %d Logic fallbacks (first: %s)" % (name, len(fb), fb[0][:300]))
         lines.append("| %s | %s |" % (name, (st[-1] if st else "-")[:200]))
     lines.append("")
-    rj = load(os.path.join(rep, "report.json"))
-    if rj is None:
-        fails.append("no ci/compare.py report.json")
-    else:
-        for f in rj.get("failures", []):
-            if suite_of(f) in REPORT_ONLY_SUITES:
-                owed.append("compare: " + f)
-            else:
-                fails.append("compare: " + f)
     finish(rep, "p2-client.md", lines, fails, owed, {})
     return 1 if fails else 0
 
 
 def finish(rep, name, lines, fails, owed, summary):
     if REPORT_ONLY_SUITES:
-        lines.append("## Owed (report-only: %s, SIFTEC_REPORT_ONLY=1)\n" % ", ".join(REPORT_ONLY_SUITES))
+        lines.append("## Owed (report only: %s, CI_SIFTEC_REPORT_ONLY=true)\n" % ", ".join(REPORT_ONLY_SUITES))
         lines += ["- " + f for f in owed] or ["(nothing)"]
         lines.append("")
     lines.append("## Result\n\n**%s**" % ("PASS" if not fails else "FAIL"))
