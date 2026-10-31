@@ -36,11 +36,12 @@ public final class SectionMasks {
     private SectionMasks() {
     }
 
-    /** The masks of one section, valid for one container at one write count (compared by reference only). */
+    /** The masks of one section, current for one container at one write count (compared by reference only). */
     public static final class Mask {
         final long[] solid, big;
         final PalettedContainer<BlockState> container;
-        final int writes;
+        /** The container's write count these masks are current for (moved on by the section's own writes). */
+        int writes;
 
         Mask(long[] solid, long[] big, PalettedContainer<BlockState> container, int writes) {
             this.solid = solid;
@@ -177,6 +178,6 @@ public final class SectionMasks {
         else m.solid[i >>> 6] |= bit;
         if (oversized(state)) m.big[i >>> 6] |= bit;
         else m.big[i >>> 6] &= ~bit;
-        h.quicksilver$mask(new Mask(m.solid, m.big, states, ((Writes) states).quicksilver$writes()));
+        m.writes = ((Writes) states).quicksilver$writes();
     }
 }
