@@ -1,0 +1,48 @@
+# The deliberate "update the pack" step (Andre, 2026-11-01; docs/ci-limits.md, "Pack lock"): copies the current builds
+# of Andre's own jars into the pack-snapshot release and commits the new hashes (ci/pack-lock.txt) and origins
+# (ci/pack-snapshot.txt) to the branch it runs on. Afterwards: re-collect the numbers the changed jars affect.
+name: update-pack-snapshot
+on:
+  workflow_dispatch:
+    inputs:
+      expect:
+        description: "Copy only if every build matches ci/pack-snapshot.txt (no files change)"
+        type: boolean
+        default: false
+  # the first snapshot (2026-11-01), from the branch that brings the snapshot in: removed before it merges
+  push:
+    branches: [pack-snapshot-ci]
+    paths: [.github/workflows/update-pack-snapshot.yml]
+permissions:
+  contents: write
+concurrency:
+  group: pack-snapshot
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy the builds into pack-snapshot
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = push ] || [ "${{ inputs.expect }}" = true ]; then
+            bash ci/update-pack-snapshot.sh --expect
+          else
+            bash ci/update-pack-snapshot.sh
+          fi
+          echo "### pack-snapshot" >> "$GITHUB_STEP_SUMMARY"
+          sed -n '/^[a-z]/p' ci/pack-snapshot.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit the lock
+        if: github.event_name == 'workflow_dispatch' && inputs.expect != true
+        shell: bash
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          if git diff --quiet -- ci/pack-lock.txt ci/pack-snapshot.txt; then echo "the pack is unchanged"; exit 0; fi
+          git add ci/pack-lock.txt ci/pack-snapshot.txt
+          git commit -m "Pack: snapshot of Andre's builds updated (update-pack-snapshot run ${GITHUB_RUN_ID}); re-collect the numbers the changed jars affect"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

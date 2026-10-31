@@ -1,0 +1,24 @@
+# Where CI gets every jar of the pack (Andre, 2026-11-01): "<set>/<jar name>  <source>", checked against
+# ci/pack-lock.txt after every download (ci/pack-fetch.sh, then ci/pack-check.sh).
+#   snapshot      Andre's own builds: an exact copy in this repo's `pack-snapshot` release, made by
+#                 ci/update-pack-snapshot.sh from the build named after it ("from <URL>"), never the moving tag itself
+#   provided      put in place by the script that sets up the server (Fabric API, from gradle.properties' version)
+#   https://...   a third-party jar at a pinned version (a Modrinth version's own file URL)
+#   modrinth:PROJECT@VERSION   a third-party jar by its exact Modrinth version number (the project's primary file)
+siftec/siftec-26.3.jar  snapshot  from https://github.com/meakaandre-tech/SIFTEC/releases/download/latest/siftec-26.3.jar
+siftec/siftec-selftest-26.3.jar  snapshot  from https://github.com/meakaandre-tech/SIFTEC/releases/download/latest/siftec-selftest-26.3.jar
+siftec/mapmod-26.3.jar  snapshot  from https://github.com/meakaandre-tech/MapMod/releases/download/latest/mapmod-26.3.jar
+siftec/create-fly-26.3.jar  snapshot  from https://github.com/meakaandre-tech/Create-Fly/releases/download/pack-26.3-latest/create-fly-26.3.jar
+siftec/create-new-age-26.3.jar  snapshot  from https://github.com/meakaandre-tech/Create-New-Age/releases/download/fabric-26.3-latest/create-new-age-fabric-26.3.jar
+siftec/createdieselgenerators-fabric-26.3.jar  snapshot  from https://github.com/meakaandre-tech/Create-Diesel-Generators/releases/download/fabric-26.3-latest/createdieselgenerators-fabric-26.3.jar
+siftec/cgs-fabric-26.3.jar  snapshot  from https://github.com/meakaandre-tech/CreateGunMod/releases/download/fabric-26.3-latest/cgs-fabric-26.3.jar
+siftec/ntgl-fabric-26.3.jar  snapshot  from https://github.com/meakaandre-tech/NukaTeamGunLib/releases/download/fabric-26.3-latest/ntgl-fabric-26.3.jar
+siftec/fabric-api.jar  provided
+siftec/FarmersDelight-26.3-3.6.27%2Brefabricated.jar  https://cdn.modrinth.com/data/7vxePowz/versions/hTNvMewX/FarmersDelight-26.3-3.6.27%2Brefabricated.jar
+siftec/geckolib-fabric-26.3-5.5.7.jar  https://cdn.modrinth.com/data/8BmcQJ2H/versions/kSxHvs99/geckolib-fabric-26.3-5.5.7.jar
+siftec/mielon%27s-the-sift-1.1.2-mc26.3-fabric.jar  https://cdn.modrinth.com/data/j0IfTxBq/versions/QK8RaspH/mielon%27s-the-sift-1.1.2-mc26.3-fabric.jar
+siftec/travelersbackpack.jar  https://cdn.modrinth.com/data/rlloIFEV/versions/GKDRZQKz/travelersbackpack-fabric-26.3-11.4.2.jar
+siftec/forge-config-api-port.jar  https://cdn.modrinth.com/data/ohNO6lps/versions/JpKvrr9J/ForgeConfigAPIPort-v26.3.1-mc26.3.x-Fabric.jar
+terralith/Terralith_26.3_v2.6.5+26.3.jar  modrinth:terralith@2.6.5+26.3
+terralith/lithostitched-2.0.6-fabric-26.3.jar  modrinth:lithostitched@2.0.6-fabric-26.3
+sodium/sodium.jar  https://cdn.modrinth.com/data/AANobbMI/versions/bAZQdGpg/sodium-fabric-0.9.2%2Bmc26.3.jar
