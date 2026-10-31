@@ -2505,11 +2505,12 @@ toggles, fallbacks and the same heap gate.
 
 ## Open bugs
 
-- **When SIFTEC starts with MapMod again** (Andre, 2026-10-31): make SIFTEC suites gating again, run
-  fix-worldgen-diff's 3 SIFTEC proof runs, and re-run every package merged in the meantime against the SIFTEC suite.
-  (SIFTEC's latest release stopped starting with MapMod's latest build: `NoSuchMethodError: PoiKind$Builder.detail()`,
-  run 41173311946. Until then SIFTEC's client and server suites run but report only: `siftec_report_only` in the
-  workflow's mode job, `ci/siftec_status.py`; set it to false to gate again.)
+- **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from
+  this repo's `pack-snapshot` release (docs/ci-limits.md, "Pack lock"), SIFTEC's suites gate again
+  (`siftec_report_only=false` in the workflow's mode job). Still to do on `pack-snapshot-ci`: fix-worldgen-diff's 3
+  SIFTEC proof runs and SIFTEC's numbers re-collected from 3 clean runs; then re-run every package merged in the
+  meantime against the SIFTEC suite (none besides fix-worldgen-diff, `119ca70`). **Note for the P2-2 chat: once
+  `pack-snapshot-ci` is merged, SIFTEC is gating again; rebase on it.**
 
 - **When MapMod is finished** (Andre, 2026-10-30): put it back in the pack lock, restore the map and hud scenes,
   re-collect their numbers, and restore the full strict check where the minimap shows (factory_flat, hologram:

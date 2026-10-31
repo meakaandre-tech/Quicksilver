@@ -121,17 +121,10 @@ if [ $benchonly = 1 ]; then
   [ -f dist/quicksilver-bench.jar ] || { echo "dist/quicksilver-bench.jar missing"; exit 1; }
   cp dist/quicksilver-bench.jar run/mods/
   if [ "$RUN" = bench-sodium ]; then
-    # Sodium 0.9.2 for this Minecraft version, from Modrinth (a runtime test only: nothing of Sodium's is in the repo)
-    surl=$(curl -fsSL "https://api.modrinth.com/v2/project/sodium/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$mc%22%5D" | python3 -c "
-import json,sys
-vs=[v for v in json.load(sys.stdin) if '0.9.2' in v['version_number']]
-print(vs[0]['files'][0]['url'] if vs else '')
-for v in vs[:1]: print(v['version_number'], file=sys.stderr)")
-    if [ -z "$surl" ]; then echo "no Sodium 0.9.2 build for Minecraft $mc on Modrinth"; exit 1; fi
-    curl -fsSL -o run/mods/sodium.jar "$surl" || { echo "could not download Sodium from $surl"; exit 1; }
-    echo "Sodium: $surl"
-    mkdir -p /tmp/sodium-check && cp run/mods/sodium.jar /tmp/sodium-check/
-    bash ci/pack-check.sh /tmp/sodium-check sodium complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
+    # Sodium 0.9.2 for this Minecraft version, pinned in ci/pack-sources.txt and locked (a runtime test only: nothing of
+    # Sodium's is in the repo)
+    PACK_REPORT="$OUT/pack-sha256.txt" bash ci/pack-fetch.sh sodium /tmp/sodium-check || { echo "could not fetch Sodium, or it changed (see above)"; exit 1; }
+    cp /tmp/sodium-check/sodium.jar run/mods/
   fi
 fi
 # every run, vanilla and Quicksilver alike: CI's lightmap pin (ci/pin-mod), which holds the block-light flicker still

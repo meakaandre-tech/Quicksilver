@@ -26,7 +26,11 @@ jobs:
       server_suites: ${{ steps.m.outputs.server_suites }}
       logs: ${{ steps.m.outputs.logs }}
       siftec_report_only: ${{ steps.m.outputs.siftec_report_only }}
+      siftec_commit: ${{ steps.m.outputs.siftec_commit }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ci
       - id: m
         shell: bash
         env:
@@ -58,7 +62,9 @@ jobs:
           # SIFTEC's suites (client and server) report only, failing nothing, until SIFTEC starts with MapMod's latest
           # build again (Andre, 2026-10-31; docs/progress.md, open items). Core and Terralith gate as usual. Set to
           # false to make SIFTEC gate again.
-          echo "siftec_report_only=true" >> "$GITHUB_OUTPUT"
+          echo "siftec_report_only=false" >> "$GITHUB_OUTPUT"
+          # the SIFTEC commit whose .github (smoke-commands.txt) goes with the pack-snapshot's SIFTEC build
+          echo "siftec_commit=$(sed -n 's/^siftec_commit=//p' ci/pack-snapshot.txt)" >> "$GITHUB_OUTPUT"
           echo "CI mode: $mode" >> "$GITHUB_STEP_SUMMARY"
 
   build:
@@ -214,6 +220,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: meakaandre-tech/SIFTEC
+          ref: ${{ needs.mode.outputs.siftec_commit }}
           path: siftec
           sparse-checkout: .github
       - uses: actions/setup-java@v4
@@ -226,9 +233,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          asset=$(gh api repos/meakaandre-tech/SIFTEC/releases/tags/latest --jq '[.assets[] | "\(.name)=\(.id)"] | join(",")' | sha256sum | cut -c1-16 || echo none)
-          files=$(cat siftec/.github/smoke-commands.txt siftec/.github/smoke-pack-mods siftec/.github/fetch-tb.py ci/siftec-world.sh ci/pack-lock.txt gradle.properties | sha256sum | cut -c1-16)
-          echo "key=siftec-world-$asset-$files" >> "$GITHUB_OUTPUT"
+          # the pack is fixed by the lock and the snapshot (no moving release to look at any more)
+          files=$(cat siftec/.github/smoke-commands.txt ci/siftec-world.sh ci/pack-fetch.sh ci/pack-sources.txt ci/pack-lock.txt ci/pack-snapshot.txt gradle.properties | sha256sum | cut -c1-16)
+          echo "key=siftec-world-$files" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         id: cache
         with:
@@ -424,6 +431,7 @@ jobs:
         if: matrix.suite == 'siftec'
         with:
           repository: meakaandre-tech/SIFTEC
+          ref: ${{ needs.mode.outputs.siftec_commit }}
           path: siftec
           sparse-checkout: .github
       - uses: actions/setup-java@v4
@@ -474,6 +482,7 @@ jobs:
         if: matrix.suite == 'siftec'
         with:
           repository: meakaandre-tech/SIFTEC
+          ref: ${{ needs.mode.outputs.siftec_commit }}
           path: siftec
           sparse-checkout: .github
       - uses: actions/setup-java@v4

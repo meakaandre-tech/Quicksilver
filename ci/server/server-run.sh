@@ -35,8 +35,8 @@ mc=$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
 case "$SUITE" in
   siftec) bash ci/server/siftec-mods.sh "$srv/mods" || { echo "could not assemble SIFTEC's pack"; exit 1; };;
   terralith)
-    # Terralith's newest Fabric build for this game version and the mods it requires (Lithostitched), from Modrinth
-    python3 -I ci/server/modrinth-fetch.py "$mc" "$srv/mods" terralith || { echo "could not fetch Terralith"; exit 1; };;
+    # Terralith and the mod it requires (Lithostitched), pinned in ci/pack-sources.txt and locked
+    PACK_CHECK=partial bash ci/pack-fetch.sh terralith "$srv/mods" || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; };;
 esac
 case "$RUN" in quicksilver) cp dist/quicksilver.jar "$srv/mods/" || exit 1;; esac
 ls -l "$srv/mods"

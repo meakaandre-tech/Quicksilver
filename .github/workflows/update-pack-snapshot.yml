@@ -9,10 +9,6 @@ on:
         description: "Copy only if every build matches ci/pack-snapshot.txt (no files change)"
         type: boolean
         default: false
-  # the first snapshot (2026-11-01), from the branch that brings the snapshot in: removed before it merges
-  push:
-    branches: [pack-snapshot-ci]
-    paths: [.github/workflows/update-pack-snapshot.yml]
 permissions:
   contents: write
 concurrency:
@@ -29,7 +25,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event_name }}" = push ] || [ "${{ inputs.expect }}" = true ]; then
+          if [ "${{ inputs.expect }}" = true ]; then
             bash ci/update-pack-snapshot.sh --expect
           else
             bash ci/update-pack-snapshot.sh
