@@ -2565,6 +2565,23 @@ Runs before this one, for the record: run 41196261046 and 41205535911 failed `vi
 stopped allocating callback objects; the perf gate moved from per-side medians of 3, then 5, rounds to the median of 7
 per-round ratios as the runner's drift between rounds showed up.
 
+### Final run
+
+Full run [41244063496](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41244063496) on `e9b2ba8` (main
+`119ca70` merged in; a force-push of the rebased branch wasn't allowed, so main was merged instead, same tree): **green**.
+
+| scene | vanilla MSPT median | Quicksilver MSPT median | per-round Quicksilver / vanilla, median | gate |
+|---|---|---|---|---|
+| core `mobs` | 2.484 | 2.222 | -11.1% (0.87 to 0.93) | pass |
+| core `random` | 0.559 | 0.554 | -3.0% (0.90 to 1.14) | pass (within this scene's noise: earlier runs -3.5 to +5.0%) |
+| core `run` | 0.760 | 0.799 | +4.3% | reported |
+
+Mob scene, where it came from (JFR round, ms per tick): block state reads 0.48 to 0.16, block collision sweeps 0.85 to
+0.63, entity collision lookups 0.24 to 0.11, entity section walks 0.44 to 0.33; entity movement 1.37 to 1.02, the tick
+2.75 to 2.46. Pushing (+0.04) and fluids (+0.01) unchanged within noise. Every correctness gate as in the results above
+(mob scene worlds equal in all eight rounds; core and Terralith worldgen, world diffs, random-tick run, every GameTest in
+the same tick, network, heap; phase 1's core client gates), no Logic fallback.
+
 ### SIFTEC checks still owed
 
 SIFTEC's latest release no longer matches `ci/pack-lock.txt` (its `siftec-26.3.jar` and `siftec-selftest-26.3.jar`), so
