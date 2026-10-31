@@ -47,6 +47,13 @@ PHASES = [
     ("  base tick (Entity.baseTick)", r"^Entity\.baseTick$|^LivingEntity\.baseTick$"),
     ("  block state reads (getBlockState)", r"^Level\.getBlockState$|^LevelChunk\.getBlockState$|^ServerLevel\.getBlockState$|^PathNavigationRegion\.getBlockState$"),
     ("  chunk lookups (getChunk)", r"^ServerChunkCache\.getChunk|^Level\.getChunk$|^ServerChunkCache\.getChunkNow$|^ChunkSource\.getChunk"),
+    ("  item entities (ItemEntity.tick)", r"^ItemEntity\.tick$"),
+    ("  item merging", r"^ItemEntity\.mergeWithNeighbours$|^ItemEntity\.tryToMerge$"),
+    ("  monster targeting", r"^NearestAttackableTargetGoal\.|^TargetingConditions\.|^EntityGetter\.getNearest"),
+    ("  sun and rain checks", r"^Mob\.isSunBurnTick$|^Entity\.isInRain$|^Level\.isRainingAt$|^Entity\.isInWaterOrRain"),
+    ("  minecarts", r"^AbstractMinecart\.tick$"),
+    ("  supporting block (Entity.checkSupportingBlock)", r"^Entity\.checkSupportingBlock$"),
+    ("  space checks (noCollision)", r"^CollisionGetter\.noCollision$|^CollisionGetter\.noBlockCollision$"),
     ("Create (com.simibubi)", r"^@create$"),
 ]
 
