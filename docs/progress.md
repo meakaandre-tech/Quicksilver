@@ -2516,7 +2516,9 @@ toggles, fallbacks and the same heap gate.
   6 chunks before the first tick, SIFTEC's queue empty at every save. SIFTEC's baselines re-collected from those three
   runs' reports (`ci/make-baselines.py`; map and hud keep their old entries, skipped): heap after GC about 60-80 MB
   lower in every SIFTEC scene (P2-1's Memory module, merged since the last SIFTEC baselines), factory_flat and hologram
-  draw calls lower (MapMod's minimap build). SIFTEC's pixel limits passed all three runs unchanged.
+  draw calls lower (MapMod's minimap build). Two earlier rules kept: sift's uploads stay at the highest seen in any run
+  (81788 bytes, Andre 2026-10-25), and direct buffers keep the higher of the old and new value (the open direct-buffer
+  bug). SIFTEC's pixel limits passed all three runs unchanged.
 
 - **When MapMod is finished** (Andre, 2026-10-30): put it back in the pack lock, restore the map and hud scenes,
   re-collect their numbers, and restore the full strict check where the minimap shows (factory_flat, hologram:
