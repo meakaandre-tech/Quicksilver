@@ -154,20 +154,18 @@ final class MeshWorker {
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
                         p.set(ox + x, oy + y, oz + z);
-                        BlockState state;
+                        // read as vanilla's compiler reads it, then kept in the snapshot for the neighbours' face tests
+                        BlockState state = region.getBlockState(p);
                         if (loaded) {
-                            state = snap.local(x, y, z);
-                        } else {
-                            state = region.getBlockState(p);
-                            if (!state.getFluidState().isEmpty() || state.getRenderShape() == RenderShape.MODEL) {
-                                long ts = System.nanoTime();
-                                snap.load(region, ox, oy, oz);
-                                loaded = true;
-                                blockRenderer = blockRenderer(ao, colors);
-                                out = emitter;
-                                snapNanos = System.nanoTime() - ts;
-                                state = snap.local(x, y, z);
-                            }
+                            snap.put(x, y, z, state);
+                        } else if (!state.getFluidState().isEmpty() || state.getRenderShape() == RenderShape.MODEL) {
+                            long ts = System.nanoTime();
+                            snap.load(region, ox, oy, oz);
+                            loaded = true;
+                            blockRenderer = blockRenderer(ao, colors);
+                            out = emitter;
+                            snapNanos = System.nanoTime() - ts;
+                            snap.put(x, y, z, state);
                         }
                         if (!state.isAir()) nonAir++;
                         if (loaded && firstMeshed < 0) firstMeshed = x | y << 4 | z << 8;

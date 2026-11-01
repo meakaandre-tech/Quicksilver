@@ -172,10 +172,26 @@ public final class SectionSnapshot implements BlockAndTintGetter, LightLookup {
     private BlockState at(int i) {
         BlockState s = states[i];
         if (s != null) return s;
-        int lx = i % SIZE, lz = i / SIZE % SIZE, ly = i / AREA;
-        s = region.getBlockState(scratch.set(minX + lx, minY + ly, minZ + lz));
+        // the box position from a table, not three divisions (a neighbour read; the section's own blocks come in
+        // through put() as the mesh loop reads them)
+        int xyz = BOX_XYZ[i];
+        s = region.getBlockState(scratch.set(minX + (xyz & 0xFF), minY + (xyz >>> 16), minZ + (xyz >>> 8 & 0xFF)));
         states[i] = s;
         return s;
+    }
+
+    /** Box index to x | z << 8 | y << 16 within the box. */
+    private static final int[] BOX_XYZ = new int[VOLUME];
+    static {
+        for (int i = 0; i < VOLUME; i++) BOX_XYZ[i] = i % SIZE | (i / SIZE % SIZE) << 8 | (i / AREA) << 16;
+    }
+
+    /**
+     * A block of the section itself as the mesh loop read it from the region (the same region this snapshot reads):
+     * kept, so the neighbours' face tests don't read it again.
+     */
+    void put(int x, int y, int z, BlockState state) {
+        states[((y + 1) * SIZE + z + 1) * SIZE + x + 1] = state;
     }
 
     // the last state given an index (runs of one state, air above all, skip the map)
