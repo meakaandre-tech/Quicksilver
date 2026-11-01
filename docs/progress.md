@@ -16,7 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
-| package 4c (Quicksilver's mesher) | `package-4c`, not merged | Quicksilver meshes sections itself; rebased on main (`119ca70`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
+| package 4c (Quicksilver's mesher) | `package-4c`, not merged | Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
 | phase 2, P2-0 (server harness) | merged | server suite, server bench numbers, research; see "Phase 2, P2-0" below |
 | package 3 (translucency) | merged | `143defe`, main green (run 40197881761), `latest` rebuilt |
@@ -2647,8 +2647,10 @@ right after the other (cumulative since the session started, both orders average
   Terralith: 41189831014 full, 41194096663 quick); its 3 SIFTEC proof runs wait until SIFTEC starts with MapMod again.
 - **4c rebased** onto `119ca70` as one commit (the branch history squashed; pre-rebase head `0f16f86`). Main's P2-1
   (Memory module) is now under 4c too.
-- **factory_flat**: four chunk reloads after its setup, for 500+ like-for-like pairs (`ciMinMeshPairs`); +10% kept;
-  report only while SIFTEC is (docs/ci-limits.md, "Package 4c: like-for-like timing").
+- **factory_flat**: chunk reloads after its setup, for 500+ like-for-like pairs (`ciMinMeshPairs`); +10% kept
+  (docs/ci-limits.md, "Package 4c: like-for-like timing"). Run 41258425134 (four reloads, SIFTEC gating): 426-436
+  pairs, Quicksilver / vanilla median 0.955/0.548 (full), 0.592/0.399 (old GPU), 0.438/0.392 (Vulkan): over in all three.
+  Six reloads now, for 500+.
 - **Runs**: 41196986066 (`bc6e3be`, full) green; 41202837388 (`790864d`, quick, report wording) green. Core: every
   scene's median under vanilla's in every profile (0.58-0.95); single player 710/710 ticks behind, 1641 sections meshed
   while behind, at most 1 at a time. SIFTEC didn't run: a new SIFTEC and self-test build (it starts with MapMod's
