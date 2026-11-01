@@ -74,6 +74,9 @@ final class MeshWorker {
     boolean handedBlockEntities;
     /** The snapshot's set-up time in the section being meshed (0 while it isn't set up). */
     private long snapNanos;
+    /** The last section's make-up and phase times (the check's per-section profile, CI only). */
+    int lastNonAir, lastModels, lastDrawn, lastFluids, lastQuads, lastFirstMeshed;
+    long lastSnap, lastLoop, lastFinish;
 
     /** Why the last {@link #compile} returned null (the section goes to vanilla's compiler). */
     String declined;
@@ -146,6 +149,7 @@ final class MeshWorker {
             SectionCompiler.Results results = new SectionCompiler.Results();
             VisGraph visGraph = new VisGraph();
             BlockPos.MutableBlockPos p = pos;
+            int nonAir = 0, modelCount = 0, drawn = 0, fluidCount = 0, firstMeshed = -1;
             for (int z = 0; z < 16; z++) {
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
@@ -165,6 +169,8 @@ final class MeshWorker {
                                 state = snap.local(x, y, z);
                             }
                         }
+                        if (!state.isAir()) nonAir++;
+                        if (loaded && firstMeshed < 0) firstMeshed = x | y << 4 | z << 8;
                         if (state.isSolidRender()) visGraph.setOpaque(p);
                         if (state.hasBlockEntity()) {
                             BlockEntity be = region.getBlockEntity(p);
@@ -173,6 +179,7 @@ final class MeshWorker {
                         FluidState fluid = state.getFluidState();
                         w.origin = x | y << 4 | z << 8 | 4096;
                         if (!fluid.isEmpty()) {
+                            fluidCount++;
                             if (!Mesher.fluidsThroughVanilla && FluidMesher.ownFluid(fluid) && FluidProbe.own(this, fluidRenderer, region, fluid)) {
                                 fluids.tesselate(fluidRenderer, snap, p, state, fluid);
                             } else {
@@ -184,7 +191,9 @@ final class MeshWorker {
                         w.origin = x | y << 4 | z << 8;
                         if (state.getRenderShape() == RenderShape.MODEL) {
                             BlockStateModel model = models.get(state);
+                            modelCount++;
                             if (!hidden.drawsNothing(models, model, snap, SectionSnapshot.localIndex(x, y, z))) {
+                                drawn++;
                                 blockRenderer.tesselateBlock(out, x, y, z, snap, p, state, model, state.getSeed(p));
                             }
                         }
@@ -198,7 +207,19 @@ final class MeshWorker {
             long t2 = System.nanoTime();
             results.visibilitySet = visGraph.resolve();
             if (!finish(results, sorting)) return null;
-            MesherStats.phases(loaded ? snapNanos : 0, t2 - t0 - (loaded ? snapNanos : 0), System.nanoTime() - t2, !loaded);
+            long t3 = System.nanoTime();
+            MesherStats.phases(loaded ? snapNanos : 0, t2 - t0 - (loaded ? snapNanos : 0), t3 - t2, !loaded);
+            lastSnap = loaded ? snapNanos : 0;
+            lastLoop = t2 - t0 - lastSnap;
+            lastFinish = t3 - t2;
+            lastNonAir = nonAir;
+            lastModels = modelCount;
+            lastDrawn = drawn;
+            lastFluids = fluidCount;
+            lastFirstMeshed = firstMeshed;
+            int q = 0;
+            for (SectionWriter.Layer l : w.layers) q += l.quads;
+            lastQuads = q;
             snapNanos = 0;
             // vanilla's own block entity step, in vanilla's order, once the section is known to be Quicksilver's (where
             // mods take block entities over, e.g. Flywheel): a section handed to vanilla's compiler gets it from there

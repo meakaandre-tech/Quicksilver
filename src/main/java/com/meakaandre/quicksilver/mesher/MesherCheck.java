@@ -75,6 +75,7 @@ final class MesherCheck {
             MesherStats.CHECK_MINE_NANOS.addAndGet(mineNanos);
             MesherStats.CHECK_VANILLA_NANOS.addAndGet(vanillaNanos);
             MesherStats.pair(mineNanos, vanillaNanos);
+            MesherStats.profile(mineNanos, vanillaNanos, worker);
         }
         try {
             String bad = compare(worker.output, section, mine, vanilla, converted);

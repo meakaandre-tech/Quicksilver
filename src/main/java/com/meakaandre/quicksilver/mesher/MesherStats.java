@@ -37,6 +37,59 @@ public final class MesherStats {
         pairs++;
     }
 
+    // the check's per-section profile (CI): each pair's times, Quicksilver's phases and the section's make-up
+    private static final java.util.ArrayList<long[]> PROFILE = new java.util.ArrayList<>();
+
+    static synchronized void profile(long mine, long vanilla, MeshWorker w) {
+        if (PROFILE.size() >= 100_000) return;
+        PROFILE.add(new long[] {mine, vanilla, w.lastSnap, w.lastLoop, w.lastFinish, w.lastNonAir, w.lastModels, w.lastDrawn, w.lastFluids,
+            w.lastQuads, w.lastFirstMeshed});
+    }
+
+    /**
+     * The profile in the bench report: medians of each phase, the pairs around Quicksilver's median (what decides the
+     * gated median), and the median difference by how many blocks are drawn as models.
+     */
+    private static synchronized JsonObject profileJson() {
+        JsonObject o = new JsonObject();
+        int n = PROFILE.size();
+        o.addProperty("pairs", n);
+        if (n == 0) return o;
+        String[] names = {"quicksilverUs", "vanillaUs", "snapshotUs", "loopUs", "finishUs", "nonAir", "models", "drawn", "fluids", "quads", "firstMeshed"};
+        for (int k : new int[] {2, 3, 4}) {
+            long[] v = new long[n];
+            for (int i = 0; i < n; i++) v[i] = PROFILE.get(i)[k];
+            java.util.Arrays.sort(v);
+            o.addProperty("median_" + names[k], Math.round(v[n / 2] / 100.0) / 10.0);
+        }
+        java.util.List<long[]> sorted = new java.util.ArrayList<>(PROFILE);
+        sorted.sort(java.util.Comparator.comparingLong(a -> a[0]));
+        com.google.gson.JsonArray around = new com.google.gson.JsonArray();
+        for (int i = Math.max(0, n / 2 - 10); i < Math.min(n, n / 2 + 11); i++) {
+            long[] a = sorted.get(i);
+            JsonObject r = new JsonObject();
+            for (int k = 0; k < names.length; k++) r.addProperty(names[k], k < 5 ? Math.round(a[k] / 100.0) / 10.0 : a[k]);
+            around.add(r);
+        }
+        o.add("aroundQuicksilverMedian", around);
+        // by blocks drawn as models: pairs, and the median of Quicksilver / vanilla
+        int[][] buckets = {{0, 0}, {1, 16}, {17, 256}, {257, 4096}};
+        com.google.gson.JsonArray by = new com.google.gson.JsonArray();
+        for (int[] b : buckets) {
+            java.util.List<Double> r = new java.util.ArrayList<>();
+            for (long[] a : PROFILE) if (a[7] >= b[0] && a[7] <= b[1] && a[1] > 0) r.add((double) a[0] / a[1]);
+            if (r.isEmpty()) continue;
+            java.util.Collections.sort(r);
+            JsonObject e = new JsonObject();
+            e.addProperty("drawn", b[0] + "-" + b[1]);
+            e.addProperty("pairs", r.size());
+            e.addProperty("medianQuicksilverOverVanilla", Math.round(r.get(r.size() / 2) * 1000) / 1000.0);
+            by.add(e);
+        }
+        o.add("byDrawnBlocks", by);
+        return o;
+    }
+
     /** Medians (ms) of Quicksilver's and vanilla's like-for-like times since start-up, and the number of pairs. */
     private static synchronized double[] medians() {
         if (pairs == 0) return new double[] {0, 0, 0};
@@ -137,6 +190,7 @@ public final class MesherStats {
         o.addProperty("checkedMedianQuicksilverMs", Math.round(med[0] * 1000) / 1000.0);
         o.addProperty("checkedMedianVanillaCompilerMs", Math.round(med[1] * 1000) / 1000.0);
         o.addProperty("checkedPairs", (long) med[2]);
+        if (Mesher.VERIFY) o.add("checkProfile", profileJson());
         o.add("serverAware", ServerAware.json());
         o.add("order", MeshPriority.json());
         return o;
