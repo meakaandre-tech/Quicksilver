@@ -2509,8 +2509,8 @@ toggles, fallbacks and the same heap gate.
   this repo's `pack-snapshot` release (docs/ci-limits.md, "Pack lock"), SIFTEC's suites gate again
   (`siftec_report_only=false` in the workflow's mode job). Still to do on `pack-snapshot-ci`: fix-worldgen-diff's 3
   SIFTEC proof runs and SIFTEC's numbers re-collected from 3 clean runs; then re-run every package merged in the
-  meantime against the SIFTEC suite (none besides fix-worldgen-diff, `119ca70`). **Note for the P2-2 chat: once
-  `pack-snapshot-ci` is merged, SIFTEC is gating again; rebase on it.**
+  meantime against the SIFTEC suite (none besides fix-worldgen-diff, `119ca70`). **Note for the P2-2 chat: SIFTEC is
+  gating again since `93e7a3e` (pack-snapshot-ci merged, 2026-11-01); rebase on main.**
   Done on `pack-snapshot-ci`: proof runs 41239149330, 41244820931, 41250781925 (full, green, SIFTEC gating): SIFTEC's
   worldgen 0 differences in the overworld, nether and the Sift in all three (vanilla noise 0); SIFTEC pieces placed in
   6 chunks before the first tick, SIFTEC's queue empty at every save. SIFTEC's baselines re-collected from those three
