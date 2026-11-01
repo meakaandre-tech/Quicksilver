@@ -1,0 +1,465 @@
+# The SIFTEC suite's factory scene (phase 2, P2-3): Create machines as SIFTEC's factories use them, with SIFTEC's pack
+# loaded: mechanical presses over depots and millstones fed and emptied by hoppers, funnels and chutes, kinetic lines on
+# creative motors, and vanilla hoppers, furnaces and chests beside them. Same format as scripted-run-siftec.txt; played
+# by the perf job for MSPT, its saved worlds compared with vanilla's. The creative motors start at tick 1 (Create ticks
+# kinetics through its own hooks while the game waits frozen before tick 0; P2-1).
+area minecraft:overworld -4 -4 3 3
+
+cmd time set 1000
+cmd weather clear 100000
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+
+cmd fill -44 199 -44 23 199 39 minecraft:stone
+
+# 4 lines of 8 mechanical presses on a shaft (axis x), each over a depot fed by a hopper from a chest of iron ingots,
+# emptied by a hopper under the depot into a chest
+cmd setblock -40 202 -40 create:mechanical_press[facing=east]
+cmd setblock -39 202 -40 create:shaft[axis=x]
+cmd setblock -40 200 -40 create:depot
+cmd setblock -40 200 -41 minecraft:hopper[facing=south]
+cmd setblock -40 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -40 199 -40 minecraft:hopper[facing=down]
+cmd setblock -40 198 -40 minecraft:chest
+cmd setblock -38 202 -40 create:mechanical_press[facing=east]
+cmd setblock -37 202 -40 create:shaft[axis=x]
+cmd setblock -38 200 -40 create:depot
+cmd setblock -38 200 -41 minecraft:hopper[facing=south]
+cmd setblock -38 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -38 199 -40 minecraft:hopper[facing=down]
+cmd setblock -38 198 -40 minecraft:chest
+cmd setblock -36 202 -40 create:mechanical_press[facing=east]
+cmd setblock -35 202 -40 create:shaft[axis=x]
+cmd setblock -36 200 -40 create:depot
+cmd setblock -36 200 -41 minecraft:hopper[facing=south]
+cmd setblock -36 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -36 199 -40 minecraft:hopper[facing=down]
+cmd setblock -36 198 -40 minecraft:chest
+cmd setblock -34 202 -40 create:mechanical_press[facing=east]
+cmd setblock -33 202 -40 create:shaft[axis=x]
+cmd setblock -34 200 -40 create:depot
+cmd setblock -34 200 -41 minecraft:hopper[facing=south]
+cmd setblock -34 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -34 199 -40 minecraft:hopper[facing=down]
+cmd setblock -34 198 -40 minecraft:chest
+cmd setblock -32 202 -40 create:mechanical_press[facing=east]
+cmd setblock -31 202 -40 create:shaft[axis=x]
+cmd setblock -32 200 -40 create:depot
+cmd setblock -32 200 -41 minecraft:hopper[facing=south]
+cmd setblock -32 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -32 199 -40 minecraft:hopper[facing=down]
+cmd setblock -32 198 -40 minecraft:chest
+cmd setblock -30 202 -40 create:mechanical_press[facing=east]
+cmd setblock -29 202 -40 create:shaft[axis=x]
+cmd setblock -30 200 -40 create:depot
+cmd setblock -30 200 -41 minecraft:hopper[facing=south]
+cmd setblock -30 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -30 199 -40 minecraft:hopper[facing=down]
+cmd setblock -30 198 -40 minecraft:chest
+cmd setblock -28 202 -40 create:mechanical_press[facing=east]
+cmd setblock -27 202 -40 create:shaft[axis=x]
+cmd setblock -28 200 -40 create:depot
+cmd setblock -28 200 -41 minecraft:hopper[facing=south]
+cmd setblock -28 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -28 199 -40 minecraft:hopper[facing=down]
+cmd setblock -28 198 -40 minecraft:chest
+cmd setblock -26 202 -40 create:mechanical_press[facing=east]
+cmd setblock -26 200 -40 create:depot
+cmd setblock -26 200 -41 minecraft:hopper[facing=south]
+cmd setblock -26 201 -41 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -26 199 -40 minecraft:hopper[facing=down]
+cmd setblock -26 198 -40 minecraft:chest
+cmd setblock -40 202 -32 create:mechanical_press[facing=east]
+cmd setblock -39 202 -32 create:shaft[axis=x]
+cmd setblock -40 200 -32 create:depot
+cmd setblock -40 200 -33 minecraft:hopper[facing=south]
+cmd setblock -40 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -40 199 -32 minecraft:hopper[facing=down]
+cmd setblock -40 198 -32 minecraft:chest
+cmd setblock -38 202 -32 create:mechanical_press[facing=east]
+cmd setblock -37 202 -32 create:shaft[axis=x]
+cmd setblock -38 200 -32 create:depot
+cmd setblock -38 200 -33 minecraft:hopper[facing=south]
+cmd setblock -38 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -38 199 -32 minecraft:hopper[facing=down]
+cmd setblock -38 198 -32 minecraft:chest
+cmd setblock -36 202 -32 create:mechanical_press[facing=east]
+cmd setblock -35 202 -32 create:shaft[axis=x]
+cmd setblock -36 200 -32 create:depot
+cmd setblock -36 200 -33 minecraft:hopper[facing=south]
+cmd setblock -36 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -36 199 -32 minecraft:hopper[facing=down]
+cmd setblock -36 198 -32 minecraft:chest
+cmd setblock -34 202 -32 create:mechanical_press[facing=east]
+cmd setblock -33 202 -32 create:shaft[axis=x]
+cmd setblock -34 200 -32 create:depot
+cmd setblock -34 200 -33 minecraft:hopper[facing=south]
+cmd setblock -34 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -34 199 -32 minecraft:hopper[facing=down]
+cmd setblock -34 198 -32 minecraft:chest
+cmd setblock -32 202 -32 create:mechanical_press[facing=east]
+cmd setblock -31 202 -32 create:shaft[axis=x]
+cmd setblock -32 200 -32 create:depot
+cmd setblock -32 200 -33 minecraft:hopper[facing=south]
+cmd setblock -32 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -32 199 -32 minecraft:hopper[facing=down]
+cmd setblock -32 198 -32 minecraft:chest
+cmd setblock -30 202 -32 create:mechanical_press[facing=east]
+cmd setblock -29 202 -32 create:shaft[axis=x]
+cmd setblock -30 200 -32 create:depot
+cmd setblock -30 200 -33 minecraft:hopper[facing=south]
+cmd setblock -30 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -30 199 -32 minecraft:hopper[facing=down]
+cmd setblock -30 198 -32 minecraft:chest
+cmd setblock -28 202 -32 create:mechanical_press[facing=east]
+cmd setblock -27 202 -32 create:shaft[axis=x]
+cmd setblock -28 200 -32 create:depot
+cmd setblock -28 200 -33 minecraft:hopper[facing=south]
+cmd setblock -28 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -28 199 -32 minecraft:hopper[facing=down]
+cmd setblock -28 198 -32 minecraft:chest
+cmd setblock -26 202 -32 create:mechanical_press[facing=east]
+cmd setblock -26 200 -32 create:depot
+cmd setblock -26 200 -33 minecraft:hopper[facing=south]
+cmd setblock -26 201 -33 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -26 199 -32 minecraft:hopper[facing=down]
+cmd setblock -26 198 -32 minecraft:chest
+cmd setblock -40 202 -24 create:mechanical_press[facing=east]
+cmd setblock -39 202 -24 create:shaft[axis=x]
+cmd setblock -40 200 -24 create:depot
+cmd setblock -40 200 -25 minecraft:hopper[facing=south]
+cmd setblock -40 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -40 199 -24 minecraft:hopper[facing=down]
+cmd setblock -40 198 -24 minecraft:chest
+cmd setblock -38 202 -24 create:mechanical_press[facing=east]
+cmd setblock -37 202 -24 create:shaft[axis=x]
+cmd setblock -38 200 -24 create:depot
+cmd setblock -38 200 -25 minecraft:hopper[facing=south]
+cmd setblock -38 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -38 199 -24 minecraft:hopper[facing=down]
+cmd setblock -38 198 -24 minecraft:chest
+cmd setblock -36 202 -24 create:mechanical_press[facing=east]
+cmd setblock -35 202 -24 create:shaft[axis=x]
+cmd setblock -36 200 -24 create:depot
+cmd setblock -36 200 -25 minecraft:hopper[facing=south]
+cmd setblock -36 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -36 199 -24 minecraft:hopper[facing=down]
+cmd setblock -36 198 -24 minecraft:chest
+cmd setblock -34 202 -24 create:mechanical_press[facing=east]
+cmd setblock -33 202 -24 create:shaft[axis=x]
+cmd setblock -34 200 -24 create:depot
+cmd setblock -34 200 -25 minecraft:hopper[facing=south]
+cmd setblock -34 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -34 199 -24 minecraft:hopper[facing=down]
+cmd setblock -34 198 -24 minecraft:chest
+cmd setblock -32 202 -24 create:mechanical_press[facing=east]
+cmd setblock -31 202 -24 create:shaft[axis=x]
+cmd setblock -32 200 -24 create:depot
+cmd setblock -32 200 -25 minecraft:hopper[facing=south]
+cmd setblock -32 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -32 199 -24 minecraft:hopper[facing=down]
+cmd setblock -32 198 -24 minecraft:chest
+cmd setblock -30 202 -24 create:mechanical_press[facing=east]
+cmd setblock -29 202 -24 create:shaft[axis=x]
+cmd setblock -30 200 -24 create:depot
+cmd setblock -30 200 -25 minecraft:hopper[facing=south]
+cmd setblock -30 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -30 199 -24 minecraft:hopper[facing=down]
+cmd setblock -30 198 -24 minecraft:chest
+cmd setblock -28 202 -24 create:mechanical_press[facing=east]
+cmd setblock -27 202 -24 create:shaft[axis=x]
+cmd setblock -28 200 -24 create:depot
+cmd setblock -28 200 -25 minecraft:hopper[facing=south]
+cmd setblock -28 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -28 199 -24 minecraft:hopper[facing=down]
+cmd setblock -28 198 -24 minecraft:chest
+cmd setblock -26 202 -24 create:mechanical_press[facing=east]
+cmd setblock -26 200 -24 create:depot
+cmd setblock -26 200 -25 minecraft:hopper[facing=south]
+cmd setblock -26 201 -25 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -26 199 -24 minecraft:hopper[facing=down]
+cmd setblock -26 198 -24 minecraft:chest
+cmd setblock -40 202 -16 create:mechanical_press[facing=east]
+cmd setblock -39 202 -16 create:shaft[axis=x]
+cmd setblock -40 200 -16 create:depot
+cmd setblock -40 200 -17 minecraft:hopper[facing=south]
+cmd setblock -40 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -40 199 -16 minecraft:hopper[facing=down]
+cmd setblock -40 198 -16 minecraft:chest
+cmd setblock -38 202 -16 create:mechanical_press[facing=east]
+cmd setblock -37 202 -16 create:shaft[axis=x]
+cmd setblock -38 200 -16 create:depot
+cmd setblock -38 200 -17 minecraft:hopper[facing=south]
+cmd setblock -38 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -38 199 -16 minecraft:hopper[facing=down]
+cmd setblock -38 198 -16 minecraft:chest
+cmd setblock -36 202 -16 create:mechanical_press[facing=east]
+cmd setblock -35 202 -16 create:shaft[axis=x]
+cmd setblock -36 200 -16 create:depot
+cmd setblock -36 200 -17 minecraft:hopper[facing=south]
+cmd setblock -36 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -36 199 -16 minecraft:hopper[facing=down]
+cmd setblock -36 198 -16 minecraft:chest
+cmd setblock -34 202 -16 create:mechanical_press[facing=east]
+cmd setblock -33 202 -16 create:shaft[axis=x]
+cmd setblock -34 200 -16 create:depot
+cmd setblock -34 200 -17 minecraft:hopper[facing=south]
+cmd setblock -34 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -34 199 -16 minecraft:hopper[facing=down]
+cmd setblock -34 198 -16 minecraft:chest
+cmd setblock -32 202 -16 create:mechanical_press[facing=east]
+cmd setblock -31 202 -16 create:shaft[axis=x]
+cmd setblock -32 200 -16 create:depot
+cmd setblock -32 200 -17 minecraft:hopper[facing=south]
+cmd setblock -32 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -32 199 -16 minecraft:hopper[facing=down]
+cmd setblock -32 198 -16 minecraft:chest
+cmd setblock -30 202 -16 create:mechanical_press[facing=east]
+cmd setblock -29 202 -16 create:shaft[axis=x]
+cmd setblock -30 200 -16 create:depot
+cmd setblock -30 200 -17 minecraft:hopper[facing=south]
+cmd setblock -30 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -30 199 -16 minecraft:hopper[facing=down]
+cmd setblock -30 198 -16 minecraft:chest
+cmd setblock -28 202 -16 create:mechanical_press[facing=east]
+cmd setblock -27 202 -16 create:shaft[axis=x]
+cmd setblock -28 200 -16 create:depot
+cmd setblock -28 200 -17 minecraft:hopper[facing=south]
+cmd setblock -28 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -28 199 -16 minecraft:hopper[facing=down]
+cmd setblock -28 198 -16 minecraft:chest
+cmd setblock -26 202 -16 create:mechanical_press[facing=east]
+cmd setblock -26 200 -16 create:depot
+cmd setblock -26 200 -17 minecraft:hopper[facing=south]
+cmd setblock -26 201 -17 minecraft:chest{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64}]}
+cmd setblock -26 199 -16 minecraft:hopper[facing=down]
+cmd setblock -26 198 -16 minecraft:chest
+
+# 2 lines of 8 millstones between cogwheels (axis y), a hopper from a chest of cobblestone above each, a hopper into a
+# chest below
+cmd setblock -40 201 -6 create:cogwheel[axis=y]
+cmd setblock -39 201 -6 create:millstone
+cmd setblock -39 202 -6 minecraft:hopper[facing=down]
+cmd setblock -39 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -39 200 -6 minecraft:hopper[facing=down]
+cmd setblock -39 199 -6 minecraft:chest
+cmd setblock -38 201 -6 create:cogwheel[axis=y]
+cmd setblock -37 201 -6 create:millstone
+cmd setblock -37 202 -6 minecraft:hopper[facing=down]
+cmd setblock -37 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -37 200 -6 minecraft:hopper[facing=down]
+cmd setblock -37 199 -6 minecraft:chest
+cmd setblock -36 201 -6 create:cogwheel[axis=y]
+cmd setblock -35 201 -6 create:millstone
+cmd setblock -35 202 -6 minecraft:hopper[facing=down]
+cmd setblock -35 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -35 200 -6 minecraft:hopper[facing=down]
+cmd setblock -35 199 -6 minecraft:chest
+cmd setblock -34 201 -6 create:cogwheel[axis=y]
+cmd setblock -33 201 -6 create:millstone
+cmd setblock -33 202 -6 minecraft:hopper[facing=down]
+cmd setblock -33 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -33 200 -6 minecraft:hopper[facing=down]
+cmd setblock -33 199 -6 minecraft:chest
+cmd setblock -32 201 -6 create:cogwheel[axis=y]
+cmd setblock -31 201 -6 create:millstone
+cmd setblock -31 202 -6 minecraft:hopper[facing=down]
+cmd setblock -31 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -31 200 -6 minecraft:hopper[facing=down]
+cmd setblock -31 199 -6 minecraft:chest
+cmd setblock -30 201 -6 create:cogwheel[axis=y]
+cmd setblock -29 201 -6 create:millstone
+cmd setblock -29 202 -6 minecraft:hopper[facing=down]
+cmd setblock -29 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -29 200 -6 minecraft:hopper[facing=down]
+cmd setblock -29 199 -6 minecraft:chest
+cmd setblock -28 201 -6 create:cogwheel[axis=y]
+cmd setblock -27 201 -6 create:millstone
+cmd setblock -27 202 -6 minecraft:hopper[facing=down]
+cmd setblock -27 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -27 200 -6 minecraft:hopper[facing=down]
+cmd setblock -27 199 -6 minecraft:chest
+cmd setblock -26 201 -6 create:cogwheel[axis=y]
+cmd setblock -25 201 -6 create:millstone
+cmd setblock -25 202 -6 minecraft:hopper[facing=down]
+cmd setblock -25 203 -6 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -25 200 -6 minecraft:hopper[facing=down]
+cmd setblock -25 199 -6 minecraft:chest
+cmd setblock -24 201 -6 create:cogwheel[axis=y]
+cmd setblock -40 201 2 create:cogwheel[axis=y]
+cmd setblock -39 201 2 create:millstone
+cmd setblock -39 202 2 minecraft:hopper[facing=down]
+cmd setblock -39 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -39 200 2 minecraft:hopper[facing=down]
+cmd setblock -39 199 2 minecraft:chest
+cmd setblock -38 201 2 create:cogwheel[axis=y]
+cmd setblock -37 201 2 create:millstone
+cmd setblock -37 202 2 minecraft:hopper[facing=down]
+cmd setblock -37 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -37 200 2 minecraft:hopper[facing=down]
+cmd setblock -37 199 2 minecraft:chest
+cmd setblock -36 201 2 create:cogwheel[axis=y]
+cmd setblock -35 201 2 create:millstone
+cmd setblock -35 202 2 minecraft:hopper[facing=down]
+cmd setblock -35 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -35 200 2 minecraft:hopper[facing=down]
+cmd setblock -35 199 2 minecraft:chest
+cmd setblock -34 201 2 create:cogwheel[axis=y]
+cmd setblock -33 201 2 create:millstone
+cmd setblock -33 202 2 minecraft:hopper[facing=down]
+cmd setblock -33 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -33 200 2 minecraft:hopper[facing=down]
+cmd setblock -33 199 2 minecraft:chest
+cmd setblock -32 201 2 create:cogwheel[axis=y]
+cmd setblock -31 201 2 create:millstone
+cmd setblock -31 202 2 minecraft:hopper[facing=down]
+cmd setblock -31 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -31 200 2 minecraft:hopper[facing=down]
+cmd setblock -31 199 2 minecraft:chest
+cmd setblock -30 201 2 create:cogwheel[axis=y]
+cmd setblock -29 201 2 create:millstone
+cmd setblock -29 202 2 minecraft:hopper[facing=down]
+cmd setblock -29 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -29 200 2 minecraft:hopper[facing=down]
+cmd setblock -29 199 2 minecraft:chest
+cmd setblock -28 201 2 create:cogwheel[axis=y]
+cmd setblock -27 201 2 create:millstone
+cmd setblock -27 202 2 minecraft:hopper[facing=down]
+cmd setblock -27 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -27 200 2 minecraft:hopper[facing=down]
+cmd setblock -27 199 2 minecraft:chest
+cmd setblock -26 201 2 create:cogwheel[axis=y]
+cmd setblock -25 201 2 create:millstone
+cmd setblock -25 202 2 minecraft:hopper[facing=down]
+cmd setblock -25 203 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -25 200 2 minecraft:hopper[facing=down]
+cmd setblock -25 199 2 minecraft:chest
+cmd setblock -24 201 2 create:cogwheel[axis=y]
+
+# 8 funnels pulling from chests of cobblestone into chutes, down into chests
+cmd setblock -40 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -40 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -40 201 10 -40 203 10 create:chute[facing=down]
+cmd setblock -40 200 10 minecraft:chest
+cmd setblock -38 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -38 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -38 201 10 -38 203 10 create:chute[facing=down]
+cmd setblock -38 200 10 minecraft:chest
+cmd setblock -36 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -36 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -36 201 10 -36 203 10 create:chute[facing=down]
+cmd setblock -36 200 10 minecraft:chest
+cmd setblock -34 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -34 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -34 201 10 -34 203 10 create:chute[facing=down]
+cmd setblock -34 200 10 minecraft:chest
+cmd setblock -32 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -32 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -32 201 10 -32 203 10 create:chute[facing=down]
+cmd setblock -32 200 10 minecraft:chest
+cmd setblock -30 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -30 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -30 201 10 -30 203 10 create:chute[facing=down]
+cmd setblock -30 200 10 minecraft:chest
+cmd setblock -28 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -28 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -28 201 10 -28 203 10 create:chute[facing=down]
+cmd setblock -28 200 10 minecraft:chest
+cmd setblock -26 205 10 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock -26 204 10 create:andesite_funnel[facing=down,extracting=true]
+cmd fill -26 201 10 -26 203 10 create:chute[facing=down]
+cmd setblock -26 200 10 minecraft:chest
+
+# 8 furnaces fed by hoppers (raw iron from above, coal from the side) and 8 hopper chains of 8
+cmd setblock -40 198 18 minecraft:chest
+cmd setblock -40 199 18 minecraft:hopper[facing=down]
+cmd setblock -40 200 18 minecraft:furnace[facing=north]
+cmd setblock -40 201 18 minecraft:hopper[facing=down]
+cmd setblock -40 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -39 200 18 minecraft:hopper[facing=west]
+cmd setblock -39 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -37 198 18 minecraft:chest
+cmd setblock -37 199 18 minecraft:hopper[facing=down]
+cmd setblock -37 200 18 minecraft:furnace[facing=north]
+cmd setblock -37 201 18 minecraft:hopper[facing=down]
+cmd setblock -37 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -36 200 18 minecraft:hopper[facing=west]
+cmd setblock -36 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -34 198 18 minecraft:chest
+cmd setblock -34 199 18 minecraft:hopper[facing=down]
+cmd setblock -34 200 18 minecraft:furnace[facing=north]
+cmd setblock -34 201 18 minecraft:hopper[facing=down]
+cmd setblock -34 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -33 200 18 minecraft:hopper[facing=west]
+cmd setblock -33 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -31 198 18 minecraft:chest
+cmd setblock -31 199 18 minecraft:hopper[facing=down]
+cmd setblock -31 200 18 minecraft:furnace[facing=north]
+cmd setblock -31 201 18 minecraft:hopper[facing=down]
+cmd setblock -31 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -30 200 18 minecraft:hopper[facing=west]
+cmd setblock -30 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -28 198 18 minecraft:chest
+cmd setblock -28 199 18 minecraft:hopper[facing=down]
+cmd setblock -28 200 18 minecraft:furnace[facing=north]
+cmd setblock -28 201 18 minecraft:hopper[facing=down]
+cmd setblock -28 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -27 200 18 minecraft:hopper[facing=west]
+cmd setblock -27 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -25 198 18 minecraft:chest
+cmd setblock -25 199 18 minecraft:hopper[facing=down]
+cmd setblock -25 200 18 minecraft:furnace[facing=north]
+cmd setblock -25 201 18 minecraft:hopper[facing=down]
+cmd setblock -25 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -24 200 18 minecraft:hopper[facing=west]
+cmd setblock -24 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -22 198 18 minecraft:chest
+cmd setblock -22 199 18 minecraft:hopper[facing=down]
+cmd setblock -22 200 18 minecraft:furnace[facing=north]
+cmd setblock -22 201 18 minecraft:hopper[facing=down]
+cmd setblock -22 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -21 200 18 minecraft:hopper[facing=west]
+cmd setblock -21 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -19 198 18 minecraft:chest
+cmd setblock -19 199 18 minecraft:hopper[facing=down]
+cmd setblock -19 200 18 minecraft:furnace[facing=north]
+cmd setblock -19 201 18 minecraft:hopper[facing=down]
+cmd setblock -19 202 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -18 200 18 minecraft:hopper[facing=west]
+cmd setblock -18 201 18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:16}]}
+cmd setblock -40 201 24 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 24 -33 200 24 minecraft:hopper[facing=east]
+cmd setblock -32 200 24 minecraft:chest
+cmd setblock -40 201 26 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 26 -33 200 26 minecraft:hopper[facing=east]
+cmd setblock -32 200 26 minecraft:chest
+cmd setblock -40 201 28 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 28 -33 200 28 minecraft:hopper[facing=east]
+cmd setblock -32 200 28 minecraft:chest
+cmd setblock -40 201 30 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 30 -33 200 30 minecraft:hopper[facing=east]
+cmd setblock -32 200 30 minecraft:chest
+cmd setblock -40 201 32 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 32 -33 200 32 minecraft:hopper[facing=east]
+cmd setblock -32 200 32 minecraft:chest
+cmd setblock -40 201 34 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 34 -33 200 34 minecraft:hopper[facing=east]
+cmd setblock -32 200 34 minecraft:chest
+cmd setblock -40 201 36 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 36 -33 200 36 minecraft:hopper[facing=east]
+cmd setblock -32 200 36 minecraft:chest
+cmd setblock -40 201 38 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -40 200 38 -33 200 38 minecraft:hopper[facing=east]
+cmd setblock -32 200 38 minecraft:chest
+
+ticks 1200
+
+# the motors start on a fixed tick in every run
+at 1 setblock -41 202 -40 create:creative_motor[facing=east]
+at 1 setblock -41 202 -32 create:creative_motor[facing=east]
+at 1 setblock -41 202 -24 create:creative_motor[facing=east]
+at 1 setblock -41 202 -16 create:creative_motor[facing=east]
+at 1 setblock -40 200 -6 create:creative_motor[facing=up]
+at 1 setblock -40 200 2 create:creative_motor[facing=up]
+
+qs-at 0 quicksilver bench 50
