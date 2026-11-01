@@ -2613,6 +2613,15 @@ the new contraption check (the bearing assembled at 300, placed back at 500 afte
 check expected the bearing's whole cross of planks to move; a bearing takes only the block on top of it (the four
 beside it aren't attached), seen the same in every run, so the check looks at that block.
 
+**Final run with SIFTEC gating:** full run [41280422956](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41280422956)
+on `5926a29` (main `5a791a1` merged in): **green**, SIFTEC gating (no report-only). Mobs -11.8% (per-round ratios 0.87 to
+0.95; the tick 2.86 to 2.41 ms in the JFR round: block state reads 0.49 to 0.16, block collision sweeps 0.88 to 0.64,
+entity collision lookups 0.25 to 0.11, entity section walks 0.47 to 0.33); random-tick -0.7% (regression gate: at
+most +10%); scripted run +0.5% (reported). SIFTEC: worldgen (overworld, nether, the Sift) byte for byte and block by
+block, world diff, heap, all 30 self-test suites, the Create train (11 arrivals, same ticks), the contraption check
+(assembled, placed back, assembled again) equal to vanilla; SIFTEC's client scenes pass; core and Terralith as before;
+no Logic fallback.
+
 ### Andre's decisions (2026-11-01)
 
 1. `block-collisions` on by default. Not merged until a full run with SIFTEC gating passes (SIFTEC's world diff,
