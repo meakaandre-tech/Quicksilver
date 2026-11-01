@@ -2650,7 +2650,11 @@ right after the other (cumulative since the session started, both orders average
 - **factory_flat**: chunk reloads after its setup, for 500+ like-for-like pairs (`ciMinMeshPairs`); +10% kept
   (docs/ci-limits.md, "Package 4c: like-for-like timing"). Run 41258425134 (four reloads, SIFTEC gating): 426-436
   pairs, Quicksilver / vanilla median 0.955/0.548 (full), 0.592/0.399 (old GPU), 0.438/0.392 (Vulkan): over in all three.
-  Six reloads now, for 500+.
+  Six reloads: run 41265540347 (`2bb684b`): 564-574 pairs; median 0.579/0.523 (1.11, full), 0.451/0.420 (1.07, old
+  GPU), 0.616/0.533 (1.16, Vulkan); over vanilla in all three, over +10% in two. Mean 2.36/2.44, 2.04/1.90, 2.65/2.60.
+  By Andre's rule (consistently over with 500+ pairs): a real gap; stopped and reported. Every other check green
+  (core, the rest of SIFTEC, the server suite). Review of everything since `d81fb0a` (the squash included): rebase
+  intact, no mesher/Memory-module interaction found; its notes on the 450-pair estimate and two stale notes acted on.
 - **Runs**: 41196986066 (`bc6e3be`, full) green; 41202837388 (`790864d`, quick, report wording) green. Core: every
   scene's median under vanilla's in every profile (0.58-0.95); single player 710/710 ticks behind, 1641 sections meshed
   while behind, at most 1 at a time. SIFTEC didn't run: a new SIFTEC and self-test build (it starts with MapMod's
