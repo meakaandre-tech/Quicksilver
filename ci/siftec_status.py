@@ -10,7 +10,7 @@ REPORT_ONLY = os.environ.get("CI_SIFTEC_REPORT_ONLY") == "true"
 START_FAIL = re.compile(r"provided by 'siftec'|Could not execute entrypoint stage '\w+' due to errors.*siftec"
                         r"|NoSuchMethodError: '[^']*mapmod|NoClassDefFoundError: com/meakaandre/mapmod", re.I)
 # SIFTEC's pack not even put together: a jar that isn't the locked one (a new SIFTEC or self-test build), or no download
-PACK_FAIL = re.compile(r"^pack changed: .*$|^could not assemble SIFTEC's pack.*$", re.M)
+PACK_FAIL = re.compile(r"^pack changed: .*$|^could not assemble SIFTEC's pack.*$|^pack: could not fetch .*$|^pack: no Modrinth version .*$", re.M)
 
 
 def is_siftec(failure):
@@ -70,6 +70,9 @@ def split(failures, res, world_txt=None):
         lines.append("**SIFTEC did not start** in %d of %d run(s):\n" % (len(bad), len(glob.glob(os.path.join(res, "siftec-*")))))
         lines += ["- %s: `%s`" % (r, e) for r, e in sorted(bad.items())]
         lines.append("")
+    # a pack that didn't assemble is named in the failure list itself (the jar and why), not only in the notes above
+    failures = list(failures) + ["siftec world job: %s" % p.strip()[:200] for p in packs[:6]]
+    failures += ["%s: %s" % (r, e) for r, e in sorted(bad.items()) if e.startswith("the pack: ")]
     if not REPORT_ONLY:
         return failures, [], lines
     gate = [f for f in failures if not is_siftec(f)]

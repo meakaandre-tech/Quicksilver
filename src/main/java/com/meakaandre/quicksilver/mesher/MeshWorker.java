@@ -72,6 +72,8 @@ final class MeshWorker {
 
     /** Set while the last {@link #compile} hands its block entities over (and after): no vanilla fallback then. */
     boolean handedBlockEntities;
+    /** The snapshot's set-up time in the section being meshed (0 while it isn't set up). */
+    private long snapNanos;
 
     /** Why the last {@link #compile} returned null (the section goes to vanilla's compiler). */
     String declined;
@@ -130,12 +132,16 @@ final class MeshWorker {
         int ox = section.minBlockX(), oy = section.minBlockY(), oz = section.minBlockZ();
         SectionSnapshot snap = snapshot;
         SectionWriter w = writer;
+        // The snapshot (and the block renderer) are set up only once the section turns out to have something to mesh:
+        // until the first block drawn as a model or holding a fluid, the blocks are read from vanilla's region as
+        // vanilla's compiler reads them, and only the visibility graph and the block entity list need them. A section
+        // whose blocks are all air, invisible or drawn as block entities (factory_flat's Create machines) never sets
+        // the snapshot up: the same result (no layers, the visibility set, the block entities) for vanilla's cost.
+        boolean loaded = false;
         try {
             long t0 = System.nanoTime();
-            snap.load(region, ox, oy, oz);
-            long t1 = System.nanoTime();
             w.begin(CompactVertex.sectionIndex(ox, oy, oz));
-            AltModelBlockRenderer blockRenderer = blockRenderer(ao, colors);
+            AltModelBlockRenderer blockRenderer = null;
             QuadEmitter out = emitter;
             SectionCompiler.Results results = new SectionCompiler.Results();
             VisGraph visGraph = new VisGraph();
@@ -143,8 +149,21 @@ final class MeshWorker {
             for (int z = 0; z < 16; z++) {
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
-                        BlockState state = snap.local(x, y, z);
                         p.set(ox + x, oy + y, oz + z);
+                        BlockState state;
+                        if (loaded) {
+                            state = snap.local(x, y, z);
+                        } else {
+                            state = region.getBlockState(p);
+                            if (!state.getFluidState().isEmpty() || state.getRenderShape() == RenderShape.MODEL) {
+                                long ts = System.nanoTime();
+                                snap.load(region, ox, oy, oz);
+                                loaded = true;
+                                blockRenderer = blockRenderer(ao, colors);
+                                snapNanos = System.nanoTime() - ts;
+                                state = snap.local(x, y, z);
+                            }
+                        }
                         if (state.isSolidRender()) visGraph.setOpaque(p);
                         if (state.hasBlockEntity()) {
                             BlockEntity be = region.getBlockEntity(p);
@@ -178,7 +197,8 @@ final class MeshWorker {
             long t2 = System.nanoTime();
             results.visibilitySet = visGraph.resolve();
             if (!finish(results, sorting)) return null;
-            MesherStats.phases(t1 - t0, t2 - t1, System.nanoTime() - t2);
+            MesherStats.phases(loaded ? snapNanos : 0, t2 - t0 - (loaded ? snapNanos : 0), System.nanoTime() - t2, !loaded);
+            snapNanos = 0;
             // vanilla's own block entity step, in vanilla's order, once the section is known to be Quicksilver's (where
             // mods take block entities over, e.g. Flywheel): a section handed to vanilla's compiler gets it from there
             handedBlockEntities = true;
@@ -189,7 +209,7 @@ final class MeshWorker {
             output.active = true;
             return results;
         } finally {
-            snap.release();
+            if (loaded) snap.release();
             blockEntities.clear();
         }
     }

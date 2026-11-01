@@ -248,7 +248,11 @@ jobs:
       - name: Pack lock
         # every downloaded jar against ci/pack-lock.txt: a changed pack fails here, before any client run
         shell: bash
-        run: bash ci/pack-check.sh siftec-server/mods siftec complete
+        # into the world job's log as well, so the comparison's report can name a changed or missing jar
+        run: |
+          mkdir -p /tmp/out
+          bash ci/pack-check.sh siftec-server/mods siftec complete 2>&1 | tee -a /tmp/out/siftec-world.txt
+          exit "${PIPESTATUS[0]}"
       - name: Pack the server
         shell: bash
         run: tar cf siftec-server.tar siftec-server && ls -l siftec-server.tar
