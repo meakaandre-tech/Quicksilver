@@ -603,7 +603,9 @@ def main():
                                                     f" ({oc.get('checkTimeoutsSinceStart')} timeouts, {oc.get('checkSkipped')} frames skipped)")
                                 if oc.get("timeouts", 0) != 0 or oc.get("untestedFrames", 0) != 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion: {oc.get('timeouts')} waits timed out, {oc.get('untestedFrames')} frames drew deferred sections untested")
-                                if scene_def.get("ciRequiresOcclusion") and not oc.get("sectionsCulledPerFrame", 0) > 0:
+                                # still camera culls only while the camera stands still: a moving scene asks two-phase runs only
+                                moving = bool(scene_def.get("velocity")) or bool(scene_def.get("yawRate"))
+                                if scene_def.get("ciRequiresOcclusion") and (want_mode == "two-phase" or not moving) and not oc.get("sectionsCulledPerFrame", 0) > 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion culled no section in a scene with occluders")
                             # package 4: which path the blocks and API mesh quads took since the session started; with
                             # block-renderer=off none may go Quicksilver's way, else none to vanilla's block renderer

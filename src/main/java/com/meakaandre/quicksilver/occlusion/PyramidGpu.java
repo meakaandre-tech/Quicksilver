@@ -133,6 +133,8 @@ final class PyramidGpu {
     float[] readNow(CommandEncoder encoder, long timeoutMs, long[] waitNanos) {
         encoder.copyTextureToBuffer(target, waited, 0, () -> { }, 0);
         var fence = encoder.createFence();
+        // renderpearl only waits on a fence whose work was submitted
+        encoder.submit();
         long t0 = System.nanoTime();
         boolean done;
         try {
@@ -196,6 +198,8 @@ final class PyramidGpu {
             }
             encoder.copyTextureToBuffer(t, b, 0, () -> { }, 0);
             var fence = encoder.createFence();
+        // renderpearl only waits on a fence whose work was submitted
+        encoder.submit();
             boolean done;
             try {
                 done = fence.awaitCompletion(timeoutMs);
@@ -264,6 +268,8 @@ final class PyramidGpu {
     long checkPixels(CommandEncoder encoder, long timeoutMs) {
         encoder.copyTextureToBuffer(checkTarget, checkBuffer, 0, () -> { }, 0);
         var fence = encoder.createFence();
+        // renderpearl only waits on a fence whose work was submitted
+        encoder.submit();
         boolean done;
         try {
             done = fence.awaitCompletion(timeoutMs);

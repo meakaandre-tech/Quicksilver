@@ -903,6 +903,26 @@ Quicksilver module block or log line, no counter missing, Sodium loaded in `benc
 loaded. Their pictures are not compared (Sodium draws its own way); the "Bench-only jar" table reports fps, frame-time
 p99, frames over 50 ms, draw calls and the largest upload per frame.
 
+## Package 2b: occlusion culling (Andre, 2026-11-02)
+
+- **Profile `old-gpu-2p`** (run `quicksilver-2p-old`): the old-GPU profile (multi-draw indirect and buffer storage hidden,
+  GL 3.3, vanilla's Intel flag) with `-Dquicksilver.occlusion=two-phase`, so the laptop's plain path is tested with the
+  CPU waiting for the GPU too (auto is still-camera there). Compared with vanilla-old (vanilla-a in quick mode), gated
+  against the old-GPU baselines and limits (`BASELINE_PROFILE` in `ci/compare.py`). In quick and full mode.
+- **The occlusion check** (`-Dquicksilver.debug.verifyOcclusion=true`, every Quicksilver run): each frame that leaves
+  sections out, their solid and cutout geometry is drawn into a full-size RGBA8 target of its own, depth-tested against
+  the frame's depth after all opaque terrain (never written), with vanilla's projection, fog and terrain uniforms; any
+  pixel drawn there is a culled section that would have been visible. It shares the geometry and shaders with the real
+  draw, nothing with the pyramid or the box test. Its draws, passes and readback are left out of the counters.
+- **Gates** (`ci/compare.py`, every Quicksilver bench): occlusion on, no fallback; the last frame in the mode the run asks
+  for (full and Vulkan two-phase, old-GPU still-camera, old-GPU two-phase); the check on, 0 visible pixels and 0 timeouts
+  since start-up, no frame skipped; no wait timed out and no frame drew deferred sections untested; scenes marked
+  `ciRequiresOcclusion` (occlusion, occlusion_corner) culled something (still-camera only where the camera stands
+  still); "Quicksilver occlusion: turned off" or "Quicksilver occlusion check:" in a client log fails the run.
+- **Draw calls at most main's + 3** (Andre): per scene and profile, draw calls per frame (median where the scene is
+  median-gated) at most the committed baseline + 3, on top of the existing gates (baseline x 1.10 + 2, and against
+  vanilla in the same run).
+
 ## Server suite (phase 2, P2-0)
 
 The server suite (`ci/server/`, jobs `server-base`, `server`, `server-net`, `server-compare`; logs on
