@@ -2603,6 +2603,16 @@ client's own log, and measure runs' clients must log Logic off); `suite siftec: 
 rechecked against the write count at every position; records with identity hashCodes replaced. Left: the config file
 rewritten without comments (as P2-1).
 
+### With SIFTEC gating again (2026-11-01)
+
+Main's pack snapshot (`93e7a3e`) merged in. Quick run with SIFTEC
+[41278527656](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41278527656) on `d489589`: SIFTEC worldgen,
+world diff and heap, every self-test, the Create train (11 arrivals, B at 136 to B at 1131, the same in every run) and
+the new contraption check (the bearing assembled at 300, placed back at 500 after its motor is taken away, assembled at
+700; the same line in every run) all pass; core passes; mobs -9.8% in the run before. The first try of the contraption
+check expected the bearing's whole cross of planks to move; a bearing takes only the block on top of it (the four
+beside it aren't attached), seen the same in every run, so the check looks at that block.
+
 ### Andre's decisions (2026-11-01)
 
 1. `block-collisions` on by default. Not merged until a full run with SIFTEC gating passes (SIFTEC's world diff,
