@@ -16,7 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
-| phase 2, P2-2 (logic I) | `p2-2`, not merged | Logic module: block-collisions (section masks), entity-sections, entity-collisions; perf job (same-runner MSPT, JFR by phase), mob scene; see "Phase 2, P2-2" below |
+| phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
 | phase 2, P2-0 (server harness) | merged | server suite, server bench numbers, research; see "Phase 2, P2-0" below |
@@ -2492,7 +2492,7 @@ face shapes and vanilla's identity-keyed caches, the spawner's re-seed (above), 
 (works on Java 25; a later JDK may refuse), the config file rewritten without the user's comments when keys are
 added.
 
-## Phase 2, P2-2: Logic I, movement and access (branch `p2-2`, not merged: Andre checks it first)
+## Phase 2, P2-2: Logic I, movement and access (merged as `be948a4`; main green, run 41313195874)
 
 Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQDDDppdrxu45), P2-2. Files: the Logic module
 (`src/main/java/com/meakaandre/quicksilver/logic/`, `mixin/logic/`, `quicksilver.logic.mixins.json`), the perf job
@@ -2945,8 +2945,9 @@ needed. Scratch tools (not in the repo): a compile check against stubs generated
 (`scratchpad/p3/stubgen/check.sh`; it does not cover `ci/pin-mod`), the shader harness (`scratchpad/p3/harness4.py`),
 strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
-**Now (P2-2):** branch `p2-2`, waiting for Andre's check (see "Phase 2, P2-2"); perf numbers: `compare/p2.md` on
-`ci-logs-server-<branch>`.
+**Now (P2-2):** merged (`be948a4`; main green 41313195874, `latest` rebuilt); the GameTest pins (`1c1ea7c`, main green
+41298048808) before it. Next in phase 2 is P2-3 (Logic II: hoppers, block entities, AI), in a new chat. Perf numbers:
+`compare/p2.md` on `ci-logs-server-<branch>`.
 
 **Before (P2-1):** merged (see "Phase 2, P2-1"); next in phase 2 is P2-2 (Logic I), with the later memory package
 above in the plan. Phase 2 reads: the server suite's
