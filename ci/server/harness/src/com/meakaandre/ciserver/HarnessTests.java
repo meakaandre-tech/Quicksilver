@@ -108,7 +108,7 @@ public final class HarnessTests {
     /** 64 items from a chest through five hoppers into a chest. */
     @GameTest(structure = BOX8, maxTicks = 1200)
     public void hopperChain(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         h.setBlock(new BlockPos(0, 2, 0), Blocks.CHEST.defaultBlockState());
         container(h, 0, 2, 0).setItem(0, new ItemStack(Items.COBBLESTONE, 64));
@@ -123,7 +123,7 @@ public final class HarnessTests {
     /** Two observers watching each other, lighting a lamp: pulses counted over 100 ticks. */
     @GameTest(structure = BOX8, maxTicks = 200)
     public void redstoneClock(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         h.setBlock(new BlockPos(1, 1, 2), Blocks.REDSTONE_LAMP.defaultBlockState());
         h.setBlock(new BlockPos(2, 1, 2), facing(Blocks.OBSERVER, Direction.EAST));
@@ -144,7 +144,7 @@ public final class HarnessTests {
     /** A sticky piston pushing and pulling a line of three blocks, powered every 20 ticks. */
     @GameTest(structure = BOX8, maxTicks = 300)
     public void pistonMachine(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         h.setBlock(new BlockPos(1, 1, 3), facing(Blocks.STICKY_PISTON, Direction.EAST));
         h.setBlock(new BlockPos(2, 1, 3), Blocks.STONE.defaultBlockState());
@@ -171,7 +171,7 @@ public final class HarnessTests {
     /** A two-block piston door: closed by power at tick 10, opened again at tick 60. */
     @GameTest(structure = BOX8, maxTicks = 200)
     public void pistonDoor(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         h.setBlock(new BlockPos(0, 1, 2), facing(Blocks.STICKY_PISTON, Direction.EAST));
         h.setBlock(new BlockPos(1, 1, 2), Blocks.STONE.defaultBlockState());
@@ -204,7 +204,7 @@ public final class HarnessTests {
      */
     @GameTest(structure = BOX16, maxTicks = 1500)
     public void itemSorter(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         BlockState stone = Blocks.STONE.defaultBlockState(), dust = Blocks.REDSTONE_WIRE.defaultBlockState();
         // supports for the comparator, the dusts, the repeater and the block the torch hangs on (B at 3 2 1)
@@ -260,7 +260,7 @@ public final class HarnessTests {
      */
     @GameTest(structure = BOX16, maxTicks = 400)
     public void cropFarm(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         BlockState stone = Blocks.STONE.defaultBlockState();
         fill(h, 0, 0, 0, 9, 0, 3, stone);
@@ -291,7 +291,7 @@ public final class HarnessTests {
     /** Four cows dropped 25 blocks onto a hopper; the drops end in a chest. */
     @GameTest(structure = TALL, maxTicks = 600)
     public void mobFarm(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         h.setBlock(new BlockPos(2, 0, 2), Blocks.CHEST.defaultBlockState());
         h.setBlock(new BlockPos(2, 1, 2), hopper(Direction.DOWN));
@@ -318,7 +318,7 @@ public final class HarnessTests {
     /** An unemployed villager takes the lectern's job; then one trade with it. */
     @GameTest(structure = BOX16, maxTicks = 2400)
     public void villagerTrade(GameTestHelper h) {
-        // a batch's first test re-seeds the level's random and the seed counters, before any setup (GameTestPins)
+        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
         GameTestPins.batchStart(h);
         BlockState stone = Blocks.STONE.defaultBlockState(), glass = Blocks.GLASS.defaultBlockState();
         fill(h, 0, 0, 0, 7, 0, 7, stone);

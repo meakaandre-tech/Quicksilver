@@ -12,25 +12,30 @@ import net.minecraft.world.entity.ai.Brain;
  * CI only (fix-villager-flake): the GameTest server starts a batch of tests when it is ready, a varying number of ticks
  * after start-up (game time 3 in one run, 27 in another), so the level's shared random, the seed counters and the
  * randoms an entity takes when it is made were at different points from the tests' first tick: villager_trade finished
- * at tick 25, 31, 39 or 46. Here a batch's start (the first test set up in a game tick) re-seeds the level's random and
- * the seed counters once, and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
+ * at tick 25, 31, 39 or 46. Here the first test's setup re-seeds the level's random and the seed counters and sets a
+ * fixed day time, once, and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
  * spawned, so a test plays the same from its first tick whenever it starts. The same in vanilla's runs and Quicksilver's.
  */
 final class GameTestPins {
-    private static long lastBatchTick = Long.MIN_VALUE;
+    private static boolean started = false;
 
     private GameTestPins() {
     }
 
-    /** At a test's setup: the first test of a game tick re-seeds the level's random and the seed counters. */
+    /**
+     * At a test's setup: the server's first test re-seeds the level's random and the seed counters and sets a fixed day
+     * time (a villager's schedule follows it), once. Tests start a few ticks apart (game time 3, 5, 7, 9), so doing it
+     * again for later tests would move the randoms under tests already running.
+     */
     static synchronized void batchStart(GameTestHelper h) {
+        if (started) return;
+        started = true;
         ServerLevel level = h.getLevel();
         long gt = level.getGameTime();
-        if (gt == lastBatchTick) return;
-        lastBatchTick = gt;
         SeedPin.reset(0x6A3E_7E57L);
         level.getRandom().setSeed(SeedPin.mix(level.dimension().identifier().toString().hashCode()));
-        Harness.LOG.info("CI GAMETEST BATCH at game time {}: level random and seed counters re-seeded", gt);
+        Harness.gameTestCommand(level.getServer(), "time set 1000");
+        Harness.LOG.info("CI GAMETEST START at game time {}: level random and seed counters re-seeded, time set 1000", gt);
     }
 
     /**
