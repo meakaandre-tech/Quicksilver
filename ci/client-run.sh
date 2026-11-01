@@ -1,6 +1,6 @@
 #!/bin/bash
 # One CI client run: SUITE (core | siftec) x RUN (vanilla-a | vanilla-b | vanilla-old | vanilla-vk | quicksilver-full |
-# quicksilver-old | quicksilver-vk | measure-full | measure-old | measure-vk). measure runs load Quicksilver with every module
+# quicksilver-old | quicksilver-vk | quicksilver-2p-old | measure-full | measure-old | measure-vk). measure runs load Quicksilver with every module
 # off (quicksilver.ci.measureOnly): vanilla draws everything and Quicksilver's bench measures it, in the same profile as the
 # Quicksilver run of the same name (package 3).
 #
@@ -39,7 +39,10 @@ esac
 extra_args=""
 client_jvm=""
 case "$RUN" in *-vk) extra_args="--graphicsBackend vulkan"; echo "Vulkan profile: --graphicsBackend vulkan on lavapipe";; esac
-case "$RUN" in quicksilver-old|measure-old) client_jvm="-Dquicksilver.debug.forceIntelMdiIssue=true"; echo "old-GPU Quicksilver run: $client_jvm";; esac
+case "$RUN" in quicksilver-old|quicksilver-2p-old|measure-old) client_jvm="-Dquicksilver.debug.forceIntelMdiIssue=true"; echo "old-GPU Quicksilver run: $client_jvm";; esac
+# package 2b (Andre, 2026-11-02): one more old-GPU run with occlusion culling forced to two-phase (auto is still-camera
+# on that path), so the laptop's plain path is tested with the CPU waiting for the GPU too
+case "$RUN" in quicksilver-2p-old) client_jvm="$client_jvm -Dquicksilver.occlusion=two-phase"; echo "two-phase occlusion run: $client_jvm";; esac
 # every Quicksilver run: the visibility module checks each entity and block entity it hides with rays from the camera
 # (package 2's pop-in check; ci/compare.py fails on any violation). VISIBILITY_DRY_RUN=1 makes it decide and count but hide
 # nothing (used once to sample the new occlusion scene's noise with Quicksilver drawing exactly vanilla's set).
@@ -54,7 +57,7 @@ elif [ $qs = 1 ]; then
   # package 4b: the terrain upload budget logs when meshes wait for a later frame and when it has caught up, so
   # drive.py takes no screenshot while a section is still waiting (vanilla uploads at once and logs nothing)
   # package 4c: every section meshed outside a bench is also meshed by vanilla's compiler and compared, vertex by vertex
-  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true"
+  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true"
   if [ "${VISIBILITY_DRY_RUN:-0}" = 1 ]; then client_jvm="$client_jvm -Dquicksilver.debug.visibilityDryRun=true"; fi
   if [ "${TRANSLUCENCY_DRY_RUN:-0}" = 1 ]; then client_jvm="$client_jvm -Dquicksilver.debug.translucencyDryRun=true"; fi
   echo "Quicksilver run JVM properties:$client_jvm"

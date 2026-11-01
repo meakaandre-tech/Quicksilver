@@ -92,7 +92,8 @@ final class PyramidGpu {
     private void ensure(GpuDevice device, int width, int height) {
         int w = DepthPyramid.tiles(width), h = DepthPyramid.tiles(height);
         if (target != null && w == tw && h == th) return;
-        if (asyncPending) throw new IllegalStateException("resize while a readback is pending");
+        // a readback still on its way is dropped (its callback sees the buffer was replaced)
+        asyncPending = false;
         close();
         tw = w;
         th = h;
@@ -150,8 +151,8 @@ final class PyramidGpu {
         asyncPending = true;
         GpuBuffer buffer = async;
         encoder.copyTextureToBuffer(target, buffer, 0, () -> {
-            asyncPending = false;
             if (buffer != async) return; // resized meanwhile
+            asyncPending = false;
             float[] v;
             try {
                 v = read(buffer);

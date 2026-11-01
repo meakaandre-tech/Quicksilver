@@ -166,11 +166,12 @@ public final class BenchRun {
             y += v[1] * t;
             z += v[2] * t;
         }
+        float turned = scene == null ? yaw : (float) (yaw + scene.yawRate * t);
         player.setDeltaMovement(0, 0, 0);
         player.setPos(x, y, z);
-        player.setYRot(yaw);
+        player.setYRot(turned);
         player.setXRot(pitch);
-        player.setYHeadRot(yaw);
+        player.setYHeadRot(turned);
     }
 
     private void finish(Minecraft mc) {

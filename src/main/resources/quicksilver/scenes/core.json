@@ -218,7 +218,8 @@
         "execute in minecraft:overworld run tp @a 2300.5 203 -1984.5 180 20"
       ],
       "ciRequiresCulling": true,
-      "ciNote": "Quicksilver must hide some entities and block entities here (the ones the wall and the floor cover); the pixel gates catch any it hides wrongly (the ones seen through glass and the doorway)."
+      "ciNote": "Quicksilver must hide some entities and block entities here (the ones the wall and the floor cover); the pixel gates catch any it hides wrongly (the ones seen through glass and the doorway).",
+      "ciRequiresOcclusion": true
     },
     {
       "id": "occlusion_move",
@@ -371,6 +372,82 @@
       ],
       "ciRequiresCulling": true,
       "ciNote": "Moving pass: objects are hidden and come into view as the camera passes the window and doorway, as a pig is moved and as the wall opens. The per-frame ray check covers every frame of the bench; ciShots compare fixed points with vanilla under both gates (the bare_* shots, with every object removed, measure each object's on-screen area). Counts against the committed baselines: memory only (the mid-bench commands upload new meshes).; draw calls are gated against vanilla measured in the same run (package 3)."
+    },
+    {
+      "id": "occlusion_corner",
+      "title": "Package 2b: the camera slides east past the corner of a large building on a sky platform at 2 blocks/s while turning to look behind it, where rows of walls (and the terrain under the platform) are hidden and then revealed",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "setup": [
+        "execute in minecraft:overworld run tp @a -2952.5 254 3080.5 180 10",
+        "#wait 6",
+        "fill -3000 249 3000 -2905 249 3095 minecraft:smooth_stone",
+        "fill -2964 250 3036 -2941 279 3059 minecraft:stone",
+        "fill -2996 250 3006 -2909 262 3006 minecraft:stone_bricks",
+        "fill -2992 253 3006 -2990 256 3006 minecraft:air",
+        "fill -2980 253 3006 -2978 256 3006 minecraft:air",
+        "fill -2968 253 3006 -2966 256 3006 minecraft:air",
+        "fill -2956 253 3006 -2954 256 3006 minecraft:air",
+        "fill -2944 253 3006 -2942 256 3006 minecraft:air",
+        "fill -2932 253 3006 -2930 256 3006 minecraft:air",
+        "fill -2920 253 3006 -2918 256 3006 minecraft:air",
+        "fill -2996 250 3013 -2909 262 3013 minecraft:bricks",
+        "fill -2989 253 3013 -2987 256 3013 minecraft:air",
+        "fill -2977 253 3013 -2975 256 3013 minecraft:air",
+        "fill -2965 253 3013 -2963 256 3013 minecraft:air",
+        "fill -2953 253 3013 -2951 256 3013 minecraft:air",
+        "fill -2941 253 3013 -2939 256 3013 minecraft:air",
+        "fill -2929 253 3013 -2927 256 3013 minecraft:air",
+        "fill -2917 253 3013 -2915 256 3013 minecraft:air",
+        "fill -2996 250 3020 -2909 262 3020 minecraft:oak_planks",
+        "fill -2986 253 3020 -2984 256 3020 minecraft:air",
+        "fill -2974 253 3020 -2972 256 3020 minecraft:air",
+        "fill -2962 253 3020 -2960 256 3020 minecraft:air",
+        "fill -2950 253 3020 -2948 256 3020 minecraft:air",
+        "fill -2938 253 3020 -2936 256 3020 minecraft:air",
+        "fill -2926 253 3020 -2924 256 3020 minecraft:air",
+        "fill -2914 253 3020 -2912 256 3020 minecraft:air",
+        "fill -2996 250 3027 -2909 262 3027 minecraft:andesite",
+        "fill -2983 253 3027 -2981 256 3027 minecraft:air",
+        "fill -2971 253 3027 -2969 256 3027 minecraft:air",
+        "fill -2959 253 3027 -2957 256 3027 minecraft:air",
+        "fill -2947 253 3027 -2945 256 3027 minecraft:air",
+        "fill -2935 253 3027 -2933 256 3027 minecraft:air",
+        "fill -2923 253 3027 -2921 256 3027 minecraft:air",
+        "execute in minecraft:overworld run tp @a -2952.5 254 3080.5 180 10"
+      ],
+      "velocity": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "yawRate": -2.0,
+      "ciRequiresOcclusion": true,
+      "ciShots": [
+        {
+          "name": "x-2944",
+          "commands": [
+            "execute in minecraft:overworld run tp @a -2944.5 254 3080.5 172 10"
+          ]
+        },
+        {
+          "name": "x-2930",
+          "commands": [
+            "execute in minecraft:overworld run tp @a -2930.5 254 3080.5 158 10"
+          ]
+        },
+        {
+          "name": "x-2916",
+          "commands": [
+            "execute in minecraft:overworld run tp @a -2916.5 254 3080.5 144 10"
+          ]
+        }
+      ],
+      "ciGatedCounts": [
+        "heapUsedAfterGcMB",
+        "directBuffersMB"
+      ],
+      "ciNote": "Package 2b's turning-the-corner check: sections behind the building are culled and come into view as the camera passes the corner and turns; CI's occlusion check covers every frame, ciShots compare fixed points along the path with vanilla. Counts against the committed baselines: memory only (the camera reveals new sections all the time); draw calls are gated against vanilla measured in the same run."
     },
     {
       "id": "translucent_move",

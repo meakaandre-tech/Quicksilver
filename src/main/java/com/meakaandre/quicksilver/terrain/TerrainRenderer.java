@@ -1199,6 +1199,13 @@ public final class TerrainRenderer {
         drawLateDirect(pass, wireframe, LATE, only, false);
     }
 
+    /** Still camera, when the culling can't be trusted this frame after all: the culled sections are drawn now. */
+    public static void drawCulledDirect(RenderPass pass, boolean wireframe) {
+        if (CULLED.isEmpty() || !prepared) return;
+        drawLateDirect(pass, wireframe, CULLED, null, false);
+        CULLED.clear();
+    }
+
     /** CI's occlusion check: the culled sections, in the check's own pass (depth test against the frame's, no writes). */
     public static void drawCulledForCheck(RenderPass pass) {
         drawLateDirect(pass, false, CULLED, null, true);

@@ -87,7 +87,7 @@ public final class GpuOcclusion {
     private static boolean indirectFrame;
     private static boolean stillValid, buildStill;
     private static boolean wrappedThisFrame;
-    private static int framesWithoutMatrices;
+    private static int framesWithoutMatrices, projectionMismatches;
     private static int lastW, lastH;
     private static Stamp prevStamp;
 
@@ -304,14 +304,20 @@ public final class GpuOcclusion {
         SplitPass sp = SplitPass.of(pass);
         boolean phase2Done = false;
         try {
-            if (sp == null || wireframe || !"on".equals(state) || !sameProjection()) {
-                if (twoPhase) {
-                    TerrainRenderer.drawCandidatesDirect(pass, wireframe, null);
-                    phase2Done = true;
-                    OcclusionStats.untestedFrames++;
+            boolean projectionOk = sameProjection();
+            if (sp == null || wireframe || !"on".equals(state) || !projectionOk) {
+                // nothing left out may stay undrawn: deferred sections and (still camera) culled ones are drawn now
+                boolean any = TerrainRenderer.candidateCount() > 0 || TerrainRenderer.culledCount() > 0;
+                if (twoPhase) TerrainRenderer.drawCandidatesDirect(pass, wireframe, null);
+                else TerrainRenderer.drawCulledDirect(pass, wireframe);
+                phase2Done = true;
+                if (any) OcclusionStats.untestedFrames++;
+                if (!projectionOk && ++projectionMismatches == 60) {
+                    fail("checking the projection", new IllegalStateException("the projection bound for the main pass is not the one prepared with"));
                 }
                 return;
             }
+            projectionMismatches = 0;
             boolean candidates = TerrainRenderer.candidateCount() > 0;
             boolean verify = VERIFY && TerrainRenderer.culledCount() > 0;
             if (!twoPhase && !buildStill && !verify) return;
@@ -380,6 +386,7 @@ public final class GpuOcclusion {
             try {
                 if (sp != null && sp.suspended()) sp.resume();
                 if (twoPhase && !phase2Done) TerrainRenderer.drawCandidatesDirect(pass, wireframe, null);
+                if (!twoPhase && !phase2Done) TerrainRenderer.drawCulledDirect(pass, wireframe);
             } catch (Throwable t2) {
                 QuicksilverClient.LOG.error("Quicksilver occlusion: could not draw the deferred sections after the failure", t2);
             }

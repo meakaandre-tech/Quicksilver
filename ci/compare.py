@@ -55,15 +55,21 @@ RISE = 1.10
 SLACK = {"drawCallsPerFrame": 2.0, "uploadsPerFrame": 1.0, "uploadBytesPerFrame": 16384.0,
          "heapUsedAfterGcMB": 16.0, "directBuffersMB": 4.0}
 GATED = list(SLACK)
-PAIRS = {"full": ("quicksilver-full", "vanilla-a"), "old-gpu": ("quicksilver-old", "vanilla-old"), "vulkan": ("quicksilver-vk", "vanilla-vk")}
+PAIRS = {"full": ("quicksilver-full", "vanilla-a"), "old-gpu": ("quicksilver-old", "vanilla-old"), "vulkan": ("quicksilver-vk", "vanilla-vk"),
+         # package 2b (Andre, 2026-11-02): one more old-GPU run with occlusion forced to two-phase (auto is still-camera there)
+         "old-gpu-2p": ("quicksilver-2p-old", "vanilla-old")}
+# the committed baselines a profile is gated against (the forced two-phase run is the old-GPU profile)
+BASELINE_PROFILE = {"old-gpu-2p": "old-gpu"}
+# package 2b: what the occlusion module must have done in each Quicksilver run (its last frame's mode)
+OCCLUSION_MODE = {"quicksilver-full": "two-phase", "quicksilver-vk": "two-phase", "quicksilver-old": "still", "quicksilver-2p-old": "two-phase"}
 VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk")
 SUITES = None  # every suite
 # scenes allowed to opt out of the strict gate ("ciNoStrict"), each by a decision recorded in docs/ci-limits.md
 NO_STRICT_ALLOWED = set()  # siftec/map was the only one; strict-gated since package 7
 RUNS = ["vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk", "quicksilver-full", "quicksilver-old", "quicksilver-vk",
-        "measure-full", "measure-old", "measure-vk"]
+        "quicksilver-2p-old", "measure-full", "measure-old", "measure-vk"]
 # per profile, the run that measures vanilla's own counts (Quicksilver loaded, every module off; package 3)
-MEASURE = {"full": "measure-full", "old-gpu": "measure-old", "vulkan": "measure-vk"}
+MEASURE = {"full": "measure-full", "old-gpu": "measure-old", "vulkan": "measure-vk", "old-gpu-2p": "measure-old"}
 # Quick mode (CI_MODE=quick, branch pushes; design doc, Quick CI): the core suite only, with vanilla a, vanilla b and
 # Quicksilver on the old-GPU profile. Quicksilver's old-GPU run is compared with vanilla a (vanilla's GL 3.3 and GL 4.5
 # pictures differ no more than vanilla a and b do), the strict check uses the pixels where vanilla a and b agree, and
@@ -71,9 +77,9 @@ MEASURE = {"full": "measure-full", "old-gpu": "measure-old", "vulkan": "measure-
 # measure runs' own pictures; the other profiles) are skipped and said so in the report. Every limit is the full mode's.
 QUICK = os.environ.get("CI_MODE") == "quick"
 if QUICK:
-    PAIRS = {"old-gpu": ("quicksilver-old", "vanilla-a")}
+    PAIRS = {"old-gpu": ("quicksilver-old", "vanilla-a"), "old-gpu-2p": ("quicksilver-2p-old", "vanilla-a")}
     VANILLA_RUNS = ("vanilla-a", "vanilla-b")
-    RUNS = ["vanilla-a", "vanilla-b", "quicksilver-old"]
+    RUNS = ["vanilla-a", "vanilla-b", "quicksilver-old", "quicksilver-2p-old"]
     SUITES = {"core"}
 
 
@@ -148,6 +154,7 @@ def bench_results(run_dir):
             "mesher": j.get("mesher"),
             "terrain": j.get("terrain"),
             "visibility": j.get("visibility"),
+            "occlusion": j.get("occlusion"),
             "translucency": j.get("translucency"),
             "terrainGpu": j.get("terrainGpu"),
             "effects": j.get("effects"),
@@ -168,7 +175,7 @@ def bench_results(run_dir):
     return out
 
 
-PROFILE_NAMES = {"full": "full", "old-gpu": "old-GPU", "vulkan": "Vulkan"}
+PROFILE_NAMES = {"full": "full", "old-gpu": "old-GPU", "vulkan": "Vulkan", "old-gpu-2p": "old-GPU two-phase"}
 GPU_ERROR = re.compile(r"OpenGL debug message: [^\n]*type=ERROR|Validation Error|VUID-")
 
 
@@ -485,6 +492,11 @@ def main():
                             failures.append(f"{name}/{r}: the terrain module fell back to vanilla (see client log)")
                         if "Quicksilver terrain: on " not in t:
                             failures.append(f"{name}/{r}: the terrain module never turned on")
+                        if re.search(r"Quicksilver occlusion: turned off", t):
+                            failures.append(f"{name}/{r}: the occlusion module turned off (see client log)")
+                        nocc = len(re.findall(r"Quicksilver occlusion check:", t))
+                        if nocc:
+                            failures.append(f"{name}/{r}: the occlusion check found culled sections on screen {nocc} times (see client log)")
                         if re.search(r"Quicksilver visibility: turned off", t):
                             failures.append(f"{name}/{r}: the visibility module fell back to vanilla (see client log)")
                         if "Quicksilver visibility: on " not in t:
@@ -574,6 +586,25 @@ def main():
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: {vis.get('unverifiedObjects')} hidden objects were not ray-checked (check budget)")
                                 if scene_def.get("ciRequiresCulling") and not (vis.get("entitiesCulled", 0) > 0 and vis.get("blockEntitiesCulled", 0) > 0):
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: Quicksilver hid no entities ({vis.get('entitiesCulled')}) or no block entities ({vis.get('blockEntitiesCulled')}) where walls cover some")
+                            # package 2b: occlusion culling on, in the mode this run asks for, with CI's check on and clean
+                            oc = bj.get("occlusion")
+                            if oc is None:
+                                failures.append(f"{name}/{r}: bench {bj['scene']} has no occlusion report")
+                            else:
+                                want_mode = OCCLUSION_MODE.get(r)
+                                if oc.get("state") != "on" or oc.get("fallbacks", 0) != 0:
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion {oc.get('state')} ({oc.get('reason')}), fallbacks {oc.get('fallbacks')}")
+                                if want_mode and oc.get("lastFrame") != want_mode:
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion's last frame was {oc.get('lastFrame')}, this run wants {want_mode}")
+                                if not oc.get("checkOn"):
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: the occlusion check was not on")
+                                if oc.get("checkPixelsSinceStart", 0) != 0 or oc.get("checkTimeoutsSinceStart", 0) != 0 or oc.get("checkSkipped", 0) != 0:
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: pop-in: occlusion check since start-up found {oc.get('checkPixelsSinceStart')} visible pixels of culled sections"
+                                                    f" ({oc.get('checkTimeoutsSinceStart')} timeouts, {oc.get('checkSkipped')} frames skipped)")
+                                if oc.get("timeouts", 0) != 0 or oc.get("untestedFrames", 0) != 0:
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion: {oc.get('timeouts')} waits timed out, {oc.get('untestedFrames')} frames drew deferred sections untested")
+                                if scene_def.get("ciRequiresOcclusion") and not oc.get("sectionsCulledPerFrame", 0) > 0:
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion culled no section in a scene with occluders")
                             # package 4: which path the blocks and API mesh quads took since the session started; with
                             # block-renderer=off none may go Quicksilver's way, else none to vanilla's block renderer
                             rs = bj.get("renderer")
@@ -768,7 +799,7 @@ def main():
                     cur[sid]["drawCallsPerFrame"] = cur[sid]["drawCallsPerFrameMedian"]
             sd["counts"][prof] = cur
             json.dump(cur, open(os.path.join(rep, "baselines", f"{name}-{prof}.json"), "w"), indent=2, sort_keys=True)
-            base_file = f"ci/baselines/{name}-{prof}.json"
+            base_file = f"ci/baselines/{name}-{BASELINE_PROFILE.get(prof, prof)}.json"
             base = json.load(open(base_file)) if os.path.exists(base_file) else None
             lines.append(f"### Counts, {name} {prof}\n")
             lines.append("| scene | draw calls/frame (avg, or median where marked) | uploads/frame (median) | upload bytes/frame (median) | heap after GC MB | direct MB |")
@@ -802,6 +833,10 @@ def main():
                         cell += f" (base {bv})"
                         if v > bv * RISE + SLACK[k]:
                             failures.append(f"{name}/{prof}/{sid}: {k}{' (median)' if k == 'drawCallsPerFrame' and sid in median_gated else ''} rose from {bv} to {v} (over 10%)")
+                        # package 2b (Andre, 2026-11-02): draw calls at most main's + 3 (the depth pyramid's draw and the
+                        # late pass's draws per layer)
+                        if k == "drawCallsPerFrame" and v > bv + 3:
+                            failures.append(f"{name}/{prof}/{sid}: draw calls per frame{' (median)' if sid in median_gated else ''} {v}, more than main's {bv} + 3 (package 2b)")
                     cells.append(cell)
                 if base is not None and sid not in base:
                     # package 4: a scene with no committed baseline would go ungated without a word
@@ -927,6 +962,16 @@ def main():
                     continue
                 v = c["visibility"]
                 lines.append(f"| {sc['id']}{' (dry run)' if v.get('dryRun') else ''} | {v.get('sectionsVisiblePerFrame')} | {v.get('entitiesPerFrame')} ({v.get('entitiesTestedPerFrame')}, {v.get('entitiesCulledPerFrame')}) | {v.get('blockEntitiesPerFrame')} ({v.get('blockEntitiesTestedPerFrame')}, {v.get('blockEntitiesCulledPerFrame')}) | {v.get('cullMsPerFrame')} ({v.get('cullMsMax')}; {v.get('framesOverBudget')}) | {v.get('sectionLayersMissing')} | {v.get('verifiedObjects')} / {v.get('verifiedRays')} / {v.get('violations')} / {v.get('unverifiedObjects')} |")
+            lines.append("")
+            lines.append(f"Occlusion (package 2b), {name} {prof} (reported; mode, check, fallbacks and draw calls gated above):\n")
+            lines.append("| scene | mode | sections drawn / without culling per frame (culled %) | first pass / tested late / revealed | pyramids/frame | wait ms/frame (when waiting, max; % frames) | readback bytes/frame | check: culled sections / visible pixels |")
+            lines.append("|---|---|---|---|---|---|---|---|")
+            for sc in scenes:
+                c = cur.get(sc["id"])
+                if sc.get("skip") or c is None or not c.get("occlusion"):
+                    continue
+                o = c["occlusion"]
+                lines.append(f"| {sc['id']} | {o.get('lastFrame')} | {o.get('sectionsDrawnPerFrame')} / {o.get('sectionsWithoutCullingPerFrame')} ({o.get('culledPct')}) | {o.get('firstPassPerFrame')} / {o.get('candidatesPerFrame')} / {o.get('revealedPerFrame')} | {o.get('pyramidsPerFrame')} | {o.get('waitMsPerFrame')} ({o.get('waitMsAvgWhenWaiting')}, {o.get('waitMsMax')}; {o.get('waitFramesPct')}) | {o.get('readbackBytesPerFrame')} | {o.get('checkedSections')} / {o.get('checkPixels')} |")
             lines.append("")
             # package 8: what vanilla spends on effects (its measure run, every Quicksilver module off) next to Quicksilver
             van = {} if QUICK else bench_results(runs[MEASURE[prof]])
