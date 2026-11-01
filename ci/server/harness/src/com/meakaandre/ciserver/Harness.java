@@ -500,6 +500,15 @@ public final class Harness implements ModInitializer {
         }
     }
 
+    /**
+     * A command for the GameTest pins (GameTestPins): run and logged like the script's own, and the result file written
+     * again, so a failure reaches its commandErrors (the GameTest server writes it once at start-up otherwise; CI gates it).
+     */
+    static void gameTestCommand(MinecraftServer server, String cmd) {
+        command(server, cmd);
+        write();
+    }
+
     /** A command for a harness helper (CiTrain): run and logged like the script's own, failures counted. */
     static void runQuiet(MinecraftServer server, int t, String cmd) {
         command(server, cmd);
