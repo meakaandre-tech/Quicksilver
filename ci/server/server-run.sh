@@ -90,7 +90,7 @@ if [ "$SUITE" = core ]; then
   cp ci-server-harness/fabric-gametest-api-v1.jar "$srv/mods/" || echo "fabric-gametest-api-v1.jar missing"
   # fix-villager-flake (branch only, diagnosis): the GameTest server three more times first, traced
   for k in 1 2 3; do
-    serve gametest-trace$k 1800 -Dfabric-api.gametest -Dci.harness.villagerTrace=true -Dfabric-api.gametest.report-file="$OUT/gametest-trace$k/gametest.xml"
+    serve gametest-trace$k 1800 -Dfabric-api.gametest -Dci.harness.villagerTrace=true -Dci.harness.perturb=$(( (k - 1) * 24 )) -Dfabric-api.gametest.report-file="$OUT/gametest-trace$k/gametest.xml"
     grep -o 'CI GAMETEST villager_trade tick=[0-9]*' "$OUT/gametest-trace$k-server.log"
     rm -rf "$srv/gametest"
   done

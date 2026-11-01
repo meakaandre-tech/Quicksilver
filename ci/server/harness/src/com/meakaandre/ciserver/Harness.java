@@ -115,6 +115,17 @@ public final class Harness implements ModInitializer {
                 for (String c : new String[] {"gamerule random_tick_speed 0", "gamerule spawn_mobs false"}) command(server, c);
                 gameTestPins = true;
                 reseed(server);
+                // fix-villager-flake (branch only, a check of GameTestPins): imitate a batch that starts late, with the
+                // level's random, the seed counters and the day time all moved on
+                int perturb = Integer.getInteger("ci.harness.perturb", 0);
+                if (perturb > 0) {
+                    for (ServerLevel l : server.getAllLevels()) {
+                        for (int i = 0; i < perturb * 37; i++) l.getRandom().nextInt();
+                        l.setDayTime(l.getDayTime() + perturb);
+                    }
+                    for (int i = 0; i < perturb; i++) SeedPin.next();
+                    LOG.info("CI GAMETEST PERTURB {}", perturb);
+                }
                 result.addProperty("mode", "gametest");
                 write();
                 return;
