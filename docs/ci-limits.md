@@ -908,6 +908,13 @@ pixel check gates only where every vanilla run agrees. Three vanilla samples are
   and the cave's pending ticks, were equal in every run at the last tick and differed on disk.
 - SIFTEC's bearing motor and furnace are placed at tick 1 (Create and SIFTEC tick them through their own hooks while the
   game is frozen before tick 0). Their saved fields are logged during the run (`report` lines, `CI REPORT`).
+- GameTest server only (fix-villager-flake, 2026-11-01): the GameTest server starts tests when it is ready, a varying
+  number of ticks after start-up, and other tests draw on the level's shared random while one runs, so villager_trade
+  finished at tick 25, 31, 39 or 46 in vanilla's own runs. The server's first test re-seeds the level's random and the
+  seed counters and sets the time to 1000, once; villager_trade runs in a GameTest batch of its own (its own, empty,
+  test environment `ci_server_harness:villager_alone`) and does the same at its own setup; its villager gets a fixed
+  random seed and fixed sensor offsets when spawned (`GameTestPins.java`). Checked over 16 GameTest servers, the batch
+  starting between game time 7 and 6946, two of them with the randoms and the time moved first: the same tick in all.
 - GameTest server only: the ticking-chunk shuffle and the chunk tick's weather draws use their own randoms (they drew
   on the shared level random once per loaded chunk). The crop farm is still judged on its state at tick 200, not on
   how many bone meals it took: growth draws on the shared random, which the GameTest world uses in ways that depend

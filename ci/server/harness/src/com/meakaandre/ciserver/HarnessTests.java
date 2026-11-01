@@ -332,7 +332,6 @@ public final class HarnessTests {
         Villager v = h.spawn(EntityTypes.VILLAGER, new BlockPos(2, 1, 2));
         GameTestPins.pinMob(v, "villager_trade");
         each(h, "villager_trade", r -> {
-            if (Boolean.getBoolean("ci.harness.villagerTrace")) VillagerTrace.log(h, v, r.tick);
             String data = String.valueOf(v.getVillagerData());
             if (!data.contains("librarian")) return;
             var offers = v.getOffers();

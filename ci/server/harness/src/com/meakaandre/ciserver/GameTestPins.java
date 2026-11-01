@@ -9,13 +9,19 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.Brain;
 
 /**
- * CI only (fix-villager-flake): the GameTest server starts a batch of tests when it is ready, a varying number of ticks
- * after start-up (game time 3 in one run, 27 in another), so the level's shared random, the seed counters and the
- * randoms an entity takes when it is made were at different points from the tests' first tick: villager_trade finished
- * at tick 25, 31, 39 or 46. Here the first test's setup re-seeds the level's random and the seed counters and sets a
- * fixed day time, once; villager_trade runs in a batch of its own (its own test environment, with a fixed time of day)
- * and re-seeds at its own setup, since other tests drew on the level's shared random while it ran; and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
- * spawned, so a test plays the same from its first tick whenever it starts. The same in vanilla's runs and Quicksilver's.
+ * CI only (fix-villager-flake). The GameTest server starts tests when it is ready, a varying number of ticks after
+ * start-up, and other tests draw on the level's shared random while one runs; villager_trade finished at tick 25, 31,
+ * 39 or 46 in vanilla's own runs (its villager's job search takes retry delays from that random, and its schedule follows
+ * the day time). Three pins, the same in vanilla's runs and Quicksilver's:
+ * <ul>
+ * <li>the server's first test re-seeds the level's random and the seed counters and sets a fixed day time, once
+ * ({@link #batchStart});</li>
+ * <li>villager_trade runs in a GameTest batch of its own (its own, empty, test environment) and re-seeds and sets the
+ * day time at its own setup ({@link #aloneStart});</li>
+ * <li>a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is spawned ({@link #pinMob}).</li>
+ * </ul>
+ * Checked over 16 GameTest servers with the batch starting between game time 7 and 6946, two of them with the randoms,
+ * seed counters and day time moved first: villager_trade finished at the same tick in every one (run 41287372214).
  */
 final class GameTestPins {
     private static boolean started = false;

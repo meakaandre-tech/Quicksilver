@@ -88,13 +88,7 @@ if [ "$SUITE" = core ]; then
   props gametest peaceful
   # Fabric's GameTest module (not in Fabric API's release jar; see build.yml) for this phase only
   cp ci-server-harness/fabric-gametest-api-v1.jar "$srv/mods/" || echo "fabric-gametest-api-v1.jar missing"
-  # fix-villager-flake (branch only, diagnosis): the GameTest server three more times first, traced
-  for k in 1 2 3; do
-    serve gametest-trace$k 1800 -Dfabric-api.gametest -Dci.harness.villagerTrace=true -Dci.harness.perturb=$(( (k - 1) * 24 )) -Dfabric-api.gametest.report-file="$OUT/gametest-trace$k/gametest.xml"
-    grep -o 'CI GAMETEST villager_trade tick=[0-9]*' "$OUT/gametest-trace$k-server.log"
-    rm -rf "$srv/gametest"
-  done
-  serve gametest 1800 -Dfabric-api.gametest -Dfabric-api.gametest.report-file="$OUT/gametest/gametest.xml" -Dci.harness.villagerTrace=true
+  serve gametest 1800 -Dfabric-api.gametest -Dfabric-api.gametest.report-file="$OUT/gametest/gametest.xml"
   rm -f "$srv/mods/fabric-gametest-api-v1.jar"
   grep -c 'CI GAMETEST' "$OUT/gametest-server.log"
   rm -rf "$srv/gametest"
