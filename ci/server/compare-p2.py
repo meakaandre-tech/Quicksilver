@@ -201,6 +201,11 @@ def perf(res, rep, lines, fails, owed, summary):
                 if (a or 0) < 0.005 and (b or 0) < 0.005:
                     continue
                 t.append("| %s | %s | %s | %s |" % (ph.replace("  ", "&nbsp;&nbsp;"), fmt(a), fmt(b), fmt(a - b) if a is not None and b is not None else "-"))
+            for key, label in (("blockEntities", "Block entity ticking by class"), ("ai", "Brain sensors and behaviours by class")):
+                if jv.get(key) or jq.get(key):
+                    t.append("\n%s (ms per tick, vanilla / Quicksilver): %s" % (label, ", ".join(
+                        "%s %s / %s" % (c, fmt(x["share"] * mv) if mv else "-", fmt(next((y["share"] for y in jq.get(key, []) if y["class"] == c), 0) * mq) if mq else "-")
+                        for c, x in ((x["class"], x) for x in jv.get(key, [])[:12]))))
             t.append("\nServer-thread allocation sampled over the recording: vanilla %s MB, Quicksilver %s MB; GC pauses: vanilla %s ms, Quicksilver %s ms."
                      % (jv.get("allocMB"), jq.get("allocMB"), jv.get("gcPauseMs"), jq.get("gcPauseMs")))
             t.append("\nQuicksilver's allocation by frame (MB): %s" % ", ".join("%s %s" % (x["frame"], x["MB"]) for x in jq.get("allocTop", [])[:15]))
