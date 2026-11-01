@@ -17,6 +17,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 | track | branch | status |
 |---|---|---|
 | phase 2, P2-2 (logic I) | `p2-2`, not merged | Logic module: block-collisions (section masks), entity-sections, entity-collisions; perf job (same-runner MSPT, JFR by phase), mob scene; see "Phase 2, P2-2" below |
+| package 4c (Quicksilver's mesher) | merging | Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
 | phase 2, P2-0 (server harness) | merged | server suite, server bench numbers, research; see "Phase 2, P2-0" below |
 | package 3 (translucency) | merged | `143defe`, main green (run 40197881761), `latest` rebuilt |
@@ -2665,8 +2666,235 @@ toggles, fallbacks and the same heap gate.
   2 KiB array (5845 layers, 11.4 MiB in the loaded area of core and SIFTEC; the heap run's `CI LIGHT` line counts the
   uniform ones). It touches the light engine, so it needs the worldgen diff (light is saved) and the world diffs, and a
   check that every read of a compacted layer gives what the array gave.
+## Package 4c: Quicksilver's mesher (branch `package-4c`, not merged: Andre checks it first)
+
+Quicksilver meshes sections itself instead of vanilla's section compiler (design doc, package 4c and "Beyond Sodium").
+Code: `src/main/java/com/meakaandre/quicksilver/mesher/`, `mixin/mesher/`, `mixin/mesherorder/`.
+
+### What was built
+
+- **Entry and fallback** (`Mesher`, `SectionCompilerMesherMixin`): wraps `SectionCompiler.compile`. A section the
+  16-byte vertex can't hold (a position outside -8..24, a UV outside 0..1, a vertex alpha below 255, a layer larger than
+  an arena) goes to vanilla's compiler, as before. Any error turns the mesher off for the session (ERROR in the log) and
+  vanilla's compiler meshes from then on. Unknown mods' mixins on `SectionCompiler` or `RenderSectionRegion` keep it off
+  (allowed: Quicksilver, Fabric API, Flywheel's block-entity hook); on `FluidRenderer` fluids go through vanilla's
+  renderer; on vanilla's plain model classes hidden blocks are asked of their models.
+- **Snapshot** (`SectionSnapshot`): the section and its ring (18x18x18 states) read once from vanilla's region copy,
+  with raw light, shade, fluid light and tints cached per position, and the face test cached per pair of states.
+- **Writer** (`SectionWriter`): quads go straight into the 16-byte vertex, solid and cutout grouped by facing as they
+  are written (package 4b's groups and coplanar fallback), translucent kept in the order made, which vanilla's own sort
+  then orders (`MeshData.sortQuads`: vanilla's translucent order and sort state).
+- **Blocks** through Quicksilver's Fabric Renderer API renderer (package 4), quads handed over without a copy; per
+  block fallback as before. **Hidden blocks**: a block whose model is one of vanilla's plain models with every quad
+  culled and all six faces hidden is left out without asking its model (`HiddenBlocks`).
+- **Fluids** (`FluidMesher`): vanilla's fluid behaviour (faces, heights, flow UVs, shade, tint, light, overlay), the
+  model and tint asked for only when a face is drawn. Fluids with a Fabric API handler go through vanilla's renderer
+  (with vanilla's region as the level). Every other fluid is first checked once per fluid and model (`FluidProbe`: a
+  dozen made-up neighbourhoods meshed by both, at different grid places) and goes through vanilla's renderer if
+  anything differs: SIFTEC has a fluid whose texture vanilla spreads over 16x16 blocks.
+- **Tints** (`BiomeBlend`, `ClientLevelTintMixin`): vanilla's blend is unchanged; while Quicksilver meshes a section on
+  a thread, the blend's biome lookups are kept per position for that section. This was the largest cost (about a third
+  of the mesher's samples): neighbouring blocks share almost every blended position. A first try that re-blended per
+  column differed from vanilla by one colour step in places, so it was dropped.
+- **Order** (`MeshPriority`, `SectionTaskDynamicQueueMixin`): vanilla's own choice (nearest, re-mesh quota 2) made
+  among the sections visible this frame first, then all.
+- **Server-aware** (`ServerAware`): in single player, while the integrated server's tick averages over 80% of its
+  budget, meshing drops to one section at a time; back at under 60%. Reported in the bench (`mesher.serverAware`).
+- Kept: block entities through vanilla's `handleBlockEntity` after a section is Quicksilver's (Flywheel takes theirs
+  there), section-rebuild events (vanilla's task still runs), package 8's not-a-use scope, the upload budget (4b).
+
+### CI
+
+- Every Quicksilver run sets `-Dquicksilver.debug.verifyMesher=true`: each section meshed outside a bench is also
+  meshed by vanilla's compiler (from the same region copy, on the same thread, alternating which goes first) and
+  compared vertex by vertex after conversion: bytes, facing groups, rounding counts, translucent index lists,
+  visibility and block entities. `ci/compare.py` fails on any difference, a fallback, the mesher not on, no section
+  checked, or no biome lookup kept. Measure runs keep the mesher off.
+- The same check times both meshers like-for-like; the bench JSON's `mesher` block has both orders.
+- A fluid self-test (`FluidSelfTest`, once per session): 600 made-up 3x3x3 neighbourhoods (water levels, lava,
+  waterlogged slabs, stairs and fences, seagrass, glass, ice, leaves) meshed by both fluid meshers and compared. It found
+  one difference the worlds never showed (a fluid's top under air inside a waterlogged top slab), fixed.
+- Kept biomes are compared with a fresh lookup one in 64 times (the mesh check can't see them: both meshers read
+  tints through the level's tint cache).
+
+### Measurements
+
+Final full run [40996863684](https://github.com/meakaandre-tech/Quicksilver/actions/runs/40996863684) (`eae514b`,
+green), full profile. Bench ms per section: Quicksilver's run against the measure run (vanilla's compiler) of the same CI
+run, sections in brackets; like-for-like: every section checked outside benches meshed by both on the same thread, one
+right after the other (cumulative since the session started, both orders averaged).
+
+| scene | Quicksilver ms/section | vanilla ms/section | ratio | like-for-like QS / vanilla ms |
+|---|---|---|---|---|
+| core/spawn | 4.401 (125) | 3.386 (115) | 1.3 | 9.129 / 10.638 |
+| core/flythrough | 5.801 (1639) | 5.7 (1690) | 1.018 | 8.048 / 9.719 |
+| core/water_glass | 2.015 (14) | 1.886 (16) | 1.068 | 8.222 / 9.588 |
+| core/nether | 2.659 (22) | 2.029 (40) | 1.31 | 6.832 / 8.086 |
+| core/mobs | 0.894 (6) | 0.591 (6) | 1.513 | 6.636 / 7.773 |
+| core/outline | 1.173 (13) | 0.552 (13) | 2.125 | 6.517 / 7.651 |
+| core/occlusion | 1.393 (60) | 0.657 (44) | 2.12 | 6.309 / 7.457 |
+| core/occlusion_move | 1.892 (65) | 1.462 (56) | 1.294 | 6.05 / 7.141 |
+| core/translucent_move | 3.793 (110) | 3.09 (104) | 1.228 | 5.836 / 6.909 |
+| core/water_glass_oit | 3.932 (155) | 3.108 (153) | 1.265 | 9.435 / 11.269 |
+| core/translucent_move_oit | 4.76 (216) | 3.896 (217) | 1.222 | 6.517 / 8.022 |
+| core/flat_plants | 1.425 (95) | 1.113 (100) | 1.28 | 6.741 / 7.932 |
+| core/renderer_off | 1.104 (18) | 0.361 (21) | 3.058 | 9.567 / 12.07 |
+| core/particles | 0.414 (30) | 0.231 (30) | 1.792 | 5.785 / 6.845 |
+| core/animation | 1.207 (18) | 0.677 (18) | 1.783 | 5.657 / 6.693 |
+| core/animated_items | 0.404 (42) | 0.207 (42) | 1.952 | 5.6 / 6.624 |
+| siftec/factory | 3.11 (35) | 3.969 (35) | 0.784 | 7.191 / 8.511 |
+| siftec/factory_flat | None (0) | None (0) | None | 3.673 / 2.841 |
+| siftec/sift | 1.339 (41) | 1.975 (41) | 0.678 | 5.333 / 6.333 |
+| siftec/hub | 0.361 (8) | 0.269 (8) | 1.342 | 5.236 / 6.198 |
+| siftec/mam | 0.359 (4) | 0.522 (4) | 0.688 | 5.041 / 6.177 |
+| siftec/ponder | None (0) | None (0) | None | 5.038 / 6.174 |
+| siftec/hologram | 0.947 (13) | 0.954 (19) | 0.993 | 4.983 / 6.107 |
+| siftec/create_ct | 0.875 (57) | 0.578 (53) | 1.514 | 4.869 / 5.956 |
+
+- **Like-for-like** (same sections, same machine): Quicksilver 10-25% faster in every scene except siftec/factory_flat
+  (3.67 against 2.84 ms; its own session of mostly empty sections with Create machines; not found yet).
+- **Bench against the measure run** (different runners): not reliable. The same code gave flythrough 0.575 in run
+  40930917369 and 1.018 here; the runners differ by up to 1.8x in speed. Small scenes (6-42 sections) swing most.
+- Per-section check: 1,395 sections (core) and 150 (SIFTEC) per run, 0 differences, 0 that differed once and matched
+  when meshed again; kept biomes spot-checked about 110,000 times, 0 differences; fluid self-test 600 cases, 0.
+- Draw calls, memory and pictures: every gate green, no new differences against vanilla.
+
+### Andre's decisions of 2026-10-30, round 2
+
+- **FluidMesher** rewritten from a description of the behaviour, in its own structure (`a7cf5c9`); the 600-case fluid
+  self-test, the per-fluid check against vanilla's renderer and the per-section check stay at 0 differences.
+- **Unknown mixins** keep the mesher off with one log line naming each mod and mixin.
+- **Single-player run** (`core/sp-quicksilver`, full mode): the core world on the client's integrated server, CI's pin
+  mod working the server 45 ms per tick inside the timed tick (a fixed load: SIFTEC's factory isn't in the core pack),
+  the fly-through benched. Run 41020081307: server tick 51.5 ms of 50, behind on 767 of 767 ticks, 1,823 sections meshed
+  while behind, never more than one at a time, 4 ms of 108,909 behind with work waiting and nothing meshing.
+- **Gate**: Quicksilver's median like-for-like ms per section at or under vanilla's compiler's, every scene.
+- **factory_flat (time-boxed, 3 attempts, not fixed)**: the like-for-like medians stay over vanilla's in the flat-lit
+  sessions: factory_flat 0.53/0.42 ms (full), 0.58/0.42 (old-GPU), 1.23/0.88 and 1.20/0.64 in run 41014914208;
+  flat_plants and water_glass_oit within 1-2% either side (noise: under in one run, over in another). Smooth-lit
+  scenes are 15-30% under. A JFR recording of the flat session (run 41010879830) found no Quicksilver-only hot spot:
+  with flat lighting the shared block renderer's per-quad lighting is cheap, so Quicksilver's savings (lighting and
+  culling from the snapshot) are small, and its own per-quad work (writing the 16-byte vertex and grouping by facing,
+  which vanilla's side leaves to the upload) and per-section work (the final copy, the visibility graph, block entities)
+  stay. factory_flat's sections are mostly empty (a flat platform with a few machines), where per-section costs weigh
+  most. Ideas not tried: writing grouped vertices straight into their final place (no copy in `finish`), and reading
+  the block renderer's quads without the per-vertex copy.
+
+### Andre's decisions of 2026-10-31 (round 3)
+
+- **Fair timing**: both sides end at "ready to upload" (vanilla's side includes `CompactVertex.convert`, what the
+  terrain module does with vanilla's layers); documented in docs/ci-limits.md, "Package 4c: like-for-like timing".
+- **Both ideas done**: layers written once into buffers the terrain module takes over (no final copy, no copy at the
+  upload); quads read straight from the renderer's array (`SectionWriter.emitRaw`). Also: state indices only for the
+  face test.
+- **Gate**: flat-lit sessions at vanilla + 10%, every other scene at or under (docs/ci-limits.md).
+- **Result**: every smooth-lit scene 25-45% under vanilla; flat_plants and renderer_off 20-45% under; **factory_flat
+  still over**: Quicksilver / vanilla median per run (full, old-GPU, Vulkan): 41143673630 1.01 / 1.38 / 1.17;
+  41150382861 1.30 / 1.31 / 0.98; 41154226983 1.19 / 0.82 / 1.31. The same code swings 0.82 to 1.38: its session has
+  about 75 sections (150 pairs), mostly air. No green full run; the factory_flat gate is the only failure in the last two.
+- **Re-review** (fresh agent, of `d0bfbb5..30d1973`; `scratchpad/review2-package-4c.md`): no output difference, no double
+  free. Fixed: a leak of the layer and index buffers on `Terrain.takeMeshed`'s failure path; the single-player run's
+  time behind (counted from before the bench, then reset at every run start; now inside the bench, and gated non-zero);
+  the check's re-mesh closes the first mesh; a mislabelled failure outside CI; a blend guard.
+
+- **Full runs after round 3**: 41161171966 (`14715dd`) **green**, factory_flat 1.09 / 0.97 / 0.81 (full, old-GPU,
+  Vulkan). 41164371110 (`d81fb0a`, client-only counter fix from the quick re-review) **failed**: factory_flat Vulkan
+  1.68 vs 1.144 ms (1.47), and a new Quicksilver-only SIFTEC worldgen difference (nether: 226 blocks around -50,60,68,
+  `siftec:netherrack_patch` / `cgs:sulfur_ore` placed differently; overworld: 2 chunks byte for byte). The server code is
+  the same as in the green run (the commit changes `ServerAware` only), so the worldgen difference is intermittent: open,
+  not re-run to green.
+
+### Andre's decisions of 2026-10-31 (round 4)
+
+- **SIFTEC worldgen difference**: cause and fix on `fix-worldgen-diff`, merged to main as `119ca70` (green on core and
+  Terralith: 41189831014 full, 41194096663 quick); its 3 SIFTEC proof runs wait until SIFTEC starts with MapMod again.
+- **4c rebased** onto `119ca70` as one commit (the branch history squashed; pre-rebase head `0f16f86`). Main's P2-1
+  (Memory module) is now under 4c too.
+- **factory_flat**: chunk reloads after its setup, for 500+ like-for-like pairs (`ciMinMeshPairs`); +10% kept
+  (docs/ci-limits.md, "Package 4c: like-for-like timing"). Run 41258425134 (four reloads, SIFTEC gating): 426-436
+  pairs, Quicksilver / vanilla median 0.955/0.548 (full), 0.592/0.399 (old GPU), 0.438/0.392 (Vulkan): over in all three.
+  Six reloads: run 41265540347 (`2bb684b`): 564-574 pairs; median 0.579/0.523 (1.11, full), 0.451/0.420 (1.07, old
+  GPU), 0.616/0.533 (1.16, Vulkan); over vanilla in all three, over +10% in two. Mean 2.36/2.44, 2.04/1.90, 2.65/2.60.
+  By Andre's rule (consistently over with 500+ pairs): a real gap; stopped and reported. Then (Andre: two attempts,
+  then report only): both attempts kept factory_flat over; its median is now reported, not gated (open bug, above). Every other check green
+  (core, the rest of SIFTEC, the server suite). Review of everything since `d81fb0a` (the squash included): rebase
+  intact, no mesher/Memory-module interaction found; its notes on the 450-pair estimate and two stale notes acted on.
+- **Runs**: 41196986066 (`bc6e3be`, full) green; 41202837388 (`790864d`, quick, report wording) green. Core: every
+  scene's median under vanilla's in every profile (0.58-0.95); single player 710/710 ticks behind, 1641 sections meshed
+  while behind, at most 1 at a time. SIFTEC didn't run: a new SIFTEC and self-test build (it starts with MapMod's
+  latest; the world job's server reached "Done") fails the pack lock, so factory_flat's 500+ pairs are not measured yet.
+
+### Review (fresh agent, of `d0bfbb5`; `scratchpad/review-package-4c.md` in the session)
+
+1 must-fix, 9 should-fix, nits. Fixed: native buffers of ended meshing threads freed (vanilla's pool retires idle
+threads) and none made on threads that never mesh; server-aware restarts the loop when a run ends (otherwise one
+section per frame while backing off), resets per world; the order reads the task's fields by name through VarHandles
+and makes a new visible set each frame; no second block-entity hand-over on failures; the fluid top face (found by
+the new self-test); kept biomes spot-checked; fluids through vanilla's renderer see vanilla's region; comments. Left
+as choices or limits: models see Quicksilver's snapshot as their level (below), `cutoutLeaves` (below), a leak on
+the terrain module's own failure path (it turns terrain off), a missing vertex colour from a mod's fluid handler
+drawn white instead of failing.
+
+### Deviations and choices to confirm
+
+1. **Tints: vanilla's blend with biome lookups kept per section**, not "biome blend once per column": a per-column
+   blend didn't give vanilla's exact colours (one step off in places), and the picture rule wins.
+2. **The CI check runs only outside benches**, so bench timings are Quicksilver's alone.
+3. **Server-aware can't be tested in CI**: CI's client plays on a dedicated server, so the integrated server never
+   ticks. It is on and reported; the laptop bench in single player shows it.
+4. **Visible-first changes bench averages**: sections the camera sees are meshed first, so a bench's meshing average
+   covers a different mix of sections than vanilla's order would.
+5. **Unknown mods' mixins on the section compiler or region turn the mesher off** (vanilla's compiler from then on),
+   rather than trying to keep them working.
+6. **Block models see Quicksilver's snapshot as their level**, not vanilla's `RenderSectionRegion` (a
+   `BlockAndTintGetter` with the same answers, and Fabric's block view extensions). A mod model that checks for
+   vanilla's region class by name would take its other path; none in the CI packs does.
+7. **`FluidMesher` is written from vanilla's behaviour** and follows its steps closely (it must draw exactly the same),
+   with Quicksilver's own names and structure; no decompiled code is committed. Say if you want it restructured
+   further.
+8. **`cutoutLeaves`**: vanilla's compiler holds the leaves setting, but with Fabric API's hook the quad's own layer
+   decides (as in vanilla with Fabric API, which the check compares against); only the default setting is in CI.
+
+### Known limits
+
+- The snapshot load (about a tenth of the mesher's time) reads blocks one by one through vanilla's region copy.
+- Quicksilver's mesher still uses the level's tint cache, so in the like-for-like check whichever mesher goes first
+  warms it for the other.
+
+### Laptop bench (Andre, when back)
+
+Single player, the flythrough and spawn scenes with `/quicksilver bench`: `meshing.benchMsPerSection` with Quicksilver's
+mesher against `-Dquicksilver.debug.vanillaMesher=true` (vanilla's compiler, everything else the same), and
+`mesher.serverAware` against `-Dquicksilver.debug.serverAwareOff=true` (whether backing off keeps the server's ticks
+in budget while flying).
 
 ## Open bugs
+
+- **factory_flat meshing gap, package 4c (Andre, 2026-11-01): reported, not gated.** Like-for-like median,
+  Quicksilver / vanilla's compiler (ms, same sections, same thread, 564-576 pairs):
+
+  | run | full | old GPU | Vulkan |
+  |---|---|---|---|
+  | 41265540347 (before the attempts) | 0.579 / 0.523 (1.11) | 0.451 / 0.420 (1.07) | 0.616 / 0.533 (1.16) |
+  | 41279066777 (attempt 1: snapshot only once something is meshed) | 0.617 / 0.556 (1.11) | 0.857 / 0.592 (1.45) | 0.437 / 0.289 (1.51) |
+  | 41282917566 (profile only) | 0.629 / 0.523 (1.20) | 0.629 / 0.546 (1.15) | 0.510 / 0.313 (1.63) |
+  | 41288328893 (attempt 2: each block read once, no divisions) | 0.929 / 0.598 (1.55) | 1.032 / 0.711 (1.45) | 0.457 / 0.409 (1.12) |
+  | 41292472502 (`d6e25e0`, final, reported only; full run green) | 0.416 / 0.309 (1.35) | 1.000 / 0.759 (1.32) | 0.940 / 0.604 (1.56) |
+  | 41298022851 (`eb28a35`, attempts removed, profile kept; full run green) | 0.572 / 0.561 (1.02) | 0.295 / 0.281 (1.05) | 0.426 / 0.432 (0.99) |
+
+  In that run, by blocks drawn: 1-16, 1.30-1.43; 17-256, 1.02-1.09; 257+, 0.93-0.97 (the gap is still the nearly-empty
+  sections; the overall median moved under 1.10 with the run-to-run noise).
+
+  What the profile shows (`checkProfile` in the bench report): no factory_flat section is only air and block entities
+  (attempt 1's path was never taken); the gap is in sections with few blocks drawn: 1-16 drawn, Quicksilver 1.35-1.52x
+  vanilla; 17-256, 1.06-1.15x; 257+, 0.90-1.01x. In those sections almost all of Quicksilver's time is the loop over the
+  4096 positions (a 3-block section: loop 563 us, vanilla 355 us for all of it); the snapshot (3-7 us) and finish
+  (14-23 us) are small. Attempt 2 (the read path per position) did not move it, so the cost per position is elsewhere
+  in the loop (not found). Both attempts removed (Andre, 2026-11-01): the fast path was never taken, and with both in
+  the ratios went from 1.07-1.16 to 1.32-1.56; the per-section profile stays. **Lead for a later round:** in
+  nearly-empty sections the per-position pass over all 4,096 positions dominates; walk only the non-air positions
+  (from the section's palette / non-air count), with byte-identical output. Every other scene is under vanilla. The vanilla side's own median moves 0.29-0.71 ms between
+  runs on the same jars.
 
 - **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from
   this repo's `pack-snapshot` release (docs/ci-limits.md, "Pack lock"), SIFTEC's suites gate again
