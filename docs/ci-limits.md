@@ -919,6 +919,7 @@ pixel check gates only where every vanilla run agrees. Three vanilla samples are
 | world diff (core, SIFTEC; and core's random-tick run, P2-1) | each block's state; each block entity's top-level fields; each pending scheduled block and fluid tick; each entity (type, exact position, health, the stack an item entity holds; one without an exact match on the other side is keyed by type and block; UUIDs aren't compared, as worldgen's entities don't repeat theirs) | equal where vanilla agrees |
 | GameTests (core) | each test's result and the tick it finished | equal to vanilla-a; vanilla-b and c must equal vanilla-a too |
 | SIFTEC self-tests | each suite's passed/failed counts | equal to vanilla-a; vanilla-b and c too |
+| Create contraptions (SIFTEC, P2-2) | `CI CONTRAPTION result=...`: at ticks 300, 500 and 700 the mechanical bearing's contraption entities and the block it takes (assembled, placed back after its motor is taken away at 400, assembled again after it returns at 600); not the piston, whose motors run from the frozen setup | every expectation met, all three checks in the line, the same line in every run (`ci/server/compare-p2.py`); SIFTEC's scripted run is also its heap run and its `train` perf scene, so their numbers from before P2-2 (`8492530`) aren't comparable with later ones |
 | Create train (SIFTEC) | every arrival at a station with its tick, final speed, schedule state | the same line in every run; at least 2 arrivals |
 | network check | the client joins, stays until the run ends, no protocol error or desync line | always |
 | scripted run | every setup command succeeds, the run finishes its ticks | always |
@@ -995,3 +996,39 @@ Smallest thing each check must catch: one block state, one block entity field, o
 existence, type, position (exactly: a 1e-7 drift is caught) or health, one item stack, one chunk's byte; one GameTest
 tick or result; one self-test. The heap gate has no tolerance either: Quicksilver below vanilla's lowest run (vanilla's
 own runs spread up to 1.7 MiB, in core; Quicksilver is 10.6 MiB below in core, 61 in SIFTEC, 82 in Terralith).
+
+### Perf job and Logic module (P2-2)
+
+**MSPT, same runner** (`server-perf`, `ci/server/perf-run.sh`, `ci/server/perf-<suite>.txt`): CI's runners differ from each
+other by more than Quicksilver's savings (one runner played the mob scene at 2.9 ms per tick, another at 1.6), so the
+server suite's per-run MSPT can't show a saving. The perf job plays each perf scene on one runner, vanilla and
+Quicksilver alternately (seven rounds, the side that goes first alternating; an eighth with JFR for MSPT by phase), sprinting
+for the scene's ticks, with the scripts' `qs-at` lines left out. Scenes: core `mobs` (172 mobs over mixed shapes, a boat
+and a minecart; 4800 ticks), `random` (the random-tick run, 6000 ticks), `run` (the scripted run, 4800 ticks); SIFTEC
+`train` (its scripted run with the Create train, 1200 ticks). Rounds were 2400 ticks and three per side at first (about 2 s of
+server work for the random-tick scene). The runner drifts between rounds by 10-20%, more than the random-tick scene's
+saving (entity movement is about 15% of that scene), so the gate compares each round's Quicksilver run with the vanilla
+run next to it, and takes the median of the seven ratios.
+
+**The random-tick scene gates regressions only** (Andre, 2026-11-01): its tick is about 0.55 ms, of which P2-2's work
+(entity movement) saves about 0.02 ms, while the harness's own pinned random ticks and spawning move a run by about
++-0.04 ms per JVM (single rounds 0.87 to 1.19 of the vanilla run next to them). Six full runs gave its median ratio
+-3.5%, -0.9%, +5.0%, +2.8%, +1.4% and -3.0%: no saving can be told from that noise there, so the scene fails only if
+Quicksilver's median ratio is over 1.10, a regression the noise can't explain, and reports the rest. The mob scene
+(-9 to -13% in every run) still has to be faster.
+
+| check | key | gate |
+|---|---|---|
+| perf MSPT (core `mobs`) | each of rounds 1-7: Quicksilver's MSPT average / the same round's vanilla MSPT average | the median ratio below 1; every round finished on both sides, no failed command |
+| perf MSPT (core `random`) | the same | regression only: the median ratio at most 1.10 (above) |
+| perf MSPT (core `run`; SIFTEC `train`) | the same | reported |
+| perf world (core `mobs`) | each Quicksilver round's saved world against vanilla round 1 (the world diff's keys) | equal where vanilla's eight rounds agree (they agree on every key) |
+| Logic module (P2-2) | every server start of a Quicksilver run (server suite, network check, perf) and every Quicksilver client's own log (`client-*.log`) logs `Quicksilver logic:` with every optimisation on; measure runs' clients log it off; no `Quicksilver logic fallback:` line in any log; no identity hash in its sources; every suite of the run with perf scenes has perf results | always |
+
+MSPT by phase: the share of the server thread's JFR samples (1 ms) under each phase's frame, times that run's MSPT;
+`compare/p2.md` lists them with the top methods. Method names only are published.
+
+**SIFTEC report only** (main's `siftec_report_only` in the workflow's mode job, `ci/siftec_status.py`): SIFTEC's perf
+and Logic checks are listed under "Owed" in `compare/p2.md` and fail nothing, as compare-server.py and compare.py do
+with theirs; SIFTEC's `server-perf` run is `continue-on-error` like its other jobs. On 2026-10-31 SIFTEC's latest
+release no longer matched `ci/pack-lock.txt`, which stops every SIFTEC job at its pack check.

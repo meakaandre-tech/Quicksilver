@@ -16,6 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
+| phase 2, P2-2 (logic I) | `p2-2`, not merged | Logic module: block-collisions (section masks), entity-sections, entity-collisions; perf job (same-runner MSPT, JFR by phase), mob scene; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
 | phase 2, P2-0 (server harness) | merged | server suite, server bench numbers, research; see "Phase 2, P2-0" below |
@@ -2491,6 +2492,168 @@ face shapes and vanilla's identity-keyed caches, the spawner's re-seed (above), 
 (works on Java 25; a later JDK may refuse), the config file rewritten without the user's comments when keys are
 added.
 
+## Phase 2, P2-2: Logic I, movement and access (branch `p2-2`, not merged: Andre checks it first)
+
+Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQDDDppdrxu45), P2-2. Files: the Logic module
+(`src/main/java/com/meakaandre/quicksilver/logic/`, `mixin/logic/`, `quicksilver.logic.mixins.json`), the perf job
+(`ci/server/perf-run.sh`, `perf-jfr.py`, `perf-core.txt`, `perf-siftec.txt`, `scripted-run-core-mobs.txt`) and its checks
+(`ci/server/compare-p2.py`, kept apart from compare-server.py). Rebased on main after `fix-worldgen-diff` (`119ca70`),
+whose SIFTEC report-only switch P2-2 now uses instead of its own. Shared files touched:
+`build.yml` (the `server-perf` job, one step each in `server-compare` and `compare`),
+`fabric.mod.json` (one mixin config), `Quicksilver.java` (one line), `NOTICE` (Lithium), `docs/ci-limits.md` (new section
+at the end).
+
+### Measured first
+
+Same-runner MSPT (the perf job, `docs/ci-limits.md`, "Perf job and Logic module"), vanilla's mob scene by phase
+(JFR): entities 89% of the tick; entity movement 46%, of it the block collision sweep (`BlockCollisions`: each move, the
+supporting-block check every tick) 24-29% and reading block states 17-19% (`PalettedContainer.get` the top method);
+entity lookups 14% (collision lookups 8%, pushing 7%); inside-block effects 7%; AI under 10%. Most of the sweep's reads
+were positions it drops: air, and the shell one block outside the box. The random-tick scene: entities about half (the
+harness's monsters, items, a cave minecart), random ticks and precipitation about 15%. 26.3 already: entity lookups go
+through `EntitySectionStorage` with a sorted set of section ids, collisions are collected into one list per move, the
+sweep caches its chunk (`docs/phase2-research.md` lists what Lithium dropped as done by vanilla).
+
+### What was built
+
+Each has its switch (`logic=on|off`, `logic.<name>=on|off` in `config/quicksilver.properties`, read at start-up; off
+means its mixins aren't applied), falls back to vanilla's code with one `Quicksilver logic fallback:` line on any
+exception or a hook that didn't land (an injection counts only where the game's own code calls it, one handler per
+target method; checked as each target class loads, without loading anything), and is off with Lithium installed or in
+CI's measure-only runs. Nothing asks the server thread for an identity hash, and nothing starts a thread (P2-1's rule;
+measured here: in a plain JVM, a thread started before the server thread, or by it, changes every identity hash the
+server thread hands out, and so does reflection on a class).
+
+| optimisation | what | from |
+|---|---|---|
+| `block-collisions` | each chunk section keeps two masks of its 4096 positions (non-air; large collision shape or moving piston), built when a sweep first needs them and kept current across `setBlockState`; every write to a block container counts up a number on it, so masks of another count are built again. The sweep drops, unread, positions holding air and shell positions holding neither kind of state: exactly what vanilla reads and drops, so the same shapes come out in the same order. Server levels only, not debug worlds | own |
+| `entity-sections` | the entity sections near a small box (under four sections wide) looked up directly instead of walking the column's sorted ids, in the sorted set's own order | Lithium `entity.fast_retrieval` (LGPL-3.0-only; header kept, NOTICE) |
+| `entity-collisions` | entity sections count entities that may be collided with like blocks (their class overrides `canBeCollidedWith`: boats, shulkers, minecarts); a lookup for such entities returns vanilla's empty answer when every section it would visit counts none. Not for movers whose class overrides `canCollideWith`, nor with ender dragon parts. Which classes override what is read once at start-up on the main thread from the game jar's entity class files (ASM, by name: no Class objects, reflection or threads); any other class (another mod's) counts as hard and as colliding with anything, so lookups near or by it take vanilla's path | own; idea from Lithium's collision class groups |
+
+Not built (measured or checked): Lithium's movement rewrite (`collisions.movement`: reorders shapes and shrinks the box for
+single-axis moves; its own notes say that can skip a 1e-7 clip), `shapes.*` (specialised shape classes; the remaining
+sweep cost is real collisions), `chunk_access` (vanilla's 4-entry chunk cache already answers; ticket timing changes),
+`block_effects` (allocations, about 0.03 ms), random ticks (Lithium's needs `block_tracking`, not ported).
+
+### Results
+
+Full run [41207368802](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41207368802) on `ef8622b` (before the
+rebase on `119ca70`). Everything passed except one gate: **the random-tick scene's MSPT was not down**. SIFTEC is owed
+(below). Andre (2026-11-01): keep both scenes gated and report what the final run shows; its numbers are in
+"Final run" below.
+
+| scene (one runner, 7 rounds, sprinting) | vanilla MSPT median | Quicksilver MSPT median | per-round Quicksilver / vanilla, median | gate |
+|---|---|---|---|---|
+| core `mobs` (4800 ticks) | 2.478 | 2.243 | -9.9% (every round faster: 0.83 to 0.97) | pass |
+| core `random` (6000 ticks) | 0.566 | 0.564 | +2.8% (0.87 to 1.05) | **fail** |
+| core `run` (4800 ticks, reported) | 0.816 | 0.816 | +0.8% | reported |
+
+Where the mob scene's saving came from (JFR round, ms per tick, vanilla to Quicksilver): block state reads 0.49 to 0.23
+(`block-collisions`), block collision sweeps 0.81 to 0.63, entity collision lookups 0.24 to 0.11 (`entity-collisions`),
+entity section walks 0.44 to 0.30; entity movement as a whole 1.33 to 1.02, the tick 2.71 to 2.38. Pushing (0.22),
+inside-block effects and AI are unchanged. The random-tick scene spends about 15% of its tick in entity movement and the
+rest in random ticks, precipitation, spawning and the harness's own pins; its JFR rounds have shown Quicksilver from 10%
+faster to 5% slower, its plain rounds spread by up to 15%, so this package's saving there is within its noise.
+
+Correctness (same run): the mob scene's saved world equals vanilla's in all eight rounds (vanilla's own rounds agree on
+every key); core and Terralith worldgen byte for byte, core world diff and random-tick run equal, every GameTest in the
+same tick (villager_trade 46 in all four runs), network check, heap gate (Terralith 31% below vanilla); phase 1's client
+suite (core: every pixel and count gate) passes; the Logic module on in every Quicksilver server start and client, off in
+every measure client, no fallback anywhere.
+
+Runs before this one, for the record: run 41196261046 and 41205535911 failed `villager_trade` in vanilla against itself
+(open bugs); 41203978837 had the random-tick scene 5-8% slower in every round pair, before the write and lookup hooks
+stopped allocating callback objects; the perf gate moved from per-side medians of 3, then 5, rounds to the median of 7
+per-round ratios as the runner's drift between rounds showed up.
+
+### Final run
+
+Full run [41244063496](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41244063496) on `e9b2ba8` (main
+`119ca70` merged in; a force-push of the rebased branch wasn't allowed, so main was merged instead, same tree): **green**.
+
+| scene | vanilla MSPT median | Quicksilver MSPT median | per-round Quicksilver / vanilla, median | gate |
+|---|---|---|---|---|
+| core `mobs` | 2.484 | 2.222 | -11.1% (0.87 to 0.93) | pass |
+| core `random` | 0.559 | 0.554 | -3.0% (0.90 to 1.14) | pass (within this scene's noise: earlier runs -3.5 to +5.0%) |
+| core `run` | 0.760 | 0.799 | +4.3% | reported |
+
+Mob scene, where it came from (JFR round, ms per tick): block state reads 0.48 to 0.16, block collision sweeps 0.85 to
+0.63, entity collision lookups 0.24 to 0.11, entity section walks 0.44 to 0.33; entity movement 1.37 to 1.02, the tick
+2.75 to 2.46. Pushing (+0.04) and fluids (+0.01) unchanged within noise. Every correctness gate as in the results above
+(mob scene worlds equal in all eight rounds; core and Terralith worldgen, world diffs, random-tick run, every GameTest in
+the same tick, network, heap; phase 1's core client gates), no Logic fallback.
+
+### SIFTEC checks still owed
+
+SIFTEC's latest release no longer matches `ci/pack-lock.txt` (its `siftec-26.3.jar` and `siftec-selftest-26.3.jar`), so
+every SIFTEC job stops at its pack check, vanilla's too. Owed once SIFTEC runs again (with MapMod's latest and an
+updated lock): SIFTEC worldgen (overworld, nether, the Sift) byte for byte; the SIFTEC world diff and heap run; the
+self-tests (30 suites); the Create train's arrivals (11, same ticks); the `train` perf scene; SIFTEC's client scenes
+(pixels and counts); the factory MSPT (the design's factory scene).
+
+### Review
+
+Independent review by a fresh agent (of `bf78c5a` to `43779f7`; scratchpad `review-p2-2.md`): 2 must-fix, 6 should-fix, 7
+nits. Fixed: one write hook per container method, each checked (one handler covered two methods, so a missing one
+went unseen); the perf gate failed nothing when a suite's perf results were missing (now it fails); the mask lookups
+called the chunk cache outside vanilla's sequence (now the sweep's own `getChunk`); the class-scan thread (a thread
+started before the server thread changes every server-thread identity hash, confirmed in a plain JVM; now ASM on the
+main thread, no thread); no fallback guard in the section write hooks; hooks checked by loading classes on the server
+thread (now checked as classes load); the client check read the dedicated server's log (client runs join one; now the
+client's own log, and measure runs' clients must log Logic off); `suite siftec: no results` was gated; the masks are
+rechecked against the write count at every position; records with identity hashCodes replaced. Left: the config file
+rewritten without comments (as P2-1).
+
+### With SIFTEC gating again (2026-11-01)
+
+Main's pack snapshot (`93e7a3e`) merged in. Quick run with SIFTEC
+[41278527656](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41278527656) on `d489589`: SIFTEC worldgen,
+world diff and heap, every self-test, the Create train (11 arrivals, B at 136 to B at 1131, the same in every run) and
+the new contraption check (the bearing assembled at 300, placed back at 500 after its motor is taken away, assembled at
+700; the same line in every run) all pass; core passes; mobs -9.8% in the run before. The first try of the contraption
+check expected the bearing's whole cross of planks to move; a bearing takes only the block on top of it (the four
+beside it aren't attached), seen the same in every run, so the check looks at that block.
+
+**Final run with SIFTEC gating:** full run [41280422956](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41280422956)
+on `5926a29` (main `5a791a1` merged in): **green**, SIFTEC gating (no report-only). Mobs -11.8% (per-round ratios 0.87 to
+0.95; the tick 2.86 to 2.41 ms in the JFR round: block state reads 0.49 to 0.16, block collision sweeps 0.88 to 0.64,
+entity collision lookups 0.25 to 0.11, entity section walks 0.47 to 0.33); random-tick -0.7% (regression gate: at
+most +10%); scripted run +0.5% (reported). SIFTEC: worldgen (overworld, nether, the Sift) byte for byte and block by
+block, world diff, heap, all 30 self-test suites, the Create train (11 arrivals, same ticks), the contraption check
+(assembled, placed back, assembled again) equal to vanilla; SIFTEC's client scenes pass; core and Terralith as before;
+no Logic fallback.
+
+**Review of the newest additions** (fresh agent, 2026-11-01: the contraption check, the random-tick gate, the two main
+merges; scratchpad `review-p2-2-new.md`): no must-fix, 2 should-fix, 6 nits. Fixed: the piston taken out of the
+contraption check and its motors no longer removed (its motors run from the frozen setup, so its state at a tick isn't a
+fixed point; the removal changed the end state with no reason); the gate requires the bearing's three checks in the
+line; the MSPT gates name their kind ("faster" below 1, "no-regression" at most 1.10) instead of keying on the value;
+a docs line that SIFTEC's heap run and `train` perf scene changed with the check; an unused line in perf-run.sh; main's
+stale report-only comment in build.yml. Left: the first main merge (`8492530`) also carries new work.
+
+### Andre's decisions (2026-11-01)
+
+1. `block-collisions` on by default. Not merged until a full run with SIFTEC gating passes (SIFTEC's world diff,
+   self-tests, the Create train's arrivals, and a Create contraption assembling and disassembling in SIFTEC's scripted
+   run: added, `CiContraption.java`, "Create contraptions" in `docs/ci-limits.md`); then stop for his merge check.
+2. Random-tick MSPT gates regressions only: fails if Quicksilver's median ratio is over 1.10, reported otherwise (the
+   noise, about +-0.04 ms per JVM against a saving of about 0.02 ms, is recorded in `docs/ci-limits.md`).
+3. Pack lock: the 4c chat's pack snapshot (`93e7a3e`, merged) is used as it is.
+4. The villager_trade flake is fixed before P2-3, on a small branch of its own if it is harness-only.
+
+### Known limits
+
+- The masks cost 1 KiB per section a sweep has used; the heap gate (Quicksilver below vanilla) still passes.
+- A mod writing a section's container through a method other than the container's own setters (`getAndSet`,
+  `getAndSetUnchecked`, `set`, `read`) would leave masks stale; all of vanilla's writes go through them.
+- `entity-collisions` reads the game's own class files: a mod that adds a `canBeCollidedWith` override to a vanilla
+  entity class by mixin isn't seen (another mod's own entity classes are, conservatively, always hard).
+- The sweep's mask lookups call the sweep's own `getChunk` for every position vanilla would call it for, so the level
+  sees vanilla's chunk lookups exactly (the first version called the chunk cache itself, which could reorder its 4-entry
+  cache; found in review).
+- Pushing (`LivingEntity.pushEntities`, 7%) and inside-block effects (7%) are untouched: their lookups' results are
+  used in vanilla's order.
+
 ## Phase 2 plan: later memory package (Andre, 2026-10-31)
 
 Measured in P2-1, not built there: a memory package of its own after P2-1 and before P2-7's sign-off, with its own
@@ -2763,10 +2926,11 @@ in budget while flying).
   `ci/compare.py`'s report marks a rise of 4 MB or more as "between scenes" or "inside the scene"). If it shows up
   again on main: stop and report.
 
-- **villager_trade GameTest, vanilla against itself: fixed** (branch `fix-villager-flake`, 2026-11-01; harness only):
-  the GameTest server started tests at a varying game time and other tests drew on the level's shared random while it
-  ran; now the first test re-seeds once, villager_trade runs in a batch of its own and re-seeds at its setup, and its
-  villager's random and sensors are pinned (`docs/ci-limits.md`, "What makes runs repeat").
+- **villager_trade GameTest, vanilla against itself (found 2026-10-31, P2-2): fixed**, merged as `1c1ea7c` (squash of
+  `fix-villager-flake`, 2026-11-01; harness only): seen in runs 41196261046 and 41205535911 (vanilla-b at 25, vanilla-a
+  at 39, against 46). The GameTest server started tests at a varying game time and other tests drew on the level's
+  shared random while it ran; now the first test re-seeds once, villager_trade runs in a batch of its own and re-seeds
+  at its setup, and its villager's random and sensors are pinned (`docs/ci-limits.md`, "What makes runs repeat").
 
 ## Hand-off
 
@@ -2781,7 +2945,10 @@ needed. Scratch tools (not in the repo): a compile check against stubs generated
 (`scratchpad/p3/stubgen/check.sh`; it does not cover `ci/pin-mod`), the shader harness (`scratchpad/p3/harness4.py`),
 strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
-**Now (P2-1):** merged (see "Phase 2, P2-1"); next in phase 2 is P2-2 (Logic I), with the later memory package
+**Now (P2-2):** branch `p2-2`, waiting for Andre's check (see "Phase 2, P2-2"); perf numbers: `compare/p2.md` on
+`ci-logs-server-<branch>`.
+
+**Before (P2-1):** merged (see "Phase 2, P2-1"); next in phase 2 is P2-2 (Logic I), with the later memory package
 above in the plan. Phase 2 reads: the server suite's
 reports are on `ci-logs-server-<branch>` (`compare/report.md`, `compare/<suite>-heap.md`, every run's logs and
 histograms under `runs/`); quick runs take `[siftec]` and `[terralith]`.
