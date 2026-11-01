@@ -2505,11 +2505,20 @@ toggles, fallbacks and the same heap gate.
 
 ## Open bugs
 
-- **When SIFTEC starts with MapMod again** (Andre, 2026-10-31): make SIFTEC suites gating again, run
-  fix-worldgen-diff's 3 SIFTEC proof runs, and re-run every package merged in the meantime against the SIFTEC suite.
-  (SIFTEC's latest release stopped starting with MapMod's latest build: `NoSuchMethodError: PoiKind$Builder.detail()`,
-  run 41173311946. Until then SIFTEC's client and server suites run but report only: `siftec_report_only` in the
-  workflow's mode job, `ci/siftec_status.py`; set it to false to gate again.)
+- **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from
+  this repo's `pack-snapshot` release (docs/ci-limits.md, "Pack lock"), SIFTEC's suites gate again
+  (`siftec_report_only=false` in the workflow's mode job). Still to do on `pack-snapshot-ci`: fix-worldgen-diff's 3
+  SIFTEC proof runs and SIFTEC's numbers re-collected from 3 clean runs; then re-run every package merged in the
+  meantime against the SIFTEC suite (none besides fix-worldgen-diff, `119ca70`). **Note for the P2-2 chat: once
+  `pack-snapshot-ci` is merged, SIFTEC is gating again; rebase on it.**
+  Done on `pack-snapshot-ci`: proof runs 41239149330, 41244820931, 41250781925 (full, green, SIFTEC gating): SIFTEC's
+  worldgen 0 differences in the overworld, nether and the Sift in all three (vanilla noise 0); SIFTEC pieces placed in
+  6 chunks before the first tick, SIFTEC's queue empty at every save. SIFTEC's baselines re-collected from those three
+  runs' reports (`ci/make-baselines.py`; map and hud keep their old entries, skipped): heap after GC about 60-80 MB
+  lower in every SIFTEC scene (P2-1's Memory module, merged since the last SIFTEC baselines), factory_flat and hologram
+  draw calls lower (MapMod's minimap build). Two earlier rules kept: sift's uploads stay at the highest seen in any run
+  (81788 bytes, Andre 2026-10-25), and direct buffers keep the higher of the old and new value (the open direct-buffer
+  bug). SIFTEC's pixel limits passed all three runs unchanged.
 
 - **When MapMod is finished** (Andre, 2026-10-30): put it back in the pack lock, restore the map and hud scenes,
   re-collect their numbers, and restore the full strict check where the minimap shows (factory_flat, hologram:
