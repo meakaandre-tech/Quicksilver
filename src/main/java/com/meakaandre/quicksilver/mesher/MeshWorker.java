@@ -142,7 +142,7 @@ final class MeshWorker {
             long t0 = System.nanoTime();
             w.begin(CompactVertex.sectionIndex(ox, oy, oz));
             AltModelBlockRenderer blockRenderer = null;
-            QuadEmitter out = emitter;
+            QuadEmitter out = null; // the block renderer's emitter, made with it (below, once there is something to mesh)
             SectionCompiler.Results results = new SectionCompiler.Results();
             VisGraph visGraph = new VisGraph();
             BlockPos.MutableBlockPos p = pos;
@@ -160,6 +160,7 @@ final class MeshWorker {
                                 snap.load(region, ox, oy, oz);
                                 loaded = true;
                                 blockRenderer = blockRenderer(ao, colors);
+                                out = emitter;
                                 snapNanos = System.nanoTime() - ts;
                                 state = snap.local(x, y, z);
                             }
