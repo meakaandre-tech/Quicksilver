@@ -20,7 +20,7 @@ import net.minecraft.world.entity.ai.Brain;
  * day time at its own setup ({@link #aloneStart});</li>
  * <li>a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is spawned ({@link #pinMob}).</li>
  * </ul>
- * Checked over 16 GameTest servers with the batch starting between game time 7 and 6946, two of them with the randoms,
+ * Checked over 16 GameTest servers with the batch starting between game time 7 and 6946, 8 of them with the randoms,
  * seed counters and day time moved first: villager_trade finished at the same tick in every one (run 41287372214).
  */
 final class GameTestPins {
@@ -30,16 +30,17 @@ final class GameTestPins {
     }
 
     /**
-     * At a test's setup: the server's first test re-seeds the level's random and the seed counters and sets a fixed day
-     * time (a villager's schedule follows it), once. Tests start a few ticks apart (game time 3, 5, 7, 9), so doing it
-     * again for later tests would move the randoms under tests already running.
+     * At a test's setup: the server's first test re-seeds the level's random and the server thread's seed counter and sets
+     * a fixed day time, once, so every test starts from the same state whenever the server starts them. Tests start a few
+     * ticks apart (game time 3, 5, 7, 9), so doing it again for later tests would move the randoms under tests already
+     * running.
      */
     static synchronized void batchStart(GameTestHelper h) {
         if (started) return;
         started = true;
         ServerLevel level = h.getLevel();
         long gt = level.getGameTime();
-        SeedPin.reset(0x6A3E_7E57L);
+        SeedPin.resetThread(0x6A3E_7E57L);
         level.getRandom().setSeed(SeedPin.mix(level.dimension().identifier().toString().hashCode()));
         Harness.gameTestCommand(level.getServer(), "time set 1000");
         Harness.LOG.info("CI GAMETEST START at game time {}: level random and seed counters re-seeded, time set 1000", gt);
@@ -47,12 +48,12 @@ final class GameTestPins {
 
     /**
      * At the setup of a test that runs in a batch of its own (villager_trade, environment ci_server_harness:villager_alone):
-     * the level's random and the seed counters re-seeded and a fixed time of day set (a villager's schedule follows it).
+     * the level's random and the server thread's seed counter re-seeded and a fixed time of day set (a villager's schedule follows it).
      * Nothing else runs in that batch, so this moves no other test.
      */
     static synchronized void aloneStart(GameTestHelper h, String name) {
         ServerLevel level = h.getLevel();
-        SeedPin.reset(0x6A3E_A10EL ^ name.hashCode());
+        SeedPin.resetThread(0x6A3E_A10EL ^ name.hashCode());
         level.getRandom().setSeed(SeedPin.mix(name.hashCode()));
         Harness.gameTestCommand(level.getServer(), "time set 1000");
         Harness.LOG.info("CI GAMETEST ALONE {} at game time {}: level random and seed counters re-seeded, time set 1000", name, level.getGameTime());
@@ -85,9 +86,11 @@ final class GameTestPins {
                 }
             }
         } catch (ReflectiveOperationException ex) {
-            throw new IllegalStateException("could not pin the sensors of " + mob, ex);
+            throw new IllegalStateException("CI harness: could not pin the sensors of " + mob + " (the harness's reflection no longer"
+                + " fits Brain/Sensor; not a game difference)", ex);
         }
-        if (pinned == 0) throw new IllegalStateException("no brain sensors found on " + mob);
+        if (pinned == 0) throw new IllegalStateException("CI harness: no brain sensors found on " + mob + " (the harness's reflection no"
+            + " longer fits Brain; not a game difference)");
         Harness.LOG.info("CI GAMETEST PIN {}: random and {} sensors pinned", salt, pinned);
     }
 
