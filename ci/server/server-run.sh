@@ -50,7 +50,7 @@ props() { # level-name difficulty
 serve() {
   local name=$1 limit=$2; shift 2
   mkdir -p "$OUT/$name"
-  (cd "$srv" && timeout "$limit" java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$OUT/$name" "$@" -jar server.jar --nogui \
+  (cd "$srv" && timeout "$limit" java -Xmx3G -Dmax.bg.threads=1 -Dquicksilver.debug.verifyLogic=true -Dci.harness.out="$OUT/$name" "$@" -jar server.jar --nogui \
      < /dev/null > "$OUT/$name-server.log" 2>&1; echo "EXIT $?" >> "$OUT/$name-server.log")
   tail -n 3 "$OUT/$name-server.log"
   cp -r "$srv/crash-reports" "$OUT/$name-crash-reports" 2>/dev/null

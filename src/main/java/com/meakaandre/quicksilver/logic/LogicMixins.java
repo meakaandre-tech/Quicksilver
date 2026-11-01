@@ -45,8 +45,10 @@ public final class LogicMixins implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        String id = Optimisations.owner(mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1));
-        return id != null && Logic.on(id);
+        for (String id : Optimisations.owners(mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1))) {
+            if (Logic.on(id)) return true;
+        }
+        return false;
     }
 
     @Override
