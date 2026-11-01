@@ -2723,7 +2723,10 @@ in budget while flying).
   vanilla; 17-256, 1.06-1.15x; 257+, 0.90-1.01x. In those sections almost all of Quicksilver's time is the loop over the
   4096 positions (a 3-block section: loop 563 us, vanilla 355 us for all of it); the snapshot (3-7 us) and finish
   (14-23 us) are small. Attempt 2 (the read path per position) did not move it, so the cost per position is elsewhere
-  in the loop (not found). Every other scene is under vanilla. The vanilla side's own median moves 0.29-0.71 ms between
+  in the loop (not found). Both attempts removed (Andre, 2026-11-01): the fast path was never taken, and with both in
+  the ratios went from 1.07-1.16 to 1.32-1.56; the per-section profile stays. **Lead for a later round:** in
+  nearly-empty sections the per-position pass over all 4,096 positions dominates; walk only the non-air positions
+  (from the section's palette / non-air count), with byte-identical output. Every other scene is under vanilla. The vanilla side's own median moves 0.29-0.71 ms between
   runs on the same jars.
 
 - **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from

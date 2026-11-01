@@ -43,7 +43,7 @@ public final class MesherStats {
     static synchronized void profile(long mine, long vanilla, MeshWorker w) {
         if (PROFILE.size() >= 100_000) return;
         PROFILE.add(new long[] {mine, vanilla, w.lastSnap, w.lastLoop, w.lastFinish, w.lastNonAir, w.lastModels, w.lastDrawn, w.lastFluids,
-            w.lastQuads, w.lastFirstMeshed});
+            w.lastQuads});
     }
 
     /**
@@ -55,7 +55,7 @@ public final class MesherStats {
         int n = PROFILE.size();
         o.addProperty("pairs", n);
         if (n == 0) return o;
-        String[] names = {"quicksilverUs", "vanillaUs", "snapshotUs", "loopUs", "finishUs", "nonAir", "models", "drawn", "fluids", "quads", "firstMeshed"};
+        String[] names = {"quicksilverUs", "vanillaUs", "snapshotUs", "loopUs", "finishUs", "nonAir", "models", "drawn", "fluids", "quads"};
         for (int k : new int[] {2, 3, 4}) {
             long[] v = new long[n];
             for (int i = 0; i < n; i++) v[i] = PROFILE.get(i)[k];
@@ -120,11 +120,7 @@ public final class MesherStats {
     private static final AtomicLong PH_N = new AtomicLong(), PH_SNAP = new AtomicLong(), PH_MESH = new AtomicLong(), PH_FINISH = new AtomicLong();
 
     /** Where a section's meshing time goes: the snapshot copy, the blocks and fluids, the visibility graph and buffers. */
-    /** Sections meshed without setting the snapshot up (nothing in them drawn as a model or holding a fluid). */
-    static final AtomicLong NO_SNAPSHOT = new AtomicLong();
-
-    static void phases(long snapshot, long mesh, long finish, boolean noSnapshot) {
-        if (noSnapshot) NO_SNAPSHOT.incrementAndGet();
+    static void phases(long snapshot, long mesh, long finish) {
         PH_N.incrementAndGet();
         PH_SNAP.addAndGet(snapshot);
         PH_MESH.addAndGet(mesh);
@@ -153,7 +149,6 @@ public final class MesherStats {
         o.addProperty("msPerSectionSinceStart", m == 0 ? 0 : Math.round(MESHED_NANOS.get() / 1e3 / m) / 1000.0);
         long n = Math.max(1, PH_N.get());
         o.addProperty("msSnapshotPerSection", Math.round(PH_SNAP.get() / 1e3 / n) / 1000.0);
-        o.addProperty("sectionsWithNoSnapshotSinceStart", NO_SNAPSHOT.get());
         o.addProperty("msBlocksAndFluidsPerSection", Math.round(PH_MESH.get() / 1e3 / n) / 1000.0);
         o.addProperty("msFinishPerSection", Math.round(PH_FINISH.get() / 1e3 / n) / 1000.0);
         o.addProperty("hiddenBlocksLeftOutSinceStart", HiddenBlocks.SKIPPED.sum());
