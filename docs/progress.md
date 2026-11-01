@@ -2690,15 +2690,11 @@ toggles, fallbacks and the same heap gate.
   `ci/compare.py`'s report marks a rise of 4 MB or more as "between scenes" or "inside the scene"). If it shows up
   again on main: stop and report.
 
-- **villager_trade GameTest, vanilla against itself (found 2026-10-31, P2-2).** Run
-  [41196261046](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41196261046): vanilla-b finished
-  `villager_trade` at tick 25, vanilla-a, vanilla-c and Quicksilver at 46 (same offers); run
-  [41205535911](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41205535911): vanilla-a at 39, the others at
-  46. Vanilla runs have no Quicksilver at all, so something in the GameTest server isn't pinned (the villager's job-site
-  claim is the likely place). Seen twice in four full runs; the harness belongs to the `fix-worldgen-diff` work, so P2-2
-  left it alone. Measured on the way (plain JVM): a thread started before the server thread, or by it, and reflection on a
-  class each change every identity hash the server thread hands out, which is one thing to rule out. Before P2-3 (which changes AI):
-  find what varies and pin it.
+- **villager_trade GameTest, vanilla against itself (found 2026-10-31, P2-2): fix on branch `fix-villager-flake`**
+  (harness only, Andre's decision 2026-11-01: fixed before P2-3 on a branch of its own). Seen in runs 41196261046 and
+  41205535911 (vanilla-b at 25, vanilla-a at 39, against 46). Cause and fix: that branch's `docs/progress.md` and
+  `docs/ci-limits.md` (the GameTest server starts tests at a varying game time, and other tests draw on the level's
+  shared random while one runs; villager_trade now runs in a batch of its own with its randoms pinned).
 
 ## Hand-off
 
