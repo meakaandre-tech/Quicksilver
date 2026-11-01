@@ -30,11 +30,13 @@ public abstract class LevelRendererMixin {
 
     @Inject(method = "prepareChunkRenders", at = @At("HEAD"))
     private void quicksilver$preparePlain(Matrix4fc viewRotation, boolean sortTranslucent, CallbackInfoReturnable<ChunkSectionsToRender> cir) {
+        com.meakaandre.quicksilver.occlusion.GpuOcclusion.viewRotation(viewRotation);
         TerrainRenderer.prepare(((LevelRenderer) (Object) this).visibleSections(), optionsRenderState.chunkSectionFadeInTime, false, sortTranslucent);
     }
 
     @Inject(method = "prepareChunkRendersIndirect", at = @At("HEAD"))
     private void quicksilver$prepareIndirect(Matrix4fc viewRotation, boolean sortTranslucent, CallbackInfoReturnable<ChunkSectionsToRender> cir) {
+        com.meakaandre.quicksilver.occlusion.GpuOcclusion.viewRotation(viewRotation);
         TerrainRenderer.prepare(((LevelRenderer) (Object) this).visibleSections(), optionsRenderState.chunkSectionFadeInTime, true, sortTranslucent);
     }
 

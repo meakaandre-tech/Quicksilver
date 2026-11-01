@@ -1,6 +1,8 @@
 package com.meakaandre.quicksilver.terrain;
 
 import com.meakaandre.quicksilver.bench.GpuCounters;
+import com.meakaandre.quicksilver.occlusion.DepthPyramid;
+import com.meakaandre.quicksilver.occlusion.GpuOcclusion;
 import com.meakaandre.quicksilver.visibility.VisibilityStats;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
@@ -18,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -200,6 +203,7 @@ public final class TerrainRenderer {
     /** The camera position of the frame being extracted (render thread); see {@link BackFaces}. */
     public static void camera(double x, double y, double z) {
         BackFaces.camera(x, y, z);
+        com.meakaandre.quicksilver.occlusion.GpuOcclusion.camera(x, y, z);
     }
 
     static String plainPathName() {
@@ -231,6 +235,9 @@ public final class TerrainRenderer {
      */
     public static void prepare(List<SectionRenderDispatcher.RenderSection> visible, double fadeSeconds, boolean indirect, boolean sort) {
         prepared = false;
+        LATE.clear();
+        CULLED.clear();
+        GpuOcclusion.resetFrame();
         Terrain.beginFrame();
         if (!Terrain.drawing()) return;
         try {
@@ -238,6 +245,9 @@ public final class TerrainRenderer {
             prepareFrame(visible, fadeSeconds, indirect && !Terrain.FORCE_PLAIN);
             prepared = true;
         } catch (Throwable t) {
+            GpuOcclusion.resetFrame();
+            LATE.clear();
+            CULLED.clear();
             Terrain.fail("preparing terrain draws", t, false);
         }
     }
@@ -267,6 +277,9 @@ public final class TerrainRenderer {
         List<TerrainStore.Region> touched = new ArrayList<>();
         skipBackFaces = BackFaces.beginFrame(TerrainPipelines.pipeline(plain, false), TerrainPipelines.pipeline(plain, true));
         UploadBudget.frameVisible(visible);
+        // package 2b: what occlusion culling does this frame (nothing when off)
+        GpuOcclusion.beginFrame(visible, path == Path.INDIRECT, BackFaces.wireframe());
+        boolean culling = GpuOcclusion.active();
 
         boolean audit = GpuCounters.enabled;
         int audited = 0;
@@ -295,7 +308,14 @@ public final class TerrainRenderer {
                 } else {
                     INSTANCES.add(new DynamicGpuData.ChunkSectionInfo(any.originX, any.originY, any.originZ, visibility));
                 }
-                for (int li = 0; li < 2; li++) {
+                // package 2b: solid and cutout drawn now, deferred to the late pass (two-phase) or proven hidden
+                int decision = GpuOcclusion.DRAW;
+                if (culling) decision = classify(section, es);
+                if (decision != GpuOcclusion.DRAW) {
+                    Late late = late(section.getSectionNode(), es, instance);
+                    if (late != null) (decision == GpuOcclusion.DEFER ? LATE : CULLED).add(late);
+                }
+                for (int li = 0; li < 2 && decision == GpuOcclusion.DRAW; li++) {
                     TerrainStore.Entry e = es[li];
                     if (e == null) continue;
                     {
@@ -366,6 +386,8 @@ public final class TerrainRenderer {
                 encoder = writeRegion(device, encoder, r);
             }
             for (List<ArenaDraws> l : FRAME) for (ArenaDraws ad : l) for (RegionDraw rd : ad.regions) rd.ubo = rd.region.ubo;
+            for (Late l : LATE) l.ubo = l.region.ubo;
+            for (Late l : CULLED) l.ubo = l.region.ubo;
             for (TRun run : TRUNS) if (run.region != null) run.ubo = run.region.ubo;
         }
         if (maxIndexCount > 0) RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).requestIndexCount(maxIndexCount);
@@ -663,6 +685,7 @@ public final class TerrainRenderer {
 
     /** Takes the slice of Quicksilver's command list; hands vanilla back the slices of its own. */
     public static GpuBufferSlice[] commandsWritten(GpuBufferSlice[] all, int vanillaLists) {
+        noteCommandUsage(all);
         if (!prepared || path != Path.INDIRECT || vanillaCommandLists != vanillaLists || all.length != vanillaLists + 1) return all;
         commandSlice = all[vanillaLists];
         return Arrays.copyOf(all, vanillaLists);
@@ -681,6 +704,17 @@ public final class TerrainRenderer {
         all.addAll(vanilla);
         all.addAll(INSTANCES);
         return all;
+    }
+
+    /** Vanilla's indirect command slices: their buffer's usage is what package 2b's late command buffer needs. */
+    private static void noteCommandUsage(GpuBufferSlice[] slices) {
+        if (indirectUsage != 0 || slices == null) return;
+        for (GpuBufferSlice sl : slices) {
+            if (sl != null) {
+                indirectUsage = sl.buffer().usage();
+                return;
+            }
+        }
     }
 
     public static void instancesWritten(GpuBufferSlice slice) {
@@ -904,6 +938,300 @@ public final class TerrainRenderer {
             }
         }
         return draws;
+    }
+
+    // ---------------------------------------------------------------- package 2b: occlusion culling
+
+    /** A section whose solid and cutout layers were not drawn in the first part of the frame: its prepared draws. */
+    private static final class Late {
+        final long key;
+        final double x0, y0, z0, x1, y1, z1;
+        final int instance;
+        final TerrainStore.Region region;
+        GpuBuffer ubo;
+        final TerrainStore.Arena[] arena = new TerrainStore.Arena[2];
+        final int[][] count = new int[2][], base = new int[2][];
+        final int[] n = new int[2], whole = new int[2];
+
+        Late(long key, double[] b, int instance, TerrainStore.Region region) {
+            this.key = key;
+            x0 = b[0];
+            y0 = b[1];
+            z0 = b[2];
+            x1 = b[3];
+            y1 = b[4];
+            z1 = b[5];
+            this.instance = instance;
+            this.region = region;
+        }
+    }
+
+    /** This frame: sections deferred to the late pass (two-phase), and sections proven hidden (not drawn). */
+    private static final List<Late> LATE = new ArrayList<>(), CULLED = new ArrayList<>();
+    /** The late pass's draw lists (solid, cutout). */
+    @SuppressWarnings("unchecked")
+    private static final List<ArenaDraws>[] FRAME2 = new List[] {new ArrayList<ArenaDraws>(), new ArrayList<ArenaDraws>()};
+    /** Usage bits of vanilla's indirect command buffer; the late pass's commands go into a buffer of the same kind. */
+    private static int indirectUsage;
+    private static GpuBuffer lateCommands;
+    private static final List<GpuBuffer> RETIRED = new ArrayList<>();
+    private static int retireIn;
+    private static ByteBuffer lateScratch;
+    private static boolean lateIndirect;
+
+    private static final double[] BOX = new double[6];
+
+    /** The box of a section's solid and cutout geometry (world coordinates); false if it has none. */
+    private static boolean box(TerrainStore.Entry[] es, double[] out) {
+        boolean any = false;
+        double ax = Double.POSITIVE_INFINITY, ay = ax, az = ax, bx = Double.NEGATIVE_INFINITY, by = bx, bz = bx;
+        for (int li = 0; li < 2; li++) {
+            TerrainStore.Entry e = es[li];
+            if (e == null || e.part == null) continue;
+            if (!(e.minX <= e.maxX)) return false; // bounds unknown: never culled
+            any = true;
+            ax = Math.min(ax, e.originX + e.minX);
+            ay = Math.min(ay, e.originY + e.minY);
+            az = Math.min(az, e.originZ + e.minZ);
+            bx = Math.max(bx, e.originX + e.maxX);
+            by = Math.max(by, e.originY + e.maxY);
+            bz = Math.max(bz, e.originZ + e.maxZ);
+        }
+        if (!any) return false;
+        out[0] = ax;
+        out[1] = ay;
+        out[2] = az;
+        out[3] = bx;
+        out[4] = by;
+        out[5] = bz;
+        return true;
+    }
+
+    private static int classify(SectionRenderDispatcher.RenderSection section, TerrainStore.Entry[] es) {
+        if (!box(es, BOX)) return GpuOcclusion.DRAW;
+        return GpuOcclusion.classify(section.getSectionNode(), BOX[0], BOX[1], BOX[2], BOX[3], BOX[4], BOX[5]);
+    }
+
+    /** The prepared solid and cutout draws of a section left out of the first part of the frame. */
+    private static Late late(long key, TerrainStore.Entry[] es, int instance) {
+        if (!box(es, BOX)) return null;
+        TerrainStore.Entry any = es[0] != null ? es[0] : es[1];
+        Late l = new Late(key, BOX, instance, any.region);
+        boolean span = path == Path.PLAIN_SINGLE || path == Path.INDIRECT;
+        for (int li = 0; li < 2; li++) {
+            TerrainStore.Entry e = es[li];
+            if (e == null || e.part == null) continue;
+            TerrainStore.Part part = e.part;
+            maxIndexCount = Math.max(maxIndexCount, part.indexCount());
+            int ranges = BackFaces.ranges(part, e, skipBackFaces, span, RANGE_COUNT, RANGE_FIRST);
+            l.arena[li] = part.arena;
+            l.count[li] = new int[ranges];
+            l.base[li] = new int[ranges];
+            l.n[li] = ranges;
+            l.whole[li] = part.indexCount();
+            for (int r = 0; r < ranges; r++) {
+                l.count[li][r] = RANGE_COUNT[r] * 6;
+                l.base[li][r] = part.baseVertex + RANGE_FIRST[r] * 4;
+            }
+        }
+        return l;
+    }
+
+    public static int candidateCount() {
+        return LATE.size();
+    }
+
+    public static int culledCount() {
+        return CULLED.size();
+    }
+
+    /** Tests the deferred sections against a fresh pyramid: the bits of those to draw; the rest join the culled list. */
+    public static BitSet testCandidates(DepthPyramid p) {
+        BitSet visible = new BitSet(LATE.size());
+        for (int i = 0; i < LATE.size(); i++) {
+            Late l = LATE.get(i);
+            if (p.test(l.x0, l.y0, l.z0, l.x1, l.y1, l.z1) == DepthPyramid.Result.VISIBLE) visible.set(i);
+            else CULLED.add(l);
+        }
+        GpuOcclusion.lateResult(visible.cardinality(), LATE.size() - visible.cardinality());
+        return visible;
+    }
+
+    /**
+     * Builds the late pass's draw lists from the deferred sections in {@code visible} and, on the indirect path, writes
+     * their commands into Quicksilver's own command buffer. No render pass may be open.
+     */
+    public static void preparePhase2(BitSet visible, CommandEncoder encoder) {
+        lateVisible = visible;
+        for (List<ArenaDraws> l : FRAME2) l.clear();
+        boolean plain = path != Path.INDIRECT;
+        lateIndirect = !plain && indirectUsage != 0 && instanceSlice != null && vanillaCommandLists >= 0;
+        boolean audit = GpuCounters.enabled;
+        for (int i = visible.nextSetBit(0); i >= 0; i = visible.nextSetBit(i + 1)) {
+            Late l = LATE.get(i);
+            GpuOcclusion.drawnLate(l.key);
+            for (int li = 0; li < 2; li++) {
+                if (l.arena[li] == null) continue;
+                ArenaDraws ad = null;
+                for (ArenaDraws a : FRAME2[li]) if (a.arena == l.arena[li]) ad = a;
+                if (ad == null) {
+                    ad = new ArenaDraws(l.arena[li]);
+                    FRAME2[li].add(ad);
+                }
+                int drawn = 0;
+                RegionDraw rd = null;
+                if (plain) {
+                    rd = ad.byRegion.get(l.region);
+                    if (rd == null) {
+                        rd = new RegionDraw(l.region);
+                        rd.ubo = l.ubo;
+                        ad.byRegion.put(l.region, rd);
+                        ad.regions.add(rd);
+                    }
+                }
+                for (int r = 0; r < l.n[li]; r++) {
+                    drawn += l.count[li][r];
+                    if (plain) rd.add(l.count[li][r], l.base[li][r]);
+                    else ad.commands.add(new DynamicGpuData.IndexedDraw(l.count[li][r], 1, 0, l.base[li][r], l.instance + vanillaInstances));
+                }
+                ad.sectionLayers++;
+                if (rd != null) rd.layers++;
+                if (audit) TerrainStats.layerTriangles(drawn / 3, l.whole[li] / 3, l.n[li]);
+            }
+        }
+        if (!lateIndirect) return;
+        int total = 0;
+        for (List<ArenaDraws> list : FRAME2) for (ArenaDraws ad : list) total += ad.commands.size();
+        if (total == 0) return;
+        long bytes = (long) total * RenderPass.INDIRECT_INDEXED_DRAW_SIZE;
+        GpuDevice device = RenderSystem.getDevice();
+        if (retireIn > 0 && --retireIn == 0) {
+            for (GpuBuffer b : RETIRED) b.close();
+            RETIRED.clear();
+        }
+        if (lateCommands == null || lateCommands.size() < bytes) {
+            if (lateCommands != null) {
+                RETIRED.add(lateCommands);
+                retireIn = 8;
+            }
+            long size = Math.max(64 * 1024, Long.highestOneBit(bytes) * 2);
+            lateCommands = device.createBuffer(() -> "Quicksilver late terrain commands", indirectUsage | GpuBuffer.USAGE_COPY_DST, size);
+        }
+        if (lateScratch == null || lateScratch.capacity() < bytes) {
+            if (lateScratch != null) MemoryUtil.memFree(lateScratch);
+            lateScratch = MemoryUtil.memAlloc((int) Math.max(64 * 1024, bytes));
+        }
+        ByteBuffer b = lateScratch;
+        b.clear();
+        int at = 0;
+        for (List<ArenaDraws> list : FRAME2) {
+            for (ArenaDraws ad : list) {
+                ad.commandStart = at;
+                for (DynamicGpuData.IndexedDraw d : ad.commands) {
+                    b.putInt(d.indexCount()).putInt(d.instanceCount()).putInt(d.firstIndex()).putInt(d.baseVertex()).putInt(d.baseInstance());
+                    at++;
+                }
+            }
+        }
+        b.flip();
+        encoder.writeToBuffer(lateCommands.slice(0, bytes), b);
+    }
+
+    /** Draws the late pass (solid, then cutout) in vanilla's re-opened main pass, with the terrain uniforms bound again. */
+    public static void drawPhase2(RenderPass pass) {
+        boolean plain = path != Path.INDIRECT;
+        if (!plain && !lateIndirect) {
+            // no command buffer of the right kind yet (the first frames): one draw per range, still tested
+            drawLateDirect(pass, false, LATE, visibleLate(), false);
+            return;
+        }
+        RenderSystem.AutoStorageIndexBuffer quads = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
+        GpuBuffer indexBuffer = quads.getBuffer();
+        if (indexBuffer == null || !quads.hasStorage(maxIndexCount)) throw new IllegalStateException("the shared quad index buffer is too small");
+        int draws = 0, layers = 0;
+        for (int li = 0; li < 2; li++) {
+            List<ArenaDraws> list = FRAME2[li];
+            if (list.isEmpty()) continue;
+            pass.setPipeline(TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1)));
+            pass.setIndexBuffer(indexBuffer, quads.type());
+            if (plain) {
+                draws += drawPlain(pass, list);
+            } else {
+                pass.setVertexBuffer(1, instanceSlice);
+                int max = Math.max(1, RenderSystem.getDevice().getDeviceInfo().limits().maxDrawIndirectDrawCount());
+                for (ArenaDraws ad : list) {
+                    int count = ad.commands.size();
+                    if (count == 0) continue;
+                    pass.setVertexBuffer(0, ad.arena.buffer.slice());
+                    long offset = (long) ad.commandStart * RenderPass.INDIRECT_INDEXED_DRAW_SIZE;
+                    for (int done = 0; done < count; ) {
+                        int n = Math.min(max, count - done);
+                        pass.drawIndexedIndirect(lateCommands.slice(offset + (long) done * RenderPass.INDIRECT_INDEXED_DRAW_SIZE,
+                            (long) n * RenderPass.INDIRECT_INDEXED_DRAW_SIZE), n);
+                        done += n;
+                        draws++;
+                    }
+                }
+            }
+            for (ArenaDraws ad : list) layers += ad.sectionLayers;
+        }
+        TerrainStats.drew(draws, layers);
+    }
+
+    private static BitSet lateVisible;
+
+    private static BitSet visibleLate() {
+        return lateVisible;
+    }
+
+    /** Remembers which deferred sections the late pass draws (for the direct fallback). */
+    public static void lateVisible(BitSet visible) {
+        lateVisible = visible;
+    }
+
+    /**
+     * Draws deferred sections one range at a time in {@code pass}: every one ({@code only} null), when the late pass
+     * can't run (no split possible, an error, wireframe), so nothing deferred is ever left undrawn.
+     */
+    public static void drawCandidatesDirect(RenderPass pass, boolean wireframe, BitSet only) {
+        if (LATE.isEmpty() || !prepared) return;
+        for (int i = 0; i < LATE.size(); i++) if (only == null || only.get(i)) GpuOcclusion.drawnLate(LATE.get(i).key);
+        drawLateDirect(pass, wireframe, LATE, only, false);
+    }
+
+    /** CI's occlusion check: the culled sections, in the check's own pass (depth test against the frame's, no writes). */
+    public static void drawCulledForCheck(RenderPass pass) {
+        drawLateDirect(pass, false, CULLED, null, true);
+    }
+
+    private static void drawLateDirect(RenderPass pass, boolean wireframe, List<Late> lates, BitSet only, boolean check) {
+        boolean plain = path != Path.INDIRECT;
+        RenderSystem.AutoStorageIndexBuffer quads = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
+        GpuBuffer indexBuffer = quads.getBuffer();
+        if (indexBuffer == null || !quads.hasStorage(maxIndexCount)) throw new IllegalStateException("the shared quad index buffer is too small");
+        if (!plain && instanceSlice == null) throw new IllegalStateException("no section instances this frame");
+        int draws = 0, layers = 0;
+        for (int li = 0; li < 2; li++) {
+            CompiledRenderPipeline pipeline = check ? TerrainPipelines.check(plain, li == 1)
+                : wireframe ? TerrainPipelines.wireframe(plain) : TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1));
+            if (pipeline == null) continue;
+            pass.setPipeline(pipeline);
+            pass.setIndexBuffer(indexBuffer, quads.type());
+            if (!plain) pass.setVertexBuffer(1, instanceSlice);
+            for (int i = 0; i < lates.size(); i++) {
+                if (only != null && !only.get(i)) continue;
+                Late l = lates.get(i);
+                if (l.arena[li] == null) continue;
+                pass.setVertexBuffer(0, l.arena[li].buffer.slice());
+                if (plain) pass.setUniform("QsRegion", l.ubo);
+                for (int r = 0; r < l.n[li]; r++) {
+                    pass.drawIndexed(l.count[li][r], 1, 0, l.base[li][r], plain ? 0 : l.instance + vanillaInstances);
+                    draws++;
+                }
+                layers++;
+            }
+        }
+        if (!check) TerrainStats.drew(draws, layers);
     }
 
     private static void ensureCapacity(int n) {

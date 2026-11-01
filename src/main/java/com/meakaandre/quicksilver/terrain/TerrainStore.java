@@ -173,6 +173,12 @@ public final class TerrainStore {
         /** CI's translucency check only: what was last written to the index list, and the sort it came from. */
         TranslucencyCheck.Sorted sorted;
         boolean sortedChecked;
+        /**
+         * Package 2b: the box of this layer's vertices (solid and cutout), in blocks from the section origin as the
+         * shader decodes them; empty (min above max) until known.
+         */
+        float minX = Float.POSITIVE_INFINITY, minY = Float.POSITIVE_INFINITY, minZ = Float.POSITIVE_INFINITY;
+        float maxX = Float.NEGATIVE_INFINITY, maxY = Float.NEGATIVE_INFINITY, maxZ = Float.NEGATIVE_INFINITY;
 
         Entry(Region region, int slot, int x, int y, int z) {
             this.region = region;
@@ -591,8 +597,36 @@ public final class TerrainStore {
             e.sorted = s.sorted;
         } else {
             e.part = allocate(device, encoder, region, layerIndex(s.layer), v, count, s.split.faces());
+            bounds(e, v, count);
         }
         liveVertices += count;
+    }
+
+    /**
+     * Package 2b: the box of a layer's 16-byte vertices (positions are 16-bit steps of 1/2048 block from 8 blocks below
+     * the section origin, at bytes 0, 2 and 4 of each vertex), one step wider on every side.
+     */
+    private static void bounds(Entry e, ByteBuffer v, int count) {
+        long a = MemoryUtil.memAddress(v);
+        int x0 = 65535, y0 = 65535, z0 = 65535, x1 = 0, y1 = 0, z1 = 0;
+        for (int i = 0; i < count; i++) {
+            long o = a + (long) i * CompactVertex.BYTES;
+            int x = Short.toUnsignedInt(MemoryUtil.memGetShort(o)), y = Short.toUnsignedInt(MemoryUtil.memGetShort(o + 2)),
+                z = Short.toUnsignedInt(MemoryUtil.memGetShort(o + 4));
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+            if (z < z0) z0 = z;
+            if (z > z1) z1 = z;
+        }
+        if (count == 0) return;
+        e.minX = (x0 - 1) / 2048f - 8f;
+        e.minY = (y0 - 1) / 2048f - 8f;
+        e.minZ = (z0 - 1) / 2048f - 8f;
+        e.maxX = (x1 + 1) / 2048f - 8f;
+        e.maxY = (y1 + 1) / 2048f - 8f;
+        e.maxZ = (z1 + 1) / 2048f - 8f;
     }
 
     /** A new index list for a translucent layer Quicksilver holds: written over the old one (same size), in its place. */
