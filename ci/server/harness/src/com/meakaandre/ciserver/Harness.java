@@ -121,8 +121,8 @@ public final class Harness implements ModInitializer {
                 if (perturb > 0) {
                     for (ServerLevel l : server.getAllLevels()) {
                         for (int i = 0; i < perturb * 37; i++) l.getRandom().nextInt();
-                        l.setDayTime(l.getDayTime() + perturb);
                     }
+                    command(server, "time add " + perturb);
                     for (int i = 0; i < perturb; i++) SeedPin.next();
                     LOG.info("CI GAMETEST PERTURB {}", perturb);
                 }
