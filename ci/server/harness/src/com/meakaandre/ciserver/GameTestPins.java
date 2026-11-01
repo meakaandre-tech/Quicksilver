@@ -41,14 +41,15 @@ final class GameTestPins {
 
     /**
      * At the setup of a test that runs in a batch of its own (villager_trade, environment ci_server_harness:villager_alone):
-     * the level's random and the seed counters re-seeded. Nothing else runs in that batch, so this moves no other test;
-     * its environment has set the time of day already.
+     * the level's random and the seed counters re-seeded and a fixed time of day set (a villager's schedule follows it).
+     * Nothing else runs in that batch, so this moves no other test.
      */
     static synchronized void aloneStart(GameTestHelper h, String name) {
         ServerLevel level = h.getLevel();
         SeedPin.reset(0x6A3E_A10EL ^ name.hashCode());
         level.getRandom().setSeed(SeedPin.mix(name.hashCode()));
-        Harness.LOG.info("CI GAMETEST ALONE {} at game time {}: level random and seed counters re-seeded", name, level.getGameTime());
+        Harness.gameTestCommand(level.getServer(), "time set 1000");
+        Harness.LOG.info("CI GAMETEST ALONE {} at game time {}: level random and seed counters re-seeded, time set 1000", name, level.getGameTime());
     }
 
     /**

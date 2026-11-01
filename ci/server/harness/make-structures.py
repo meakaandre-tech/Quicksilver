@@ -22,10 +22,10 @@ for name, (sx, sy, sz) in SIZES.items():
     print("structure", name, sx, sy, sz)
 
 # fix-villager-flake: villager_trade runs in a GameTest batch of its own (tests are batched by environment), so no other
-# test draws on the level's shared random while it runs; the environment also sets a fixed time of day at the batch's
-# start (a villager's schedule follows it)
+# test draws on the level's shared random while it runs (an empty environment: 26.3 has no time-of-day environment
+# type, so the test sets the time itself)
 env = os.path.join(os.path.dirname(os.path.dirname(os.path.normpath(out))), "test_environment")
 os.makedirs(env, exist_ok=True)
 with open(os.path.join(env, "villager_alone.json"), "w") as f:
-    f.write('{\n  "type": "minecraft:all_of",\n  "definitions": [\n    {"type": "minecraft:time_of_day", "time": 1000}\n  ]\n}\n')
+    f.write('{\n  "type": "minecraft:all_of",\n  "definitions": []\n}\n')
 print("test environment villager_alone")
