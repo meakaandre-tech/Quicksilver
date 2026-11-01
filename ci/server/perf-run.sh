@@ -31,7 +31,7 @@ cp ci-server-harness/ci-server-harness.jar "$srv/mods/" || { echo "ci-server-har
 mc=$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
 case "$SUITE" in
   siftec) bash ci/server/siftec-mods.sh "$srv/mods" || { echo "could not assemble SIFTEC's pack"; exit 1; };;
-  terralith) python3 -I ci/server/modrinth-fetch.py "$mc" "$srv/mods" terralith || { echo "could not fetch Terralith"; exit 1; };;
+  terralith) PACK_CHECK=partial bash ci/pack-fetch.sh terralith "$srv/mods" || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; };;
 esac
 [ -f dist/quicksilver.jar ] || { echo "dist/quicksilver.jar missing"; exit 1; }
 nproc; grep -m1 'model name' /proc/cpuinfo; java -version 2>&1 | head -1

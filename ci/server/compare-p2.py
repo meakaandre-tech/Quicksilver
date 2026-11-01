@@ -12,12 +12,15 @@ server:
     to it (the runner drifts between rounds by more than a scene's saving; a pair shares the drift), and where the time
     went (round 8's JFR, ci/server/perf-jfr.py).
     Every suite of the run (CI_MODE, CI_EXTRA_SUITES, as compare-server.py) with perf scenes must have results.
-    Gate: every run finished with no failed command; in GATED_SCENES the median of the seven per-round ratios is below 1.
+    Gate: every run finished with no failed command; the median of the seven per-round ratios below 1 for core mobs, at
+    most 1.10 for core random (a regression gate: that scene's noise is larger than its saving); others reported.
     Scenes marked `world` in perf-<suite>.txt: every Quicksilver round's saved world equals vanilla round 1's on every
     key where vanilla's rounds (1-8) agree (ci/server/worlddiff.py, the server suite's rule).
   - Logic module (P2-2): every Quicksilver server start (server suite and perf) logs `Quicksilver logic:` with every
     optimisation on; no `Quicksilver logic fallback:` line in any run; no identity hash in the module's sources (P2-1's
     rule: an identity hash moves every later one, and with them the order of vanilla's hash sets).
+  - Create contraptions (SIFTEC's scripted run, harness CiContraption): the bearing assembles, places its frame back
+    when its motor stops and assembles again; the same CI CONTRAPTION line in every run, every expectation met.
   - SIFTEC's own perf and Logic checks are listed as owed, not failed, while SIFTEC reports only
     (CI_SIFTEC_REPORT_ONLY=true; compare-server.py and compare.py handle their own SIFTEC failures, ci/siftec_status.py).
 client:
@@ -35,8 +38,11 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
-# scenes whose MSPT is gated (Quicksilver's median below vanilla's); the rest are reported
-GATED_SCENES = {("core", "mobs"), ("core", "random")}
+# scenes whose MSPT is gated, and the highest median per-round ratio (Quicksilver / vanilla) that passes: the mob scene
+# must be faster (below 1); the random-tick scene only must not regress (Andre, 2026-11-01: at most 1.10, since the
+# harness's pinned random ticks move it by about +-0.04 ms per JVM against a saving of about 0.02 ms;
+# docs/ci-limits.md); the rest are reported
+GATED_SCENES = {("core", "mobs"): 1.0, ("core", "random"): 1.10}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"
 # SIFTEC's suites report only while the workflow's mode job says so (CI_SIFTEC_REPORT_ONLY, ci/siftec_status.py)
@@ -165,14 +171,17 @@ def perf(res, rep, lines, fails, owed, summary):
             ratio = statistics.median(ratios) if ratios else None
             change = "-" if ratio is None else "%+.1f%%" % ((ratio - 1) * 100)
             gated = (suite, scene) in GATED_SCENES
+            limit = GATED_SCENES.get((suite, scene))
             lines.append("| %s | %s | %s (%s) | %s (%s) | %s | %s | %s / %s |" % (
-                scene, "yes" if gated else "reported", fmt(v), ", ".join("%.3f" % x for x in med["vanilla"][1]),
+                scene, ("below %.2f" % limit if limit == 1.0 else "at most %.2f" % limit) if gated else "reported", fmt(v), ", ".join("%.3f" % x for x in med["vanilla"][1]),
                 fmt(q), ", ".join("%.3f" % x for x in med["quicksilver"][1]), ", ".join("%.3f" % x for x in ratios), change,
                 fmt(med["vanilla"][2]), fmt(med["quicksilver"][2])))
             summary.setdefault(suite, {})[scene] = {"vanilla": med["vanilla"][1], "quicksilver": med["quicksilver"][1],
                                                     "vanillaMedian": v, "quicksilverMedian": q, "ratios": ratios, "medianRatio": ratio}
-            if gated and ratio is not None and not ratio < 1:
+            if gated and ratio is not None and limit == 1.0 and not ratio < 1:
                 sink.append("%s perf %s: the median of Quicksilver's per-round MSPT ratios to vanilla is %.3f, not below 1" % (suite, scene, ratio))
+            if gated and ratio is not None and limit != 1.0 and ratio > limit:
+                sink.append("%s perf %s: the median of Quicksilver's per-round MSPT ratios to vanilla is %.3f, over %.2f (a regression)" % (suite, scene, ratio, limit))
             if gated and (len(ratios) < len(PLAIN_ROUNDS)):
                 sink.append("%s perf %s: not every round finished on both sides" % (suite, scene))
 
@@ -249,6 +258,28 @@ def perf(res, rep, lines, fails, owed, summary):
 def server(res, rep):
     fails, owed, lines, summary = [], [], ["# Phase 2 checks (compare-p2.py)\n"], {}
     perf(res, rep, lines, fails, owed, summary)
+
+    # the contraption checks in SIFTEC's scripted run (CiContraption): in every run, every expectation met, the same line
+    # in vanilla's runs and Quicksilver's
+    if "siftec" in expected_suites():
+        sink = owed if "siftec" in REPORT_ONLY_SUITES else fails
+        got = {}
+        for r in ("vanilla-a", "vanilla-b", "vanilla-c", "quicksilver"):
+            m = re.findall(r"CI CONTRAPTION result=(.*)", text(os.path.join(res, "siftec-" + r, "run-server.log")))
+            got[r] = m[-1].strip() if m else None
+        lines.append("## Create contraptions (SIFTEC's scripted run)\n\n| run | result |\n|---|---|")
+        lines += ["| %s | %s |" % (r, v or "missing") for r, v in got.items()]
+        lines.append("")
+        for r, v in got.items():
+            if v is None:
+                sink.append("siftec contraption: no result in %s" % r)
+            elif not v.startswith("allMet=true"):
+                sink.append("siftec contraption %s: an expectation not met (%s)" % (r, v[:300]))
+        for r in ("vanilla-b", "vanilla-c"):
+            if got["vanilla-a"] and got[r] and got[r] != got["vanilla-a"]:
+                sink.append("siftec contraption: vanilla-a and %s differ (%s / %s)" % (r, got["vanilla-a"][:200], got[r][:200]))
+        if got["vanilla-a"] and got["quicksilver"] and got["quicksilver"] != got["vanilla-a"]:
+            sink.append("siftec contraption: quicksilver differs from vanilla (%s / %s)" % (got["quicksilver"][:200], got["vanilla-a"][:200]))
 
     # the Logic module in the server suite's runs (every server start: worldgen, GameTests, scripted, random-tick, heap)
     lines.append("## Logic module in the server suite\n\n| run | status |\n|---|---|")

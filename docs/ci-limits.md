@@ -83,13 +83,27 @@ Why: SIFTEC's jars come from `latest`-style release tags that are rebuilt on eve
 main's run 40827558273 and package 4c's full runs (a round minimap, about 97 more GUI draws per frame in vanilla's runs
 as much as Quicksilver's, and a noisier map scene), and the gates failed with no change in Quicksilver.
 
-**MapMod, while it is being finished (Andre, 2026-10-30):** locked as `*` (any build). The map and hud scenes are
-skipped (`skip` in `scenes/siftec.json`); factory_flat and hologram, where its minimap shows, leave the minimap's screen
-area out of the strict check (`ciStrictMask`, 1056-1280 x 0-240) and gate draw calls against vanilla in the same run
-only (`ciGatedCounts` without draw calls; vanilla's own draws rose by the same ~97 GUI draws with the round-minimap
-build). Its compass strip (also MapMod's) shows in most SIFTEC scenes and stays fully checked. When MapMod is finished:
-its hash goes back in the lock, the map and hud scenes come back with their numbers re-collected, and the strict check
-covers the minimap again.
+**Where the jars come from (Andre, 2026-11-01): `ci/pack-sources.txt`, fetched by `ci/pack-fetch.sh`.** Andre's own
+builds (SIFTEC, its self-test mod, MapMod, Create Fly, Create: New Age, Create Diesel Generators, CreateGunMod,
+NukaTeamGunLib) come only from this repo's `pack-snapshot` release: exact copies, so their daily builds can't change a
+run. `ci/pack-snapshot.txt` records each copy's hash and origin (repo, tag, the tag's commit) and the SIFTEC commit whose
+`.github/smoke-commands.txt` CI checks out with it. Third-party jars (Farmer's Delight, GeckoLib, The Sift, Traveler's
+Backpack, Forge Config API Port, Terralith, Lithostitched, Sodium) come from Modrinth at pinned versions; Fabric API at
+gradle.properties' version. Every one is in the lock, MapMod included again (the first snapshot, 2026-11-01: the set
+whose SIFTEC starts with MapMod's latest, run 41196986066).
+
+**MapMod, while it is being finished (Andre, 2026-10-30):** the map and hud scenes are skipped (`skip` in
+`scenes/siftec.json`); factory_flat and hologram, where its minimap shows, leave the minimap's screen area out of the
+strict check (`ciStrictMask`, 1056-1280 x 0-240) and gate draw calls against vanilla in the same run only
+(`ciGatedCounts` without draw calls). Its compass strip shows in most SIFTEC scenes and stays fully checked. When MapMod
+is finished: the map and hud scenes come back with their numbers re-collected, and the strict check covers the minimap
+again.
+
+**Updating the pack** (the deliberate step): run the `update-pack-snapshot` workflow (Actions, manual, on a branch). It
+runs `ci/update-pack-snapshot.sh`: downloads the current builds of Andre's jars, copies them into `pack-snapshot`,
+reads them back, and commits the new hashes (`ci/pack-lock.txt`) and origins (`ci/pack-snapshot.txt`) to that branch.
+Its `expect` input copies only the set already recorded and changes nothing. Then re-collect the numbers the changed jars
+affect, as below. A third-party jar is updated by hand: its pinned source in `ci/pack-sources.txt` and its hash.
 
 Updating the lock is a deliberate commit: it names the changed jars and re-collects the numbers they affect (baselines
 and limits, by the rules above, from at least 3 clean runs on the new jars, with vanilla's numbers as the reason).
@@ -861,6 +875,7 @@ pixel check gates only where every vanilla run agrees. Three vanilla samples are
 | world diff (core, SIFTEC; and core's random-tick run, P2-1) | each block's state; each block entity's top-level fields; each pending scheduled block and fluid tick; each entity (type, exact position, health, the stack an item entity holds; one without an exact match on the other side is keyed by type and block; UUIDs aren't compared, as worldgen's entities don't repeat theirs) | equal where vanilla agrees |
 | GameTests (core) | each test's result and the tick it finished | equal to vanilla-a; vanilla-b and c must equal vanilla-a too |
 | SIFTEC self-tests | each suite's passed/failed counts | equal to vanilla-a; vanilla-b and c too |
+| Create contraptions (SIFTEC, P2-2) | `CI CONTRAPTION result=...`: at ticks 300, 500 and 700 the mechanical bearing's contraption entities and frame blocks (assembled, placed back after its motor is taken away at 400, assembled again after it returns at 600); the piston's recorded | every expectation met, the same line in every run (`ci/server/compare-p2.py`) |
 | Create train (SIFTEC) | every arrival at a station with its tick, final speed, schedule state | the same line in every run; at least 2 arrivals |
 | network check | the client joins, stays until the run ends, no protocol error or desync line | always |
 | scripted run | every setup command succeeds, the run finishes its ticks | always |
@@ -944,9 +959,17 @@ server work for the random-tick scene). The runner drifts between rounds by 10-2
 saving (entity movement is about 15% of that scene), so the gate compares each round's Quicksilver run with the vanilla
 run next to it, and takes the median of the seven ratios.
 
+**The random-tick scene gates regressions only** (Andre, 2026-11-01): its tick is about 0.55 ms, of which P2-2's work
+(entity movement) saves about 0.02 ms, while the harness's own pinned random ticks and spawning move a run by about
++-0.04 ms per JVM (single rounds 0.87 to 1.19 of the vanilla run next to them). Six full runs gave its median ratio
+-3.5%, -0.9%, +5.0%, +2.8%, +1.4% and -3.0%: no saving can be told from that noise there, so the scene fails only if
+Quicksilver's median ratio is over 1.10, a regression the noise can't explain, and reports the rest. The mob scene
+(-9 to -13% in every run) still has to be faster.
+
 | check | key | gate |
 |---|---|---|
-| perf MSPT (core `mobs`, `random`) | each of rounds 1-7: Quicksilver's MSPT average / the same round's vanilla MSPT average | the median ratio below 1; every round finished on both sides, no failed command |
+| perf MSPT (core `mobs`) | each of rounds 1-7: Quicksilver's MSPT average / the same round's vanilla MSPT average | the median ratio below 1; every round finished on both sides, no failed command |
+| perf MSPT (core `random`) | the same | regression only: the median ratio at most 1.10 (above) |
 | perf MSPT (core `run`; SIFTEC `train`) | the same | reported |
 | perf world (core `mobs`) | each Quicksilver round's saved world against vanilla round 1 (the world diff's keys) | equal where vanilla's eight rounds agree (they agree on every key) |
 | Logic module (P2-2) | every server start of a Quicksilver run (server suite, network check, perf) and every Quicksilver client's own log (`client-*.log`) logs `Quicksilver logic:` with every optimisation on; measure runs' clients log it off; no `Quicksilver logic fallback:` line in any log; no identity hash in its sources; every suite of the run with perf scenes has perf results | always |

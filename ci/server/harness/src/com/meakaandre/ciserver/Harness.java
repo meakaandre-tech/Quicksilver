@@ -494,6 +494,8 @@ public final class Harness implements ModInitializer {
             if (a.tick() != tick || (a.quicksilverOnly() && !quicksilver())) continue;
             if (a.command().startsWith("ci-train ")) {
                 CiTrain.command(server, tick, a.command().substring("ci-train ".length()));
+            } else if (a.command().startsWith("ci-contraption ")) {
+                CiContraption.command(server, tick, a.command().substring("ci-contraption ".length()));
             } else {
                 command(server, a.command());
             }
@@ -623,6 +625,11 @@ public final class Harness implements ModInitializer {
                     if (train != null) {
                         result.addProperty("train", train);
                         LOG.info("CI TRAIN result={}", train);
+                    }
+                    String contraption = CiContraption.result();
+                    if (contraption != null) {
+                        result.addProperty("contraption", contraption);
+                        LOG.info("CI CONTRAPTION result={}", contraption);
                     }
                     write();
                     LOG.info("CI HARNESS RUN DONE: {} ticks, mspt avg {}", tick, result.get("msptAvg"));
