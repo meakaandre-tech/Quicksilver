@@ -527,7 +527,14 @@ def main():
                             sid = json.load(open(f))["scene"]
                             flat = str(((scene_by_id.get(sid) or {}).get("clientOptions") or {}).get("ao", "")).lower() == "false"
                             allowed = round(mv * (1.10 if flat else 1.0), 3) if mv is not None else None
-                            if me.get("checkedPairs") and mq is not None and mv is not None and mq > allowed:
+                            # Andre, 2026-11-01: a scene marked ciMedianReportOnly (factory_flat, an open gap: docs/progress.md)
+                            # has its median reported, not gated
+                            median_soft = bool((scene_by_id.get(sid) or {}).get("ciMedianReportOnly"))
+                            if median_soft and me.get("checkedPairs") and mq is not None and mv is not None:
+                                lines.append(f"{name}/{r}: bench {sid}: median meshing time {mq} ms per section against vanilla's compiler"
+                                             f" {mv} ms ({round(mq / mv, 3) if mv else '-'}x; limit {allowed} ms; {me.get('checkedPairs')} pairs):"
+                                             f" reported, not gated (open gap)\n")
+                            if not median_soft and me.get("checkedPairs") and mq is not None and mv is not None and mq > allowed:
                                 failures.append(f"{name}/{r}: bench {sid}: Quicksilver's median meshing time {mq} ms per section is over"
                                                 f" {'vanilla + 10% (flat-lit) ' if flat else ''}{allowed} ms (vanilla's compiler {mv} ms; same sections,"
                                                 f" same thread; {me.get('checkedPairs')} pairs)")

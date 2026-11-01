@@ -2652,7 +2652,8 @@ right after the other (cumulative since the session started, both orders average
   pairs, Quicksilver / vanilla median 0.955/0.548 (full), 0.592/0.399 (old GPU), 0.438/0.392 (Vulkan): over in all three.
   Six reloads: run 41265540347 (`2bb684b`): 564-574 pairs; median 0.579/0.523 (1.11, full), 0.451/0.420 (1.07, old
   GPU), 0.616/0.533 (1.16, Vulkan); over vanilla in all three, over +10% in two. Mean 2.36/2.44, 2.04/1.90, 2.65/2.60.
-  By Andre's rule (consistently over with 500+ pairs): a real gap; stopped and reported. Every other check green
+  By Andre's rule (consistently over with 500+ pairs): a real gap; stopped and reported. Then (Andre: two attempts,
+  then report only): both attempts kept factory_flat over; its median is now reported, not gated (open bug, above). Every other check green
   (core, the rest of SIFTEC, the server suite). Review of everything since `d81fb0a` (the squash included): rebase
   intact, no mesher/Memory-module interaction found; its notes on the 450-pair estimate and two stale notes acted on.
 - **Runs**: 41196986066 (`bc6e3be`, full) green; 41202837388 (`790864d`, quick, report wording) green. Core: every
@@ -2705,6 +2706,24 @@ mesher against `-Dquicksilver.debug.vanillaMesher=true` (vanilla's compiler, eve
 in budget while flying).
 
 ## Open bugs
+
+- **factory_flat meshing gap, package 4c (Andre, 2026-11-01): reported, not gated.** Like-for-like median,
+  Quicksilver / vanilla's compiler (ms, same sections, same thread, 564-576 pairs):
+
+  | run | full | old GPU | Vulkan |
+  |---|---|---|---|
+  | 41265540347 (before the attempts) | 0.579 / 0.523 (1.11) | 0.451 / 0.420 (1.07) | 0.616 / 0.533 (1.16) |
+  | 41279066777 (attempt 1: snapshot only once something is meshed) | 0.617 / 0.556 (1.11) | 0.857 / 0.592 (1.45) | 0.437 / 0.289 (1.51) |
+  | 41282917566 (profile only) | 0.629 / 0.523 (1.20) | 0.629 / 0.546 (1.15) | 0.510 / 0.313 (1.63) |
+  | 41288328893 (attempt 2: each block read once, no divisions) | 0.929 / 0.598 (1.55) | 1.032 / 0.711 (1.45) | 0.457 / 0.409 (1.12) |
+
+  What the profile shows (`checkProfile` in the bench report): no factory_flat section is only air and block entities
+  (attempt 1's path was never taken); the gap is in sections with few blocks drawn: 1-16 drawn, Quicksilver 1.35-1.52x
+  vanilla; 17-256, 1.06-1.15x; 257+, 0.90-1.01x. In those sections almost all of Quicksilver's time is the loop over the
+  4096 positions (a 3-block section: loop 563 us, vanilla 355 us for all of it); the snapshot (3-7 us) and finish
+  (14-23 us) are small. Attempt 2 (the read path per position) did not move it, so the cost per position is elsewhere
+  in the loop (not found). Every other scene is under vanilla. The vanilla side's own median moves 0.29-0.71 ms between
+  runs on the same jars.
 
 - **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from
   this repo's `pack-snapshot` release (docs/ci-limits.md, "Pack lock"), SIFTEC's suites gate again
