@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class SeedPin {
     private static final ConcurrentHashMap<String, AtomicLong> COUNTERS = new ConcurrentHashMap<>();
     private static volatile long epoch = 0x51C5_17EDL;
+    /** Threads whose sequence was started again on their own (resetThread), and their new fixed points. */
+    private static final ConcurrentHashMap<String, Long> THREAD_EPOCH = new ConcurrentHashMap<>();
 
     private SeedPin() {
     }
@@ -20,13 +22,25 @@ public final class SeedPin {
     public static long next() {
         String thread = Thread.currentThread().getName();
         long n = COUNTERS.computeIfAbsent(thread, t -> new AtomicLong()).getAndIncrement();
-        return mix(epoch ^ thread.hashCode() * 0x9E3779B97F4A7C15L ^ n * 0xC2B2AE3D27D4EB4FL);
+        long e = THREAD_EPOCH.getOrDefault(thread, epoch);
+        return mix(e ^ thread.hashCode() * 0x9E3779B97F4A7C15L ^ n * 0xC2B2AE3D27D4EB4FL);
     }
 
     /** Starts every thread's sequence again from a new fixed point (the scripted run's tick 0). */
     public static void reset(long newEpoch) {
         COUNTERS.clear();
+        THREAD_EPOCH.clear();
         epoch = newEpoch;
+    }
+
+    /**
+     * Starts only the calling thread's sequence again from a new fixed point (the GameTest pins, mid-run: the worldgen
+     * and IO threads keep their own sequences, which have no fixed relation to that moment).
+     */
+    public static void resetThread(long newEpoch) {
+        String thread = Thread.currentThread().getName();
+        THREAD_EPOCH.put(thread, newEpoch);
+        COUNTERS.put(thread, new AtomicLong());
     }
 
     public static long mix(long z) {

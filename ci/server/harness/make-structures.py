@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Writes the GameTest suite's empty structures (each test builds its machine in code) as SNBT.
+"""Writes the GameTest suite's empty structures (each test builds its machine in code) as SNBT, and its test
+environments (data/ci_server_harness/test_environment/).
 
 usage: make-structures.py OUT_DIR   (OUT_DIR = .../data/ci_server_harness/gametest/structure)
 Same layout as Fabric API's own empty test structure: an old DataVersion (the game upgrades it on load) and every
@@ -19,3 +20,12 @@ for name, (sx, sy, sz) in SIZES.items():
         f.write("{\n    DataVersion: 2730,\n    size: [%d, %d, %d],\n    data: [\n%s\n    ],\n    entities: [],\n"
                 "    palette: [\n        \"minecraft:air\"\n    ]\n}\n" % (sx, sy, sz, rows))
     print("structure", name, sx, sy, sz)
+
+# fix-villager-flake: villager_trade runs in a GameTest batch of its own (tests are batched by environment), so no other
+# test draws on the level's shared random while it runs (an empty environment: 26.3 has no time-of-day environment
+# type, so the test sets the time itself)
+env = os.path.join(os.path.dirname(os.path.dirname(os.path.normpath(out))), "test_environment")
+os.makedirs(env, exist_ok=True)
+with open(os.path.join(env, "villager_alone.json"), "w") as f:
+    f.write('{\n  "type": "minecraft:all_of",\n  "definitions": []\n}\n')
+print("test environment villager_alone")

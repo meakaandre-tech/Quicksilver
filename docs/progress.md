@@ -2690,11 +2690,11 @@ toggles, fallbacks and the same heap gate.
   `ci/compare.py`'s report marks a rise of 4 MB or more as "between scenes" or "inside the scene"). If it shows up
   again on main: stop and report.
 
-- **villager_trade GameTest, vanilla against itself (found 2026-10-31, P2-2): fix on branch `fix-villager-flake`**
-  (harness only, Andre's decision 2026-11-01: fixed before P2-3 on a branch of its own). Seen in runs 41196261046 and
-  41205535911 (vanilla-b at 25, vanilla-a at 39, against 46). Cause and fix: that branch's `docs/progress.md` and
-  `docs/ci-limits.md` (the GameTest server starts tests at a varying game time, and other tests draw on the level's
-  shared random while one runs; villager_trade now runs in a batch of its own with its randoms pinned).
+- **villager_trade GameTest, vanilla against itself (found 2026-10-31, P2-2): fixed**, merged as `1c1ea7c` (squash of
+  `fix-villager-flake`, 2026-11-01; harness only): seen in runs 41196261046 and 41205535911 (vanilla-b at 25, vanilla-a
+  at 39, against 46). The GameTest server started tests at a varying game time and other tests drew on the level's
+  shared random while it ran; now the first test re-seeds once, villager_trade runs in a batch of its own and re-seeds
+  at its setup, and its villager's random and sensors are pinned (`docs/ci-limits.md`, "What makes runs repeat").
 
 ## Hand-off
 
