@@ -16,7 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
-| package 4c (Quicksilver's mesher) | `package-4c`, not merged | Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
+| package 4c (Quicksilver's mesher) | merging | Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
 | phase 2, P2-0 (server harness) | merged | server suite, server bench numbers, research; see "Phase 2, P2-0" below |
 | package 3 (translucency) | merged | `143defe`, main green (run 40197881761), `latest` rebuilt |
@@ -2717,6 +2717,10 @@ in budget while flying).
   | 41282917566 (profile only) | 0.629 / 0.523 (1.20) | 0.629 / 0.546 (1.15) | 0.510 / 0.313 (1.63) |
   | 41288328893 (attempt 2: each block read once, no divisions) | 0.929 / 0.598 (1.55) | 1.032 / 0.711 (1.45) | 0.457 / 0.409 (1.12) |
   | 41292472502 (`d6e25e0`, final, reported only; full run green) | 0.416 / 0.309 (1.35) | 1.000 / 0.759 (1.32) | 0.940 / 0.604 (1.56) |
+  | 41298022851 (`eb28a35`, attempts removed, profile kept; full run green) | 0.572 / 0.561 (1.02) | 0.295 / 0.281 (1.05) | 0.426 / 0.432 (0.99) |
+
+  In that run, by blocks drawn: 1-16, 1.30-1.43; 17-256, 1.02-1.09; 257+, 0.93-0.97 (the gap is still the nearly-empty
+  sections; the overall median moved under 1.10 with the run-to-run noise).
 
   What the profile shows (`checkProfile` in the bench report): no factory_flat section is only air and block entities
   (attempt 1's path was never taken); the gap is in sections with few blocks drawn: 1-16 drawn, Quicksilver 1.35-1.52x
