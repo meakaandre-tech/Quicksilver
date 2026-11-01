@@ -59,9 +59,8 @@ jobs:
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "logs=ci-logs-$(echo "$GITHUB_REF_NAME" | tr '/' '-')" >> "$GITHUB_OUTPUT"
-          # SIFTEC's suites (client and server) report only, failing nothing, until SIFTEC starts with MapMod's latest
-          # build again (Andre, 2026-10-31; docs/progress.md, open items). Core and Terralith gate as usual. Set to
-          # false to make SIFTEC gate again.
+          # SIFTEC's suites (client and server) gate like core and Terralith (false) since the pack snapshot (93e7a3e,
+          # 2026-11-01). Set to true to make them report only, failing nothing (as from 2026-10-31 until then).
           echo "siftec_report_only=false" >> "$GITHUB_OUTPUT"
           # the SIFTEC commit whose .github (smoke-commands.txt) goes with the pack-snapshot's SIFTEC build
           echo "siftec_commit=$(sed -n 's/^siftec_commit=//p' ci/pack-snapshot.txt)" >> "$GITHUB_OUTPUT"

@@ -42,7 +42,7 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 # must be faster (below 1); the random-tick scene only must not regress (Andre, 2026-11-01: at most 1.10, since the
 # harness's pinned random ticks move it by about +-0.04 ms per JVM against a saving of about 0.02 ms;
 # docs/ci-limits.md); the rest are reported
-GATED_SCENES = {("core", "mobs"): 1.0, ("core", "random"): 1.10}
+GATED_SCENES = {("core", "mobs"): ("faster", 1.0), ("core", "random"): ("no-regression", 1.10)}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"
 # SIFTEC's suites report only while the workflow's mode job says so (CI_SIFTEC_REPORT_ONLY, ci/siftec_status.py)
@@ -171,16 +171,16 @@ def perf(res, rep, lines, fails, owed, summary):
             ratio = statistics.median(ratios) if ratios else None
             change = "-" if ratio is None else "%+.1f%%" % ((ratio - 1) * 100)
             gated = (suite, scene) in GATED_SCENES
-            limit = GATED_SCENES.get((suite, scene))
+            kind, limit = GATED_SCENES.get((suite, scene), (None, None))
             lines.append("| %s | %s | %s (%s) | %s (%s) | %s | %s | %s / %s |" % (
-                scene, ("below %.2f" % limit if limit == 1.0 else "at most %.2f" % limit) if gated else "reported", fmt(v), ", ".join("%.3f" % x for x in med["vanilla"][1]),
+                scene, ("below %.2f" % limit if kind == "faster" else "at most %.2f" % limit) if gated else "reported", fmt(v), ", ".join("%.3f" % x for x in med["vanilla"][1]),
                 fmt(q), ", ".join("%.3f" % x for x in med["quicksilver"][1]), ", ".join("%.3f" % x for x in ratios), change,
                 fmt(med["vanilla"][2]), fmt(med["quicksilver"][2])))
             summary.setdefault(suite, {})[scene] = {"vanilla": med["vanilla"][1], "quicksilver": med["quicksilver"][1],
                                                     "vanillaMedian": v, "quicksilverMedian": q, "ratios": ratios, "medianRatio": ratio}
-            if gated and ratio is not None and limit == 1.0 and not ratio < 1:
-                sink.append("%s perf %s: the median of Quicksilver's per-round MSPT ratios to vanilla is %.3f, not below 1" % (suite, scene, ratio))
-            if gated and ratio is not None and limit != 1.0 and ratio > limit:
+            if gated and ratio is not None and kind == "faster" and not ratio < limit:
+                sink.append("%s perf %s: the median of Quicksilver's per-round MSPT ratios to vanilla is %.3f, not below %.2f" % (suite, scene, ratio, limit))
+            if gated and ratio is not None and kind == "no-regression" and ratio > limit:
                 sink.append("%s perf %s: the median of Quicksilver's per-round MSPT ratios to vanilla is %.3f, over %.2f (a regression)" % (suite, scene, ratio, limit))
             if gated and (len(ratios) < len(PLAIN_ROUNDS)):
                 sink.append("%s perf %s: not every round finished on both sides" % (suite, scene))
@@ -275,6 +275,9 @@ def server(res, rep):
                 sink.append("siftec contraption: no result in %s" % r)
             elif not v.startswith("allMet=true"):
                 sink.append("siftec contraption %s: an expectation not met (%s)" % (r, v[:300]))
+            elif any(("t%d:bearing:" % t) not in v for t in (300, 500, 700)):
+                # every check of the script must be in the line (a shorter line in every run would match itself)
+                sink.append("siftec contraption %s: the bearing's checks at ticks 300, 500 and 700 aren't all in the line (%s)" % (r, v[:300]))
         for r in ("vanilla-b", "vanilla-c"):
             if got["vanilla-a"] and got[r] and got[r] != got["vanilla-a"]:
                 sink.append("siftec contraption: vanilla-a and %s differ (%s / %s)" % (r, got["vanilla-a"][:200], got[r][:200]))

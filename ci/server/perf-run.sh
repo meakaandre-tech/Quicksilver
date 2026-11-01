@@ -28,7 +28,6 @@ srv=$root/srv
 rm -rf "$srv"
 bash ci/server/fetch-server.sh "$srv" || { echo "could not fetch the server"; exit 1; }
 cp ci-server-harness/ci-server-harness.jar "$srv/mods/" || { echo "ci-server-harness.jar missing"; exit 1; }
-mc=$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
 case "$SUITE" in
   siftec) bash ci/server/siftec-mods.sh "$srv/mods" || { echo "could not assemble SIFTEC's pack"; exit 1; };;
   terralith) PACK_CHECK=partial bash ci/pack-fetch.sh terralith "$srv/mods" || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; };;

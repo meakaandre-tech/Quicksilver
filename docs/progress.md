@@ -2622,6 +2622,14 @@ block, world diff, heap, all 30 self-test suites, the Create train (11 arrivals,
 (assembled, placed back, assembled again) equal to vanilla; SIFTEC's client scenes pass; core and Terralith as before;
 no Logic fallback.
 
+**Review of the newest additions** (fresh agent, 2026-11-01: the contraption check, the random-tick gate, the two main
+merges; scratchpad `review-p2-2-new.md`): no must-fix, 2 should-fix, 6 nits. Fixed: the piston taken out of the
+contraption check and its motors no longer removed (its motors run from the frozen setup, so its state at a tick isn't a
+fixed point; the removal changed the end state with no reason); the gate requires the bearing's three checks in the
+line; the MSPT gates name their kind ("faster" below 1, "no-regression" at most 1.10) instead of keying on the value;
+a docs line that SIFTEC's heap run and `train` perf scene changed with the check; an unused line in perf-run.sh; main's
+stale report-only comment in build.yml. Left: the first main merge (`8492530`) also carries new work.
+
 ### Andre's decisions (2026-11-01)
 
 1. `block-collisions` on by default. Not merged until a full run with SIFTEC gating passes (SIFTEC's world diff,
