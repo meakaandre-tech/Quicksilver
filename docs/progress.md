@@ -2716,6 +2716,7 @@ in budget while flying).
   | 41279066777 (attempt 1: snapshot only once something is meshed) | 0.617 / 0.556 (1.11) | 0.857 / 0.592 (1.45) | 0.437 / 0.289 (1.51) |
   | 41282917566 (profile only) | 0.629 / 0.523 (1.20) | 0.629 / 0.546 (1.15) | 0.510 / 0.313 (1.63) |
   | 41288328893 (attempt 2: each block read once, no divisions) | 0.929 / 0.598 (1.55) | 1.032 / 0.711 (1.45) | 0.457 / 0.409 (1.12) |
+  | 41292472502 (`d6e25e0`, final, reported only; full run green) | 0.416 / 0.309 (1.35) | 1.000 / 0.759 (1.32) | 0.940 / 0.604 (1.56) |
 
   What the profile shows (`checkProfile` in the bench report): no factory_flat section is only air and block entities
   (attempt 1's path was never taken); the gap is in sections with few blocks drawn: 1-16 drawn, Quicksilver 1.35-1.52x
