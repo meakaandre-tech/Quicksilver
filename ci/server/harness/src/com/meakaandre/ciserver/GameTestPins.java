@@ -13,7 +13,8 @@ import net.minecraft.world.entity.ai.Brain;
  * after start-up (game time 3 in one run, 27 in another), so the level's shared random, the seed counters and the
  * randoms an entity takes when it is made were at different points from the tests' first tick: villager_trade finished
  * at tick 25, 31, 39 or 46. Here the first test's setup re-seeds the level's random and the seed counters and sets a
- * fixed day time, once, and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
+ * fixed day time, once; from then on each level's random is re-seeded from the game time at the start of every tick;
+ * and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
  * spawned, so a test plays the same from its first tick whenever it starts. The same in vanilla's runs and Quicksilver's.
  */
 final class GameTestPins {
@@ -36,6 +37,19 @@ final class GameTestPins {
         level.getRandom().setSeed(SeedPin.mix(level.dimension().identifier().toString().hashCode()));
         Harness.gameTestCommand(level.getServer(), "time set 1000");
         Harness.LOG.info("CI GAMETEST START at game time {}: level random and seed counters re-seeded, time set 1000", gt);
+    }
+
+    /**
+     * At the start of every server tick, once tests have begun: each level's random re-seeded from the game time. Things
+     * outside a test draw on the level's shared random a varying number of times (later tests being placed as their
+     * area loads), and a villager's job search draws its retry delays from it, so one stray draw moved villager_trade by
+     * a tick (35 against 36, run 41283700307). Re-seeded each tick, a stray draw can't carry into the ticks after it.
+     */
+    static void tickStart(net.minecraft.server.MinecraftServer server) {
+        if (!started) return;
+        for (ServerLevel level : server.getAllLevels()) {
+            level.getRandom().setSeed(SeedPin.mix(level.getGameTime() * 0x9E3779B97F4A7C15L ^ level.dimension().identifier().toString().hashCode()));
+        }
     }
 
     /**
