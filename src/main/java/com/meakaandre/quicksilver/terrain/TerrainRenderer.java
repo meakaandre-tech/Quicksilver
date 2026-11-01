@@ -245,7 +245,7 @@ public final class TerrainRenderer {
             prepareFrame(visible, fadeSeconds, indirect && !Terrain.FORCE_PLAIN);
             prepared = true;
         } catch (Throwable t) {
-            GpuOcclusion.resetFrame();
+            GpuOcclusion.abandonFrame();
             LATE.clear();
             CULLED.clear();
             Terrain.fail("preparing terrain draws", t, false);

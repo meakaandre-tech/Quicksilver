@@ -87,7 +87,8 @@ public final class GpuOcclusion {
     private static boolean indirectFrame;
     private static boolean stillValid, buildStill;
     private static boolean wrappedThisFrame;
-    private static int framesWithoutMatrices, projectionMismatches;
+    private static int framesWithoutMatrices, projectionMismatches, framesWithoutOpaqueHook;
+    private static boolean opaqueHookSeen, deferredUnhandled;
     private static int lastW, lastH;
     private static Stamp prevStamp;
 
@@ -193,7 +194,19 @@ public final class GpuOcclusion {
         indirectFrame = indirect;
         OcclusionStats.beginFrame();
         if (configured == null) start();
+        // the last frame left sections out but the hook after the opaque terrain group never ran: it no longer fits
+        if (deferredUnhandled) {
+            deferredUnhandled = false;
+            fail("checking hooks", new IllegalStateException("hook that did not run: MainPassMixin#quicksilver$afterOpaque"));
+        }
         if (!"on".equals(state)) return;
+        // nothing is left out until the hook after the opaque terrain group is known to run (every frame vanilla draws terrain)
+        if (!opaqueHookSeen) {
+            if (++framesWithoutOpaqueHook == 600) {
+                fail("checking hooks", new IllegalStateException("hook that did not apply: MainPassMixin#quicksilver$afterOpaque"));
+            }
+            return;
+        }
         try {
             if (wireframe) return;
             float[] p = viewSeen ? PROJECTIONS.get(RenderSystem.getProjectionMatrixBuffer()) : null;
@@ -254,11 +267,13 @@ public final class GpuOcclusion {
                     return DRAW;
                 }
                 OcclusionStats.candidates++;
+                deferredUnhandled = true;
                 return DEFER;
             }
             case STILL -> {
                 if (stillValid && latest.test(x0, y0, z0, x1, y1, z1) != DepthPyramid.Result.VISIBLE) {
                     OcclusionStats.culledStill++;
+                    deferredUnhandled = true;
                     return CULL;
                 }
                 OcclusionStats.phase1++;
@@ -275,6 +290,12 @@ public final class GpuOcclusion {
         frame = Frame.NONE;
         buildStill = false;
         stillValid = false;
+    }
+
+    /** Render thread: preparing this frame's terrain failed, so nothing was left out after all. */
+    public static void abandonFrame() {
+        resetFrame();
+        deferredUnhandled = false;
     }
 
     /** Whether this frame culls or defers anything (classify is then asked for each section). */
@@ -299,6 +320,8 @@ public final class GpuOcclusion {
      * pyramid when one is due. CI: checks the culled sections.
      */
     public static void afterOpaque(RenderPass pass, boolean wireframe) {
+        opaqueHookSeen = true;
+        deferredUnhandled = false;
         if (frame == Frame.NONE) return;
         boolean twoPhase = frame == Frame.TWO_PHASE;
         SplitPass sp = SplitPass.of(pass);
