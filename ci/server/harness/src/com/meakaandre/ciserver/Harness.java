@@ -499,8 +499,6 @@ public final class Harness implements ModInitializer {
         tickStart = System.nanoTime();
         if (stage == Stage.DONE && ++extraTicks <= 20) LOG.info("CI HARNESS EXTRA TICK {} after the run", extraTicks);
         gameTime = server.overworld().getGameTime();
-        // the GameTest server: every level's random from the game time, each tick (GameTestPins)
-        if (gameTestPins) GameTestPins.tickStart(server);
         if (stage != Stage.RUNNING) return;
         if (HEAP && tick == 0) command(server, "tick sprint " + ticks);
         for (At a : timed) {

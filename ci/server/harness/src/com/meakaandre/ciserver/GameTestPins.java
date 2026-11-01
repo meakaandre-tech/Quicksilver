@@ -13,8 +13,8 @@ import net.minecraft.world.entity.ai.Brain;
  * after start-up (game time 3 in one run, 27 in another), so the level's shared random, the seed counters and the
  * randoms an entity takes when it is made were at different points from the tests' first tick: villager_trade finished
  * at tick 25, 31, 39 or 46. Here the first test's setup re-seeds the level's random and the seed counters and sets a
- * fixed day time, once; from then on each level's random is re-seeded from the game time at the start of every tick;
- * and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
+ * fixed day time, once; villager_trade runs in a batch of its own (its own test environment, with a fixed time of day)
+ * and re-seeds at its own setup, since other tests drew on the level's shared random while it ran; and a test's brain mob gets a fixed random seed and fixed sensor offsets right after it is
  * spawned, so a test plays the same from its first tick whenever it starts. The same in vanilla's runs and Quicksilver's.
  */
 final class GameTestPins {
@@ -40,16 +40,15 @@ final class GameTestPins {
     }
 
     /**
-     * At the start of every server tick, once tests have begun: each level's random re-seeded from the game time. Things
-     * outside a test draw on the level's shared random a varying number of times (later tests being placed as their
-     * area loads), and a villager's job search draws its retry delays from it, so one stray draw moved villager_trade by
-     * a tick (35 against 36, run 41283700307). Re-seeded each tick, a stray draw can't carry into the ticks after it.
+     * At the setup of a test that runs in a batch of its own (villager_trade, environment ci_server_harness:villager_alone):
+     * the level's random and the seed counters re-seeded. Nothing else runs in that batch, so this moves no other test;
+     * its environment has set the time of day already.
      */
-    static void tickStart(net.minecraft.server.MinecraftServer server) {
-        if (!started) return;
-        for (ServerLevel level : server.getAllLevels()) {
-            level.getRandom().setSeed(SeedPin.mix(level.getGameTime() * 0x9E3779B97F4A7C15L ^ level.dimension().identifier().toString().hashCode()));
-        }
+    static synchronized void aloneStart(GameTestHelper h, String name) {
+        ServerLevel level = h.getLevel();
+        SeedPin.reset(0x6A3E_A10EL ^ name.hashCode());
+        level.getRandom().setSeed(SeedPin.mix(name.hashCode()));
+        Harness.LOG.info("CI GAMETEST ALONE {} at game time {}: level random and seed counters re-seeded", name, level.getGameTime());
     }
 
     /**

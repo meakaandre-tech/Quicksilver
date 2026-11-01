@@ -316,10 +316,10 @@ public final class HarnessTests {
     }
 
     /** An unemployed villager takes the lectern's job; then one trade with it. */
-    @GameTest(structure = BOX16, maxTicks = 2400)
+    @GameTest(structure = BOX16, maxTicks = 2400, environment = "ci_server_harness:villager_alone")
     public void villagerTrade(GameTestHelper h) {
-        // the server's first test re-seeds the randoms and fixes the day time, before any setup (GameTestPins)
-        GameTestPins.batchStart(h);
+        // a batch of its own (its environment); re-seeded at its own setup (GameTestPins)
+        GameTestPins.aloneStart(h, "villager_trade");
         BlockState stone = Blocks.STONE.defaultBlockState(), glass = Blocks.GLASS.defaultBlockState();
         fill(h, 0, 0, 0, 7, 0, 7, stone);
         for (int i = 0; i <= 7; i++) {
