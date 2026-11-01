@@ -9,8 +9,6 @@
  */
 package com.meakaandre.quicksilver.mixin.logic;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.meakaandre.quicksilver.logic.GateBehaviours;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +27,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** P2-3, logic.gate-behaviours ({@link GateBehaviours}). */
@@ -89,17 +88,19 @@ public abstract class GateBehaviorMixin<E extends LivingEntity> {
         ci.cancel();
     }
 
-    /** Vanilla's run policies, as loops: run one starts stopped members until one starts; try all starts each. */
-    @WrapOperation(method = "tryStart", at = @At(value = "INVOKE",
+    /**
+     * Vanilla's run policies, as loops: run one starts stopped members until one starts; try all starts each. A redirect
+     * (the call to the policy in the gate's start), so the hook check sees it land; any other policy is vanilla's.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Redirect(method = "tryStart", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/world/entity/ai/behavior/GateBehavior$RunningPolicy;apply(Ljava/util/stream/Stream;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;J)V"))
-    private void quicksilver$policy(GateBehavior.RunningPolicy policy, Stream<BehaviorControl<? super E>> stream, ServerLevel level, LivingEntity body,
-                                    long time, Operation<Void> original) {
+    private void quicksilver$policy(GateBehavior.RunningPolicy policy, Stream stream, ServerLevel level, LivingEntity body, long time) {
         boolean runOne = policy == GateBehavior.RunningPolicy.RUN_ONE;
         if (!GateBehaviours.SWITCH.on || !(runOne || policy == GateBehavior.RunningPolicy.TRY_ALL)) {
-            original.call(policy, stream, level, body, time);
+            policy.apply(stream, level, body, time);
             return;
         }
-        @SuppressWarnings("unchecked")
         E e = (E) body;
         var entries = this.quicksilver$entries();
         for (int i = 0; i < entries.size(); i++) {
