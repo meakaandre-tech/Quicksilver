@@ -892,9 +892,9 @@ def main():
                     for label, k in stats:
                         lim = vc[k] + allowance.get(f"{name}/{prof}/{sid}", 0) if sid in translucent else round(vc[k] * RISE + SLACK["drawCallsPerFrame"], 2)
                         # package 2b (Andre, 2026-11-02): at or under vanilla in every scene (plus an allowance he decided)
-                        strict = vc[k] + allowance.get(f"{name}/{prof}/{sid}", 0)
-                        if sid not in translucent and c[k] > strict:
-                            failures.append(f"{name}/{prof}/{sid}: {label} {c[k]} draw calls per frame, more than vanilla's {strict} in the same run (package 2b: at or under vanilla in every scene)")
+                        vlimit = vc[k] + allowance.get(f"{name}/{prof}/{sid}", 0)
+                        if sid not in translucent and c[k] > vlimit:
+                            failures.append(f"{name}/{prof}/{sid}: {label} {c[k]} draw calls per frame, more than vanilla's {vlimit} in the same run (package 2b: at or under vanilla in every scene)")
                         if c[k] > lim:
                             failures.append(f"{name}/{prof}/{sid}: {label} {c[k]} draw calls per frame, more than {lim} (vanilla's {vc[k]} in the same run"
                                             f"{(' + ' + str(allowance[name + '/' + prof + '/' + sid])) if sid in translucent and name + '/' + prof + '/' + sid in allowance else '' if sid in translucent else ' x 1.10 + 2'}; fps {c.get('fps')} against vanilla's {vc.get('fps')})")

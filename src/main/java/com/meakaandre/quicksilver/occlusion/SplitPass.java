@@ -153,7 +153,7 @@ public final class SplitPass implements InvocationHandler {
             default -> {
                 // any other call that is not a draw may set pass state this class does not replay (one a later
                 // renderpearl adds): the pass is then never split
-                if (!name.startsWith("draw")) unknownState = name;
+                if (!name.toLowerCase(java.util.Locale.ROOT).contains("draw")) unknownState = name;
                 yield null;
             }
         };
