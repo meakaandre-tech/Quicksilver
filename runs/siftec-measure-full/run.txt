@@ -1,0 +1,93 @@
+suite=siftec run=measure-full
+measure run JVM properties: -Dquicksilver.ci.measureOnly=true
+measure run: contains_renderer taken out of the jar's fabric.mod.json (Indigo draws)
+pack lock: set siftec matches ci/pack-lock.txt
+total 65976
+-rw-r--r-- 1 runner runner  3486296 Nov  2 04:54 FarmersDelight-26.3-3.6.27%2Brefabricated.jar
+-rw-r--r-- 1 runner runner  1779949 Nov  2 04:54 cgs-fabric-26.3.jar
+-rw-r--r-- 1 runner runner 21140042 Nov  2 04:54 create-fly-26.3.jar
+-rw-r--r-- 1 runner runner  1031418 Nov  2 04:54 create-new-age-26.3.jar
+-rw-r--r-- 1 runner runner  3500335 Nov  2 04:54 createdieselgenerators-fabric-26.3.jar
+-rw-r--r-- 1 runner runner  2620967 Nov  2 04:54 fabric-api.jar
+-rw-r--r-- 1 runner runner   609574 Nov  2 04:54 forge-config-api-port.jar
+-rw-r--r-- 1 runner runner  1191230 Nov  2 04:54 geckolib-fabric-26.3-5.5.7.jar
+-rw-r--r-- 1 runner runner  2825077 Nov  2 04:54 mapmod-26.3.jar
+-rw-r--r-- 1 runner runner 20632725 Nov  2 04:54 mielon%27s-the-sift-1.1.2-mc26.3-fabric.jar
+-rw-r--r-- 1 runner runner  3810197 Nov  2 04:54 ntgl-fabric-26.3.jar
+-rw-r--r-- 1 runner runner   640623 Nov  2 04:54 quicksilver.jar
+-rw-r--r-- 1 runner runner  2096124 Nov  2 04:54 siftec-26.3.jar
+-rw-r--r-- 1 runner runner   653702 Nov  2 04:54 siftec-selftest-26.3.jar
+-rw-r--r-- 1 runner runner  1515277 Nov  2 04:54 travelersbackpack.jar
+total 63436
+-rw-r--r-- 1 runner runner  3486296 Nov  2 04:56 FarmersDelight-26.3-3.6.27%2Brefabricated.jar
+-rw-r--r-- 1 runner runner  1779949 Nov  2 04:56 cgs-fabric-26.3.jar
+-rw-r--r-- 1 runner runner    18072 Nov  2 04:56 ci-pin.jar
+-rw-r--r-- 1 runner runner 21140042 Nov  2 04:56 create-fly-26.3.jar
+-rw-r--r-- 1 runner runner  1031418 Nov  2 04:56 create-new-age-26.3.jar
+-rw-r--r-- 1 runner runner  3500335 Nov  2 04:56 createdieselgenerators-fabric-26.3.jar
+-rw-r--r-- 1 runner runner   609574 Nov  2 04:56 forge-config-api-port.jar
+-rw-r--r-- 1 runner runner  1191230 Nov  2 04:56 geckolib-fabric-26.3-5.5.7.jar
+-rw-r--r-- 1 runner runner  2825077 Nov  2 04:56 mapmod-26.3.jar
+-rw-r--r-- 1 runner runner 20632725 Nov  2 04:56 mielon%27s-the-sift-1.1.2-mc26.3-fabric.jar
+-rw-r--r-- 1 runner runner  3810197 Nov  2 04:56 ntgl-fabric-26.3.jar
+-rw-r--r-- 1 runner runner   640623 Nov  2 04:56 quicksilver.jar
+-rw-r--r-- 1 runner runner  2096124 Nov  2 04:56 siftec-26.3.jar
+-rw-r--r-- 1 runner runner   653702 Nov  2 04:56 siftec-selftest-26.3.jar
+-rw-r--r-- 1 runner runner  1515277 Nov  2 04:56 travelersbackpack.jar
+sessions: 8|-|factory,sift,hub,mam,ponder,map,hologram,hud,create_ct 8|ao=false|factory_flat
+preparing the suite
+scene factory: setting up
+scene factory: bench done
+scene sift: setting up
+scene sift: bench done
+scene hub: setting up
+scene hub: bench done
+scene mam: setting up
+scene mam: bench done
+scene ponder: setting up
+scene ponder: bench done
+scene map: skipped (MapMod is being finished (Andre, 2026-10-30): the map scene is out of the bench and CI until then; with it, its limits are re-collected)
+scene hologram: setting up
+scene hologram: bench done
+scene hud: skipped (MapMod is being finished (Andre, 2026-10-30): the HUD scene (its minimap) is out of the bench and CI until then; with it, its limits are re-collected)
+scene create_ct: setting up
+scene create_ct: bench done
+session 2 client options: ao=false
+scene factory_flat: setting up
+scene factory_flat: bench done
+/tmp/out/siftec-measure-full:
+bench
+client-1.log
+client-2.log
+client-gradle-1.log
+client-gradle-2.log
+drive-factory-sift-hub-mam-ponder-map-hologram-hud-create_ct.json
+drive-factory_flat.json
+gfx.txt
+joined-1.txt
+joined-2.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+
+/tmp/out/siftec-measure-full/bench:
+20261102-050115-factory.json
+20261102-050248-sift.json
+20261102-050359-hub.json
+20261102-050510-mam.json
+20261102-050624-ponder.json
+20261102-050748-hologram.json
+20261102-050925-create_ct.json
+20261102-051433-factory_flat.json
+
+/tmp/out/siftec-measure-full/shots:
+create_ct.png
+factory.png
+factory_flat.png
+hologram.png
+hub.png
+mam.png
+ponder.png
+sift.png
