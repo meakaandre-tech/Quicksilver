@@ -16,6 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
+| package 2b (occlusion culling) | `package-2b` | not merged: Andre checks it; branch full run 41390461057 green; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
@@ -2868,6 +2869,110 @@ mesher against `-Dquicksilver.debug.vanillaMesher=true` (vanilla's compiler, eve
 `mesher.serverAware` against `-Dquicksilver.debug.serverAwareOff=true` (whether backing off keeps the server's ticks
 in budget while flying).
 
+## Package 2b: GPU occlusion culling (branch `package-2b`, not merged: Andre checks it first)
+
+Sections hidden behind other terrain are left out, from a small depth image of what was drawn (a depth pyramid) tested
+against each section's box (design doc, "Beyond Sodium"). Code: `occlusion/` (`GpuOcclusion`, `DepthPyramid`,
+`PyramidGpu`, `SplitPass`, `OcclusionStats`), `mixin/occlusion/`, `terrain/TerrainRenderer` (classify, late pass),
+`terrain/TerrainStore` (per-layer boxes), shaders `qs_fullscreen.vsh`, `qs_depth_tile.fsh`, `qs_calibrate.fsh`. Ideas
+only (Hi-Z / two-phase occlusion as published by Haar and others); no Sodium or other code.
+
+### Andre's decisions (2026-11-02, before building)
+
+- **Two-phase, laptop safe**, with `occlusion=auto|two-phase|still-camera|off` (`config/quicksilver.properties` or
+  `-Dquicksilver.occlusion=`): auto = two-phase where vanilla trusts multi-draw indirect, still camera on the Intel /
+  old-GPU path. CI runs auto everywhere plus `quicksilver-2p-old` (old GPU forced to two-phase).
+- **Draw calls**: at most main's + 3 and at or under vanilla.
+- **API discovery** by package 3's compile check (stubs in CI, errors from the build log); nothing of Mojang's in logs.
+
+### What was built
+
+- **Pyramid**: after the opaque terrain group, one full-screen draw turns the main depth image into level 0 (the
+  farthest depth of each 16x16-pixel tile, float bits in RGBA8), read back (14,400 bytes at CI's size); the CPU builds
+  the levels above and tests boxes. A box is hidden only if all 8 corners are in front of the near plane and its
+  nearest depth is behind the farthest depth anywhere in its screen rectangle grown by a pixel (checked against
+  brute-force rasterising outside the game: 0 violations in 450k boxes).
+- **Two-phase** (a frame tests against its own depth): sections drawn last frame and not hidden by the last pyramid
+  are drawn first; the main pass is closed after the opaque group (`SplitPass` records state and reopens it without
+  clears), the pyramid is built and read with the CPU waiting, the other sections are tested and the visible ones drawn
+  in the same frame (no pop-in), then vanilla's frame continues.
+- **Still camera** (no wait): a pyramid read back a frame or two later is used only while everything it depends on is
+  exactly the same: the whole view matrix, camera position, viewport size, every visible section and mesh, section
+  mesh uploads, and redraws of animated textures shown by cutout layers (fire, kelp: their shape changes). Anything
+  else draws all sections; a change after the terrain was prepared draws what was culled.
+- **Calibration** (once, read back without waiting): which way up the backend stores rows, and whether a fence wait
+  within the frame completes. Where it doesn't (Vulkan), two-phase is not used: auto runs still camera, with a log line.
+- **Fallbacks**: anything left out is drawn on a timeout, wireframe, projection mismatch, debug group, unknown pass
+  call, exception or module failure; the module turns itself off with one log line when a hook doesn't apply.
+- **Bench**: an `occlusion` block per bench (sections with and without culling, wait ms, pyramids, readback bytes,
+  check results); new scene `occlusion_corner` (the camera turns past a stone building).
+
+### CI
+
+- Profile `old-gpu-2p` (`quicksilver-2p-old`); `[vulkan]` adds the Vulkan pair to a quick run.
+- **The check** (`-Dquicksilver.debug.verifyOcclusion`, every Quicksilver run): every fourth frame that culls, the
+  culled sections are drawn into a target of their own (sentinel clear), depth-tested against the frame; any changed
+  pixel fails. The frames between take the production path.
+- Gates: module on, the run's mode, 0 check pixels since start-up, no timeouts, no untested frames, scenes with
+  occluders cull; draw calls main's + 3 in every scene and at or under vanilla in every scene; measure runs don't cull.
+  Details in `docs/ci-limits.md`.
+
+### Evidence (full run 41390461057, green)
+
+Sections drawn per frame (solid/cutout; without culling -> drawn):
+
+| scene | without | full (two-phase) | old-GPU (still) | old-GPU two-phase | Vulkan (still) |
+|---|---|---|---|---|---|
+| spawn | 343-351 | 263 (23%) | 305 (13%) | 263 (23%) | 303 (13%) |
+| flythrough (moving) | 403-419 | 314 (22%) | 405 (0%) | 318 (22%) | 418 (0%) |
+| nether | 300 | 37 (88%) | 55 (82%) | 37 (88%) | 55 (82%) |
+| occlusion | 48-50 | 26 (48%) | 26 (46%) | 26 (46%) | 26 (47%) |
+| occlusion_move | 50-53 | 23 (57%) | 50 (0%) | 22 (56%) | 51 (0%) |
+| occlusion_corner (turning) | 82 | 61 (26%) | 82 (0%) | 61 (26%) | 82 (0%) |
+| water_glass | 140 | 54 (61%) | 54 | 54 | 54 |
+| SIFTEC factory | 69 | 27 (61%) | 30 (57%) | 27 (61%) | 30 (56%) |
+| SIFTEC factory_flat | 69 | 27 (61%) | 30 (57%) | 27 (61%) | 27 (61%) |
+| SIFTEC sift | 241 | 171 (29%) | 171 | 171 | 171 |
+| SIFTEC hub / mam | 38 / 55 | 4 / 3 | 4 / 3 | 4 / 3 | 4 / 3 |
+
+- **Pop-in**: 0 visible pixels of culled sections in every scene, profile and suite (both pop-in scenes of package 2,
+  `occlusion_corner`); every picture check within its limits (corner scene at the floor limits, 0.25 % / 10 pixels).
+- **Cost per frame**: two-phase 1 pyramid draw, 14,400 bytes read back, CPU wait under 0.01 ms average (max 0.02 ms)
+  on llvmpipe; still camera 0 to 0.3 pyramids (4.5 kB at most), no wait.
+- **Against main's baselines**: draw calls at most +2.7 (full flythrough; +1.0 typical: the pyramid draw), many lower
+  on old GPUs (flat_plants -16); uploads at most +1; heap after GC within the existing gate (at most +6.8 MB, core full).
+- Vulkan: calibration found no wait within the frame, so still camera (`docs/backend.md`).
+
+### Review (fresh agent, of `81dee6e`; all fixed in `acd8bd1`/`fc0ba1a` unless noted)
+
+- M1: still camera culled nothing outside CI (only CI's check split the pass) and added direct draws: fixed; CI now
+  runs the production path between checks.
+- M2: a still pyramid could outlive animated cutout textures: their redraws are in the stamp (tracked per layer).
+- S1 bounds before upload; S2 sentinel-clear check; S3 delayed close on resize; S4 size checked at use, mesh uploads in
+  the stamp; S5 the +3 and vanilla gates in every scene; S7 no split after an unknown pass call; NITs: a missing check
+  pipeline fails, a missing wireframe pipeline draws normally, measure runs gated, skipped checks counted.
+- Not fixed: S6 (if the opaque-group hook stops after it once ran, one frame misses what was left out before the module
+  turns off; known limit). S8 (mid-frame submit on Vulkan) is moot: Vulkan no longer waits mid-frame.
+
+### Deviations and choices to confirm
+
+1. **Vulkan runs still camera, not two-phase** (renderpearl's Vulkan fence never completes within the frame).
+2. **Still camera needs exactly the same view** (the doc allows mouse-look): a turned view can see through sub-pixel
+   gaps the old pyramid missed (the model found violations); so it culls only while the camera and world stand still.
+3. **Translucent never culled**.
+4. **Uploads and memory** keep main's existing gates (x 1.10 plus slack) rather than a new exact "at or under main's".
+5. **Corner scene limits at the floor** (vanilla noise 0 in three runs).
+
+### Known limits
+
+- S6 above. CI has no scene where an animated cutout texture alone hides a section (the stamp rule covers it by
+  construction). Still camera does nothing while moving (by design).
+
+### Laptop bench (Andre, when back)
+
+- Try `occlusion=two-phase` on Intel and compare fps and the bench's `waitMsPerFrame` against auto (still camera);
+  on Vulkan, check the log line "waiting for the GPU within a frame ..." (a real driver may allow the wait).
+
 ## Open bugs
 
 - **factory_flat meshing gap, package 4c (Andre, 2026-11-01): reported, not gated.** Like-for-like median,
@@ -2944,6 +3049,8 @@ Game class dumps are a 1-day Actions artifact (`game-dumps`) the workspace can't
 needed. Scratch tools (not in the repo): a compile check against stubs generated from a javap dump
 (`scratchpad/p3/stubgen/check.sh`; it does not cover `ci/pin-mod`), the shader harness (`scratchpad/p3/harness4.py`),
 strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
+
+**Package 2b (phase 1):** on `package-2b`, not merged (full run 41390461057 green); Andre checks it. See "Package 2b".
 
 **Now (P2-2):** merged (`be948a4`; main green 41313195874, `latest` rebuilt); the GameTest pins (`1c1ea7c`, main green
 41298048808) before it. Next in phase 2 is P2-3 (Logic II: hoppers, block entities, AI), in a new chat. Perf numbers:
