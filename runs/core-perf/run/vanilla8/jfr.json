@@ -1,0 +1,1205 @@
+{
+ "samples": 2914,
+ "phases": [
+  {
+   "phase": "tick (all)",
+   "share": 1.0
+  },
+  {
+   "phase": "levels",
+   "share": 0.9602
+  },
+  {
+   "phase": "chunk source (chunks, tickets, tracking)",
+   "share": 0.0762
+  },
+  {
+   "phase": "chunk ticking (random ticks, precipitation, spawning)",
+   "share": 0.0408
+  },
+  {
+   "phase": "random ticks and precipitation",
+   "share": 0.0021
+  },
+  {
+   "phase": "natural spawning",
+   "share": 0.0
+  },
+  {
+   "phase": "scheduled block and fluid ticks",
+   "share": 0.0563
+  },
+  {
+   "phase": "block events",
+   "share": 0.0374
+  },
+  {
+   "phase": "block entities",
+   "share": 0.0618
+  },
+  {
+   "phase": "entities",
+   "share": 0.7014
+  },
+  {
+   "phase": "entity tracking (sending)",
+   "share": 0.0271
+  },
+  {
+   "phase": "entity sections",
+   "share": 0.0288
+  },
+  {
+   "phase": "  entity movement (Entity.move)",
+   "share": 0.1702
+  },
+  {
+   "phase": "  collisions (Entity.collide)",
+   "share": 0.0933
+  },
+  {
+   "phase": "  block collisions",
+   "share": 0.0951
+  },
+  {
+   "phase": "  entity collisions (shapes of entities)",
+   "share": 0.0134
+  },
+  {
+   "phase": "  pushing (LivingEntity.pushEntities)",
+   "share": 0.013
+  },
+  {
+   "phase": "  entity lookups (getEntities)",
+   "share": 0.0278
+  },
+  {
+   "phase": "  inside-block effects",
+   "share": 0.0429
+  },
+  {
+   "phase": "  fluids (in water, pushing)",
+   "share": 0.0264
+  },
+  {
+   "phase": "  AI goals and brains",
+   "share": 0.2763
+  },
+  {
+   "phase": "  pathfinding",
+   "share": 0.013
+  },
+  {
+   "phase": "  travel (LivingEntity.travel)",
+   "share": 0.1819
+  },
+  {
+   "phase": "  base tick (Entity.baseTick)",
+   "share": 0.0583
+  },
+  {
+   "phase": "  block state reads (getBlockState)",
+   "share": 0.0827
+  },
+  {
+   "phase": "  chunk lookups (getChunk)",
+   "share": 0.0247
+  },
+  {
+   "phase": "  item entities (ItemEntity.tick)",
+   "share": 0.0268
+  },
+  {
+   "phase": "  item merging",
+   "share": 0.0003
+  },
+  {
+   "phase": "  monster targeting",
+   "share": 0.0041
+  },
+  {
+   "phase": "  sun and rain checks",
+   "share": 0.0014
+  },
+  {
+   "phase": "  minecarts",
+   "share": 0.034
+  },
+  {
+   "phase": "  supporting block (Entity.checkSupportingBlock)",
+   "share": 0.035
+  },
+  {
+   "phase": "  space checks (noCollision)",
+   "share": 0.0058
+  },
+  {
+   "phase": "Create (com.simibubi)",
+   "share": 0.0
+  }
+ ],
+ "self": [
+  {
+   "method": "PalettedContainer.get",
+   "share": 0.0772
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.get",
+   "share": 0.0189
+  },
+  {
+   "method": "ServerChunkCache.getChunk",
+   "share": 0.0154
+  },
+  {
+   "method": "DirectMethodHandle.allocateInstance",
+   "share": 0.0154
+  },
+  {
+   "method": "BlockCollisions.computeNext",
+   "share": 0.0141
+  },
+  {
+   "method": "Sink$ChainedReference.cancellationRequested",
+   "share": 0.0137
+  },
+  {
+   "method": "ReferencePipeline$2$1.accept",
+   "share": 0.012
+  },
+  {
+   "method": "LivingEntity.aiStep",
+   "share": 0.0113
+  },
+  {
+   "method": "ImmutableCollections$SetN.probe",
+   "share": 0.0103
+  },
+  {
+   "method": "Brain.getRunningBehaviors",
+   "share": 0.0096
+  },
+  {
+   "method": "Brain.startEachNonRunningBehavior",
+   "share": 0.0093
+  },
+  {
+   "method": "BehaviorBuilder$PureMemory$1.tryTrigger",
+   "share": 0.0089
+  },
+  {
+   "method": "HashMap$HashIterator.nextNode",
+   "share": 0.0086
+  },
+  {
+   "method": "HashMap.getNode",
+   "share": 0.0065
+  },
+  {
+   "method": "ServerChunkCache.lambda$tickChunks$0",
+   "share": 0.0065
+  },
+  {
+   "method": "ArrayList.addAll",
+   "share": 0.0065
+  },
+  {
+   "method": "SectionStorage.getOrLoad",
+   "share": 0.0058
+  },
+  {
+   "method": "Iterators$1.hasNext",
+   "share": 0.0058
+  },
+  {
+   "method": "ServerLevel.tick",
+   "share": 0.0055
+  },
+  {
+   "method": "Behavior.hasRequiredMemories",
+   "share": 0.0051
+  },
+  {
+   "method": "EntityEquipment.get",
+   "share": 0.0051
+  },
+  {
+   "method": "MinecraftServer.tickChildren",
+   "share": 0.0048
+  },
+  {
+   "method": "Entity.checkInsideBlocks",
+   "share": 0.0048
+  },
+  {
+   "method": "Holder$Reference.is",
+   "share": 0.0048
+  },
+  {
+   "method": "LivingEntity.tick",
+   "share": 0.0048
+  },
+  {
+   "method": "Leashable.tickLeash",
+   "share": 0.0048
+  },
+  {
+   "method": "LivingEntity.baseTick",
+   "share": 0.0048
+  },
+  {
+   "method": "LinearPalette.valueFor",
+   "share": 0.0048
+  },
+  {
+   "method": "HashMap$Values.forEach",
+   "share": 0.0045
+  },
+  {
+   "method": "Object2ObjectOpenHashMap.get",
+   "share": 0.0045
+  },
+  {
+   "method": "Shapes.create",
+   "share": 0.0045
+  },
+  {
+   "method": "Mob.serverAiStep",
+   "share": 0.0041
+  },
+  {
+   "method": "Entity.applyEffectsFromBlocks",
+   "share": 0.0041
+  },
+  {
+   "method": "RegularImmutableMap.get",
+   "share": 0.0041
+  },
+  {
+   "method": "AbstractIterator.tryToComputeNext",
+   "share": 0.0041
+  },
+  {
+   "method": "TypedInstance.is",
+   "share": 0.0041
+  },
+  {
+   "method": "EntityFluidInteraction.hasFluidAndLoaded",
+   "share": 0.0038
+  },
+  {
+   "method": "BehaviorBuilder$1.trigger",
+   "share": 0.0038
+  },
+  {
+   "method": "Spliterator.getExactSizeIfKnown",
+   "share": 0.0038
+  },
+  {
+   "method": "Long2ObjectLinkedOpenHashMap.get",
+   "share": 0.0034
+  },
+  {
+   "method": "Objects.equals",
+   "share": 0.0034
+  },
+  {
+   "method": "ReferenceQueue.poll",
+   "share": 0.0034
+  },
+  {
+   "method": "Objects.hashCode",
+   "share": 0.0034
+  },
+  {
+   "method": "NaturalSpawner.createState",
+   "share": 0.0034
+  },
+  {
+   "method": "Entity.move",
+   "share": 0.0034
+  },
+  {
+   "method": "HashMap$KeySet.iterator",
+   "share": 0.0034
+  },
+  {
+   "method": "EntitySection.getEntities",
+   "share": 0.0034
+  },
+  {
+   "method": "SecondaryPoiSensor.doTick",
+   "share": 0.0034
+  },
+  {
+   "method": "VoxelShape.get",
+   "share": 0.0034
+  },
+  {
+   "method": "SynchedEntityData.getItem",
+   "share": 0.0034
+  },
+  {
+   "method": "ReferencePipeline$3$1.accept",
+   "share": 0.0034
+  },
+  {
+   "method": "ChunkMap.tick",
+   "share": 0.0031
+  },
+  {
+   "method": "ServerEntity.sendChanges",
+   "share": 0.0031
+  },
+  {
+   "method": "Entity.baseTick",
+   "share": 0.0031
+  },
+  {
+   "method": "Reference2ObjectArrayMap$ValuesCollection.forEach",
+   "share": 0.0031
+  },
+  {
+   "method": "Iterators$5.computeNext",
+   "share": 0.0031
+  },
+  {
+   "method": "Entity.fireImmune",
+   "share": 0.0031
+  },
+  {
+   "method": "ItemStack.isEmpty",
+   "share": 0.0031
+  },
+  {
+   "method": "Level.lambda$getEntities$0",
+   "share": 0.0031
+  },
+  {
+   "method": "HashMap.hash",
+   "share": 0.0031
+  }
+ ],
+ "inclusive": [
+  {
+   "method": "MinecraftServer.tickServer",
+   "share": 1.0
+  },
+  {
+   "method": "DedicatedServer.tickServer",
+   "share": 1.0
+  },
+  {
+   "method": "MinecraftServer.runServer",
+   "share": 0.9979
+  },
+  {
+   "method": "MinecraftServer.processPacketsAndTick",
+   "share": 0.9979
+  },
+  {
+   "method": "MinecraftServer.lambda$spin$0",
+   "share": 0.9966
+  },
+  {
+   "method": "Thread.run",
+   "share": 0.9942
+  },
+  {
+   "method": "MinecraftServer.tickChildren",
+   "share": 0.9763
+  },
+  {
+   "method": "ServerLevel.tick",
+   "share": 0.9602
+  },
+  {
+   "method": "EntityTickList.forEach",
+   "share": 0.7014
+  },
+  {
+   "method": "ServerLevel.lambda$tick$0",
+   "share": 0.6987
+  },
+  {
+   "method": "Level.guardEntityTick",
+   "share": 0.6932
+  },
+  {
+   "method": "ServerLevel.tickNonPassenger",
+   "share": 0.6915
+  },
+  {
+   "method": "Mob.tick",
+   "share": 0.6225
+  },
+  {
+   "method": "LivingEntity.tick",
+   "share": 0.6198
+  },
+  {
+   "method": "AgeableMob.aiStep",
+   "share": 0.5336
+  },
+  {
+   "method": "Mob.aiStep",
+   "share": 0.5312
+  },
+  {
+   "method": "LivingEntity.aiStep",
+   "share": 0.5281
+  },
+  {
+   "method": "Villager.tick",
+   "share": 0.3449
+  },
+  {
+   "method": "Mob.serverAiStep",
+   "share": 0.2763
+  },
+  {
+   "method": "Villager.customServerAiStep",
+   "share": 0.2412
+  },
+  {
+   "method": "Brain.tick",
+   "share": 0.2388
+  },
+  {
+   "method": "Animal.aiStep",
+   "share": 0.2131
+  },
+  {
+   "method": "LivingEntity.travel",
+   "share": 0.1819
+  },
+  {
+   "method": "Brain.startEachNonRunningBehavior",
+   "share": 0.1802
+  },
+  {
+   "method": "LivingEntity.travelInAir",
+   "share": 0.1764
+  },
+  {
+   "method": "Entity.move",
+   "share": 0.1702
+  },
+  {
+   "method": "LivingEntity.handleRelativeFrictionAndCalculateMovement",
+   "share": 0.1644
+  },
+  {
+   "method": "OneShot.tryStart",
+   "share": 0.1345
+  },
+  {
+   "method": "BehaviorBuilder$1.trigger",
+   "share": 0.1345
+  },
+  {
+   "method": "AbstractPipeline.evaluate",
+   "share": 0.1071
+  },
+  {
+   "method": "AbstractPipeline.wrapAndCopyInto",
+   "share": 0.1033
+  },
+  {
+   "method": "AbstractPipeline.copyInto",
+   "share": 0.0999
+  },
+  {
+   "method": "Entity.collide",
+   "share": 0.0933
+  },
+  {
+   "method": "AbstractPipeline.copyIntoWithCancel",
+   "share": 0.0909
+  },
+  {
+   "method": "AbstractIterator.hasNext",
+   "share": 0.0875
+  },
+  {
+   "method": "AbstractIterator.tryToComputeNext",
+   "share": 0.0868
+  },
+  {
+   "method": "ReferencePipeline.forEachWithCancel",
+   "share": 0.0851
+  },
+  {
+   "method": "PalettedContainer.get",
+   "share": 0.0844
+  },
+  {
+   "method": "BlockCollisions.computeNext",
+   "share": 0.0789
+  },
+  {
+   "method": "ServerChunkCache.tick",
+   "share": 0.0762
+  },
+  {
+   "method": "LevelChunk.getBlockState",
+   "share": 0.0755
+  },
+  {
+   "method": "LevelChunkSection.getBlockState",
+   "share": 0.0755
+  },
+  {
+   "method": "Entity.collideBoundingBox",
+   "share": 0.0745
+  },
+  {
+   "method": "ReduceOps$ReduceOp.evaluateSequential",
+   "share": 0.0693
+  },
+  {
+   "method": "MatchOps$MatchOp.evaluateSequential",
+   "share": 0.0673
+  },
+  {
+   "method": "Entity.tick",
+   "share": 0.0628
+  },
+  {
+   "method": "Level.tickBlockEntities",
+   "share": 0.0618
+  },
+  {
+   "method": "ChunkPos$2.tryAdvance",
+   "share": 0.0618
+  },
+  {
+   "method": "Sheep.aiStep",
+   "share": 0.0611
+  },
+  {
+   "method": "ReferencePipeline$7$1FlatMap.accept",
+   "share": 0.0607
+  },
+  {
+   "method": "Entity.collectCollidersIgnoringWorldBorder",
+   "share": 0.0604
+  },
+  {
+   "method": "AcquirePoi.lambda$create$3",
+   "share": 0.0604
+  },
+  {
+   "method": "Mob.baseTick",
+   "share": 0.0594
+  },
+  {
+   "method": "ReferencePipeline.collect",
+   "share": 0.0577
+  },
+  {
+   "method": "LevelTicks.tick",
+   "share": 0.0563
+  },
+  {
+   "method": "LevelChunk$RebindableTickingBlockEntityWrapper.tick",
+   "share": 0.0559
+  },
+  {
+   "method": "LevelChunk$BoundTickingBlockEntity.tick",
+   "share": 0.0556
+  },
+  {
+   "method": "LivingEntity.baseTick",
+   "share": 0.0549
+  },
+  {
+   "method": "ImmutableList$Builder.addAll",
+   "share": 0.0539
+  },
+  {
+   "method": "ImmutableCollection$Builder.addAll",
+   "share": 0.0528
+  },
+  {
+   "method": "ReferencePipeline.allMatch",
+   "share": 0.0522
+  },
+  {
+   "method": "Chicken.aiStep",
+   "share": 0.0508
+  },
+  {
+   "method": "LevelTicks.runCollectedTicks",
+   "share": 0.0491
+  },
+  {
+   "method": "ReferencePipeline$3$1.accept",
+   "share": 0.048
+  },
+  {
+   "method": "IntPipeline.forEachWithCancel",
+   "share": 0.0474
+  },
+  {
+   "method": "Entity.applyEffectsFromBlocks",
+   "share": 0.0429
+  },
+  {
+   "method": "LevelWriter.setBlock",
+   "share": 0.0419
+  },
+  {
+   "method": "Level.setBlock",
+   "share": 0.0415
+  },
+  {
+   "method": "ServerChunkCache.tickChunks",
+   "share": 0.0408
+  },
+  {
+   "method": "IntPipeline$1$1.accept",
+   "share": 0.0388
+  },
+  {
+   "method": "ServerLevel.runBlockEvents",
+   "share": 0.0374
+  },
+  {
+   "method": "Entity.setOnGroundWithMovement",
+   "share": 0.0353
+  },
+  {
+   "method": "Entity.checkSupportingBlock",
+   "share": 0.035
+  },
+  {
+   "method": "Brain.tickEachRunningBehavior",
+   "share": 0.0343
+  },
+  {
+   "method": "Streams$RangeIntSpliterator.tryAdvance",
+   "share": 0.0343
+  },
+  {
+   "method": "ServerLevel.doBlockEvent",
+   "share": 0.034
+  },
+  {
+   "method": "CollisionGetter.findSupportingBlock",
+   "share": 0.034
+  },
+  {
+   "method": "AbstractMinecart.tick",
+   "share": 0.034
+  },
+  {
+   "method": "Level.getBlockState",
+   "share": 0.0336
+  },
+  {
+   "method": "BlockBehaviour$BlockStateBase.triggerEvent",
+   "share": 0.0336
+  },
+  {
+   "method": "PistonBaseBlock.triggerEvent",
+   "share": 0.0333
+  },
+  {
+   "method": "OldMinecartBehavior.tick",
+   "share": 0.0305
+  },
+  {
+   "method": "TypedInstance.is",
+   "share": 0.0288
+  },
+  {
+   "method": "Entity.baseTick",
+   "share": 0.0288
+  },
+  {
+   "method": "ReferencePipeline$2$1.accept",
+   "share": 0.0281
+  },
+  {
+   "method": "ChunkMap.tick",
+   "share": 0.0271
+  },
+  {
+   "method": "Level.getEntities",
+   "share": 0.0271
+  },
+  {
+   "method": "ItemEntity.tick",
+   "share": 0.0268
+  },
+  {
+   "method": "Entity.updateFluidInteraction",
+   "share": 0.0264
+  },
+  {
+   "method": "ServerLevel.tickFluid",
+   "share": 0.0257
+  },
+  {
+   "method": "HopperBlockEntity.pushItemsTick",
+   "share": 0.0257
+  },
+  {
+   "method": "HopperBlockEntity.tryMoveItems",
+   "share": 0.0254
+  },
+  {
+   "method": "FlowingFluid.tick",
+   "share": 0.0247
+  },
+  {
+   "method": "FluidState.tick",
+   "share": 0.0247
+  },
+  {
+   "method": "Behavior.tryStart",
+   "share": 0.0247
+  },
+  {
+   "method": "Holder$Reference.is",
+   "share": 0.0244
+  },
+  {
+   "method": "LevelEntityGetterAdapter.get",
+   "share": 0.0244
+  },
+  {
+   "method": "EntitySectionStorage.getEntities",
+   "share": 0.024
+  },
+  {
+   "method": "Level.getChunk",
+   "share": 0.0233
+  },
+  {
+   "method": "EntityFluidInteraction.update",
+   "share": 0.0233
+  },
+  {
+   "method": "ServerLevel.tickBlock",
+   "share": 0.023
+  },
+  {
+   "method": "ReferencePipeline.findFirst",
+   "share": 0.0226
+  },
+  {
+   "method": "SectionStorage.getOrLoad",
+   "share": 0.0226
+  },
+  {
+   "method": "FlowingFluid.spread",
+   "share": 0.0223
+  },
+  {
+   "method": "PoiManager.lambda$getInChunk$0",
+   "share": 0.0223
+  },
+  {
+   "method": "BlockBehaviour$BlockStateBase.tick",
+   "share": 0.0213
+  },
+  {
+   "method": "ServerTickEvents.lambda$static$3",
+   "share": 0.0209
+  },
+  {
+   "method": "ServerChunkCache.getChunk",
+   "share": 0.0209
+  },
+  {
+   "method": "GoalSelector.tick",
+   "share": 0.0209
+  },
+  {
+   "method": "EntitySectionStorage.forEachAccessibleNonEmptySection",
+   "share": 0.0206
+  },
+  {
+   "method": "FindOps$FindOp.evaluateSequential",
+   "share": 0.0206
+  },
+  {
+   "method": "Harness.endTick",
+   "share": 0.0202
+  },
+  {
+   "method": "NaturalSpawner.createState",
+   "share": 0.0202
+  },
+  {
+   "method": "Brain.tickSensors",
+   "share": 0.0196
+  },
+  {
+   "method": "Entity.checkInsideBlocks",
+   "share": 0.0192
+  },
+  {
+   "method": "Sensor.tick",
+   "share": 0.0189
+  },
+  {
+   "method": "OldMinecartBehavior.moveAlongTrack",
+   "share": 0.0189
+  },
+  {
+   "method": "YieldJobSite.lambda$create$2",
+   "share": 0.0189
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.get",
+   "share": 0.0189
+  },
+  {
+   "method": "Entity.getOnPos",
+   "share": 0.0185
+  }
+ ],
+ "callers": {
+  "PalettedContainer.get": [
+   {
+    "caller": "PalettedContainer.get",
+    "share": 0.0772
+   }
+  ],
+  "Long2ObjectOpenHashMap.get": [
+   {
+    "caller": "SectionStorage.get",
+    "share": 0.0168
+   },
+   {
+    "caller": "EntitySectionStorage.forEachAccessibleNonEmptySection",
+    "share": 0.0014
+   },
+   {
+    "caller": "PersistentEntitySectionManager.areEntitiesLoaded",
+    "share": 0.0003
+   },
+   {
+    "caller": "LevelTicks.sortContainersToTick",
+    "share": 0.0003
+   }
+  ],
+  "ServerChunkCache.getChunk": [
+   {
+    "caller": "Level.getChunk",
+    "share": 0.0154
+   }
+  ],
+  "DirectMethodHandle.allocateInstance": [
+   {
+    "caller": "EntitySelector.pushableBy",
+    "share": 0.0017
+   },
+   {
+    "caller": "Entity.checkInsideBlocks",
+    "share": 0.0014
+   },
+   {
+    "caller": "EntityGetter.getEntityCollisions",
+    "share": 0.0014
+   },
+   {
+    "caller": "AttributeMap.getInstance",
+    "share": 0.0014
+   }
+  ],
+  "BlockCollisions.computeNext": [
+   {
+    "caller": "AbstractIterator.tryToComputeNext",
+    "share": 0.0141
+   }
+  ],
+  "Sink$ChainedReference.cancellationRequested": [
+   {
+    "caller": "ChunkPos$2.tryAdvance",
+    "share": 0.0103
+   },
+   {
+    "caller": "YieldJobSite.lambda$create$2",
+    "share": 0.0017
+   },
+   {
+    "caller": "GateBehavior.tickOrStop",
+    "share": 0.001
+   },
+   {
+    "caller": "GateBehavior$RunningPolicy$1.apply",
+    "share": 0.0003
+   }
+  ],
+  "ReferencePipeline$2$1.accept": [
+   {
+    "caller": "ChunkPos$2.tryAdvance",
+    "share": 0.0086
+   },
+   {
+    "caller": "YieldJobSite.lambda$create$2",
+    "share": 0.0021
+   },
+   {
+    "caller": "PoiCompetitorScan.lambda$create$3",
+    "share": 0.0007
+   },
+   {
+    "caller": "GateBehavior$RunningPolicy$1.apply",
+    "share": 0.0003
+   }
+  ],
+  "LivingEntity.aiStep": [
+   {
+    "caller": "Mob.aiStep",
+    "share": 0.0113
+   }
+  ],
+  "ImmutableCollections$SetN.probe": [
+   {
+    "caller": "Holder$Reference.is",
+    "share": 0.0103
+   }
+  ],
+  "Brain.getRunningBehaviors": [
+   {
+    "caller": "Brain.tickEachRunningBehavior",
+    "share": 0.0096
+   }
+  ],
+  "Brain.startEachNonRunningBehavior": [
+   {
+    "caller": "Brain.tick",
+    "share": 0.0093
+   }
+  ],
+  "BehaviorBuilder$PureMemory$1.tryTrigger": [
+   {
+    "caller": "BehaviorBuilder$PureMemory$1.tryTrigger",
+    "share": 0.0089
+   }
+  ],
+  "HashMap$HashIterator.nextNode": [
+   {
+    "caller": "Brain.getRunningBehaviors",
+    "share": 0.0041
+   },
+   {
+    "caller": "Brain.startEachNonRunningBehavior",
+    "share": 0.0034
+   },
+   {
+    "caller": "Brain.getActiveNonCoreActivity",
+    "share": 0.0007
+   },
+   {
+    "caller": "PathFinder.getBestH",
+    "share": 0.0003
+   }
+  ],
+  "HashMap.getNode": [
+   {
+    "caller": "SavedDataStorage.get",
+    "share": 0.0021
+   },
+   {
+    "caller": "Brain.getMemorySlotIfPresent",
+    "share": 0.0014
+   },
+   {
+    "caller": "Brain.startEachNonRunningBehavior",
+    "share": 0.0014
+   },
+   {
+    "caller": "PoiTypes.forState",
+    "share": 0.001
+   }
+  ],
+  "ServerChunkCache.lambda$tickChunks$0": [
+   {
+    "caller": "ChunkMap.lambda$forEachBlockTickingChunk$0",
+    "share": 0.0065
+   }
+  ],
+  "ArrayList.addAll": [
+   {
+    "caller": "InsideBlockEffectApplier$StepBasedCollector.flushStep",
+    "share": 0.0065
+   }
+  ],
+  "SectionStorage.getOrLoad": [
+   {
+    "caller": "PoiManager.lambda$getInChunk$0",
+    "share": 0.0055
+   },
+   {
+    "caller": "PoiManager.exists",
+    "share": 0.0003
+   }
+  ],
+  "Iterators$1.hasNext": [
+   {
+    "caller": "EntitySection.getEntities",
+    "share": 0.0048
+   },
+   {
+    "caller": "NaturalSpawner.createState",
+    "share": 0.001
+   }
+  ],
+  "ServerLevel.tick": [
+   {
+    "caller": "MinecraftServer.tickChildren",
+    "share": 0.0055
+   }
+  ],
+  "Behavior.hasRequiredMemories": [
+   {
+    "caller": "Behavior.tryStart",
+    "share": 0.0051
+   }
+  ],
+  "EntityEquipment.get": [
+   {
+    "caller": "LivingEntity.getItemBySlot",
+    "share": 0.0051
+   }
+  ],
+  "MinecraftServer.tickChildren": [
+   {
+    "caller": "MinecraftServer.tickServer",
+    "share": 0.0048
+   }
+  ],
+  "Entity.checkInsideBlocks": [
+   {
+    "caller": "Entity.checkInsideBlocks",
+    "share": 0.0027
+   },
+   {
+    "caller": "Entity.applyEffectsFromBlocks",
+    "share": 0.0021
+   }
+  ],
+  "Holder$Reference.is": [
+   {
+    "caller": "TypedInstance.is",
+    "share": 0.0048
+   }
+  ],
+  "LivingEntity.tick": [
+   {
+    "caller": "Mob.tick",
+    "share": 0.0048
+   }
+  ]
+ },
+ "allocMB": 593.8,
+ "gcPauseMs": 604.4,
+ "allocTop": [
+  {
+   "frame": "ArrayList.iterator",
+   "MB": 29.9
+  },
+  {
+   "frame": "DirectMethodHandle.allocateInstance",
+   "MB": 28.5
+  },
+  {
+   "frame": "SplitConstantPool.map",
+   "MB": 20.8
+  },
+  {
+   "frame": "LinkedHashMap$LinkedKeySet.iterator",
+   "MB": 18.8
+  },
+  {
+   "frame": "Arrays.copyOf",
+   "MB": 18.3
+  },
+  {
+   "frame": "CubeVoxelShape.getCoords",
+   "MB": 16.9
+  },
+  {
+   "frame": "VoxelShape.move",
+   "MB": 15.9
+  },
+  {
+   "frame": "AABB.inflate",
+   "MB": 13.9
+  },
+  {
+   "frame": "Unsafe.allocateInstance",
+   "MB": 13.0
+  },
+  {
+   "frame": "KnotClassDelegate.getRawClassByteArray",
+   "MB": 11.8
+  },
+  {
+   "frame": "DoubleArrayList.wrap",
+   "MB": 11.0
+  },
+  {
+   "frame": "Shapes.create",
+   "MB": 10.9
+  },
+  {
+   "frame": "ServerChunkCache.tickChunks",
+   "MB": 10.9
+  },
+  {
+   "frame": "Arrays.copyOfRange",
+   "MB": 10.1
+  },
+  {
+   "frame": "ReferencePipeline.filter",
+   "MB": 10.0
+  },
+  {
+   "frame": "CollisionGetter.lambda$getBlockCollisionsFromContext$0",
+   "MB": 10.0
+  },
+  {
+   "frame": "AABB.expandTowards",
+   "MB": 9.9
+  },
+  {
+   "frame": "ReferencePipeline.map",
+   "MB": 9.0
+  },
+  {
+   "frame": "SectionPos.of",
+   "MB": 9.0
+  },
+  {
+   "frame": "NaturalSpawner.createState",
+   "MB": 8.0
+  },
+  {
+   "frame": "Optional.ofNullable",
+   "MB": 7.0
+  },
+  {
+   "frame": "AABB.move",
+   "MB": 7.0
+  },
+  {
+   "frame": "Vec3.add",
+   "MB": 7.0
+  },
+  {
+   "frame": "SymbolTable.addConstantUtf8",
+   "MB": 6.7
+  },
+  {
+   "frame": "ConstantPoolBuilder.of",
+   "MB": 6.1
+  }
+ ]
+}
