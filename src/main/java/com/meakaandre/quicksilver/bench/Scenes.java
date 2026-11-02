@@ -41,6 +41,8 @@ public final class Scenes {
         public List<String> setup = new ArrayList<>();
         /** Blocks per second for a scripted fly-through from where setup leaves the camera; null to stand still. */
         public double[] velocity;
+        /** Degrees per second the camera turns while measuring (package 2b's corner scene); 0 to keep its direction. */
+        public double yawRate;
         /**
          * Commands sent as the player while measuring, each at its time (seconds after measuring starts), e.g. to open
          * a wall or move an entity during the bench (package 2's moving occlusion pass). Null for none.

@@ -27,6 +27,7 @@ jobs:
       logs: ${{ steps.m.outputs.logs }}
       siftec_report_only: ${{ steps.m.outputs.siftec_report_only }}
       siftec_commit: ${{ steps.m.outputs.siftec_commit }}
+      quick_vulkan: ${{ steps.m.outputs.quick_vulkan }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,10 +44,16 @@ jobs:
           case "$MESSAGE" in *"[full]"*) mode=full;; esac
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core","siftec"],"run":["vanilla-a","vanilla-b","vanilla-old","vanilla-vk","quicksilver-full","quicksilver-old","quicksilver-vk","measure-full","measure-old","measure-vk"],"include":[{"suite":"core","run":"bench-plain"},{"suite":"core","run":"bench-sodium"},{"suite":"core","run":"sp-quicksilver"}]}'
+            matrix='{"suite":["core","siftec"],"run":["vanilla-a","vanilla-b","vanilla-old","vanilla-vk","quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk"],"include":[{"suite":"core","run":"bench-plain"},{"suite":"core","run":"bench-sodium"},{"suite":"core","run":"sp-quicksilver"}]}'
             server_suites='["core","siftec","terralith"]'
           else
-            matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old"]}'
+            matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old","quicksilver-2p-old"]}'
+            # package 2b: a commit with [vulkan] in its message adds the Vulkan pair (vanilla-vk, quicksilver-vk) to a
+            # quick run, to work on Vulkan-only behaviour without the whole full matrix
+            case "$MESSAGE" in *"[vulkan]"*)
+              matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old","quicksilver-2p-old","vanilla-vk","quicksilver-vk"]}'
+              echo "quick_vulkan=1" >> "$GITHUB_OUTPUT";;
+            esac
             # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); SIFTEC and Terralith in full mode.
             # A commit with [siftec] in its message adds SIFTEC's server suite to a quick run (to work on it without
             # the whole client matrix); [terralith] adds Terralith's the same way (P2-1)
@@ -391,7 +398,7 @@ jobs:
         run: |
           set +e
           python3 -m pip install --quiet --break-system-packages pillow numpy
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_QUICK_VULKAN="${{ needs.mode.outputs.quick_vulkan }}" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
           st=$?
           cat /tmp/ci/compare/report.md >> "$GITHUB_STEP_SUMMARY"
           # P2-2: the Logic module in the client runs (ci/server/compare-p2.py)

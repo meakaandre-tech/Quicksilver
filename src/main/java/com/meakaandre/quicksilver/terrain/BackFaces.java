@@ -57,6 +57,11 @@ final class BackFaces {
         cameraFresh = true;
     }
 
+    /** Whether the last frame drew terrain in vanilla's wireframe view (package 2b culls nothing then). */
+    static boolean wireframe() {
+        return wireframe;
+    }
+
     /** Render thread: this frame drew terrain in vanilla's wireframe view (or not). */
     static void wireframeFrame(boolean on) {
         wireframe = on;

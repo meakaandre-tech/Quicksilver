@@ -418,7 +418,7 @@ public final class Mesher {
         MesherOutput.LayerOut lo = out.layers[li];
         if (!lo.present || lo.taken || lo.vertexAddress != MemoryUtil.memAddress(vertices) || lo.vertexBytes != vertices.remaining()) return false;
         lo.taken = true;
-        Animation.meshLayerFound(mesh, out.spriteTable, out.found);
+        Animation.meshLayerFound(mesh, out.spriteTable, out.found, out.cutoutFound);
         java.nio.ByteBuffer owned = lo.owned;
         lo.owned = null; // the terrain module owns it from here (and frees it)
         Terrain.takeMeshed(section, layer, mesh, owned, lo.vertices, lo.positionsRounded, lo.uvsRounded, lo.faces, indices, lo.centroids);

@@ -81,3 +81,16 @@ No GL extension is required on top of 3.3: every one it looks for is optional:
 | Pipelines | `FrontendGpuDevice.compilePipeline`, `RenderPass.setPipeline` |
 
 Package 0's counters hook the first five rows and the frame boundary (`mixin/counters`), count only.
+
+## Waiting for the GPU within a frame (package 2b, found in CI)
+
+- **OpenGL** (both profiles): `createFence()`, `encoder.submit()`, `fence.awaitCompletion(ms)` completes within the
+  frame, also in the middle of vanilla's main pass (the pass closed first). A fence must be submitted before it is
+  waited on ("Cannot wait on a fence for the current submit").
+- **Vulkan** (lavapipe in CI): the same sequence never completes within the frame (1000 ms timeouts, run 41378683959).
+  Copy callbacks (`copyTextureToBuffer(..., Runnable, mip)`) do run once the GPU is done, a frame or two later.
+- So package 2b reads everything back through the copy callback (calibration, still camera, CI's check), and uses the
+  two-phase path (which waits in the frame) only where calibration found the wait works: on Vulkan, auto runs still
+  camera. Worth re-checking on a real Vulkan driver (Andre's laptop) and on each renderpearl update.
+- `RenderPassDescriptorMixin` hooks `FrontendCommandEncoder.createRenderPass(RenderPassDescriptor)`, a frontend class
+  rather than the API (as package 0's counters do), to learn the main pass's attachments.

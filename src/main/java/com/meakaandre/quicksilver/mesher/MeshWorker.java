@@ -204,6 +204,7 @@ final class MeshWorker {
             for (int i = 0; i < blockEntities.size(); i++) handleBlockEntity.accept(results, blockEntities.get(i));
             output.writer = w;
             output.found = w.sprites.found;
+            output.cutoutFound = w.sprites.cutoutFound;
             output.spriteTable = w.sprites.table;
             output.active = true;
             return results;

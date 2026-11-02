@@ -1,6 +1,7 @@
 package com.meakaandre.quicksilver.mixin.terrain;
 
 import com.meakaandre.quicksilver.animation.Animation;
+import com.meakaandre.quicksilver.occlusion.GpuOcclusion;
 import com.meakaandre.quicksilver.mesher.Mesher;
 import com.meakaandre.quicksilver.terrain.Terrain;
 import com.meakaandre.quicksilver.terrain.TranslucencyCheck;
@@ -28,6 +29,8 @@ public abstract class RenderSectionMixin {
     @Inject(method = "addSectionBuffersToUberBuffer", at = @At("HEAD"), cancellable = true)
     private void quicksilver$take(ChunkSectionLayer layer, CompiledSectionMesh mesh, ByteBuffer vertices, ByteBuffer indices,
                                 CallbackInfoReturnable<Boolean> cir) {
+        // package 2b: a still-camera depth pyramid is not reused across a mesh change
+        GpuOcclusion.meshChanged();
         // package 4c: a layer Quicksilver's own mesher wrote (already in the 16-byte vertex, its animated sprites read as
         // it was written) goes to the terrain module as it is
         if (Mesher.take((SectionRenderDispatcher.RenderSection) (Object) this, layer, mesh, vertices, indices)) {
@@ -35,12 +38,14 @@ public abstract class RenderSectionMixin {
             return;
         }
         // package 8: which animated sprites the layer shows, read before anything takes the vertices
-        Animation.meshLayer(mesh, vertices);
+        // (package 2b: a layer other than solid and translucent counts as cutout, whose shape follows the texture's alpha)
+        Animation.meshLayer(mesh, vertices, layer != ChunkSectionLayer.SOLID && layer != ChunkSectionLayer.TRANSLUCENT);
         if (Terrain.take((SectionRenderDispatcher.RenderSection) (Object) this, layer, mesh, vertices, indices)) cir.setReturnValue(true);
     }
 
     @Inject(method = "releaseSectionMesh", at = @At("HEAD"))
     private void quicksilver$release(SectionMesh mesh, CallbackInfo ci) {
+        GpuOcclusion.meshChanged();
         Terrain.released(mesh);
     }
 

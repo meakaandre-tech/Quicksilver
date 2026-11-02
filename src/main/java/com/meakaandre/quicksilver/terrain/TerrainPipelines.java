@@ -144,11 +144,34 @@ final class TerrainPipelines {
 
     private static boolean wireframeFailed;
 
+    /**
+     * Package 2b, CI's occlusion check only: the terrain pipelines drawing into an RGBA8 target with the frame's depth
+     * tested but never written ([plain ? 1 : 0][cutout ? 1 : 0]).
+     */
+    private static RenderPipeline[][] check;
+
+    private static synchronized RenderPipeline[][] checkPipelines() {
+        if (check == null) {
+            RenderPipeline[][] c = new RenderPipeline[2][2];
+            for (int p = 0; p < 2; p++) for (int k = 0; k < 2; k++) c[p][k] = build(p == 1, k == 1, false, true);
+            check = c;
+        }
+        return check;
+    }
+
+    static CompiledRenderPipeline check(boolean plain, boolean cutout) {
+        return compiled(checkPipelines()[plain ? 1 : 0][cutout ? 1 : 0]);
+    }
+
     private TerrainPipelines() {
     }
 
     private static RenderPipeline build(boolean plain, boolean cutout, boolean wireframe) {
-        String name = (plain ? "plain" : "instanced") + (wireframe ? "_wireframe" : cutout ? "_cutout" : "_solid");
+        return build(plain, cutout, wireframe, false);
+    }
+
+    private static RenderPipeline build(boolean plain, boolean cutout, boolean wireframe, boolean check) {
+        String name = (plain ? "plain" : "instanced") + (wireframe ? "_wireframe" : cutout ? "_cutout" : "_solid") + (check ? "_check" : "");
         RenderPipeline.Builder b = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath("quicksilver", "pipeline/terrain_" + name))
             .withVertexShader(Identifier.fromNamespaceAndPath("quicksilver", "core/terrain"))
@@ -163,8 +186,9 @@ final class TerrainPipelines {
             .withBindGroupLayout(BindGroupLayouts.SAMPLER2)
             .withVertexBinding(0, CompactVertex.FORMAT)
             .withPrimitiveTopology(PrimitiveTopology.QUADS)
-            .withDepthStencilState(DepthStencilState.DEFAULT)
-            .withColorTargetState(ColorTargetState.DEFAULT);
+            .withDepthStencilState(check ? new DepthStencilState(DepthStencilState.DEFAULT.depthTest(), false) : DepthStencilState.DEFAULT)
+            .withColorTargetState(check ? new ColorTargetState(Optional.empty(), com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM,
+                ColorTargetState.DEFAULT.writeMask()) : ColorTargetState.DEFAULT);
         if (plain) {
             b.withShaderDefine("QUICKSILVER_PLAIN").withBindGroupLayout(REGION);
         } else {
@@ -181,6 +205,7 @@ final class TerrainPipelines {
         if (problem != null) return problem;
         List<RenderPipeline> all = new ArrayList<>(java.util.Arrays.stream(PIPELINES).flatMap(java.util.Arrays::stream).toList());
         all.addAll(java.util.Arrays.stream(translucent).flatMap(java.util.Arrays::stream).toList());
+        if (Boolean.getBoolean("quicksilver.debug.verifyOcclusion")) all.addAll(java.util.Arrays.stream(checkPipelines()).flatMap(java.util.Arrays::stream).toList());
         for (RenderPipeline p : all) {
             try {
                 if (RenderSystem.getCompiledPipelineNullable(p) == null) return "pipeline " + p.getLocation() + " did not compile";

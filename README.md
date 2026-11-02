@@ -15,6 +15,11 @@ Needs Fabric Loader 0.19.5 or newer and Fabric API. Client-side; it also loads h
 replaces Sodium's job and is Fabric's block renderer itself (in place of Indigo), so it does not load next to Sodium or
 another Fabric Renderer API renderer. `config/quicksilver.properties`, `block-renderer=off` (needs a restart) leaves
 every block and item to vanilla's own code (with vanilla's own smooth lighting, which differs slightly from Indigo's).
+`occlusion=auto|two-phase|still-camera|off` (read at start-up; default auto) sets how terrain hidden behind other
+terrain is left out: two-phase (sections drawn last frame first, then the rest tested against this frame's depth and
+the revealed ones drawn in the same frame; the CPU waits briefly for the GPU each frame), still-camera (no waiting,
+culls only while the view stays exactly the same), off; auto picks two-phase where the game trusts the driver with
+multi-draw indirect and still-camera elsewhere (Intel integrated graphics, old GPUs).
 
 - `/quicksilver bench [scene] [seconds]` (or `/qs bench ...`) measures frame rate, frame times, draw calls, uploads and memory, and writes
   the results to `latest.log` and `<game dir>/quicksilver/bench/`. With no scene (or `here`) it measures where you

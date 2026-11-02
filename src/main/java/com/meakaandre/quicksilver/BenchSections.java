@@ -59,6 +59,8 @@ final class BenchSections {
                 + ter.get("vanillaEquivalentMB") + " MB), layers taken " + ter.get("layersTaken") + ", kept by vanilla " + ter.get("layersKeptByVanilla")));
         BenchModules.register(BenchModules.section("backFaces", null, TerrainStats::backFacesJson, BenchSections::backFacesLine));
         BenchModules.register(BenchModules.section("uploadBudget", null, f -> TerrainStats.uploadBudgetJson(), BenchSections::uploadLine));
+        BenchModules.register(BenchModules.section("occlusion", com.meakaandre.quicksilver.occlusion.OcclusionStats::startWindow,
+            f -> com.meakaandre.quicksilver.occlusion.OcclusionStats.json(), com.meakaandre.quicksilver.occlusion.OcclusionStats::line));
         BenchModules.register(BenchModules.section("visibility", VisibilityStats::startWindow, f -> VisibilityStats.json(), VisibilityStats::line));
         BenchModules.register(BenchModules.section("translucency", TranslucencyStats::startWindow, f -> TranslucencyStats.json(), TranslucencyStats::line));
         BenchModules.register(BenchModules.section("renderer", null, f -> RendererStats.json(), RendererStats::line));
