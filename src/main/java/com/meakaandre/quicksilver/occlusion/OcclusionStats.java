@@ -10,21 +10,21 @@ import com.meakaandre.quicksilver.bench.GpuCounters;
  */
 public final class OcclusionStats {
     // this frame (render thread)
-    static int phase1, candidates, revealed, culledLate, culledStill, splits, pyramids, timeouts, untestedFrames, verifySkipped;
+    static int phase1, candidates, revealed, culledLate, culledStill, splits, pyramids, timeouts, untestedFrames, verifySkipped, stillRedrawn;
     static long waitNanos;
     static boolean waitedThisFrame;
     // the measuring window
-    private static long frames, wPhase1, wCandidates, wRevealed, wCulledLate, wCulledStill, wSplits, wPyramids, wTimeouts, wUntested;
+    private static long frames, wPhase1, wCandidates, wRevealed, wCulledLate, wCulledStill, wSplits, wPyramids, wTimeouts, wUntested, wStillRedrawn;
     private static long wWaitNanos, wWaitMax, wWaitFrames, wReadStart;
     private static long checkedSections, checkPixels, checkTimeouts, checkFrames, wVerifySkipped;
     // since start-up, CI gates these too
-    private static long allCheckPixels, allCheckTimeouts;
+    private static long allCheckPixels, allCheckTimeouts, allVerifySkipped;
 
     private OcclusionStats() {
     }
 
     public static void startWindow() {
-        frames = wPhase1 = wCandidates = wRevealed = wCulledLate = wCulledStill = wSplits = wPyramids = wTimeouts = wUntested = 0;
+        frames = wPhase1 = wCandidates = wRevealed = wCulledLate = wCulledStill = wSplits = wPyramids = wTimeouts = wUntested = wStillRedrawn = 0;
         wWaitNanos = wWaitMax = wWaitFrames = 0;
         checkedSections = checkPixels = checkTimeouts = checkFrames = wVerifySkipped = 0;
         wReadStart = GpuOcclusion.readBytes();
@@ -44,13 +44,15 @@ public final class OcclusionStats {
             wTimeouts += timeouts;
             wUntested += untestedFrames;
             wVerifySkipped += verifySkipped;
+            wStillRedrawn += stillRedrawn;
             if (waitedThisFrame) {
                 wWaitFrames++;
                 wWaitNanos += waitNanos;
                 wWaitMax = Math.max(wWaitMax, waitNanos);
             }
         }
-        phase1 = candidates = revealed = culledLate = culledStill = splits = pyramids = timeouts = untestedFrames = verifySkipped = 0;
+        allVerifySkipped += verifySkipped;
+        phase1 = candidates = revealed = culledLate = culledStill = splits = pyramids = timeouts = untestedFrames = verifySkipped = stillRedrawn = 0;
         waitNanos = 0;
         waitedThisFrame = false;
     }
@@ -60,7 +62,7 @@ public final class OcclusionStats {
         waitedThisFrame = true;
     }
 
-    /** CI's check of one frame: {@code sections} culled sections drawn into the check target, {@code pixels} that passed. */
+    /** CI's check of one frame (every fourth frame): {@code sections} culled sections drawn into the check target, {@code pixels} that passed. */
     static void checked(int sections, long pixels, boolean measuring) {
         if (pixels < 0) allCheckTimeouts++;
         else allCheckPixels += pixels;
@@ -81,6 +83,7 @@ public final class OcclusionStats {
         o.addProperty("reason", GpuOcclusion.reason);
         o.addProperty("configured", GpuOcclusion.configured == null ? "unset" : GpuOcclusion.configured.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'));
         o.addProperty("lastFrame", GpuOcclusion.frameName());
+        o.addProperty("midFrameWait", GpuOcclusion.midFrameWait);
         o.addProperty("fallbacks", GpuOcclusion.fallbacks);
         o.addProperty("frames", frames);
         long without = wPhase1 + wCandidates + wCulledStill;
@@ -100,6 +103,8 @@ public final class OcclusionStats {
         o.addProperty("waitMsMax", Math.round(wWaitMax / 1e4) / 100.0);
         o.addProperty("timeouts", wTimeouts);
         o.addProperty("untestedFrames", wUntested);
+        // still camera: frames whose culled sections were drawn after all (something changed after the terrain was prepared)
+        o.addProperty("stillRedrawnFrames", wStillRedrawn);
         o.addProperty("readbackBytesPerFrame", per(GpuOcclusion.readBytes() - wReadStart));
         o.addProperty("checkFrames", checkFrames);
         o.addProperty("checkedSections", checkedSections);
@@ -108,6 +113,7 @@ public final class OcclusionStats {
         o.addProperty("checkSkipped", wVerifySkipped);
         o.addProperty("checkPixelsSinceStart", allCheckPixels);
         o.addProperty("checkTimeoutsSinceStart", allCheckTimeouts);
+        o.addProperty("checkSkippedSinceStart", allVerifySkipped);
         o.addProperty("checkOn", GpuOcclusion.VERIFY);
         return o;
     }
@@ -118,7 +124,7 @@ public final class OcclusionStats {
             + o.get("culledPct") + "% culled; first pass " + o.get("firstPassPerFrame") + ", tested late " + o.get("candidatesPerFrame")
             + ", revealed " + o.get("revealedPerFrame") + "), pyramids/frame " + o.get("pyramidsPerFrame") + ", wait ms/frame "
             + o.get("waitMsPerFrame") + " (max " + o.get("waitMsMax") + ", " + o.get("waitFramesPct") + "% of frames), readback bytes/frame "
-            + o.get("readbackBytesPerFrame") + ", timeouts " + o.get("timeouts") + ", untested frames " + o.get("untestedFrames")
+            + o.get("readbackBytesPerFrame") + ", timeouts " + o.get("timeouts") + ", untested frames " + o.get("untestedFrames") + ", still frames drawn in full " + o.get("stillRedrawnFrames")
             + ", check: " + o.get("checkedSections") + " culled sections, " + o.get("checkPixels") + " pixels visible (since start "
             + o.get("checkPixelsSinceStart") + "), fallbacks " + o.get("fallbacks");
     }

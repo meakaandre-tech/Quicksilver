@@ -45,11 +45,14 @@ final class MesherOutput {
     boolean active;
     Object spriteTable;
     long[] found;
+    /** Package 2b: of those, the ones its cutout layer shows. */
+    long[] cutoutFound;
 
     void clear() {
         active = false;
         spriteTable = null;
         found = null;
+        cutoutFound = null;
         for (LayerOut l : layers) l.clear();
     }
 }

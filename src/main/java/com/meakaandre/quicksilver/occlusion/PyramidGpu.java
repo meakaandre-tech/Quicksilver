@@ -94,7 +94,11 @@ final class PyramidGpu {
         if (target != null && w == tw && h == th) return;
         // a readback still on its way is dropped (its callback sees the buffer was replaced)
         asyncPending = false;
-        close();
+        retire(targetView, target, waited, async);
+        targetView = null;
+        target = null;
+        waited = null;
+        async = null;
         tw = w;
         th = h;
         target = device.createTexture(() -> "Quicksilver depth pyramid", GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_COPY_SRC,
@@ -181,54 +185,114 @@ final class PyramidGpu {
         return out;
     }
 
+    /** The result of {@link #calibrate}, filled in on the render thread once the GPU has drawn and copied it. */
+    static final class Calibration {
+        boolean done;
+        /** {flipX, flipY}: row 0 / column 0 is the positive half of normalized x / y. */
+        boolean[] flip;
+        String error;
+        /** Whether the CPU could wait for submitted work within the frame (the two-phase path needs it). */
+        boolean midFrameWait;
+    }
+
     /**
-     * Calibration (once): renders a 2x2 texture whose texels say which half of normalized x and y they are in, reads it
-     * back. Returns {flipX, flipY} (row 0 / column 0 is the positive half); throws if it is late or makes no sense.
+     * Calibration (once, no pass open): renders a 2x2 texture whose texels say which half of normalized x and y they
+     * are in and reads it back when the GPU is done (the copy's callback). Also tries once whether a fence wait within
+     * the frame completes (at most {@code waitMs}): on a backend where it does not, the two-phase path is not used.
      */
-    static boolean[] calibrate(CommandEncoder encoder, long timeoutMs) {
+    static Calibration calibrate(CommandEncoder encoder, long waitMs) {
         GpuDevice device = RenderSystem.getDevice();
+        Calibration c = new Calibration();
         GpuTexture t = device.createTexture(() -> "Quicksilver occlusion calibration", GpuTexture.USAGE_RENDER_ATTACHMENT | GpuTexture.USAGE_COPY_SRC,
             GpuFormat.RGBA8_UNORM, 2, 2, 1, 1);
         GpuTextureView v = device.createTextureView(t);
         GpuBuffer b = device.createBuffer(() -> "Quicksilver occlusion calibration readback", GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, 16);
-        try {
-            try (RenderPass pass = encoder.createRenderPass(() -> "Quicksilver occlusion calibration", v, Optional.of(new Vector4f(0, 0, 0, 0)), null, OptionalDouble.empty())) {
-                pass.setPipeline(compiled(calibratePipeline));
-                pass.draw(6, 1, 0, 0);
-            }
-            encoder.copyTextureToBuffer(t, b, 0, () -> { }, 0);
-            var fence = encoder.createFence();
-            // renderpearl only waits on a fence whose work was submitted
-            encoder.submit();
-            boolean done;
+        try (RenderPass pass = encoder.createRenderPass(() -> "Quicksilver occlusion calibration", v, Optional.of(new Vector4f(0, 0, 0, 0)), null, OptionalDouble.empty())) {
+            pass.setPipeline(compiled(calibratePipeline));
+            pass.draw(6, 1, 0, 0);
+        }
+        encoder.copyTextureToBuffer(t, b, 0, () -> {
             try {
-                done = fence.awaitCompletion(timeoutMs);
+                if (!c.done) evaluate(c, b);
             } finally {
-                fence.close();
+                b.close();
+                v.close();
+                t.close();
             }
-            if (!done) throw new IllegalStateException("the calibration render was not done within " + timeoutMs + " ms");
-            int[][] r = new int[4][2];
-            try (var view = b.map(true, false)) {
-                ByteBuffer d = view.data();
-                for (int i = 0; i < 4; i++) {
-                    r[i][0] = d.get(i * 4) & 255;
-                    r[i][1] = d.get(i * 4 + 1) & 255;
-                }
-            }
-            // texel i: column i & 1, row i >> 1; red = positive x half, green = positive y half
-            boolean flipX = r[0][0] > 127, flipY = r[0][1] > 127;
-            for (int i = 0; i < 4; i++) {
-                boolean xPos = ((i & 1) == 0) == flipX, yPos = ((i >> 1) == 0) == flipY;
-                if ((r[i][0] > 127) != xPos || (r[i][1] > 127) != yPos) {
-                    throw new IllegalStateException("the calibration render read back wrong: red/green per texel "
-                        + java.util.Arrays.deepToString(r));
-                }
-            }
-            return new boolean[] {flipX, flipY};
+        }, 0);
+        var fence = encoder.createFence();
+        // renderpearl only waits on a fence whose work was submitted
+        encoder.submit();
+        try {
+            c.midFrameWait = fence.awaitCompletion(waitMs);
         } finally {
-            b.close();
-            v.close();
-            t.close();
+            fence.close();
+        }
+        // done already: read now (the callback, whenever it runs, then only frees the objects)
+        if (c.midFrameWait) evaluate(c, b);
+        return c;
+    }
+
+    private static void evaluate(Calibration c, GpuBuffer b) {
+        int[][] r = new int[4][2];
+        try (var view = b.map(true, false)) {
+            ByteBuffer d = view.data();
+            for (int i = 0; i < 4; i++) {
+                r[i][0] = d.get(i * 4) & 255;
+                r[i][1] = d.get(i * 4 + 1) & 255;
+            }
+        } catch (RuntimeException e) {
+            c.error = "the calibration render could not be read back: " + e;
+            c.done = true;
+            return;
+        }
+        // texel i: column i & 1, row i >> 1; red = positive x half, green = positive y half
+        boolean flipX = r[0][0] > 127, flipY = r[0][1] > 127;
+        for (int i = 0; i < 4; i++) {
+            boolean xPos = ((i & 1) == 0) == flipX, yPos = ((i >> 1) == 0) == flipY;
+            if ((r[i][0] > 127) != xPos || (r[i][1] > 127) != yPos) {
+                c.error = "the calibration render read back wrong: red/green per texel " + java.util.Arrays.deepToString(r);
+                c.done = true;
+                return;
+            }
+        }
+        c.flip = new boolean[] {flipX, flipY};
+        c.done = true;
+    }
+
+    // GPU objects replaced on a resize may still be used by submitted work (a readback on its way): closed a few frames later
+    private record Retired(long frame, AutoCloseable[] objects) {
+    }
+
+    private final java.util.ArrayDeque<Retired> retired = new java.util.ArrayDeque<>();
+    private long frames;
+
+    private void retire(AutoCloseable... objects) {
+        retired.add(new Retired(frames, objects));
+    }
+
+    /** Render thread, once a frame: closes what was retired more than three frames ago. */
+    void frame() {
+        frames++;
+        if (checkPending && ++checkFrames > 600) {
+            // never read back: a timeout, and the target and buffer are replaced (the copy may still be using them)
+            checkPending = false;
+            retire(checkView, checkTarget, checkBuffer);
+            checkView = null;
+            checkTarget = null;
+            checkBuffer = null;
+            cw = ch = -1;
+            checkResult.accept(-1);
+        }
+        while (!retired.isEmpty() && frames - retired.peek().frame() > 3) {
+            for (AutoCloseable c : retired.poll().objects()) {
+                if (c == null) continue;
+                try {
+                    c.close();
+                } catch (Exception ignored) {
+                    // closing a GPU object does not fail in practice; nothing else to do with it
+                }
+            }
         }
     }
 
@@ -252,9 +316,7 @@ final class PyramidGpu {
 
     GpuTextureView checkTarget(int width, int height) {
         if (checkTarget == null || cw != width || ch != height) {
-            if (checkView != null) checkView.close();
-            if (checkTarget != null) checkTarget.close();
-            if (checkBuffer != null) checkBuffer.close();
+            retire(checkView, checkTarget, checkBuffer);
             GpuDevice device = RenderSystem.getDevice();
             cw = width;
             ch = height;
@@ -267,25 +329,39 @@ final class PyramidGpu {
         return checkView;
     }
 
-    /** Pixels of the check target something was drawn into (alpha above zero); -1 on a timeout. */
-    long checkPixels(CommandEncoder encoder, long timeoutMs) {
-        encoder.copyTextureToBuffer(checkTarget, checkBuffer, 0, () -> { }, 0);
-        var fence = encoder.createFence();
-        // renderpearl only waits on a fence whose work was submitted
-        encoder.submit();
-        boolean done;
-        try {
-            done = fence.awaitCompletion(timeoutMs);
-        } finally {
-            fence.close();
-        }
-        if (!done) return -1;
-        long n = 0;
-        try (var view = checkBuffer.map(true, false)) {
-            ByteBuffer d = view.data();
-            int px = cw * ch;
-            for (int i = 0; i < px; i++) if ((d.get(i * 4 + 3) & 255) != 0) n++;
-        }
-        return n;
+    /** What the check target is cleared to (RGBA8 51, 102, 153, 204): a value terrain's colour is never expected to be. */
+    static final org.joml.Vector4f CHECK_CLEAR = new org.joml.Vector4f(0.2f, 0.4f, 0.6f, 0.8f);
+    private static final int CHECK_CLEAR_BITS = 51 | 102 << 8 | 153 << 16 | 204 << 24;
+
+    // a check read back when the GPU is done (the copy's callback); the next check waits until then
+    private boolean checkPending;
+    private int checkFrames;
+    private java.util.function.LongConsumer checkResult;
+
+    boolean checkPending() {
+        return checkPending;
+    }
+
+    /**
+     * Copies the check target back; {@code result} gets the pixels something was drawn into (any byte changed from the
+     * clear) once the GPU is done, or -1 if it never is (600 frames).
+     */
+    void checkPixelsLater(CommandEncoder encoder, java.util.function.LongConsumer result) {
+        checkPending = true;
+        checkFrames = 0;
+        checkResult = result;
+        GpuBuffer buffer = checkBuffer;
+        int px = cw * ch;
+        encoder.copyTextureToBuffer(checkTarget, buffer, 0, () -> {
+            if (buffer != checkBuffer || !checkPending) return; // given up on, or replaced meanwhile
+            checkPending = false;
+            long n = 0;
+            try (var view = buffer.map(true, false)) {
+                ByteBuffer d = view.data();
+                d.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+                for (int i = 0; i < px; i++) if (d.getInt(i * 4) != CHECK_CLEAR_BITS) n++;
+            }
+            result.accept(n);
+        }, 0);
     }
 }

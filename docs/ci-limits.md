@@ -909,19 +909,26 @@ p99, frames over 50 ms, draw calls and the largest upload per frame.
   GL 3.3, vanilla's Intel flag) with `-Dquicksilver.occlusion=two-phase`, so the laptop's plain path is tested with the
   CPU waiting for the GPU too (auto is still-camera there). Compared with vanilla-old (vanilla-a in quick mode), gated
   against the old-GPU baselines and limits (`BASELINE_PROFILE` in `ci/compare.py`). In quick and full mode.
-- **The occlusion check** (`-Dquicksilver.debug.verifyOcclusion=true`, every Quicksilver run): each frame that leaves
-  sections out, their solid and cutout geometry is drawn into a full-size RGBA8 target of its own, depth-tested against
-  the frame's depth after all opaque terrain (never written), with vanilla's projection, fog and terrain uniforms; any
-  pixel drawn there is a culled section that would have been visible. It shares the geometry and shaders with the real
+- **The occlusion check** (`-Dquicksilver.debug.verifyOcclusion=true`, every Quicksilver run): every fourth frame that
+  leaves sections out, their solid and cutout geometry is drawn into a full-size RGBA8 target of its own (cleared to a
+  sentinel colour), depth-tested against the frame's depth after all opaque terrain (never written), with vanilla's
+  projection, fog and terrain uniforms; any pixel that changed is a culled section that would have been visible. The
+  frames between run exactly as without the check (a still-camera frame reusing its pyramid does not split the main
+  pass), so CI runs the production path too and gates its untested frames. It shares the geometry and shaders with the real
   draw, nothing with the pyramid or the box test. Its draws, passes and readback are left out of the counters.
 - **Gates** (`ci/compare.py`, every Quicksilver bench): occlusion on, no fallback; the last frame in the mode the run asks
   for (full and Vulkan two-phase, old-GPU still-camera, old-GPU two-phase); the check on, 0 visible pixels and 0 timeouts
   since start-up, no frame skipped; no wait timed out and no frame drew deferred sections untested; scenes marked
   `ciRequiresOcclusion` (occlusion, occlusion_corner) culled something (still-camera only where the camera stands
   still); "Quicksilver occlusion: turned off" or "Quicksilver occlusion check:" in a client log fails the run.
-- **Draw calls at most main's + 3** (Andre): per scene and profile, draw calls per frame (median where the scene is
-  median-gated) at most the committed baseline + 3, on top of the existing gates (baseline x 1.10 + 2, and against
-  vanilla in the same run).
+- **Draw calls at most main's + 3 and at or under vanilla** (Andre): per scene and profile, draw calls per frame (median
+  where the scene is median-gated) at most the committed baseline + 3 in every scene, also where `ciGatedCounts` leaves
+  draw calls out of the 10% gate; and in full mode the median and average at most vanilla's in the same run in every
+  scene (plus any allowance in `ci/vanilla-draw-calls.json`), on top of the existing gates. Uploads and memory keep the
+  existing gates against main's baseline (x 1.10 plus slack) and vanilla's terrain GPU memory.
+- **Measure runs**: no section culled, no pyramid built, no pass split.
+- **`[vulkan]`** in a commit message adds vanilla-vk and quicksilver-vk to a quick run (compared as in full mode; the
+  strict check then uses the pixels all three vanilla runs agree on).
 
 ## Server suite (phase 2, P2-0)
 

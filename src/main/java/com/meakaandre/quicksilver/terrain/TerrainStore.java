@@ -596,8 +596,9 @@ public final class TerrainStore {
             allocateTranslucent(device, encoder, region, e, v, count, s.indices, s.indexType, s.indexCount);
             e.sorted = s.sorted;
         } else {
-            e.part = allocate(device, encoder, region, layerIndex(s.layer), v, count, s.split.faces());
+            // the box first: read from the vertices as they are, before the upload may move the buffer's position
             bounds(e, v, count);
+            e.part = allocate(device, encoder, region, layerIndex(s.layer), v, count, s.split.faces());
         }
         liveVertices += count;
     }

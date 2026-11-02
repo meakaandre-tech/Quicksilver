@@ -76,7 +76,7 @@ final class SectionWriter {
             if (Float.floatToRawIntBits(CompactVertex.decodeUv(su)) != Float.floatToRawIntBits(pu)
                 || Float.floatToRawIntBits(CompactVertex.decodeUv(sv)) != Float.floatToRawIntBits(pv)) uvRounded++;
         }
-        sprites.quad(u, v);
+        sprites.quad(u, v, layer == 1);
         Layer l = layers[layer];
         l.origin(origin);
         l.positionsRounded += posRounded;
@@ -164,7 +164,7 @@ final class SectionWriter {
             if (Float.floatToRawIntBits(CompactVertex.decodeUv(su)) != Float.floatToRawIntBits(pu)
                 || Float.floatToRawIntBits(CompactVertex.decodeUv(sv)) != Float.floatToRawIntBits(pv)) uvRounded++;
         }
-        sprites.quadSums(uSum, vSum);
+        sprites.quadSums(uSum, vSum, layer == 1);
         Layer l = layers[layer];
         l.origin(origin);
         l.positionsRounded += posRounded;

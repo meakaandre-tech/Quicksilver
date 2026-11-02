@@ -1219,9 +1219,10 @@ public final class TerrainRenderer {
         if (!plain && instanceSlice == null) throw new IllegalStateException("no section instances this frame");
         int draws = 0, layers = 0;
         for (int li = 0; li < 2; li++) {
-            CompiledRenderPipeline pipeline = check ? TerrainPipelines.check(plain, li == 1)
-                : wireframe ? TerrainPipelines.wireframe(plain) : TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1));
-            if (pipeline == null) continue;
+            CompiledRenderPipeline pipeline = check ? TerrainPipelines.check(plain, li == 1) : wireframe ? TerrainPipelines.wireframe(plain) : null;
+            // CI's check must never pass by drawing nothing; a missing wireframe pipeline draws what was left out normally
+            if (check && pipeline == null) throw new IllegalStateException("the occlusion check pipeline did not compile");
+            if (pipeline == null) pipeline = TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1));
             pass.setPipeline(pipeline);
             pass.setIndexBuffer(indexBuffer, quads.type());
             if (!plain) pass.setVertexBuffer(1, instanceSlice);

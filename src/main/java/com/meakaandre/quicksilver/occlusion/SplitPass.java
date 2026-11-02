@@ -47,6 +47,19 @@ public final class SplitPass implements InvocationHandler {
     }
 
     /** Wraps {@code pass}, created from {@code descriptor}; {@code open} creates a pass from a descriptor. */
+    /** The depth attachment's view of a pass descriptor, or null if it has none. */
+    static GpuTextureView depthOf(Object descriptor) {
+        try {
+            for (RecordComponent c : descriptor.getClass().getRecordComponents()) {
+                Object v = c.getAccessor().invoke(descriptor);
+                if (v != null && v.getClass().isRecord() && c.getName().toLowerCase(java.util.Locale.ROOT).contains("depth")) return viewOf(v);
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("could not read the main pass's attachments: " + e, e);
+        }
+        return null;
+    }
+
     static RenderPass wrap(RenderPass pass, Object descriptor, Function<Object, RenderPass> open) {
         List<GpuTextureView> views = new ArrayList<>();
         GpuTextureView depth = null;
@@ -114,6 +127,13 @@ public final class SplitPass implements InvocationHandler {
         }
     }
 
+    /** A call this class does not know whether it sets state (null: none yet), see {@link #record}. */
+    private String unknownState;
+
+    String unknownState() {
+        return unknownState;
+    }
+
     private void record(Method m, Object[] args) {
         String name = m.getName();
         String key = switch (name) {
@@ -130,7 +150,12 @@ public final class SplitPass implements InvocationHandler {
                 debugDepth--;
                 yield null;
             }
-            default -> null;
+            default -> {
+                // any other call that is not a draw may set pass state this class does not replay (one a later
+                // renderpearl adds): the pass is then never split
+                if (!name.startsWith("draw")) unknownState = name;
+                yield null;
+            }
         };
         if (key == null) return;
         // a uniform keeps its first position (the order vanilla bound things in), with its latest value
@@ -138,9 +163,9 @@ public final class SplitPass implements InvocationHandler {
         methods.put(key, m);
     }
 
-    /** Closes the open pass. False (nothing done) inside a debug group or when it can't be split. */
+    /** Closes the open pass. False (nothing done) inside a debug group, after an unknown call, or when it can't be split. */
     boolean suspend() {
-        if (inner == null || closed || debugDepth != 0) return false;
+        if (inner == null || closed || debugDepth != 0 || unknownState != null) return false;
         inner.close();
         inner = null;
         return true;

@@ -115,13 +115,36 @@ public final class GpuOcclusion {
      * then what the same pixels saw of the same geometry. (The same eye looking another way is not enough: other pixels
      * sample other rays, which can pass through gaps narrower than a pixel that every old sample missed.)
      */
-    private record Stamp(java.util.List<Double> m, double cx, double cy, double cz, long visible, int w, int h) {
-        static Stamp of(double[] m, double cx, double cy, double cz, long visible, int w, int h) {
+    private record Stamp(java.util.List<Double> m, double cx, double cy, double cz, long visible, int w, int h, long changes) {
+        static Stamp of(double[] m, double cx, double cy, double cz, long visible, int w, int h, long changes) {
             Double[] b = new Double[16];
             for (int i = 0; i < 16; i++) b[i] = m[i];
-            return new Stamp(java.util.List.of(b), cx, cy, cz, visible, w, h);
+            return new Stamp(java.util.List.of(b), cx, cy, cz, visible, w, h, changes);
         }
     }
+
+    /** Section meshes taken or let go since start-up (any thread): part of {@link #changes}. */
+    private static final java.util.concurrent.atomic.AtomicLong MESH_CHANGES = new java.util.concurrent.atomic.AtomicLong();
+
+    /** Mixin (any thread): a section layer was uploaded or a section mesh let go. */
+    public static void meshChanged() {
+        MESH_CHANGES.incrementAndGet();
+    }
+
+    /**
+     * What else must not change while a still-camera pyramid is reused: section meshes (also caught by the visible list's
+     * mesh identities) and animated textures that can change the shape of cutout terrain (fire, kelp...).
+     */
+    private static long changes() {
+        return MESH_CHANGES.get() * 1000003L + com.meakaandre.quicksilver.animation.Animation.cutoutShapeStamp();
+    }
+
+    /** {@link #changes} as this frame's terrain was prepared; this frame's CI check (every few frames, see beginFrame). */
+    private static long frameChanges;
+    private static boolean verifyFrame, unknownLogged;
+    private static long frameNumber;
+    /** The size of this frame's main depth image (from the main pass's descriptor), -1 unknown. */
+    private static int mainW = -1, mainH = -1;
 
     private GpuOcclusion() {
     }
@@ -169,6 +192,18 @@ public final class GpuOcclusion {
         boolean wasArmed = armed;
         armed = false;
         if (frame == Frame.NONE || !"on".equals(state)) return pass;
+        mainW = mainH = -1;
+        if (wasArmed && descriptorSerial != serialBefore && lastDescriptor != null) {
+            try {
+                GpuTextureView d = SplitPass.depthOf(lastDescriptor);
+                if (d != null) {
+                    mainW = d.texture().getWidth(0);
+                    mainH = d.texture().getHeight(0);
+                }
+            } catch (Throwable ignored) {
+                // unknown size: a still-camera frame then draws what it culled (afterOpaque)
+            }
+        }
         if (!needsSplit()) return pass;
         try {
             if (!wasArmed) throw new IllegalStateException("hook that did not apply: MainPassMixin#quicksilver$beforeMainPass");
@@ -187,8 +222,12 @@ public final class GpuOcclusion {
         }
     }
 
+    /**
+     * The main pass is split only to build a pyramid (every two-phase frame; a still-camera frame when one is due) or
+     * for CI's check. A still-camera frame reusing its pyramid only leaves sections out: no split.
+     */
     private static boolean needsSplit() {
-        return frame == Frame.TWO_PHASE || buildStill || (VERIFY && TerrainRenderer.culledCount() > 0);
+        return frame == Frame.TWO_PHASE || buildStill || (verifyFrame && TerrainRenderer.culledCount() > 0);
     }
 
     // ---------------------------------------------------------------- per frame
@@ -203,6 +242,10 @@ public final class GpuOcclusion {
         buildStill = false;
         stillValid = false;
         indirectFrame = indirect;
+        // CI's check runs every fourth frame, so the frames between run exactly as without it (no extra split)
+        verifyFrame = VERIFY && (frameNumber++ & 3) == 0 && !GPU.checkPending();
+        frameChanges = changes();
+        GPU.frame();
         OcclusionStats.beginFrame();
         if (configured == null) start();
         // the last frame left sections out but the hook after the opaque terrain group never ran: it no longer fits
@@ -220,6 +263,7 @@ public final class GpuOcclusion {
         }
         try {
             if (wireframe) return;
+            if (!calibrated()) return;
             float[] p = viewSeen ? PROJECTIONS.get(RenderSystem.getProjectionMatrixBuffer()) : null;
             if (p == null) {
                 // the projection or view hook never gave anything: after a few seconds of world frames, say so and stop
@@ -244,8 +288,17 @@ public final class GpuOcclusion {
                 h = (h ^ System.identityHashCode(s.getSectionMesh())) * 1099511628211L;
             }
             visibleHash = h ^ visible.size();
-            Stamp now = Stamp.of(M, camX, camY, camZ, visibleHash, lastW, lastH);
+            Stamp now = Stamp.of(M, camX, camY, camZ, visibleHash, lastW, lastH, frameChanges);
             Mode mode = configured == Mode.AUTO ? (indirect ? Mode.TWO_PHASE : Mode.STILL_CAMERA) : configured;
+            // two-phase waits for the GPU in the middle of the frame: where that wait never completes (calibration
+            // found it so, e.g. renderpearl's Vulkan backend), the still-camera path instead
+            if (mode == Mode.TWO_PHASE && !midFrameWait) {
+                if (!twoPhaseUnavailableLogged) {
+                    twoPhaseUnavailableLogged = true;
+                    QuicksilverClient.LOG.info("Quicksilver occlusion: two-phase needs the GPU to finish work within a frame, which this backend does not do; still camera instead");
+                }
+                mode = Mode.STILL_CAMERA;
+            }
             if (mode == Mode.TWO_PHASE) {
                 frame = Frame.TWO_PHASE;
             } else if (mode == Mode.STILL_CAMERA) {
@@ -340,13 +393,24 @@ public final class GpuOcclusion {
         boolean phase2Done = false;
         try {
             boolean projectionOk = sameProjection();
-            if (sp == null || wireframe || !"on".equals(state) || !projectionOk) {
+            // still camera: something changed since the terrain was prepared (an animated texture redrawn, a mesh), or
+            // this frame's depth image is not the size the pyramid was drawn at: what was culled is drawn after all,
+            // and no pyramid is stamped for a frame that changed under it
+            boolean stillStale = false;
+            if (frame == Frame.STILL) {
+                boolean changed = changes() != frameChanges;
+                if (changed) buildStill = false;
+                stillStale = TerrainRenderer.culledCount() > 0 && (changed || latestStamp == null || mainW != latestStamp.w() || mainH != latestStamp.h());
+                if (stillStale) OcclusionStats.stillRedrawn++;
+            }
+            boolean splitNeeded = twoPhase || buildStill || (verifyFrame && TerrainRenderer.culledCount() > 0);
+            if ((sp == null && splitNeeded) || wireframe || !"on".equals(state) || !projectionOk || stillStale) {
                 // nothing left out may stay undrawn: deferred sections and (still camera) culled ones are drawn now
                 boolean any = TerrainRenderer.candidateCount() > 0 || TerrainRenderer.culledCount() > 0;
                 if (twoPhase) TerrainRenderer.drawCandidatesDirect(pass, wireframe, null);
                 else TerrainRenderer.drawCulledDirect(pass, wireframe);
                 phase2Done = true;
-                if (any) OcclusionStats.untestedFrames++;
+                if (any && !stillStale) OcclusionStats.untestedFrames++;
                 if (!projectionOk && ++projectionMismatches == 60) {
                     fail("checking the projection", new IllegalStateException("the projection bound for the main pass is not the one prepared with"));
                 }
@@ -354,9 +418,13 @@ public final class GpuOcclusion {
             }
             projectionMismatches = 0;
             boolean candidates = TerrainRenderer.candidateCount() > 0;
-            boolean verify = VERIFY && TerrainRenderer.culledCount() > 0;
+            boolean verify = verifyFrame && TerrainRenderer.culledCount() > 0;
             if (!twoPhase && !buildStill && !verify) return;
             if (!sp.suspend()) {
+                if (sp.unknownState() != null && !unknownLogged) {
+                    unknownLogged = true;
+                    QuicksilverClient.LOG.warn("Quicksilver occlusion: the main pass is not split after a call Quicksilver does not replay ({}); frames draw what they left out untested", sp.unknownState());
+                }
                 if (twoPhase) {
                     TerrainRenderer.drawCandidatesDirect(pass, false, null);
                     phase2Done = true;
@@ -384,7 +452,7 @@ public final class GpuOcclusion {
                 OcclusionStats.pyramids++;
                 double[] mm = M.clone();
                 double cx = camX, cy = camY, cz = camZ;
-                Stamp stamp = Stamp.of(M, camX, camY, camZ, visibleHash, w, h);
+                Stamp stamp = Stamp.of(M, camX, camY, camZ, visibleHash, w, h, frameChanges);
                 boolean fy = calibration[1], z01 = zeroToOne, rev = reversed;
                 if (twoPhase && candidates) {
                     long[] waited = new long[1];
@@ -415,7 +483,7 @@ public final class GpuOcclusion {
                 TerrainRenderer.drawPhase2(pass);
                 phase2Done = true;
             }
-            if (VERIFY && TerrainRenderer.culledCount() > 0) verify(sp, w, h);
+            if (verifyFrame && TerrainRenderer.culledCount() > 0) verify(sp, w, h);
         } catch (Throwable t) {
             fail("culling terrain", t);
             try {
@@ -439,29 +507,49 @@ public final class GpuOcclusion {
         return true;
     }
 
-    /** Calibration and depth convention, once; false (module off) if they can't be worked out. */
+    /** The main depth image can be sampled; false (module off) if not. */
     private static boolean ready(CommandEncoder enc, GpuTextureView depth) {
         if ((depth.texture().usage() & GpuTexture.USAGE_TEXTURE_BINDING) == 0) {
             fail("starting", new IllegalStateException("the main depth image can't be sampled (usage " + depth.texture().usage() + ")"));
             return false;
         }
-        if (calibration == null) {
-            boolean[] c;
-            try {
-                c = PyramidGpu.calibrate(enc, WAIT_TIMEOUT_MS * 4);
-            } catch (IllegalStateException e) {
-                fail("calibrating", e);
-                return false;
-            }
-            if (c[0]) {
-                fail("calibrating", new IllegalStateException("the backend stores rendered columns right to left"));
-                return false;
-            }
-            calibration = c;
-            QuicksilverClient.LOG.info("Quicksilver occlusion: rendered rows are stored {} first, depth {} ({}), backend {}",
-                c[1] ? "top" : "bottom", zeroToOne ? "0..1" : "-1..1 mapped to 0..1", reversed ? "greater is nearer" : "less is nearer",
-                RenderSystem.getDevice().getDeviceInfo().backendName());
+        return true;
+    }
+
+    private static PyramidGpu.Calibration pendingCalibration;
+    private static int calibrationFrames;
+    /** Whether a fence wait within the frame completes on this backend (calibration): two-phase needs it. */
+    static boolean midFrameWait;
+    private static boolean twoPhaseUnavailableLogged;
+
+    /**
+     * Render thread, no pass open (as terrain is prepared): starts the calibration, then takes its result once the GPU
+     * has drawn it. True once calibrated; nothing is left out before.
+     */
+    private static boolean calibrated() {
+        if (calibration != null) return true;
+        if (pendingCalibration == null) {
+            pendingCalibration = PyramidGpu.calibrate(RenderSystem.getDevice().createCommandEncoder(), 100);
+            calibrationFrames = 0;
         }
+        PyramidGpu.Calibration c = pendingCalibration;
+        if (!c.done) {
+            if (++calibrationFrames == 600) fail("calibrating", new IllegalStateException("the calibration render was never read back (600 frames)"));
+            return false;
+        }
+        if (c.error != null) {
+            fail("calibrating", new IllegalStateException(c.error));
+            return false;
+        }
+        if (c.flip[0]) {
+            fail("calibrating", new IllegalStateException("the backend stores rendered columns right to left"));
+            return false;
+        }
+        midFrameWait = c.midFrameWait;
+        calibration = c.flip;
+        QuicksilverClient.LOG.info("Quicksilver occlusion: rendered rows are stored {} first, depth {} ({}), backend {}, waiting for the GPU within a frame {}",
+            calibration[1] ? "top" : "bottom", zeroToOne ? "0..1" : "-1..1 mapped to 0..1", reversed ? "greater is nearer" : "less is nearer",
+            RenderSystem.getDevice().getDeviceInfo().backendName(), midFrameWait ? "works" : "does not complete (two-phase not used; still camera instead)");
         return true;
     }
 
@@ -475,17 +563,21 @@ public final class GpuOcclusion {
             }
             CommandEncoder enc = RenderSystem.getDevice().createCommandEncoder();
             GpuTextureView ct = GPU.checkTarget(w, h);
-            try (RenderPass vp = enc.createRenderPass(() -> "Quicksilver occlusion check", ct, Optional.of(new Vector4f(0, 0, 0, 0)), sp.depth,
+            try (RenderPass vp = enc.createRenderPass(() -> "Quicksilver occlusion check", ct, Optional.of(PyramidGpu.CHECK_CLEAR), sp.depth,
                 OptionalDouble.empty())) {
                 sp.replay(vp, true);
                 TerrainRenderer.drawCulledForCheck(vp);
             }
-            long px = GPU.checkPixels(enc, WAIT_TIMEOUT_MS * 8);
-            OcclusionStats.checked(TerrainRenderer.culledCount(), px, counting);
-            if (px != 0) {
-                QuicksilverClient.LOG.warn("Quicksilver occlusion check: {} pixel(s) of {} culled section(s) would have been visible (mode {})",
-                    px < 0 ? "unknown (timeout)" : px, TerrainRenderer.culledCount(), frame);
-            }
+            int sections = TerrainRenderer.culledCount();
+            Frame f = frame;
+            // read back when the GPU is done (no wait in the frame: not every backend can); the next check waits for it
+            GPU.checkPixelsLater(enc, px -> {
+                OcclusionStats.checked(sections, px, counting);
+                if (px != 0) {
+                    QuicksilverClient.LOG.warn("Quicksilver occlusion check: {} pixel(s) of {} culled section(s) would have been visible (mode {})",
+                        px < 0 ? "unknown (timeout)" : px, sections, f);
+                }
+            });
             sp.resume();
         } finally {
             GpuCounters.enabled = counting;

@@ -61,6 +61,7 @@ PAIRS = {"full": ("quicksilver-full", "vanilla-a"), "old-gpu": ("quicksilver-old
 # the committed baselines a profile is gated against (the forced two-phase run is the old-GPU profile)
 BASELINE_PROFILE = {"old-gpu-2p": "old-gpu"}
 # package 2b: what the occlusion module must have done in each Quicksilver run (its last frame's mode)
+VULKAN_WAIT_OPTIONAL = {"quicksilver-vk"}
 OCCLUSION_MODE = {"quicksilver-full": "two-phase", "quicksilver-vk": "two-phase", "quicksilver-old": "still", "quicksilver-2p-old": "two-phase"}
 VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk")
 SUITES = None  # every suite
@@ -491,6 +492,10 @@ def main():
                             an = bj.get("animation") or {}
                             if an.get("state") != "off" or an.get("reason") != "measure only (CI)" or an.get("skippedSinceStart", 0) != 0:
                                 failures.append(f"{name}/{r}: bench {bj['scene']}: animation module not off for measuring ({an.get('state')} ({an.get('reason')}), left out {an.get('skippedSinceStart')})")
+                            # package 2b: nothing culled and no pyramid built in a measure run
+                            oc = bj.get("occlusion") or {}
+                            if oc.get("sectionsCulledPerFrame", 0) != 0 or oc.get("pyramidsPerFrame", 0) != 0 or oc.get("passSplitsPerFrame", 0) != 0:
+                                failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion culling worked in a measure run ({oc.get('state')}, culled/frame {oc.get('sectionsCulledPerFrame')}, pyramids/frame {oc.get('pyramidsPerFrame')})")
                     else:
                         # the terrain module must be on in every Quicksilver run and must never have fallen back to vanilla
                         if re.search(r"Quicksilver terrain: (turned off|not used)", t):
@@ -597,13 +602,19 @@ def main():
                                 failures.append(f"{name}/{r}: bench {bj['scene']} has no occlusion report")
                             else:
                                 want_mode = OCCLUSION_MODE.get(r)
+                                # Vulkan: two-phase only where the backend lets the CPU wait for the GPU within a frame
+                                # (calibration says so); otherwise still camera. The GL runs must always have the wait.
+                                if r in VULKAN_WAIT_OPTIONAL and want_mode == "two-phase" and oc.get("midFrameWait") is False:
+                                    want_mode = "still"
+                                elif want_mode == "two-phase" and oc.get("midFrameWait") is False:
+                                    failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion found no wait within a frame on OpenGL")
                                 if oc.get("state") != "on" or oc.get("fallbacks", 0) != 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion {oc.get('state')} ({oc.get('reason')}), fallbacks {oc.get('fallbacks')}")
                                 if want_mode and oc.get("lastFrame") != want_mode:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion's last frame was {oc.get('lastFrame')}, this run wants {want_mode}")
                                 if not oc.get("checkOn"):
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: the occlusion check was not on")
-                                if oc.get("checkPixelsSinceStart", 0) != 0 or oc.get("checkTimeoutsSinceStart", 0) != 0 or oc.get("checkSkipped", 0) != 0:
+                                if oc.get("checkPixelsSinceStart", 0) != 0 or oc.get("checkTimeoutsSinceStart", 0) != 0 or oc.get("checkSkipped", 0) != 0 or oc.get("checkSkippedSinceStart", 0) != 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: pop-in: occlusion check since start-up found {oc.get('checkPixelsSinceStart')} visible pixels of culled sections"
                                                     f" ({oc.get('checkTimeoutsSinceStart')} timeouts, {oc.get('checkSkipped')} frames skipped)")
                                 if oc.get("timeouts", 0) != 0 or oc.get("untestedFrames", 0) != 0:
@@ -840,11 +851,13 @@ def main():
                         cell += f" (base {bv})"
                         if v > bv * RISE + SLACK[k]:
                             failures.append(f"{name}/{prof}/{sid}: {k}{' (median)' if k == 'drawCallsPerFrame' and sid in median_gated else ''} rose from {bv} to {v} (over 10%)")
-                        # package 2b (Andre, 2026-11-02): draw calls at most main's + 3 (the depth pyramid's draw and the
-                        # late pass's draws per layer)
-                        if k == "drawCallsPerFrame" and v > bv + 3:
-                            failures.append(f"{name}/{prof}/{sid}: draw calls per frame{' (median)' if sid in median_gated else ''} {v}, more than main's {bv} + 3 (package 2b)")
                     cells.append(cell)
+                # package 2b (Andre, 2026-11-02): draw calls at most main's + 3 (the depth pyramid's draw and the late
+                # pass's draws per layer), in every scene, also where ciGatedCounts leaves draw calls out of the 10% gate
+                if base is not None and sid in base and "drawCallsPerFrame" in base[sid]:
+                    v, bv = c["drawCallsPerFrame"], base[sid]["drawCallsPerFrame"]
+                    if v > bv + 3:
+                        failures.append(f"{name}/{prof}/{sid}: draw calls per frame{' (median)' if sid in median_gated else ''} {v}, more than main's {bv} + 3 (package 2b)")
                 if base is not None and sid not in base:
                     # package 4: a scene with no committed baseline would go ungated without a word
                     failures.append(f"{name}/{prof}/{sid}: no committed baseline entry in {base_file}")
@@ -878,6 +891,10 @@ def main():
                     stats = [("median", "drawCallsPerFrameMedian")] + ([] if median_only else [("average", "drawCallsPerFrameAvg")])
                     for label, k in stats:
                         lim = vc[k] + allowance.get(f"{name}/{prof}/{sid}", 0) if sid in translucent else round(vc[k] * RISE + SLACK["drawCallsPerFrame"], 2)
+                        # package 2b (Andre, 2026-11-02): at or under vanilla in every scene (plus an allowance he decided)
+                        strict = vc[k] + allowance.get(f"{name}/{prof}/{sid}", 0)
+                        if sid not in translucent and c[k] > strict:
+                            failures.append(f"{name}/{prof}/{sid}: {label} {c[k]} draw calls per frame, more than vanilla's {strict} in the same run (package 2b: at or under vanilla in every scene)")
                         if c[k] > lim:
                             failures.append(f"{name}/{prof}/{sid}: {label} {c[k]} draw calls per frame, more than {lim} (vanilla's {vc[k]} in the same run"
                                             f"{(' + ' + str(allowance[name + '/' + prof + '/' + sid])) if sid in translucent and name + '/' + prof + '/' + sid in allowance else '' if sid in translucent else ' x 1.10 + 2'}; fps {c.get('fps')} against vanilla's {vc.get('fps')})")

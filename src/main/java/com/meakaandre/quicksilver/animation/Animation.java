@@ -59,7 +59,14 @@ public final class Animation {
 
     /** Debug (CI): one log line for each sprite's first use outside terrain, with where it came from. */
     static final boolean LOG_USES = Boolean.getBoolean("quicksilver.debug.animationUses");
-    private static final int USED_ELSEWHERE = 1, PENDING = 2;
+    /** IN_CUTOUT (package 2b): shown by a cutout layer, so a redraw can change which pixels terrain covers. */
+    private static final int USED_ELSEWHERE = 1, PENDING = 2, IN_CUTOUT = 4;
+    /**
+     * Package 2b: redraws (since start-up) that can have changed the shape of cutout terrain: a sprite a cutout layer
+     * shows, or any sprite while a visible mesh's sprites are unread. Plus every block-atlas tick while vanilla redraws
+     * the animated textures itself (module off).
+     */
+    private static volatile long cutoutRedraws, vanillaTicks;
     private static final int POISON = -1;
     private static final int GRID = 256;
 
@@ -229,6 +236,7 @@ public final class Animation {
      * if seen in the last frame, the others marked stale; stale sprites seen again are redrawn too.
      */
     public static boolean uploadFrames(TextureAtlas atlas) {
+        vanillaTicks++;
         Table t = table;
         if (state != State.ON || t == null || t.atlas != atlas) return false;
         try {
@@ -274,13 +282,14 @@ public final class Animation {
      * A worker thread (or the render thread) is about to put one layer of a freshly built section mesh to the GPU:
      * records which animated sprites its quads show (vertices null: only a new index list, nothing to read).
      */
-    public static void meshLayer(CompiledSectionMesh mesh, ByteBuffer vertices) {
+    public static void meshLayer(CompiledSectionMesh mesh, ByteBuffer vertices, boolean cutout) {
         if (vertices == null || mesh == null) return;
         MeshSprites m = (MeshSprites) mesh;
         Table t = table;
         try {
             long t0 = System.nanoTime();
             int[] ids = t == null ? null : scan(t, vertices);
+            if (cutout && ids != null) markCutout(t, ids);
             synchronized (mesh) {
                 int g = m.quicksilver$animGen();
                 if (t == null || ids == null) {
@@ -323,9 +332,10 @@ public final class Animation {
 
     /**
      * As {@link #meshLayer}, for one layer of a mesh Quicksilver's mesher wrote: {@code found} holds the animated sprites
-     * its section's quads show (looked up in {@code table} while meshing; null table: the section was meshed without one).
+     * its section's quads show (looked up in {@code table} while meshing; null table: the section was meshed without one);
+     * {@code cutoutFound} the ones its cutout layer shows (package 2b).
      */
-    public static void meshLayerFound(CompiledSectionMesh mesh, Object table, long[] found) {
+    public static void meshLayerFound(CompiledSectionMesh mesh, Object table, long[] found, long[] cutoutFound) {
         if (mesh == null) return;
         MeshSprites m = (MeshSprites) mesh;
         try {
@@ -336,6 +346,10 @@ public final class Animation {
                 IntArrayList out = new IntArrayList();
                 for (int i = 0; i < t.states.length; i++) if ((found[i >> 6] & (1L << i)) != 0) out.add(i);
                 ids = out.toIntArray();
+                // package 2b: the sprites the section's cutout layer shows (null: unknown, so all of them)
+                for (int id : ids) {
+                    if (cutoutFound == null || (cutoutFound[id >> 6] & (1L << id)) != 0) markCutout(t, id);
+                }
             }
             synchronized (mesh) {
                 int g = m.quicksilver$animGen();
@@ -355,6 +369,22 @@ public final class Animation {
             m.quicksilver$setAnim(POISON, null);
             fail("reading a section mesh", e);
         }
+    }
+
+    private static void markCutout(Table t, int[] ids) {
+        for (int id : ids) markCutout(t, id);
+    }
+
+    private static void markCutout(Table t, int id) {
+        if ((t.flags.get(id) & IN_CUTOUT) == 0) t.flags.getAndUpdate(id, x -> x | IN_CUTOUT);
+    }
+
+    /**
+     * Package 2b: changes whenever an animated texture is redrawn in a way that can change which pixels cutout terrain
+     * covers (render thread). A still-camera depth pyramid is only reused while this stays the same.
+     */
+    public static long cutoutShapeStamp() {
+        return state == State.ON ? cutoutRedraws : (1L << 62) + vanillaTicks;
     }
 
     /** The animated sprites a layer's quads show (vanilla's BLOCK vertices: UV at byte 16 of 28), sorted; null if unreadable. */
@@ -561,6 +591,9 @@ public final class Animation {
                 }
             }
             wSpriteDraws += ids.size();
+            boolean shape = t.seenAll;
+            for (int k = 0; k < ids.size() && !shape; k++) shape = (t.flags.get(ids.getInt(k)) & IN_CUTOUT) != 0;
+            if (shape) cutoutRedraws++;
             String err = TerrainGpuErrors.since(mark);
             if (err != null) throw new IllegalStateException("GPU error: " + err);
             done = true;
