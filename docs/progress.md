@@ -2655,6 +2655,11 @@ stale report-only comment in build.yml. Left: the first main merge (`8492530`) a
 - Pushing (`LivingEntity.pushEntities`, 7%) and inside-block effects (7%) are untouched: their lookups' results are
   used in vanilla's order.
 
+## Phase 1 plan: possible follow-ups (Andre, 2026-11-02)
+
+- **Cull translucent sections** with package 2b's occlusion culling (today only solid and cutout layers are culled; the
+  translucent layer is drawn after the pyramid, in vanilla's sorted order).
+
 ## Phase 2 plan: later memory package (Andre, 2026-10-31)
 
 Measured in P2-1, not built there: a memory package of its own after P2-1 and before P2-7's sign-off, with its own
@@ -2869,7 +2874,7 @@ mesher against `-Dquicksilver.debug.vanillaMesher=true` (vanilla's compiler, eve
 `mesher.serverAware` against `-Dquicksilver.debug.serverAwareOff=true` (whether backing off keeps the server's ticks
 in budget while flying).
 
-## Package 2b: GPU occlusion culling (branch `package-2b`, not merged: Andre checks it first)
+## Package 2b: GPU occlusion culling (merged, see the status table)
 
 Sections hidden behind other terrain are left out, from a small depth image of what was drawn (a depth pyramid) tested
 against each section's box (design doc, "Beyond Sodium"). Code: `occlusion/` (`GpuOcclusion`, `DepthPyramid`,
@@ -2954,12 +2959,12 @@ Sections drawn per frame (solid/cutout; without culling -> drawn):
 - Not fixed: S6 (if the opaque-group hook stops after it once ran, one frame misses what was left out before the module
   turns off; known limit). S8 (mid-frame submit on Vulkan) is moot: Vulkan no longer waits mid-frame.
 
-### Deviations and choices to confirm
+### Deviations and choices (confirmed by Andre, 2026-11-02: 1A-5A, S6 as a known limit)
 
 1. **Vulkan runs still camera, not two-phase** (renderpearl's Vulkan fence never completes within the frame).
 2. **Still camera needs exactly the same view** (the doc allows mouse-look): a turned view can see through sub-pixel
    gaps the old pyramid missed (the model found violations); so it culls only while the camera and world stand still.
-3. **Translucent never culled**.
+3. **Translucent never culled** (culling it is a possible follow-up: "Phase 1 plan: possible follow-ups").
 4. **Uploads and memory** keep main's existing gates (x 1.10 plus slack) rather than a new exact "at or under main's".
 5. **Corner scene limits at the floor** (vanilla noise 0 in three runs).
 
