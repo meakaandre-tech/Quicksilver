@@ -479,7 +479,7 @@ public final class GpuOcclusion {
                 TerrainRenderer.drawCulledForCheck(vp);
             }
             long px = GPU.checkPixels(enc, WAIT_TIMEOUT_MS * 8);
-            OcclusionStats.checked(TerrainRenderer.culledCount(), px);
+            OcclusionStats.checked(TerrainRenderer.culledCount(), px, counting);
             if (px != 0) {
                 QuicksilverClient.LOG.warn("Quicksilver occlusion check: {} pixel(s) of {} culled section(s) would have been visible (mode {})",
                     px < 0 ? "unknown (timeout)" : px, TerrainRenderer.culledCount(), frame);

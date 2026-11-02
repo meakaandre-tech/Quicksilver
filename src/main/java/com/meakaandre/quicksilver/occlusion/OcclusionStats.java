@@ -61,10 +61,10 @@ public final class OcclusionStats {
     }
 
     /** CI's check of one frame: {@code sections} culled sections drawn into the check target, {@code pixels} that passed. */
-    static void checked(int sections, long pixels) {
+    static void checked(int sections, long pixels, boolean measuring) {
         if (pixels < 0) allCheckTimeouts++;
         else allCheckPixels += pixels;
-        if (!GpuCounters.enabled) return;
+        if (!measuring) return;
         checkFrames++;
         checkedSections += sections;
         if (pixels < 0) checkTimeouts++;
