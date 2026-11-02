@@ -42,9 +42,9 @@ import org.joml.Vector4f;
  * visible section is tested against it, those not proven hidden are drawn, and the pass is opened again. So a newly
  * revealed section is drawn in the same frame.</li>
  * <li><b>Still camera</b> (auto on the Intel / old-GPU path): no waiting. A pyramid is read back whenever the GPU is
- * done, and only used while the eye point (view bobbing included), the viewport and every visible section's mesh are
- * exactly what they were when it was drawn; then sections behind its depth are left out. Looking around is allowed
- * (the same eye sees the same occluders); any movement or change stops it until a new pyramid comes back.</li>
+ * done, and only used while the whole view (position, direction, projection, view bobbing included), the viewport and
+ * every visible section's mesh are exactly what they were when it was drawn; then sections behind its depth are left
+ * out. Any movement, turn or change stops it until a new pyramid comes back.</li>
  * </ul>
  *
  * <p>The pyramid holds solid and cutout terrain only (vanilla's and Quicksilver's), taken right after the opaque terrain
@@ -109,7 +109,18 @@ public final class GpuOcclusion {
         }
     }
 
-    private record Stamp(double ex, double ey, double ez, long visible, int w, int h) {
+    /**
+     * What a still-camera pyramid is valid for: the whole camera-relative view (projection and rotation), the camera
+     * position, every visible section and its mesh, and the viewport. All must be exactly the same: the depth image is
+     * then what the same pixels saw of the same geometry. (The same eye looking another way is not enough: other pixels
+     * sample other rays, which can pass through gaps narrower than a pixel that every old sample missed.)
+     */
+    private record Stamp(java.util.List<Double> m, double cx, double cy, double cz, long visible, int w, int h) {
+        static Stamp of(double[] m, double cx, double cy, double cz, long visible, int w, int h) {
+            Double[] b = new Double[16];
+            for (int i = 0; i < 16; i++) b[i] = m[i];
+            return new Stamp(java.util.List.of(b), cx, cy, cz, visible, w, h);
+        }
     }
 
     private GpuOcclusion() {
@@ -233,7 +244,7 @@ public final class GpuOcclusion {
                 h = (h ^ System.identityHashCode(s.getSectionMesh())) * 1099511628211L;
             }
             visibleHash = h ^ visible.size();
-            Stamp now = new Stamp(eye[0], eye[1], eye[2], visibleHash, lastW, lastH);
+            Stamp now = Stamp.of(M, camX, camY, camZ, visibleHash, lastW, lastH);
             Mode mode = configured == Mode.AUTO ? (indirect ? Mode.TWO_PHASE : Mode.STILL_CAMERA) : configured;
             if (mode == Mode.TWO_PHASE) {
                 frame = Frame.TWO_PHASE;
@@ -271,7 +282,8 @@ public final class GpuOcclusion {
                 return DEFER;
             }
             case STILL -> {
-                if (stillValid && latest.test(x0, y0, z0, x1, y1, z1) != DepthPyramid.Result.VISIBLE) {
+                // the pyramid was drawn with exactly this frame's view (the stamp says so): its own-view test holds
+                if (stillValid && latest.test(x0, y0, z0, x1, y1, z1, true) != DepthPyramid.Result.VISIBLE) {
                     OcclusionStats.culledStill++;
                     deferredUnhandled = true;
                     return CULL;
@@ -372,7 +384,7 @@ public final class GpuOcclusion {
                 OcclusionStats.pyramids++;
                 double[] mm = M.clone();
                 double cx = camX, cy = camY, cz = camZ;
-                Stamp stamp = new Stamp(eye[0], eye[1], eye[2], visibleHash, w, h);
+                Stamp stamp = Stamp.of(M, camX, camY, camZ, visibleHash, w, h);
                 boolean fy = calibration[1], z01 = zeroToOne, rev = reversed;
                 if (twoPhase && candidates) {
                     long[] waited = new long[1];

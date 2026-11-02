@@ -107,6 +107,15 @@ public final class DepthPyramid {
      * what was drawn; {@link Result#OFF_SCREEN}: it projects entirely outside the picture.
      */
     public Result test(double x0, double y0, double z0, double x1, double y1, double z1) {
+        return test(x0, y0, z0, x1, y1, z1, true);
+    }
+
+    /**
+     * As above. {@code ownView}: the box is tested for the very view this pyramid was drawn with, so what lies outside
+     * the picture is not seen. Otherwise (the same eye looking another way, still camera) nothing is known outside the
+     * picture: a box reaching outside it is visible.
+     */
+    public Result test(double x0, double y0, double z0, double x1, double y1, double z1, boolean ownView) {
         double ax = x0 - camX, ay = y0 - camY, az = z0 - camZ;
         double bx = x1 - camX, by = y1 - camY, bz = z1 - camZ;
         double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
@@ -140,6 +149,7 @@ public final class DepthPyramid {
             py0 = up0 - PIXEL_MARGIN;
             py1 = up1 + PIXEL_MARGIN;
         }
+        if (!ownView && (px0 < 0 || py0 < 0 || px1 >= width || py1 >= height)) return Result.VISIBLE;
         if (px1 < 0 || py1 < 0 || px0 >= width || py0 >= height) return Result.OFF_SCREEN;
         int ix0 = (int) Math.max(0, Math.floor(px0)), ix1 = (int) Math.min(width - 1, Math.floor(px1));
         int iy0 = (int) Math.max(0, Math.floor(py0)), iy1 = (int) Math.min(height - 1, Math.floor(py1));
