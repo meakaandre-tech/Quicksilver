@@ -446,9 +446,11 @@ public final class GpuOcclusion {
             return false;
         }
         if (calibration == null) {
-            boolean[] c = PyramidGpu.calibrate(enc, WAIT_TIMEOUT_MS * 4);
-            if (c == null) {
-                fail("calibrating", new IllegalStateException("the calibration render read back wrong or late"));
+            boolean[] c;
+            try {
+                c = PyramidGpu.calibrate(enc, WAIT_TIMEOUT_MS * 4);
+            } catch (IllegalStateException e) {
+                fail("calibrating", e);
                 return false;
             }
             if (c[0]) {

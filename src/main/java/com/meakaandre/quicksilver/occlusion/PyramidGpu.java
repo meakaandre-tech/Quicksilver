@@ -117,7 +117,7 @@ final class PyramidGpu {
         try (RenderPass pass = encoder.createRenderPass(() -> "Quicksilver depth pyramid", targetView, Optional.empty(), null, OptionalDouble.empty())) {
             pass.setPipeline(compiled(nearest ? minPipeline : maxPipeline));
             pass.setUniform("Sampler0", depth, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
-            pass.draw(3, 1, 0, 0);
+            pass.draw(6, 1, 0, 0);
         }
     }
 
@@ -183,7 +183,7 @@ final class PyramidGpu {
 
     /**
      * Calibration (once): renders a 2x2 texture whose texels say which half of normalized x and y they are in, reads it
-     * back. Returns {flipX, flipY} (row 0 / column 0 is the positive half), or null if the result makes no sense.
+     * back. Returns {flipX, flipY} (row 0 / column 0 is the positive half); throws if it is late or makes no sense.
      */
     static boolean[] calibrate(CommandEncoder encoder, long timeoutMs) {
         GpuDevice device = RenderSystem.getDevice();
@@ -194,19 +194,19 @@ final class PyramidGpu {
         try {
             try (RenderPass pass = encoder.createRenderPass(() -> "Quicksilver occlusion calibration", v, Optional.of(new Vector4f(0, 0, 0, 0)), null, OptionalDouble.empty())) {
                 pass.setPipeline(compiled(calibratePipeline));
-                pass.draw(3, 1, 0, 0);
+                pass.draw(6, 1, 0, 0);
             }
             encoder.copyTextureToBuffer(t, b, 0, () -> { }, 0);
             var fence = encoder.createFence();
-        // renderpearl only waits on a fence whose work was submitted
-        encoder.submit();
+            // renderpearl only waits on a fence whose work was submitted
+            encoder.submit();
             boolean done;
             try {
                 done = fence.awaitCompletion(timeoutMs);
             } finally {
                 fence.close();
             }
-            if (!done) return null;
+            if (!done) throw new IllegalStateException("the calibration render was not done within " + timeoutMs + " ms");
             int[][] r = new int[4][2];
             try (var view = b.map(true, false)) {
                 ByteBuffer d = view.data();
@@ -219,7 +219,10 @@ final class PyramidGpu {
             boolean flipX = r[0][0] > 127, flipY = r[0][1] > 127;
             for (int i = 0; i < 4; i++) {
                 boolean xPos = ((i & 1) == 0) == flipX, yPos = ((i >> 1) == 0) == flipY;
-                if ((r[i][0] > 127) != xPos || (r[i][1] > 127) != yPos) return null;
+                if ((r[i][0] > 127) != xPos || (r[i][1] > 127) != yPos) {
+                    throw new IllegalStateException("the calibration render read back wrong: red/green per texel "
+                        + java.util.Arrays.deepToString(r));
+                }
             }
             return new boolean[] {flipX, flipY};
         } finally {

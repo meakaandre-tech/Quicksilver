@@ -81,6 +81,11 @@ if QUICK:
     VANILLA_RUNS = ("vanilla-a", "vanilla-b")
     RUNS = ["vanilla-a", "vanilla-b", "quicksilver-old", "quicksilver-2p-old"]
     SUITES = {"core"}
+    if os.environ.get("CI_QUICK_VULKAN") == "1":
+        # package 2b: [vulkan] in the commit message adds the Vulkan pair, compared as in full mode
+        PAIRS["vulkan"] = ("quicksilver-vk", "vanilla-vk")
+        RUNS += ["vanilla-vk", "quicksilver-vk"]
+        VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-vk")
 
 
 def diff(a, b, out=None):
@@ -779,7 +784,7 @@ def main():
                 strict_lines.append(f"| {sid} | {agree} | {shown} | "
                                     + " | ".join(f"{counts.get(p)} ({counts_any.get(p)})" for p in PAIRS) + " |")
         lines.append("")
-        lines.append(f"Strict picture: pixels where {"all four" if len(VANILLA_RUNS) == 4 else "both"} vanilla runs agree exactly but the Quicksilver run differs by more than"
+        lines.append(f"Strict picture: pixels where { {4: "all four", 3: "all three"}.get(len(VANILLA_RUNS), "both")} vanilla runs agree exactly but the Quicksilver run differs by more than"
                      f" {STRICT_THRESHOLD}/255 (in brackets: differs at all, reported only):\n")
         lines.append("| scene | vanilla runs agree on % of pixels | strict limit (pixels) | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
         lines.append("|---|---|---|" + "---|" * len(PAIRS))
