@@ -3175,7 +3175,11 @@ Flywheel's own draws are raw OpenGL and in neither run's draw count.
 seen in SIFTEC's pack: Create Fly's `SimpleModelWrapperMixin` (it only makes `bake` return Create's own part class
 for OBJ models, which the hidden-block check never takes; allowed, as Flywheel's section hook is) and The Sift's
 `IchorFluidUvMixin` (changes vanilla's fluid UVs; The Sift's code was not read, its licence could not be checked from
-here) which now sends every fluid through vanilla's fluid renderer, as package 4c intended. Meshing stays under
+here). Andre, 2026-11-04: only The Sift's own fluids (`the_sift:ichor`, `the_sift:flowing_ichor`; the mod that owns
+the mixin, found by its jar) go through vanilla's fluid renderer; water, lava and other fluids stay Quicksilver's after
+the per-fluid probe, and the per-section mesher check compares them with vanilla's compiler (Sift mixin included). If a
+fluid mixin's mod can't be found, every fluid goes through vanilla's renderer as before. compare.py checks this in
+every SIFTEC Quicksilver run. Meshing stays under
 vanilla's on every profile (run 41633272149, same-sections median, Quicksilver / vanilla's compiler: full 2.06 / 2.69
 ms at factory).
 
@@ -3236,7 +3240,10 @@ nothing of this package loads; core passes as before.
 - Run 41644571936 (after the fixes) failed factory_flat on Vulkan: a wandering trader spawned in view (see CI);
   traders are now off.
 
-### Choices to confirm (Andre)
+### Choices (Andre, 2026-11-04)
+
+Confirmed: 1, 2 (keep as is), 3, 5, 6, and factory at 370. Changed: 4 (only The Sift's fluids through vanilla's
+renderer, above). As asked:
 
 1. Stock Create Fly: no 26.3 release; add it to the pack lock when one appears.
 2. On the school laptop (Intel: Flywheel instancing, Quicksilver still camera), still camera culls **nothing** while

@@ -638,6 +638,18 @@ def main():
                             failures.append(f"{name}/{r}: Quicksilver's mesher never turned on")
                         if "Quicksilver mesher: fluid self-test:" not in t:
                             failures.append(f"{name}/{r}: the mesher's fluid self-test did not run (see client log)")
+                        # package 5 (Andre, 2026-11-04): with The Sift installed, only its own fluids go through vanilla's
+                        # fluid renderer (its mixin changes it); water and lava stay Quicksilver's, checked per section
+                        # against vanilla's compiler (the mesher check below)
+                        if name == "siftec":
+                            if "Quicksilver mesher: the fluids of the_sift go through vanilla's fluid renderer" not in t:
+                                failures.append(f"{name}/{r}: the mesher did not send The Sift's fluids (only) through vanilla's fluid renderer (see client log)")
+                            if "Quicksilver mesher: every fluid goes through vanilla's fluid renderer" in t:
+                                failures.append(f"{name}/{r}: the mesher sent every fluid through vanilla's fluid renderer (a fluid mixin whose mod it could not find)")
+                            if "Quicksilver's fluid mesher draws the_sift:" in t:
+                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher drew one of The Sift's fluids")
+                            if "Quicksilver's fluid mesher draws minecraft:water" not in t:
+                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher never drew water (see client log)")
                         nwarn = len(re.findall(r"Quicksilver mesher check:", t))
                         if nwarn:
                             failures.append(f"{name}/{r}: mesher check: {nwarn} sections where Quicksilver's mesh differed from vanilla's compiler's (see client log)")

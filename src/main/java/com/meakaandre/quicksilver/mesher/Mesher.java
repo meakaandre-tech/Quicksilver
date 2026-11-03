@@ -44,7 +44,9 @@ import org.lwjgl.system.MemoryUtil;
  * <p>Compatibility: vanilla's own block-entity step still runs for every block entity (mods take block entities over
  * there, e.g. Flywheel); fluids a mod draws through Fabric API's fluid handlers go through vanilla's fluid renderer. If
  * a mod Quicksilver doesn't know changes vanilla's section compiler or region copy, vanilla's compiler keeps meshing
- * (one WARN line names the mixins); if one changes vanilla's fluid renderer, every fluid goes through that renderer.
+ * (one WARN line names the mixins); if one changes vanilla's fluid renderer, that mod's own fluids go through vanilla's
+ * renderer (every fluid, if the mixin's mod can't be found), and every other fluid is still compared with vanilla's
+ * renderer once before Quicksilver draws it ({@link FluidProbe}).
  */
 public final class Mesher {
     private Mesher() {
@@ -59,8 +61,13 @@ public final class Mesher {
 
     private static volatile State state = State.STARTING;
     private static volatile String reason = "waiting for the first section";
-    /** Whether fluids go through vanilla's fluid renderer (a mod changes it). */
+    /** Whether every fluid goes through vanilla's fluid renderer (a mod Quicksilver can't name changes it). */
     static volatile boolean fluidsThroughVanilla;
+    /**
+     * The mods (by id, which is their fluids' namespace) that change vanilla's fluid renderer: their fluids go through
+     * it (package 5, Andre 2026-11-04: only The Sift's own fluids, not every fluid, while The Sift is installed).
+     */
+    static volatile java.util.Set<String> fluidModsThroughVanilla = java.util.Set.of();
 
     private static final java.util.concurrent.atomic.AtomicLong CHECK_ORDER = new java.util.concurrent.atomic.AtomicLong();
     /**
@@ -343,15 +350,30 @@ public final class Mesher {
         }
         List<String> fluids = foreignMixins("net/minecraft/client/renderer/block/FluidRenderer");
         if (!fluids.isEmpty()) {
-            fluidsThroughVanilla = true;
-            QuicksilverClient.LOG.warn("Quicksilver mesher: every fluid goes through vanilla's fluid renderer, because mods Quicksilver doesn't know"
-                + " change it: {}", String.join(", ", fluids));
+            java.util.Set<String> mods = new java.util.TreeSet<>();
+            boolean unknown = false;
+            for (String line : fluids) {
+                String mod = line.startsWith("mixin ") ? modOf(line.substring("mixin ".length())) : null;
+                if (mod == null) unknown = true;
+                else mods.add(mod);
+            }
+            if (unknown) {
+                fluidsThroughVanilla = true;
+                QuicksilverClient.LOG.warn("Quicksilver mesher: every fluid goes through vanilla's fluid renderer, because mods Quicksilver doesn't know"
+                    + " change it: {}", String.join(", ", fluids));
+            } else {
+                fluidModsThroughVanilla = java.util.Set.copyOf(mods);
+                QuicksilverClient.LOG.warn("Quicksilver mesher: the fluids of {} go through vanilla's fluid renderer, because those mods change it: {};"
+                    + " every other fluid is compared with vanilla's renderer before Quicksilver draws it", String.join(", ", mods), String.join(", ", fluids));
+            }
         }
         state = State.ON;
         reason = "on";
         QuicksilverClient.LOG.info("Quicksilver mesher: on (Quicksilver meshes sections in place of vanilla's section compiler: a snapshot of"
             + " each section, blocks through Quicksilver's Fabric Renderer API renderer, {} fluids, 16-byte vertices written directly)",
-            fluidsThroughVanilla ? "vanilla's renderer for" : "its own mesher for vanilla and Fabric API model");
+            fluidsThroughVanilla ? "vanilla's renderer for"
+                : fluidModsThroughVanilla.isEmpty() ? "its own mesher for vanilla and Fabric API model"
+                : "vanilla's renderer for " + String.join(", ", fluidModsThroughVanilla) + "'s and its own mesher for other");
         if (VERIFY) QuicksilverClient.LOG.info("Quicksilver mesher: per-section check on (debug; outside benches every section Quicksilver meshes"
             + " is also meshed by vanilla's compiler and compared vertex for vertex)");
     }
@@ -388,6 +410,21 @@ public final class Mesher {
             out.add("(could not read the mixins applied to " + internalName + ": " + t + ")");
         }
         return out;
+    }
+
+    /** The id of the mod whose jar holds a (mixin) class, or null if none does. */
+    private static String modOf(String className) {
+        String path = className.replace('.', '/') + ".class";
+        try {
+            for (net.fabricmc.loader.api.ModContainer mod : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {
+                String id = mod.getMetadata().getId();
+                if (id.equals("minecraft") || id.equals("java")) continue;
+                if (mod.findPath(path).isPresent()) return id;
+            }
+        } catch (Throwable t) {
+            if (t instanceof VirtualMachineError e) throw e;
+        }
+        return null;
     }
 
     /** Every mixin applied to a class, Quicksilver's included (diagnostic, package 5). */
