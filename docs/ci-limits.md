@@ -1059,3 +1059,34 @@ MSPT by phase: the share of the server thread's JFR samples (1 ms) under each ph
 and Logic checks are listed under "Owed" in `compare/p2.md` and fail nothing, as compare-server.py and compare.py do
 with theirs; SIFTEC's `server-perf` run is `continue-on-error` like its other jobs. On 2026-10-31 SIFTEC's latest
 release no longer matched `ci/pack-lock.txt`, which stops every SIFTEC job at its pack check.
+
+### P2-3: factory and village scenes, verify mode
+
+**New perf scenes** (`ci/server/perf-core.txt`, `perf-siftec.txt`; worlds kept and compared like `mobs`):
+
+| scene | what | ticks | MSPT gate |
+|---|---|---|---|
+| core `factory` (`scripted-run-core-factory.txt`) | vanilla hoppers as players build them: 32 chains of 12 from full chests, each read by a comparator; 24 furnaces fed by hoppers; 320 hoppers waiting under open air, 32 under empty chests; 4 rings passing items round; a hopper line under dropped items | 12000 | faster: the median of the seven per-round ratios below 1 |
+| core `village` (`scripted-run-core-village.txt`) | 24 villagers, 16 beds, 12 job sites, a bell, a hut with a door, 2 iron golems, on a 48-block field | 4800 | faster (world reported, below) |
+| SIFTEC `factory` (`scripted-run-siftec-factory.txt`) | Create presses over depots, millstones between cogwheels, funnels into chutes, on creative motors started at tick 1; vanilla hoppers, furnaces and chests beside them | 2400 | no-regression: the median ratio at most 1.10 (Andre, 2026-11-02: what is left of its cost is hoppers' block and container lookups, kept exact in P2-3 and cached in P2-3b) |
+
+The core factory ran 4800 ticks at first (about 0.3 ms per tick): its median ratio moved from +8% to -9% between runs
+of the same code, so it plays 12000.
+
+**The village scene's world is reported, not gated** (keep mode `world-report` in `perf-core.txt`; MSPT still gated):
+vanilla's own rounds don't repeat it. Measured in three diagnostic runs (branch `p2-3-diag`): the first version (four cats)
+differed in vanilla's own eight rounds by 57 to 147 keys (every villager and golem, the hut's door), and with each P2-3
+optimisation switched off in turn Quicksilver's rounds landed in the same few outcomes as vanilla's (run 41578597422).
+Without cats, 92 to 147 keys (run 41582130588: 24 vanilla rounds); on a smaller field inside the force-loaded area,
+121 to 137 (run 41585188944: villagers spawned iron golems). With that much of the world in vanilla's noise, "equal
+where vanilla's eight rounds agree" is a sample of whatever those rounds happened to agree on, and failed on outcomes
+vanilla also reaches. The scene keeps no cats (an animal chooses where to wander by light level, worked out on the light
+engine's thread). What P2-3 changes in villagers is gated where vanilla repeats: the server suite's scripted run (three
+villagers with job sites, world diff exact), the villager_job and villager_trade GameTests (same tick), SIFTEC's runs,
+and verify mode (below) on every brain walk there.
+
+**Verify mode** (`-Dquicksilver.debug.verifyLogic=true`, every server-suite run, `ci/server/server-run.sh`): each P2-3
+shortcut is checked against vanilla's own answer as it is used (a brain's copy against its behaviour maps; a skipped
+hopper entity lookup run anyway and required empty; a kept chunk-ticking or `isValid` answer against vanilla's call), and
+the optimisation falls back on any difference, which CI fails. The perf job runs without it (it would cost time vanilla's
+side doesn't pay); its worlds are compared instead.

@@ -67,7 +67,7 @@ one() {
   local j=$(python3 -c "import json,sys; j=json.load(open(sys.argv[1])); print(j.get('msptAvg'), j.get('msptP50'), j.get('msptP99'), j.get('error',''))" "$dir/ci-harness-result.json" 2>/dev/null)
   echo "$scene $side r$round: mspt avg/p50/p99 $j ($(( $(date +%s) - t0 )) s)"
   grep -q 'CI HARNESS RUN DONE' "$dir/server.log" || { echo "  did not finish:"; tail -n 5 "$dir/server.log"; }
-  [ "$keep" = world ] && keep_world "$srv/world" "$dir/world"
+  case "$keep" in world|world-report) keep_world "$srv/world" "$dir/world";; esac
   if [ "$jfr" = 1 ]; then
     if [ -f "$dir/rec.jfr" ]; then
       python3 -I ci/server/perf-jfr.py "$dir/rec.jfr" "$dir/jfr.json" || echo "  jfr summary failed"

@@ -81,7 +81,9 @@ def scenes(suite):
     for line in open(path):
         p = line.split()
         if p and not p[0].startswith("#"):
-            out.append((p[0], p[1], int(p[2]), p[3] == "world"))
+            # keep: "world" (worlds compared and gated where vanilla's rounds agree), "world-report" (compared and
+            # reported only: a scene vanilla's own rounds don't repeat, P2-3's village), "-" (not kept)
+            out.append((p[0], p[1], int(p[2]), p[3] if p[3] in ("world", "world-report") else None))
     return out
 
 
@@ -226,9 +228,10 @@ def perf(res, rep, lines, fails, owed, summary):
                 t.append("\n(no JFR summary for a side)")
             tables.append("\n".join(t) + "\n")
 
-            # the scene's saved worlds (scenes marked world): every Quicksilver round against vanilla round 1, gated
-            # where vanilla's rounds agree
+            # the scene's saved worlds (scenes marked world or world-report): every Quicksilver round against vanilla
+            # round 1, gated where vanilla's rounds agree (world-report: the same comparison, reported only)
             if keep_world:
+                wsink = sink if keep_world == "world" else []
                 wa = os.path.join(d, scene, "vanilla1", "world")
                 noise, missing = set(), False
                 for r in ALL_ROUNDS[1:]:
@@ -252,15 +255,15 @@ def perf(res, rep, lines, fails, owed, summary):
                     bad = sorted(qk - noise)
                     rows.append("| %d | %d | %d | %d |" % (r, chunks, len(qk), len(bad)))
                     if bad:
-                        sink.append("%s perf %s: world of quicksilver round %d differs from vanilla where vanilla agrees: %d keys (first: %s)"
+                        wsink.append("%s perf %s: world of quicksilver round %d differs from vanilla where vanilla agrees: %d keys (first: %s)"
                                     % (suite, scene, r, len(bad), ", ".join(bad[:5])))
                     if chunks == 0:
                         sink.append("%s perf %s: no chunks compared" % (suite, scene))
                 if missing:
                     sink.append("%s perf %s: a vanilla round's world is missing or not compared" % (suite, scene))
-                tables.append("### %s %s: saved worlds\n\nVanilla's own differences across its eight rounds (noise, not gated): %d keys%s.\n\n"
+                tables.append("### %s %s: saved worlds%s\n\nVanilla's own differences across its eight rounds (noise, not gated): %d keys%s.\n\n"
                               "| Quicksilver round | chunks | keys differing from vanilla round 1 | where vanilla agrees |\n|---|---|---|---|\n%s\n"
-                              % (suite, scene, len(noise), (" (first: %s)" % ", ".join(sorted(noise)[:5])) if noise else "", "\n".join(rows)))
+                              % (suite, scene, "" if keep_world == "world" else " (reported, not gated: vanilla's own rounds don't repeat this scene)", len(noise), (" (first: %s)" % ", ".join(sorted(noise)[:5])) if noise else "", "\n".join(rows)))
         lines.append("")
         lines += tables
 
