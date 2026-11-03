@@ -65,6 +65,9 @@ final class BenchSections {
         BenchModules.register(BenchModules.section("translucency", TranslucencyStats::startWindow, f -> TranslucencyStats.json(), TranslucencyStats::line));
         BenchModules.register(BenchModules.section("renderer", null, f -> RendererStats.json(), RendererStats::line));
         BenchModules.register(BenchModules.section("animation", Animation::startWindow, f -> Animation.json(), Animation::line));
+        // package 5: Flywheel as Create Fly bundles it (backend, visuals, its hooks on vanilla); "absent" without Create Fly
+        BenchModules.register(BenchModules.section("flywheel", com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat::startWindow,
+            com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat::json, com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat::line));
     }
 
     private static String backFacesLine(JsonObject o) {

@@ -79,6 +79,10 @@ else
   echo "eula=true" > server/eula.txt
 fi
 if [ $qs = 1 ]; then cp dist/quicksilver.jar server/mods/; fi
+# package 5: CI's pin mod on the server too, in every run alike, for its /qsci command (the kinetics scene's belt and
+# train, which Create has no command for); its mixins are client-only and its command needs Create, so the core
+# suite's server and every other scene are unchanged
+if [ -f ci-pin/ci-pin.jar ]; then cp ci-pin/ci-pin.jar server/mods/; fi
 # measure runs stand in for vanilla, so Fabric's Indigo draws there as in the vanilla runs: their copy of the jar does
 # not declare fabric-renderer-api-v1:contains_renderer (and Quicksilver does not register its renderer, measureOnly)
 if [ $measure = 1 ]; then

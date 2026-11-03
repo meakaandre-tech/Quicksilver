@@ -133,11 +133,21 @@ public final class GpuOcclusion {
 
     /**
      * What else must not change while a still-camera pyramid is reused: section meshes (also caught by the visible list's
-     * mesh identities) and animated textures that can change the shape of cutout terrain (fire, kelp...).
+     * mesh identities), animated textures that can change the shape of cutout terrain (fire, kelp...) and Flywheel's
+     * geometry (package 5).
      */
     private static long changes() {
-        return MESH_CHANGES.get() * 1000003L + com.meakaandre.quicksilver.animation.Animation.cutoutShapeStamp();
+        return MESH_CHANGES.get() * 1000003L + com.meakaandre.quicksilver.animation.Animation.cutoutShapeStamp()
+            + (FLYWHEEL_STAMP ? com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat.depthStamp() * 7919L : 0);
     }
+
+    /**
+     * Package 5: Create Fly's Flywheel draws its solid geometry into the main depth image before the terrain, so a
+     * still-camera pyramid holds Flywheel's machines, contraptions and trains as they were in that frame. They move
+     * from frame to frame on the GPU, so a frame in which Flywheel drew anything changes the stamp (no reuse). Debug
+     * switch {@code quicksilver.debug.noFlywheelStamp} (CI's proof that the occlusion check catches the difference).
+     */
+    private static final boolean FLYWHEEL_STAMP = !Boolean.getBoolean("quicksilver.debug.noFlywheelStamp");
 
     /** {@link #changes} as this frame's terrain was prepared; this frame's CI check (every few frames, see beginFrame). */
     private static long frameChanges;

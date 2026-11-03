@@ -87,6 +87,9 @@ if QUICK:
         PAIRS["vulkan"] = ("quicksilver-vk", "vanilla-vk")
         RUNS += ["vanilla-vk", "quicksilver-vk"]
         VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-vk")
+    if os.environ.get("CI_QUICK_SIFTEC") == "1":
+        # package 5: [siftec] in the commit message adds SIFTEC's client suite, with the same runs as core's
+        SUITES = {"core", "siftec"}
 
 
 def diff(a, b, out=None):
@@ -353,6 +356,72 @@ def single_player(res, failures, lines):
         failures.append("core/sp-quicksilver: no time behind measured in the bench (benchMsBehind 0)")
     if share is not None and share > SP_IDLE_SHARE:
         failures.append(f"core/sp-quicksilver: no thread meshing with work waiting for {share * 100:.0f}% of the time behind (over {SP_IDLE_SHARE * 100:.0f}%)")
+
+
+FLW_BACKEND = re.compile(r"Quicksilver CI pin: Flywheel backend (\S+)")
+# package 5: the Flywheel backend each profile gets, Flywheel's own choice (Create Fly's bundled Flywheel): indirect
+# where the driver has compute shaders and the rest (Mesa's GL 4.5), instancing on the old-GPU profile (GL 3.3, no
+# multi-draw indirect), off on Vulkan (Flywheel draws with OpenGL only; vanilla's renderers draw everything)
+FLW_EXPECT = {"full": "flywheel:indirect", "old": "flywheel:instancing", "vk": "flywheel:off"}
+QSCI_STEPS = ("belt 2152 241 -1998 2156 241 -1998", "train build 2160 240 -2007", "train assemble 2160 240 -2007")
+
+
+def run_profile(r):
+    return "vk" if r.endswith("-vk") else "old" if r.endswith("-old") else "full"
+
+
+def flywheel(res, failures, lines):
+    """Package 5: Flywheel with Quicksilver, in SIFTEC's client runs (Create Fly installed). Every run, vanilla's and
+    Quicksilver's, logs Flywheel's own backend choice (CI's pin mod); it must be the profile's (FLW_EXPECT) and the same
+    in Quicksilver's run as in vanilla's. Quicksilver's bench reports the same backend, Flywheel's three hooks on
+    vanilla's classes in place (the block-entity step, light updates, the draw before the terrain) and Create Fly
+    present. Create's animation clock pin must have reached Create's code, and the kinetics scene's /qsci steps must
+    have run (on the server). Pictures and counts of the Create scenes are gated with every other scene."""
+    if SUITES is not None and "siftec" not in SUITES:
+        return
+    rows = []
+    for r in RUNS:
+        d = os.path.join(res, f"siftec-{r}")
+        if not os.path.isdir(d):
+            continue
+        t = logs(d)
+        got = FLW_BACKEND.findall(t)
+        want = FLW_EXPECT[run_profile(r)]
+        if not got:
+            failures.append(f"siftec/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
+        elif set(got) != {want}:
+            failures.append(f"siftec/{r}: Flywheel's backend was {sorted(set(got))}, expected {want} on this profile")
+        if "Quicksilver CI pin: Create's animation clock pinned in" not in t:
+            failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned' line)")
+        srv = open(os.path.join(d, "server.log"), errors="replace").read() if os.path.exists(os.path.join(d, "server.log")) else ""
+        for step in QSCI_STEPS:
+            if f"Quicksilver CI create: {step} done" not in srv:
+                failures.append(f"siftec/{r}: the kinetics scene's step '/qsci {step}' did not run (see server.log)")
+        bench = {}
+        if r.startswith(("quicksilver", "measure")):
+            for f in sorted(glob.glob(os.path.join(d, "bench", "*.json"))):
+                j = json.load(open(f))
+                fw = j.get("flywheel")
+                if r.startswith("quicksilver"):
+                    if not fw or fw.get("createFly") in (None, "absent"):
+                        failures.append(f"siftec/{r}/{j['scene']}: the bench has no Flywheel block with Create Fly present")
+                        continue
+                    if fw.get("backend") != want:
+                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {want}")
+                    hooks = fw.get("hooks") or {}
+                    missing = [k for k in ("blockEntityStep", "lightUpdate", "beforeSolid") if not hooks.get(k)]
+                    if missing:
+                        failures.append(f"siftec/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
+                    bench[j["scene"]] = fw
+        kin = bench.get("kinetics") or {}
+        rows.append(f"| {r} | {', '.join(sorted(set(got))) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
+    lines.append("## Flywheel (package 5)\n")
+    lines.append("Flywheel's own backend choice per run (CI's pin mod), and in Quicksilver's runs its visuals and the frames it drew"
+                 " before the terrain in the kinetics scene's bench.\n")
+    lines.append("| run | backend | kinetics: visuals | frames drawing before terrain |")
+    lines.append("|---|---|---|---|")
+    lines += rows
+    lines.append("")
 
 
 def main():
@@ -1028,6 +1097,7 @@ def main():
                 cell = lambda k: f"{g.get(k)} / {vg.get(k, '-')}"
                 lines.append(f"| {sc['id']} | {cell('drawCallsPerFrame')} | {cell('prepareDrawCallsPerFrame')} | {cell('elementsPerFrame')} | {cell('statesPerFrame')} (pipelines {g.get('pipelinesPerFrame')}, textures {g.get('textureSetupsPerFrame')}, scissors {g.get('scissorAreasPerFrame')}) | {cell('reorderedDrawsPerFrame')} ({cell('reorderedIgnoringTextPerFrame')}) |")
             lines.append("")
+    flywheel(res, failures, lines)
     bench_only(res, failures, lines)
     single_player(res, failures, lines)
     direct_buffers(res, lines)

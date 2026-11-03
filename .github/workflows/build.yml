@@ -28,6 +28,7 @@ jobs:
       siftec_report_only: ${{ steps.m.outputs.siftec_report_only }}
       siftec_commit: ${{ steps.m.outputs.siftec_commit }}
       quick_vulkan: ${{ steps.m.outputs.quick_vulkan }}
+      quick_siftec: ${{ steps.m.outputs.quick_siftec }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,6 +54,12 @@ jobs:
             case "$MESSAGE" in *"[vulkan]"*)
               matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old","quicksilver-2p-old","vanilla-vk","quicksilver-vk"]}'
               echo "quick_vulkan=1" >> "$GITHUB_OUTPUT";;
+            esac
+            # package 5: [siftec] also adds SIFTEC's client suite (the same runs as core's in this quick run), and with
+            # it the siftec-world job, to work on Create and Flywheel without the whole full matrix
+            case "$MESSAGE" in *"[siftec]"*)
+              matrix=$(echo "$matrix" | sed 's/"suite":\["core"\]/"suite":["core","siftec"]/')
+              echo "quick_siftec=1" >> "$GITHUB_OUTPUT";;
             esac
             # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); SIFTEC and Terralith in full mode.
             # A commit with [siftec] in its message adds SIFTEC's server suite to a quick run (to work on it without
@@ -215,9 +222,9 @@ jobs:
 
   siftec-world:
     # SIFTEC's server and CI world, built once per SIFTEC build and smoke-file change and shared by the SIFTEC runs
-    # (full mode only)
+    # (full mode, and quick runs with [siftec])
     needs: [mode]
-    if: needs.mode.outputs.mode == 'full'
+    if: needs.mode.outputs.mode == 'full' || needs.mode.outputs.quick_siftec == '1'
     continue-on-error: ${{ needs.mode.outputs.siftec_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -398,7 +405,7 @@ jobs:
         run: |
           set +e
           python3 -m pip install --quiet --break-system-packages pillow numpy
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_QUICK_VULKAN="${{ needs.mode.outputs.quick_vulkan }}" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_QUICK_VULKAN="${{ needs.mode.outputs.quick_vulkan }}" CI_QUICK_SIFTEC="${{ needs.mode.outputs.quick_siftec }}" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
           st=$?
           cat /tmp/ci/compare/report.md >> "$GITHUB_STEP_SUMMARY"
           # P2-2: the Logic module in the client runs (ci/server/compare-p2.py)
