@@ -144,8 +144,10 @@ public final class GpuOcclusion {
     /**
      * Package 5: Create Fly's Flywheel draws its solid geometry into the main depth image before the terrain, so a
      * still-camera pyramid holds Flywheel's machines, contraptions and trains as they were in that frame. They move
-     * from frame to frame on the GPU, so a frame in which Flywheel drew anything changes the stamp (no reuse). Debug
-     * switch {@code quicksilver.debug.noFlywheelStamp} (CI's proof that the occlusion check catches the difference).
+     * from frame to frame on the GPU, so a frame in which Flywheel drew anything changes the stamp: the stamp read at
+     * the frame's start never matches at its end, so while Flywheel holds any visual the still camera builds and reuses
+     * no pyramid at all (nothing culled; two-phase is unaffected). Debug switch {@code quicksilver.debug.noFlywheelStamp}
+     * (not set in CI): the stamp without Flywheel, to see what it costs.
      */
     private static final boolean FLYWHEEL_STAMP = !Boolean.getBoolean("quicksilver.debug.noFlywheelStamp");
 

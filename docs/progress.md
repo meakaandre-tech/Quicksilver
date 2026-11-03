@@ -3190,18 +3190,21 @@ ms at factory).
   every run. `ci/client-run.sh` writes `config/flywheel-client.json` per scene (`flywheelConfig`).
 - compare.py: Flywheel's backend per run and session gated (full `indirect`, old GPU and Vulkan `off`, the forced
   session `instancing` on full), the `/qsci` steps, the Create clock pin reaching Create's code, and Quicksilver's
-  bench block (hooks present, Create Fly found); report table "Flywheel (package 5)". `[siftec]` in a commit message
+  bench block (hooks present, Create Fly found; where Flywheel draws, the kinetics benches must have seen its visuals
+  drawn before the terrain), a backend line in every SIFTEC session, each Create pin reaching its code (the animation
+  clock; Flywheel's frame time where Flywheel draws); report table "Flywheel (package 5)". `[siftec]` in a commit message
   adds the SIFTEC suite and vanilla-old to a quick run.
-- Limits: factory strict 500 -> **370**; kinetics strict **70**, kinetics_instancing **180**; 8/255 limits at the
-  floor (0.25); count baselines for both scenes from runs 41605550531, 41613381142, 41627022279; both on the
+- Limits: factory strict 500 -> **370**; kinetics and kinetics_instancing strict **30**, with the standing carriage's
+  rectangle masked (its run-to-run noise, vanilla's too) and a second strict check where the vanilla runs that draw the
+  same way agree (Flywheel on in a and b, off in old and Vulkan); 8/255 limits 0.25 (stricter than the rule's 0.30); count baselines for both scenes from runs 41605550531, 41613381142, 41627022279; both on the
   at-or-under-vanilla draw list (`ci/vanilla-draw-calls.json`).
 
 ### Results (run 41633272149, full; final run: see the status table)
 
 | | full (Flywheel indirect) | old GPU (off) | Vulkan (off) | old GPU two-phase |
 |---|---|---|---|---|
-| kinetics strict pixels (limit 70) | 20 | 30 | 7 | 9 |
-| kinetics_instancing strict (180; full: instancing) | 112 | 94 | 65 | 120 |
+| kinetics strict pixels, carriage masked (limit 30; recomputed from the run's shots) | 8 | 8 | 9 | 8 |
+| kinetics_instancing, same, same-backend check (30; full: instancing) | 9 | 8 | 9 | 8 |
 | factory strict (370) | 0 | 0 | 0 | 0 |
 | kinetics draws per frame, Quicksilver / vanilla (avg) | 8.67 / 104.5 | 10.67 / 126.92 | 8.67 / 101.92 | |
 | kinetics terrain GPU MB reserved, Quicksilver / vanilla | 32 / 256 | 32 / 256 | 32 / 256 | |
@@ -3215,14 +3218,19 @@ nothing of this package loads; core passes as before.
 ### Choices to confirm (Andre)
 
 1. Stock Create Fly: no 26.3 release; add it to the pack lock when one appears.
-2. On the school laptop (Intel: Flywheel instancing, Quicksilver still camera), any frame where Flywheel draws a visual
-   rebuilds the occlusion pyramid instead of reusing it (correct, costs the still-camera saving near Create machines).
+2. On the school laptop (Intel: Flywheel instancing, Quicksilver still camera), still camera culls **nothing** while
+   Flywheel holds any visual anywhere in the level (the stamp changes every frame Flywheel draws; safe, but no
+   occlusion saving in Create worlds). Two-phase (GL with multi-draw indirect) is unaffected. A narrower test (only
+   when Flywheel's instances or frame time change) would need its own CI check.
 3. kinetics_instancing's meshing median is reported, not gated (as factory_flat: mostly-air sections; full 1.12 /
    0.99 ms in run 41633272149).
 4. The mesher's fixed foreign-mixin check now sends every fluid through vanilla's renderer whenever The Sift is
    installed (its fluid UV mixin).
-5. kinetics_instancing's limit (180, from the carriage's run-to-run noise) is above the smallest shaft piece on
-   screen (~80 px); a pin for the standing carriage was tried and did not help.
+5. The standing train's carriage is out of the strict checks (masked; 8/255 only), because it lands a fraction of a
+   pixel differently in every run, vanilla's too; a pin of its client-side track points did not help.
+6. The mesher's fixed foreign-mixin check also applies without Create Fly: any pack with a mod mixing into vanilla's
+   section compiler, region, plain models or fluid renderer now gets vanilla's code for that part (package 4c's intent;
+   on main such mixins went unnoticed).
 
 ## Open bugs
 

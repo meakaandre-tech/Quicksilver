@@ -123,9 +123,10 @@ def strict(shot, out_prefix, skip_runs=(), pairs=None, mask=None):
     v = {r: load(shot(r)) for r in VANILLA_RUNS if r not in skip_runs}
     if any(x is None for x in v.values()) or len({x.shape for x in v.values()}) != 1:
         return None, {}, {}
-    agree = np.ones(v["vanilla-a"].shape[:2], bool)
+    base = next(iter(v.values()))
+    agree = np.ones(base.shape[:2], bool)
     for x in v.values():
-        agree &= (x == v["vanilla-a"]).all(axis=2)
+        agree &= (x == base).all(axis=2)
     for x0, y0, x1, y1 in mask or ():
         agree[y0:y1, x0:x1] = False
     out, anyd = {}, {}
@@ -404,10 +405,12 @@ def flywheel(res, failures, lines):
             if not m_n:
                 continue
             b = FLW_BACKEND.findall(open(f, errors="replace").read())
+            n = int(m_n.group(1))
             if not b:
+                # every SIFTEC session has Create Fly and a level, so every one logs Flywheel's backend
+                failures.append(f"siftec/{r}/client-{n}: no Flywheel backend line from CI's pin mod in this session")
                 continue
             got.append(b[-1])
-            n = int(m_n.group(1))
             forced = n <= len(sessions) and "flywheel.backend=" in sessions[n - 1]
             w = FLW_FORCED["kinetics_instancing"][run_profile(r)] if forced else want
             if b[-1] != w:
@@ -415,8 +418,10 @@ def flywheel(res, failures, lines):
                                 + (" (session with the backend forced)" if forced else ""))
         if not got:
             failures.append(f"siftec/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
-        if "Quicksilver CI pin: Create's animation clock pinned in" not in t:
-            failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned' line)")
+        if "Quicksilver CI pin: Create's animation clock pinned in AnimationTickHolder" not in t:
+            failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned in AnimationTickHolder' line)")
+        if want != "flywheel:off" and "Quicksilver CI pin: Create's animation clock pinned in Flywheel's frame time" not in t:
+            failures.append(f"siftec/{r}: Flywheel's frame time pin never ran though Flywheel draws on this profile")
         srv = open(os.path.join(d, "server.log"), errors="replace").read() if os.path.exists(os.path.join(d, "server.log")) else ""
         for step in QSCI_STEPS:
             if f"Quicksilver CI create: {step} done" not in srv:
@@ -438,6 +443,12 @@ def flywheel(res, failures, lines):
                     if missing:
                         failures.append(f"siftec/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
                     bench[j["scene"]] = fw
+                    # Quicksilver's own hook in Flywheel (the still-camera stamp hangs on it): where Flywheel draws, the
+                    # Create scenes' benches must have seen its visuals and counted the frames it drew before the terrain
+                    if w != "flywheel:off" and j["scene"] in ("kinetics", "kinetics_instancing") and not (
+                            (fw.get("visuals") or 0) > 0 and (fw.get("framesDrawingBeforeTerrain") or 0) > 0):
+                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver saw no Flywheel visual drawn before the terrain"
+                                        f" (visuals {fw.get('visuals')}, frames {fw.get('framesDrawingBeforeTerrain')}): its hook in Flywheel did not run")
         kin = bench.get("kinetics") or {}
         rows.append(f"| {r} | {', '.join(got) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
     lines.append("## Flywheel (package 5)\n")
@@ -465,7 +476,7 @@ def main():
         scenes = [s for s in suite["scenes"]]
         scene_by_id = {s["id"]: s for s in scenes}
         sd = data.setdefault(name, {"noise": {}, "picture": {}, "strict": {}, "counts": {}, "skipped": {}})
-        strict_lines, measure_lines = [], []
+        strict_lines, measure_lines, backend_lines = [], [], []
         lines.append(f"## Suite {name}\n")
         runs = {r: os.path.join(res, f"{name}-{r}") for r in RUNS}
         for r, d in runs.items():
@@ -888,6 +899,30 @@ def main():
                         failures.append(f"{name}/{sid}: strict picture check is missing the {MEASURE[prof]} screenshot (or its size differs)")
                     elif not no_strict and slimit is not None and mc > slimit:
                         failures.append(f"{name}/{sid}: {MEASURE[prof]} (vanilla stand-in) differs from vanilla on {mc} strict pixels (limit {slimit})")
+                # package 5: in the Create scenes Flywheel draws the machines in vanilla a and b (full profile) and
+                # vanilla's renderers draw them in vanilla old and Vulkan (Flywheel off), so the four runs never agree
+                # on those pixels and the check above can't see them. Each profile is checked again where the vanilla
+                # runs drawing the same way agree, against the same strict limit; the measure runs too.
+                if sc.get("ciBackendStrict"):
+                    for group in (("vanilla-a", "vanilla-b"), ("vanilla-old", "vanilla-vk")):
+                        if not all(g in VANILLA_RUNS and g not in skip_runs for g in group):
+                            continue
+                        gskip = tuple(skip_runs) + tuple(r for r in VANILLA_RUNS if r not in group)
+                        gpairs = {p: bv for p, bv in PAIRS.items() if bv[1] in group and p not in skipped_profiles}
+                        for label, pp in (("", gpairs), ("measure", {} if QUICK else {p: (MEASURE[p], bv[1]) for p, bv in gpairs.items()})):
+                            if not pp:
+                                continue
+                            gagree, gcounts, _ = strict(shot, os.path.join(rep, "diff", f"{name}-{sid}-backend{label}"), gskip, pp, mask=sc.get("ciStrictMask"))
+                            sd["strict"][sid].setdefault("sameBackend", {})[f"{'+'.join(group)}{'/' + label if label else ''}"] = {"agreePct": gagree, "pixels": gcounts}
+                            for prof, c in gcounts.items():
+                                who = MEASURE[prof] + " (vanilla stand-in)" if label else prof
+                                if c is None:
+                                    failures.append(f"{name}/{sid}: same-backend strict check is missing the {who} screenshot")
+                                elif slimit is not None and c > slimit:
+                                    failures.append(f"{name}/{sid}: {who} differs from vanilla on {c} pixels where {' and '.join(group)}"
+                                                    f" (drawing the same way) agree exactly, by more than {STRICT_THRESHOLD}/255 (strict limit {slimit})")
+                            backend_lines.append(f"| {sid} | {label or 'Quicksilver'} | {' and '.join(group)} | {gagree} | "
+                                                 + ", ".join(f"{p} {c}" for p, c in gcounts.items()) + " |")
                 measure_lines.append(f"| {sid} | " + " | ".join("skipped" if p not in mrow else ("missing" if mrow[p] is None else f"{mrow[p]['pct']} / {mcounts.get(p)}") for p in PAIRS) + " |")
                 shown = f"not gated ({sc['ciNoStrict']})" if sc.get("ciNoStrict") and f"{name}/{sid}" in NO_STRICT_ALLOWED else (slimit if strict_limits is not None else 'not set yet')
                 strict_lines.append(f"| {sid} | {agree} | {shown} | "
@@ -898,6 +933,13 @@ def main():
         lines.append("| scene | vanilla runs agree on % of pixels | strict limit (pixels) | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
         lines.append("|---|---|---|" + "---|" * len(PAIRS))
         lines.extend(strict_lines)
+        if backend_lines:
+            lines.append("")
+            lines.append("Strict picture where the vanilla runs drawing the same way agree (package 5, Create scenes: Flywheel on in"
+                         " vanilla a and b, off in vanilla old and Vulkan), same strict limits:\n")
+            lines.append("| scene | runs | vanilla runs | agree on % of pixels | strict pixels |")
+            lines.append("|---|---|---|---|---|")
+            lines.extend(backend_lines)
         lines.append("")
         if not QUICK:
             lines.append("Measure runs (Quicksilver loaded, every module off) against vanilla's run of the same profile: % of pixels over"

@@ -321,13 +321,13 @@ public final class Mesher {
             return;
         }
         // package 5: what Mixin reports as applied to the compiler (every mod, Quicksilver's included), so the foreign-mixin
-        // check above can be seen working in CI's logs
+        // check below can be seen working in CI's logs
         QuicksilverClient.LOG.info("Quicksilver mesher: mixins applied to vanilla's section compiler (Quicksilver's included): {}", appliedMixins("net/minecraft/client/renderer/chunk/SectionCompiler"));
         List<String> compiler = foreignMixins("net/minecraft/client/renderer/chunk/SectionCompiler");
         compiler.addAll(foreignMixins("net/minecraft/client/renderer/chunk/RenderSectionRegion"));
         if (!compiler.isEmpty()) {
             off("mods change vanilla's section compiler or region: " + String.join(", ", compiler), false);
-            // one line, naming each mod and its mixin
+            // one line, naming each mixin
             QuicksilverClient.LOG.warn("Quicksilver mesher: off for the session (vanilla's section compiler meshes every section): {}",
                 String.join("; ", compiler));
             return;
@@ -356,20 +356,33 @@ public final class Mesher {
             + " is also meshed by vanilla's compiler and compared vertex for vertex)");
     }
 
-    /** Mixins applied to a vanilla class by mods other than Quicksilver, Fabric API and Flywheel (whose hooks Quicksilver keeps). */
+    /**
+     * Hooks other mods' mixins add that Quicksilver's mesher keeps, by mixin and merged member (Mixin renames handlers
+     * with a prefix and keeps the handler's own name at the end), so anything else the same mixin class adds later is
+     * still caught.
+     */
+    private static final String[][] KEPT = {
+        // Flywheel hooks vanilla's block-entity step, which Quicksilver's mesher calls for every block entity
+        {"dev.engine_room.flywheel.impl.mixin.visualmanage.SectionCompilerMixin", "flywheel$tryAddBlockEntity"},
+        // the same hook as Create Fly bundles it (package 5): it cancels vanilla's step for the block entities it draws
+        {"com.zurrtum.create.client.mixin.SectionCompilerMixin", "flywheel$tryAddBlockEntity"},
+        // Create Fly's model mixin only makes SimpleModelWrapper.bake return Create's own part class for OBJ models;
+        // the hidden-block check takes parts of exactly vanilla's class, so those are always asked of their model
+        {"com.zurrtum.create.client.mixin.SimpleModelWrapperMixin", "$bake"},
+    };
+
+    /** Mixins applied to a vanilla class by mods other than Quicksilver and Fabric API, but for the hooks in {@link #KEPT}. */
     private static List<String> foreignMixins(String internalName) {
         List<String> out = new ArrayList<>();
         try {
-            for (String n : mergedMixins(internalName)) {
+            for (String[] m : mergedMembers(internalName)) {
+                String n = m[0];
                 if (n.startsWith("com.meakaandre.quicksilver.") || n.startsWith("net.fabricmc.fabric.")) continue;
-                // Flywheel hooks vanilla's block-entity step, which Quicksilver's mesher calls for every block entity
-                if (n.equals("dev.engine_room.flywheel.impl.mixin.visualmanage.SectionCompilerMixin")) continue;
-                // the same hook as Create Fly bundles it (package 5): it cancels vanilla's step for the block entities it draws
-                if (n.equals("com.zurrtum.create.client.mixin.SectionCompilerMixin")) continue;
-                // Create Fly's model mixin only makes SimpleModelWrapper.bake return Create's own part class for OBJ models;
-                // the hidden-block check takes parts of exactly vanilla's class, so those are always asked of their model
-                if (n.equals("com.zurrtum.create.client.mixin.SimpleModelWrapperMixin")) continue;
-                out.add("mixin " + n);
+                boolean kept = false;
+                for (String[] k : KEPT) kept |= n.equals(k[0]) && m[1].endsWith(k[1]);
+                if (kept) continue;
+                String line = "mixin " + n;
+                if (!out.contains(line)) out.add(line);
             }
         } catch (Throwable t) {
             out.add("(could not read the mixins applied to " + internalName + ": " + t + ")");
@@ -380,7 +393,8 @@ public final class Mesher {
     /** Every mixin applied to a class, Quicksilver's included (diagnostic, package 5). */
     private static String appliedMixins(String internalName) {
         try {
-            java.util.Set<String> all = mergedMixins(internalName);
+            java.util.Set<String> all = new java.util.TreeSet<>();
+            for (String[] m : mergedMembers(internalName)) all.add(m[0]);
             return all.isEmpty() ? "(none)" : String.join(", ", all);
         } catch (Throwable t) {
             return "(could not read: " + t + ")";
@@ -388,21 +402,22 @@ public final class Mesher {
     }
 
     /**
-     * The mixins applied to a class, read from the {@code @MixinMerged} marks Mixin leaves on every method and field it
-     * merges into the target (runtime retention). Package 5: until then this asked Mixin's {@code ClassInfo} of the
-     * target for its applied mixins, but Mixin records those on the mixin's own class info, so the target's list was
-     * always empty and no foreign mixin was ever seen (CI's log: "none reported", not even Quicksilver's own).
+     * Every method and field mixins merged into a class, as {mixin, member name}, read from the {@code @MixinMerged}
+     * marks Mixin leaves on them (runtime retention; injector handlers and overwrites included). Package 5: until then
+     * this asked Mixin's {@code ClassInfo} of the target for its applied mixins, but Mixin records those on the mixin's
+     * own class info, so the target's list was always empty and no foreign mixin was ever seen. Not seen either way:
+     * changes that merge nothing (a final made mutable, access wideners) and mixins into supertypes or interfaces.
      */
-    private static java.util.Set<String> mergedMixins(String internalName) throws ClassNotFoundException {
+    private static List<String[]> mergedMembers(String internalName) throws ClassNotFoundException {
         Class<?> c = Class.forName(internalName.replace('/', '.'), false, Mesher.class.getClassLoader());
-        java.util.Set<String> out = new java.util.TreeSet<>();
+        List<String[]> out = new ArrayList<>();
         for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
             org.spongepowered.asm.mixin.transformer.meta.MixinMerged a = m.getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
-            if (a != null) out.add(a.mixin());
+            if (a != null) out.add(new String[] {a.mixin(), m.getName()});
         }
         for (java.lang.reflect.Field f : c.getDeclaredFields()) {
             org.spongepowered.asm.mixin.transformer.meta.MixinMerged a = f.getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
-            if (a != null) out.add(a.mixin());
+            if (a != null) out.add(new String[] {a.mixin(), f.getName()});
         }
         return out;
     }

@@ -91,8 +91,8 @@ public final class FlywheelCompat {
     }
 
     /**
-     * Mixin, at the start of Flywheel's {@code RenderContextImpl.beforeSolid} (render thread, every frame Flywheel is
-     * set up for the level): if Flywheel has any visual, it is about to draw it into the main target, depth included.
+     * Mixin, at the end of Flywheel's {@code RenderContextImpl.beforeSolid} (render thread, every frame Flywheel is
+     * set up for the level): if Flywheel has any visual, it has drawn it into the main target, depth included.
      */
     public static void beforeSolid(Object renderContext) {
         if (!loggedPresent) {
@@ -106,7 +106,8 @@ public final class FlywheelCompat {
 
     /** Visuals Flywheel holds for the level of this render context (block entities, entities, effects), or 0. */
     private static int visuals(Object ctx) {
-        if (reflectionFailed || ctx == null) return 0;
+        // unknown means drawn: the still-camera stamp must keep changing whenever Flywheel may have drawn
+        if (reflectionFailed || ctx == null) return 1;
         try {
             if (contextManager == null) {
                 contextManager = ctx.getClass().getField("visualizationManager");
@@ -131,7 +132,9 @@ public final class FlywheelCompat {
     /**
      * For the occlusion module's still-camera stamp: changes in every frame in which Flywheel drew into the main depth
      * image. Flywheel's instances move on the GPU from frame to frame (rotation and scrolling follow its frame time), so a
-     * depth image it drew into is valid for that frame only. 0 and constant without Create Fly.
+     * depth image it drew into is valid for that frame only. So while Flywheel holds any visual in the level, the
+     * occlusion module's still camera builds no pyramid and culls nothing (safe; Andre to decide on a narrower test).
+     * 0 and constant without Create Fly.
      */
     public static long depthStamp() {
         return DEPTH_FRAMES.get();

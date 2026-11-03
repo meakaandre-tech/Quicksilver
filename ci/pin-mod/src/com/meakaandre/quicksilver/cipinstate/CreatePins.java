@@ -23,7 +23,7 @@ public final class CreatePins {
 
     /** Whether the player is in a Create pin area (client thread). */
     public static volatile boolean pinned;
-    private static boolean logged;
+    private static final java.util.Set<String> LOGGED = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static String backend = "";
     private static int tick;
 
@@ -67,10 +67,9 @@ public final class CreatePins {
         }
     }
 
-    /** First use of a pin (logged once, so a run shows the pin reached Create's code). */
+    /** First use of each pin (logged once per pin, so a run shows each pin reached Create's code). */
     public static void used(String what) {
-        if (logged) return;
-        logged = true;
+        if (!LOGGED.add(what)) return;
         LOG.info("Quicksilver CI pin: Create's animation clock pinned in {}", what);
     }
 }

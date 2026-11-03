@@ -326,9 +326,19 @@
         "execute in minecraft:overworld run setblock 2140 236 -2018 minecraft:bedrock",
         "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
       ],
+      "ciStrictMask": [
+        [
+          640,
+          260,
+          730,
+          345
+        ]
+      ],
+      "ciStrictMaskNote": "The standing train's carriage (package 5): it lands a fraction of a pixel to one side from run to run, in vanilla's own runs too (up to 78 strict pixels in a vanilla stand-in, run 41633272149; a pin of its client-side track points did not change it), so its rectangle is out of the strict checks; the 8/255 check covers it.",
+      "ciBackendStrict": true,
       "requiresMod": "create",
       "requiresNote": "Create's machines (Create Fly in SIFTEC's pack). The belt and the train are made with /qsci, CI's pin mod's command (Create has no command for either); without it the scene shows the shafts where the belt would be and the station without a train.",
-      "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile, instancing on old GPUs), vanilla's block-entity and entity renderers where it is off (Vulkan: Flywheel needs OpenGL). It runs after create_ct, whose F1 (GUI hidden) is still in effect, so no HUD or minimap shows."
+      "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile), vanilla's block-entity and entity renderers where it is off (old GPU: instancing's shaders don't compile on GL 3.3 and Flywheel falls back, as in vanilla's run; Vulkan: Flywheel needs OpenGL). It runs after create_ct, whose F1 (GUI hidden) is still in effect, so no HUD or minimap shows."
     },
     {
       "id": "kinetics_instancing",
@@ -348,9 +358,19 @@
       "quicksilverConfig": {
         "occlusion": "still-camera"
       },
+      "ciStrictMask": [
+        [
+          640,
+          260,
+          730,
+          345
+        ]
+      ],
+      "ciStrictMaskNote": "The standing train's carriage (package 5): it lands a fraction of a pixel to one side from run to run, in vanilla's own runs too (up to 78 strict pixels in a vanilla stand-in, run 41633272149; a pin of its client-side track points did not change it), so its rectangle is out of the strict checks; the 8/255 check covers it.",
+      "ciBackendStrict": true,
       "requiresMod": "create",
       "requiresNote": "Create's machines (Create Fly in SIFTEC's pack); the platform is built by the kinetics scene in the first session.",
-      "ciNote": "Its own client session, with Create Fly's config/flywheel-client.json set to backend flywheel:instancing, in vanilla's runs and Quicksilver's alike, so Flywheel's instancing backend draws the same machines, contraption and train as the kinetics scene (whose session leaves Flywheel to choose: indirect on the full profile). Quicksilver's occlusion is set to still camera here (the school laptop's path: Intel picks instancing and still camera), so its per-frame occlusion check runs where Flywheel draws into the depth image a still pyramid is built from. On GL 3.3 (old GPU) instancing's shaders don't compile and Flywheel falls back to off, as in vanilla's run; on Vulkan Flywheel is off. GUI shown here (its own session): F1 hides it, as in kinetics.",
+      "ciNote": "Its own client session, with Create Fly's config/flywheel-client.json set to backend flywheel:instancing, in vanilla's runs and Quicksilver's alike, so Flywheel's instancing backend draws the same machines, contraption and train as the kinetics scene (whose session leaves Flywheel to choose: indirect on the full profile). Quicksilver's occlusion is set to still camera here (the school laptop's path: Intel picks instancing and still camera): while Flywheel holds any visual, still camera builds no pyramid and culls nothing (package 5, for Andre to decide), so on the full profile this checks that nothing is culled wrongly; on old GPU and Vulkan (Flywheel off) still camera culls and its per-frame check runs. On GL 3.3 (old GPU) instancing's shaders don't compile and Flywheel falls back to off, as in vanilla's run; on Vulkan Flywheel is off. GUI shown here (its own session): F1 hides it, as in kinetics.",
       "ciKeys": [
         "F1"
       ]

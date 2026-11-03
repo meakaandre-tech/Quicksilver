@@ -64,8 +64,8 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | core/renderer_off (package 4) | a block drawn wrongly with the block renderer off | one block face (~35 px): ~1,200 | 10 | yes |
 | siftec/factory_flat (package 4) | a wrongly flat-lit Create or SIFTEC part | as factory: a machine ~4,800; one ladder strip ~320 | 40 | yes |
 | siftec/create_ct (package 4) | a wrong connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
-| siftec/kinetics (package 5) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,500; one shaft block (~60 px by 7): ~200; the shaft piece showing between the two cogwheels ~80 | 70 | shaft block yes; the shaft piece between the cogwheels **no** |
-| siftec/kinetics_instancing (package 5) | as kinetics, with Flywheel's instancing backend and still-camera occlusion | as kinetics | 180 | shaft block yes; the shaft piece between the cogwheels **no** |
+| siftec/kinetics (package 5) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,500; one shaft block (~60 px by 7): ~200; the shaft piece showing between the two cogwheels ~80; the train's carriage ~5,000 | 30 (the carriage's rectangle masked out: 8/255 check only, 2,304 px) | yes, but the carriage: whole carriage yes, one part of it **no** |
+| siftec/kinetics_instancing (package 5) | as kinetics, with Flywheel's instancing backend and still-camera occlusion | as kinetics | 30 (as kinetics) | as kinetics |
 
 The **no** rows are limits already set (by the rule and Andre's earlier decisions) that are larger than the smallest
 thing the scene shows; they are listed for Andre, not changed. Package 7 made the hub and mam scenes quiet and gave
@@ -309,8 +309,8 @@ pixels: the smallest hideable object seen there, the iron golem in the doorway, 
 | SIFTEC/factory_flat (package 4) | 0/0, 0/26, 0/0 (runs 40274749083, 40279156080, 40287221751) | 0 | 40 (26 x 1.5, rounded up to 10) |
 | SIFTEC/create_ct (package 4; the GUI hidden from 40279156080 on) | 0/0, 0/0 (runs 40279156080, 40287221751; the third run is the branch's final run); before: 32/167 (minimap) | 0 | 10 (floor) |
 | SIFTEC/factory (package 5, Create's clock pinned) | runs 41596247834, 41605550531, 41613381142, 41627022279, 41633272149: 0 everywhere but one state flip of 243 pixels (quicksilver-2p-old in 41605550531; measure-old, a vanilla stand-in, in 41627022279) | 0 or 243 | **370** (was 500; 243 x 1.5, rounded up to 10) |
-| SIFTEC/kinetics (package 5) | runs 41613381142, 41627022279, 41633272149 (after the lighting fix): measure runs (vanilla stand-ins) 19, 0, 43 | 7-37 (about 10 of them the 16-byte vertex's rounding along the track ties, the rest the carriage) | **70** (43 x 1.5, rounded up to 10) |
-| SIFTEC/kinetics_instancing (package 5) | the same three runs: measure runs 16, 67, 56 | 7-120 | **180** (120 x 1.5) |
+| SIFTEC/kinetics (package 5; carriage masked, also checked where same-backend vanilla runs agree) | runs 41613381142, 41627022279, 41633272149 (after the lighting fix): outside the carriage, measure runs (vanilla stand-ins) 0-1 | 7-10, all along the track ties: the 16-byte vertex's rounding | **30** (package 3's finer rule: 10 for the noise, plus 1.5 x the rounding extra 10, rounded up to 10) |
+| SIFTEC/kinetics_instancing (package 5; as kinetics) | the same three runs, outside the carriage: 0-1 | 7-10 (track ties) | **30** (as kinetics) |
 | SIFTEC/ponder (package 7) | final setup: 0/0 in runs 40273668937, 40276630375, 40288414898 (earlier placements: 0/0) | final setup: 0 in every Quicksilver and measure run of those three runs (earlier placements: 3-5 pixels of the minimap in every Quicksilver and measure run, 425 and 578 once; see below) | **10** |
 | core/outline, outline.bare (package 7) | 0/0 in runs 40249146134 to 40260847921 (bare: 40260847921) | 0 (measure runs 0) | **10** |
 
@@ -955,11 +955,19 @@ burner's flame follows the client tick). Its setup clears the hologram scene's p
 which shades it on OpenGL and not on Vulkan, where the hologram scene doesn't run.
 
 **What stays noisy:** a standing train's carriage lands a fraction of a pixel to one side from run to run, in
-vanilla's own runs too (measure runs: up to 43 strict pixels in kinetics, 67 in kinetics_instancing, whose session
-joins a world where the train already stands). A pin that put the client's carriage points at the server's
-synced places (runs 41627022279, 41633272149) did not change that and was removed. The limits come from those
-samples (table above). About 10 single pixels along the track's ties differ in every Quicksilver run and in no
-measure run: the 16-byte vertex's rounding (23.5% of the scene's vertices rounded; package 3's rounding extra).
+vanilla's own runs too (vanilla stand-ins up to 78 strict pixels on the carriage, run 41633272149). A pin that put
+the client's carriage points at the server's synced places (runs 41627022279, 41633272149) did not change that and
+was removed. The carriage's rectangle (`ciStrictMask` 640,260-730,345) is left out of the strict checks; the 8/255
+check (0.25%, 2,304 pixels) still sees a missing or doubled carriage, not a wrong part of it. Outside it, about 10
+single pixels along the track's ties differ in every Quicksilver run and in no measure run: the 16-byte vertex's
+rounding (23.5% of the scene's vertices rounded; package 3's rounding extra).
+
+**Same-backend strict check** (`ciBackendStrict`, kinetics scenes): vanilla a and b draw the machines through
+Flywheel, vanilla old and Vulkan through vanilla's renderers, so the four runs agree on none of those pixels
+(96.1% agreement, about 36,000 pixels short of a and b's) and the usual strict check can't see a wrong machine on the
+full profile. Each profile is checked again on the pixels where the vanilla runs drawing the same way agree (full
+against a and b, 99.2%; old GPU and Vulkan against old and Vulkan, 96.0%), with the same limit, measure runs included.
+Run 41633272149, carriage masked: 8-9 strict pixels per profile, all on the track ties.
 
 **Flywheel's backend per profile** (checked by compare.py from the pin mod's log, each session): full
 `flywheel:indirect`; kinetics_instancing's session `flywheel:instancing` (forced in `config/flywheel-client.json`);
