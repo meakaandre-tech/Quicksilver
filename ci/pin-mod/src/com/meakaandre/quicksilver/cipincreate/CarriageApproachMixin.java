@@ -19,14 +19,42 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "com.zurrtum.create.content.trains.entity.CarriageSyncData", remap = false)
 public abstract class CarriageApproachMixin {
-    private static volatile boolean quicksilverCi$failed, quicksilverCi$logged;
+    private static volatile boolean quicksilverCi$failed, quicksilverCi$logged, quicksilverCi$loggedFallback;
 
     @Inject(method = "approach", at = @At("HEAD"), cancellable = true, remap = false)
     private void quicksilverCi$snap(@Coerce Object entity, @Coerce Object carriage, float partial, CallbackInfo ci) {
         if (!CreatePins.pinned || quicksilverCi$failed) return;
         try {
             Object self = this;
-            if (field(self.getClass(), "fallbackLocations").get(self) != null) return;
+            Object fallback = field(self.getClass(), "fallbackLocations").get(self);
+            if (fallback != null) {
+                // Create's other path (no track graph on the client): the carriage's anchor and its bogeys' rotation
+                // anchors approach the synced vectors; put them there
+                Object level = entity.getClass().getMethod("level").invoke(entity);
+                Object dce = null;
+                for (java.lang.reflect.Method m : carriage.getClass().getMethods()) {
+                    if (m.getName().equals("getDimensional") && m.getParameterCount() == 1 && m.getParameterTypes()[0].isInstance(level)) {
+                        dce = m.invoke(carriage, level);
+                        break;
+                    }
+                }
+                if (dce == null) return;
+                Object pos = fallback.getClass().getMethod("getFirst").invoke(fallback);
+                Object rot = fallback.getClass().getMethod("getSecond").invoke(fallback);
+                if (pos == null || rot == null) return;
+                field(dce.getClass(), "positionAnchor").set(dce, pos);
+                Object anchors = field(dce.getClass(), "rotationAnchors").get(dce);
+                java.lang.reflect.Method getR = rot.getClass().getMethod("get", boolean.class);
+                java.lang.reflect.Method set = anchors.getClass().getMethod("set", boolean.class, Object.class);
+                set.invoke(anchors, true, getR.invoke(rot, true));
+                set.invoke(anchors, false, getR.invoke(rot, false));
+                if (!quicksilverCi$loggedFallback) {
+                    quicksilverCi$loggedFallback = true;
+                    CreatePins.LOG.info("Quicksilver CI pin: a standing carriage put at its synced place (Create's CarriageSyncData.approach, synced vectors)");
+                }
+                ci.cancel();
+                return;
+            }
             Object[] targets = (Object[]) field(self.getClass(), "pointsToApproach").get(self);
             float[] snapshot = (float[]) field(self.getClass(), "pointDistanceSnapshot").get(self);
             Object bogeys = field(carriage.getClass(), "bogeys").get(carriage);
@@ -52,7 +80,7 @@ public abstract class CarriageApproachMixin {
             }
             if (!quicksilverCi$logged) {
                 quicksilverCi$logged = true;
-                CreatePins.LOG.info("Quicksilver CI pin: a standing carriage put at its synced place (Create's CarriageSyncData.approach)");
+                CreatePins.LOG.info("Quicksilver CI pin: a standing carriage put at its synced place (Create's CarriageSyncData.approach, track points)");
             }
             ci.cancel();
         } catch (Throwable t) {
