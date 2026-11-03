@@ -366,6 +366,9 @@ public final class Mesher {
                 if (n.equals("dev.engine_room.flywheel.impl.mixin.visualmanage.SectionCompilerMixin")) continue;
                 // the same hook as Create Fly bundles it (package 5): it cancels vanilla's step for the block entities it draws
                 if (n.equals("com.zurrtum.create.client.mixin.SectionCompilerMixin")) continue;
+                // Create Fly's model mixin only makes SimpleModelWrapper.bake return Create's own part class for OBJ models;
+                // the hidden-block check takes parts of exactly vanilla's class, so those are always asked of their model
+                if (n.equals("com.zurrtum.create.client.mixin.SimpleModelWrapperMixin")) continue;
                 out.add("mixin " + n);
             }
         } catch (Throwable t) {
