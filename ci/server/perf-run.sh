@@ -44,9 +44,9 @@ keep_world() { # world_dir dest (as server-run.sh)
    cp level.dat "$2/" 2>/dev/null)
 }
 
-# one run: side (vanilla|quicksilver) round scene script ticks keep(world|-) jfr(0|1)
+# one run: side (vanilla|quicksilver) round scene script ticks keep(world|-) jfr(0|1) [qs switches]
 one() {
-  local side=$1 round=$2 scene=$3 script=$4 ticks=$5 keep=$6 jfr=$7
+  local side=$1 round=$2 scene=$3 script=$4 ticks=$5 keep=$6 jfr=$7 sw=${8:--}
   local dir="$OUT/$scene/$side$round"
   mkdir -p "$dir"
   rm -f "$srv/mods/quicksilver.jar"
@@ -57,6 +57,13 @@ one() {
   grep -v '^qs-at ' "ci/server/$script" > "$dir/script.txt"
   printf '\nat 0 tick sprint %s\n' "$ticks" >> "$dir/script.txt"
   local extra=()
+  rm -f "$srv/config/quicksilver.properties"
+  if [ "$side" = quicksilver ] && [ "$sw" != - ]; then
+    mkdir -p "$srv/config"
+    for kv in ${sw//,/ }; do
+      if [ "$kv" = verify ]; then extra+=("-Dquicksilver.debug.verifyLogic=true"); else echo "$kv" >> "$srv/config/quicksilver.properties"; fi
+    done
+  fi
   if [ "$jfr" = 1 ]; then
     extra+=("-XX:StartFlightRecording=filename=$dir/rec.jfr,dumponexit=true,settings=profile,jdk.ExecutionSample#period=1ms")
   fi
@@ -80,15 +87,15 @@ one() {
   rm -rf "$srv/world" "$srv/quicksilver" "$srv/crash-reports"
 }
 
-while read -r scene script ticks keep; do
+while read -r scene script ticks keep sw; do
   case "$scene" in ''|'#'*) continue;; esac
   echo "== scene $scene ($script, $ticks ticks sprinting, keep: $keep)"
   for r in 1 2 3 4 5 6 7; do
     if [ $((r % 2)) = 1 ]; then first=vanilla; second=quicksilver; else first=quicksilver; second=vanilla; fi
-    one $first $r "$scene" "$script" "$ticks" "$keep" 0
-    one $second $r "$scene" "$script" "$ticks" "$keep" 0
+    one $first $r "$scene" "$script" "$ticks" "$keep" 0 "$sw"
+    one $second $r "$scene" "$script" "$ticks" "$keep" 0 "$sw"
   done
-  one quicksilver 8 "$scene" "$script" "$ticks" "$keep" 1
-  one vanilla 8 "$scene" "$script" "$ticks" "$keep" 1
+  one quicksilver 8 "$scene" "$script" "$ticks" "$keep" 1 "$sw"
+  one vanilla 8 "$scene" "$script" "$ticks" "$keep" 1 "$sw"
 done < "$spec"
 echo "perf done"

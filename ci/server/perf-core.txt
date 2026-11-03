@@ -1,13 +1,6 @@
-# The core suite's perf scenes (phase 2, P2-2; ci/server/perf-run.sh): scene, script (ci/server/), ticks (sprinting),
-# world (the saved worlds are compared, ci/server/compare-p2.py) or -.
-# mobs: 172 mobs moving and colliding over mixed shapes (entity movement, collisions, block access); random: the
-# random-tick run (random ticks, precipitation, natural spawning); run: the scripted run (machines, crops, animals,
-# villagers, items).
-mobs    scripted-run-core-mobs.txt    4800  world
-random  scripted-run-core-random.txt  6000  -
-run     scripted-run-core.txt         4800  -
-# P2-3: factory: vanilla hoppers (moving items, waiting with nothing to take, in rings), furnaces fed by hoppers,
-# comparators on chests; village: villagers with beds, job sites and a bell, iron golems and cats (brains, sensors,
-# pathfinding, points of interest)
-factory scripted-run-core-factory.txt 4800  world
-village scripted-run-core-village.txt 4800  world
+# DIAGNOSTIC (branch p2-3-diag only): the village scene with each P2-3 optimisation off in turn, and with verify on
+village_verify    scripted-run-core-village.txt 4800 world verify
+village_nobrain   scripted-run-core-village.txt 4800 world logic.brain-behaviours=off
+village_nogate    scripted-run-core-village.txt 4800 world logic.gate-behaviours=off
+village_nobe      scripted-run-core-village.txt 4800 world logic.block-entity-checks=off
+village_nohopper  scripted-run-core-village.txt 4800 world logic.hopper-entities=off
