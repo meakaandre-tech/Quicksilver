@@ -1066,7 +1066,7 @@ release no longer matched `ci/pack-lock.txt`, which stops every SIFTEC job at it
 
 | scene | what | ticks | MSPT gate |
 |---|---|---|---|
-| core `factory` (`scripted-run-core-factory.txt`) | vanilla hoppers as players build them: 32 chains of 12 from full chests, each read by a comparator; 24 furnaces fed by hoppers; 320 hoppers waiting under open air, 32 under empty chests; 4 rings passing items round; a hopper line under dropped items | 12000 | faster: the median of the seven per-round ratios below 1 |
+| core `factory` (`scripted-run-core-factory.txt`) | vanilla hoppers as players build them: 32 chains of 12 from full chests, each read by a comparator; 24 furnaces fed by hoppers; 288 hoppers waiting under open air, 32 under empty chests; 4 rings passing items round; a hopper line under dropped items | 12000 | faster: the median of the seven per-round ratios below 1 |
 | core `village` (`scripted-run-core-village.txt`) | 24 villagers, 16 beds, 12 job sites, a bell, a hut with a door, 2 iron golems, on a 48-block field | 4800 | faster (world reported, below) |
 | SIFTEC `factory` (`scripted-run-siftec-factory.txt`) | Create presses over depots, millstones between cogwheels, funnels into chutes, on creative motors started at tick 1; vanilla hoppers, furnaces and chests beside them | 2400 | no-regression: the median ratio at most 1.10 (Andre, 2026-11-02: what is left of its cost is hoppers' block and container lookups, kept exact in P2-3 and cached in P2-3b) |
 
@@ -1080,13 +1080,15 @@ optimisation switched off in turn Quicksilver's rounds landed in the same few ou
 Without cats, 92 to 147 keys (run 41582130588: 24 vanilla rounds); on a smaller field inside the force-loaded area,
 121 to 137 (run 41585188944: villagers spawned iron golems). With that much of the world in vanilla's noise, "equal
 where vanilla's eight rounds agree" is a sample of whatever those rounds happened to agree on, and failed on outcomes
-vanilla also reaches. The scene keeps no cats (an animal chooses where to wander by light level, worked out on the light
+vanilla also reaches: judged against the other seven of its own rounds, each vanilla round fails that gate in 4 or 5
+of 8 rounds in each of the three scenes of run 41585188944. The scene keeps no cats (an animal chooses where to wander by light level, worked out on the light
 engine's thread). What P2-3 changes in villagers is gated where vanilla repeats: the server suite's scripted run (three
 villagers with job sites, world diff exact), the villager_job and villager_trade GameTests (same tick), SIFTEC's runs,
 and verify mode (below) on every brain walk there.
 
-**Verify mode** (`-Dquicksilver.debug.verifyLogic=true`, every server-suite run, `ci/server/server-run.sh`): each P2-3
+**Verify mode** (`-Dquicksilver.debug.verifyLogic=true`, the server suite's heap run, `ci/server/server-run.sh`): each P2-3
 shortcut is checked against vanilla's own answer as it is used (a brain's copy against its behaviour maps; a skipped
 hopper entity lookup run anyway and required empty; a kept chunk-ticking or `isValid` answer against vanilla's call), and
-the optimisation falls back on any difference, which CI fails. The perf job runs without it (it would cost time vanilla's
-side doesn't pay); its worlds are compared instead.
+the optimisation falls back on any difference, which CI fails. Only the heap run (12000 ticks of the scripted area in
+every suite; its world isn't diffed) has it: worldgen, the GameTests, the scripted and random-tick runs and the perf job
+play the code that ships, and their worlds are gated.

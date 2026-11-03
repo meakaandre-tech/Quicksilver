@@ -14,13 +14,13 @@ package com.meakaandre.quicksilver.logic;
  * activities as a list, which keeps using that list when an activity changes during the walk. Quicksilver's walk checks
  * the activities as it goes, so the copy holds every activity.
  *
- * <p>With {@code -Dquicksilver.debug.verifyLogic=true} (CI's server suite) every walk first checks the copy against the
+ * <p>With {@code -Dquicksilver.debug.verifyLogic=true} (CI's heap runs) every walk first checks the copy against the
  * maps, entry by entry, and falls back on a difference.
  */
 public final class BrainBehaviours {
     public static final String ID = "brain-behaviours";
     public static final Logic.Switch SWITCH = new Logic.Switch(ID);
-    public static final boolean VERIFY = Boolean.getBoolean("quicksilver.debug.verifyLogic");
+    public static final boolean VERIFY = Logic.VERIFY;
 
     private BrainBehaviours() {
     }

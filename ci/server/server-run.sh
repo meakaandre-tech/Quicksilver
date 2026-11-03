@@ -50,7 +50,7 @@ props() { # level-name difficulty
 serve() {
   local name=$1 limit=$2; shift 2
   mkdir -p "$OUT/$name"
-  (cd "$srv" && timeout "$limit" java -Xmx3G -Dmax.bg.threads=1 -Dquicksilver.debug.verifyLogic=true -Dci.harness.out="$OUT/$name" "$@" -jar server.jar --nogui \
+  (cd "$srv" && timeout "$limit" java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$OUT/$name" "$@" -jar server.jar --nogui \
      < /dev/null > "$OUT/$name-server.log" 2>&1; echo "EXIT $?" >> "$OUT/$name-server.log")
   tail -n 3 "$OUT/$name-server.log"
   cp -r "$srv/crash-reports" "$OUT/$name-crash-reports" 2>/dev/null
@@ -125,7 +125,10 @@ heap_script=ci/server/heap-$SUITE.txt
 if [ -f "$heap_script" ] && [ -f server-base.tar ]; then
   (cd "$srv" && tar xf "$root/server-base.tar" && mv base world)
   props world normal
-  serve heap 1800 -Dci.harness.run="$root/$heap_script" -Dci.harness.heap=true -Dci.harness.ticks=12000
+  # P2-3: the heap run (12000 ticks of the scripted area; its world isn't diffed) also checks every Logic shortcut against
+  # vanilla's own answer as it is used (verify mode: any difference falls back, which CI fails); the gated runs above
+  # play the code that ships
+  serve heap 1800 -Dci.harness.run="$root/$heap_script" -Dci.harness.heap=true -Dci.harness.ticks=12000 -Dquicksilver.debug.verifyLogic=true
   grep -q 'CI HARNESS RUN DONE' "$OUT/heap-server.log" || echo "heap run: did not finish"
   rm -rf "$srv/world" "$srv/quicksilver"
 fi

@@ -62,7 +62,9 @@ final class Optimisations {
             List.of("LevelBlockEntityTickMixin", "BoundTickingBlockEntityMixin", "SimulationChunkTrackerMixin", "ServerChunkCacheChangesMixin"),
             List.<String[]>of(new String[] {"net.minecraft.world.level.Level", "call:quicksilver$beBegin"},
                 new String[] {"net.minecraft.world.level.Level", "call:quicksilver$shouldTick"},
-                new String[] {"net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity", "call:quicksilver$valid"})));
+                new String[] {"net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity", "call:quicksilver$valid"},
+                new String[] {BlockEntityChecks.TRACKER, "call:quicksilver$levelChanged"},
+                new String[] {BlockEntityChecks.CHUNK_CACHE, "call:quicksilver$distanceUpdates"})));
 
     /** Each optimisation, in the order the status line lists them. */
     static void register(Map<String, String> m) {
@@ -76,7 +78,7 @@ final class Optimisations {
         return ids;
     }
 
-    /** Hooks already found in place (target and name), so each is checked once. */
+    /** Hooks already checked, per optimisation (id, target and name): a hook two optimisations share is checked for each. */
     private static final java.util.Set<String> CHECKED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     /**
@@ -89,7 +91,7 @@ final class Optimisations {
             Logic.Switch s = switchOf(o.id());
             if (s == null || !s.on) continue;
             for (String[] h : o.hooks()) {
-                String key = h[0] + "#" + h[1];
+                String key = o.id() + "#" + h[0] + "#" + h[1];
                 if (CHECKED.contains(key) || !LogicMixins.transformed(h[0])) continue;
                 // "call:" an injection that must be called from the target's own code; otherwise a member it must have
                 boolean ok = h[1].startsWith("call:") ? LogicMixins.called(h[0], h[1].substring(5)) : LogicMixins.member(h[0], h[1]);
@@ -104,7 +106,7 @@ final class Optimisations {
         for (Opt o : ALL) {
             Logic.Switch s = switchOf(o.id());
             if (s == null || !s.on) continue;
-            for (String[] h : o.hooks()) if (!CHECKED.contains(h[0] + "#" + h[1])) return false;
+            for (String[] h : o.hooks()) if (!CHECKED.contains(o.id() + "#" + h[0] + "#" + h[1])) return false;
         }
         return true;
     }

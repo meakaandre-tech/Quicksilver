@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 public final class Logic {
     public static final Logger LOG = LoggerFactory.getLogger("quicksilver");
     public static final String FALLBACK = "Quicksilver logic fallback:";
+    /** CI's verify mode (P2-3): each shortcut checked against vanilla's own answer as it is used; a difference falls back. */
+    public static final boolean VERIFY = Boolean.getBoolean("quicksilver.debug.verifyLogic");
 
     /** The optimisations, in the order the status line lists them, with what each one does. */
     public static final Map<String, String> OPTIMISATIONS = new LinkedHashMap<>();
