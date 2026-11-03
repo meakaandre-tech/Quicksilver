@@ -16,7 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
-| package 5 (Flywheel and Create) | `package-5` | not merged: Andre checks it first; see "Package 5" below |
+| package 5 (Flywheel and Create) | `package-5` | not merged: Andre checks it first; full run green on cc7a8b3 (41657005224); see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
@@ -3203,21 +3203,38 @@ ms at factory).
   factory_flat camera (1598 strict pixels; the rest of that shot matched vanilla exactly). `spawn_mobs false` and
   peaceful don't cover them.
 
-### Results (run 41633272149, full; final run: see the status table)
+### Results (run 41657005224, full, commit cc7a8b3: green)
 
 | | full (Flywheel indirect) | old GPU (off) | Vulkan (off) | old GPU two-phase |
 |---|---|---|---|---|
-| kinetics strict pixels, carriage masked (limit 30; recomputed from the run's shots) | 8 | 8 | 9 | 8 |
-| kinetics_instancing, same, same-backend check (30; full: instancing) | 9 | 8 | 9 | 8 |
+| kinetics strict pixels, carriage masked (limit 30) | 8 | 8 | 7 | 8 |
+| kinetics, same-backend check (30) | 9 | 8 | 7 | 9 |
+| kinetics_instancing strict (30; full: instancing) | 8 | 8 | 7 | 8 |
+| kinetics_instancing, same-backend check (30) | 10 | 9 | 7 | 8 |
 | factory strict (370) | 0 | 0 | 0 | 0 |
-| kinetics draws per frame, Quicksilver / vanilla (avg) | 8.67 / 104.5 | 10.67 / 126.92 | 8.67 / 101.92 | |
-| kinetics terrain GPU MB reserved, Quicksilver / vanilla | 32 / 256 | 32 / 256 | 32 / 256 | |
+| kinetics draws per frame, Quicksilver / vanilla (avg) | 8.67 / 101.08 | 10.67 / 127.16 | 8.67 / 102.16 | 11.67 / 127.16 |
+| kinetics terrain GPU MB reserved, Quicksilver / vanilla | 32 / 256 | 32 / 256 | 32 / 256 | 32 / 256 |
 
-Vanilla's own stand-ins in the same run: kinetics 43 strict pixels (measure-full), kinetics_instancing 56. Flywheel
-visuals in the kinetics bench (full): 24, drawn before the terrain in every frame. Without Create Fly (core suite)
+Vanilla's stand-ins (measure runs) in the same-backend check: 0-4 pixels. Flywheel visuals in the kinetics bench (full):
+24, drawn before the terrain in every frame. Heap and draws at their baselines. Without Create Fly (core suite)
 nothing of this package loads; core passes as before.
 
 **Stock Create Fly:** none exists for 26.3, so only Andre's build is tested (`docs/ci-limits.md`).
+
+### Review (fresh agent, after run 41633272149)
+
+- M1: if reading Flywheel's visual count fails, Quicksilver now counts every frame as Flywheel drawing (it counted none,
+  which let still camera reuse a stale pyramid). M2: kinetics strict limits (70 / 180) were not set by the rule; now 30
+  by package 3's rule with the carriage masked.
+- S1: still camera culls nothing while Flywheel holds visuals; docs corrected, choice 2. S2/S6: CI now fails when
+  Flywheel's hook, a Create pin or a session's backend line is missing. S3: the visual count is read at the end of
+  beforeSolid, after Flywheel's workers. S4: the same-backend strict check. S5: the mesher allowlist matches the
+  mixin and its handler.
+- Nits fixed: notes and comments (old GPU falls back to off, check below, mixin names). Not fixed: `/qsci` has no
+  permission check (CI-only), the bench's frames-drawing count is one over its frame count (window start), kinetics
+  relies on create_ct's F1 coming first.
+- Run 41644571936 (after the fixes) failed factory_flat on Vulkan: a wandering trader spawned in view (see CI);
+  traders are now off.
 
 ### Choices to confirm (Andre)
 
