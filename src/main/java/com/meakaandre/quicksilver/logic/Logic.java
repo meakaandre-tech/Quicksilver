@@ -14,7 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Phase 2, P2-2: the Logic module (entity movement, collisions, block and chunk access). Each optimisation is a small
+ * Phase 2, P2-2 and P2-3: the Logic module (entity movement, collisions, block and chunk access; hoppers, block entity
+ * ticking, mob AI). Each optimisation is a small
  * set of mixins with its own switch in {@code config/quicksilver.properties} ({@code logic=on|off} for the whole
  * module, {@code logic.<name>=on|off} for one optimisation; read once at start-up, before any mixin applies). A
  * switched-off optimisation's mixins are not applied at all ({@link LogicMixins}). With Lithium installed the whole

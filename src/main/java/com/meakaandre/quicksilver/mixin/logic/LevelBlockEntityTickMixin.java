@@ -1,3 +1,11 @@
+/*
+ * Quicksilver: P2-3, logic.block-entity-checks. The idea and structure (a redirect of shouldTickBlocksAt inside
+ * tickBlockEntities that answers again for the chunk asked last) are from Lithium (https://github.com/CaffeineMC/lithium,
+ * branch develop at 383d299, common/src/main/java/net/caffeinemc/mods/lithium/mixin/world/block_entity_ticking/
+ * chunk_tickable/LevelMixin.java), Copyright (C) CaffeineMC and Lithium's contributors, licensed under the GNU Lesser
+ * General Public License v3.0 only (LICENSE, COPYING). Changed for Quicksilver: its own switch and CI check; a kept answer
+ * is used only while no simulation level can have changed (Lithium keeps it for the whole call); server levels only.
+ */
 package com.meakaandre.quicksilver.mixin.logic;
 
 import com.meakaandre.quicksilver.logic.BlockEntityChecks;
