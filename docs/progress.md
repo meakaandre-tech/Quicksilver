@@ -3198,6 +3198,10 @@ ms at factory).
   rectangle masked (its run-to-run noise, vanilla's too) and a second strict check where the vanilla runs that draw the
   same way agree (Flywheel on in a and b, off in old and Vulkan); 8/255 limits 0.25 (stricter than the rule's 0.30); count baselines for both scenes from runs 41605550531, 41613381142, 41627022279; both on the
   at-or-under-vanilla draw list (`ci/vanilla-draw-calls.json`).
+- Wandering traders off in every SIFTEC and core session (preamble `gamerule spawn_wandering_traders false`, vanilla's
+  runs and Quicksilver's alike): in run 41644571936 one spawned with two llamas in front of Quicksilver Vulkan's
+  factory_flat camera (1598 strict pixels; the rest of that shot matched vanilla exactly). `spawn_mobs false` and
+  peaceful don't cover them.
 
 ### Results (run 41633272149, full; final run: see the status table)
 
