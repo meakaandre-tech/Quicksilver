@@ -1,5 +1,7 @@
-# The core suite's village scene (phase 2, P2-3): villagers with beds, job sites and a bell, iron golems and cats on a
-# walled field, for mob AI (brains, sensors, behaviours), pathfinding and points of interest. Same format as
+# The core suite's village scene (phase 2, P2-3): villagers with beds, job sites and a bell, and iron golems on a
+# walled field, for mob AI (brains, sensors, behaviours), pathfinding and points of interest. No cats: an animal picks
+# where to wander by light level, which the light engine works out on its own thread, so cats moved differently in
+# vanilla's own runs (P2-3) and every villager after them. Same format as
 # scripted-run-core.txt; played by the perf job for MSPT, its saved worlds compared with vanilla's.
 area minecraft:overworld -4 -4 3 3
 
@@ -71,7 +73,7 @@ cmd setblock -8 200 7 minecraft:white_bed[facing=south,part=head]
 cmd setblock -6 200 6 minecraft:white_bed[facing=south,part=foot]
 cmd setblock -6 200 7 minecraft:white_bed[facing=south,part=head]
 
-# 24 villagers, 2 iron golems, 4 cats
+# 24 villagers, 2 iron golems
 cmd summon minecraft:villager -17.5 200 -9.5
 cmd summon minecraft:villager -14.5 200 -9.5
 cmd summon minecraft:villager -11.5 200 -9.5
@@ -98,10 +100,6 @@ cmd summon minecraft:villager 0.5 200 6.5
 cmd summon minecraft:villager 3.5 200 6.5
 cmd summon minecraft:iron_golem 8.5 200 8.5
 cmd summon minecraft:iron_golem -8.5 200 -8.5
-cmd summon minecraft:cat -4.5 200 14.5
-cmd summon minecraft:cat -1.5 200 14.5
-cmd summon minecraft:cat 2.5 200 14.5
-cmd summon minecraft:cat 5.5 200 14.5
 
 ticks 1200
 
