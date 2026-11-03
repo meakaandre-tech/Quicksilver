@@ -45,7 +45,8 @@ public final class CreatePins {
             pinned = now;
             LOG.info("Quicksilver CI pin: Create's animation clock {}", now ? "held at " + TICKS + " ticks + " + PARTIAL : "running");
         }
-        if (++tick % 20 == 0) {
+        // once a level is there: before it, Flywheel's backend is its "off" placeholder until it first chooses
+        if (mc.level != null && ++tick % 20 == 0) {
             String b = flywheelBackend();
             if (b != null && !b.equals(backend)) {
                 backend = b;

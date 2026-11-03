@@ -88,8 +88,14 @@ if QUICK:
         RUNS += ["vanilla-vk", "quicksilver-vk"]
         VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-vk")
     if os.environ.get("CI_QUICK_SIFTEC") == "1":
-        # package 5: [siftec] in the commit message adds SIFTEC's client suite, with the same runs as core's
+        # package 5: [siftec] in the commit message adds SIFTEC's client suite, with the same runs as core's plus
+        # vanilla-old: Flywheel picks its backend from the GPU profile (old GPUs end up with a different one than GL 4.5),
+        # so the old-GPU runs are compared with vanilla's old-GPU run, as in full mode, in both suites
         SUITES = {"core", "siftec"}
+        PAIRS["old-gpu"] = ("quicksilver-old", "vanilla-old")
+        PAIRS["old-gpu-2p"] = ("quicksilver-2p-old", "vanilla-old")
+        RUNS += ["vanilla-old"]
+        VANILLA_RUNS = tuple(VANILLA_RUNS) + ("vanilla-old",)
 
 
 def diff(a, b, out=None):
@@ -218,6 +224,7 @@ def session_options(suite):
     for x in suite["scenes"]:
         o = dict(x.get("clientOptions") or {})
         o.update({"quicksilver." + k: v for k, v in (x.get("quicksilverConfig") or {}).items()})
+        o.update({"flywheel." + k: v for k, v in (x.get("flywheelConfig") or {}).items()})
         opts = ",".join(k + "=" + str(v) for k, v in sorted(o.items()))
         rd.setdefault((x.get("renderDistance", 8), opts), []).append(x["id"])
     return [k[1] for k in sorted(rd)]
@@ -359,10 +366,13 @@ def single_player(res, failures, lines):
 
 
 FLW_BACKEND = re.compile(r"Quicksilver CI pin: Flywheel backend (\S+)")
-# package 5: the Flywheel backend each profile gets, Flywheel's own choice (Create Fly's bundled Flywheel): indirect
-# where the driver has compute shaders and the rest (Mesa's GL 4.5), instancing on the old-GPU profile (GL 3.3, no
-# multi-draw indirect), off on Vulkan (Flywheel draws with OpenGL only; vanilla's renderers draw everything)
-FLW_EXPECT = {"full": "flywheel:indirect", "old": "flywheel:instancing", "vk": "flywheel:off"}
+# package 5: the Flywheel backend each profile ends up with, Flywheel's own choice (Create Fly's bundled Flywheel), in
+# vanilla's runs and Quicksilver's alike (run 41580354893): indirect on Mesa's GL 4.5; on the old-GPU profile (GL 3.3, no
+# multi-draw indirect) Flywheel picks instancing, whose shaders don't compile on GLSL 3.30 there, so it falls back to
+# off; off on Vulkan (Flywheel draws with OpenGL only). Off is Flywheel's fallback: vanilla's renderers draw everything.
+# The kinetics_instancing scene's session forces instancing (FLW_FORCED), which compiles on GL 4.5.
+FLW_EXPECT = {"full": "flywheel:indirect", "old": "flywheel:off", "vk": "flywheel:off"}
+FLW_FORCED = {"kinetics_instancing": {"full": "flywheel:instancing", "old": "flywheel:off", "vk": "flywheel:off"}}
 QSCI_STEPS = ("belt 2152 241 -1998 2156 241 -1998", "train build 2160 240 -2007", "train assemble 2160 240 -2007")
 
 
@@ -385,12 +395,26 @@ def flywheel(res, failures, lines):
         if not os.path.isdir(d):
             continue
         t = logs(d)
-        got = FLW_BACKEND.findall(t)
         want = FLW_EXPECT[run_profile(r)]
+        # the backend each session ended up with (the last line of its log: a backend that fails falls back once)
+        got = []
+        sessions = session_options(json.load(open("src/main/resources/quicksilver/scenes/siftec.json")))
+        for f in sorted(glob.glob(os.path.join(d, "client-*.log"))):
+            m_n = re.fullmatch(r"client-(\d+)\.log", os.path.basename(f))
+            if not m_n:
+                continue
+            b = FLW_BACKEND.findall(open(f, errors="replace").read())
+            if not b:
+                continue
+            got.append(b[-1])
+            n = int(m_n.group(1))
+            forced = n <= len(sessions) and "flywheel.backend=" in sessions[n - 1]
+            w = FLW_FORCED["kinetics_instancing"][run_profile(r)] if forced else want
+            if b[-1] != w:
+                failures.append(f"siftec/{r}/client-{n}: Flywheel's backend ended as {b[-1]}, expected {w} on this profile"
+                                + (" (session with the backend forced)" if forced else ""))
         if not got:
             failures.append(f"siftec/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
-        elif set(got) != {want}:
-            failures.append(f"siftec/{r}: Flywheel's backend was {sorted(set(got))}, expected {want} on this profile")
         if "Quicksilver CI pin: Create's animation clock pinned in" not in t:
             failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned' line)")
         srv = open(os.path.join(d, "server.log"), errors="replace").read() if os.path.exists(os.path.join(d, "server.log")) else ""
@@ -406,19 +430,20 @@ def flywheel(res, failures, lines):
                     if not fw or fw.get("createFly") in (None, "absent"):
                         failures.append(f"siftec/{r}/{j['scene']}: the bench has no Flywheel block with Create Fly present")
                         continue
-                    if fw.get("backend") != want:
-                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {want}")
+                    w = FLW_FORCED.get(j["scene"], {}).get(run_profile(r), want)
+                    if fw.get("backend") != w:
+                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {w}")
                     hooks = fw.get("hooks") or {}
                     missing = [k for k in ("blockEntityStep", "lightUpdate", "beforeSolid") if not hooks.get(k)]
                     if missing:
                         failures.append(f"siftec/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
                     bench[j["scene"]] = fw
         kin = bench.get("kinetics") or {}
-        rows.append(f"| {r} | {', '.join(sorted(set(got))) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
+        rows.append(f"| {r} | {', '.join(got) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
     lines.append("## Flywheel (package 5)\n")
     lines.append("Flywheel's own backend choice per run (CI's pin mod), and in Quicksilver's runs its visuals and the frames it drew"
                  " before the terrain in the kinetics scene's bench.\n")
-    lines.append("| run | backend | kinetics: visuals | frames drawing before terrain |")
+    lines.append("| run | backend per session | kinetics: visuals | frames drawing before terrain |")
     lines.append("|---|---|---|---|")
     lines += rows
     lines.append("")

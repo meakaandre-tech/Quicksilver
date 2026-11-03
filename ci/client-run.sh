@@ -162,7 +162,7 @@ groups=$(python3 -c "
 import json; s=json.load(open('$suitefile'))
 rd={}
 for x in s['scenes']:
-    o=dict(x.get('clientOptions') or {}); o.update({'quicksilver.'+k: v for k,v in (x.get('quicksilverConfig') or {}).items()})
+    o=dict(x.get('clientOptions') or {}); o.update({'quicksilver.'+k: v for k,v in (x.get('quicksilverConfig') or {}).items()}); o.update({'flywheel.'+k: v for k,v in (x.get('flywheelConfig') or {}).items()})
     opts=','.join(k+'='+str(v) for k,v in sorted(o.items()))
     rd.setdefault((x.get('renderDistance',8), opts),[]).append(x['id'])
 print(' '.join(str(k[0])+'|'+(k[1] or '-')+'|'+','.join(v) for k,v in sorted(rd.items())))")
@@ -189,11 +189,14 @@ for g in $groups; do
   # go to the log in every run alike; ci/compare.py compares their counts between Quicksilver and vanilla
   printf 'pauseOnLostFocus:false\nglDebugVerbosity:1\nonboardAccessibility:false\ntutorialStep:none\nnarrator:0\nrenderDistance:%s\nguiScale:2\nmaxFps:30\nsoundCategory_master:0.0\nrenderClouds:"false"\nglintSpeed:0.0\nmenuBackgroundBlurriness:0\nchatHeightFocused:0.25\nkey_key.use:22\n' "$rd" > run/options.txt
   # package 4: "quicksilverConfig" entries (quicksilver.<key>=<value>) go to Quicksilver's config file, the rest to options.txt
-  mkdir -p run/config; rm -f run/config/quicksilver.properties
+  # package 5: "flywheelConfig" entries (flywheel.<key>=<value>) go to Flywheel's client config (Create Fly's
+  # run/config/flywheel-client.json), e.g. its backend forced to instancing; the file is removed for every other session
+  mkdir -p run/config; rm -f run/config/quicksilver.properties run/config/flywheel-client.json
   if [ "$opts" != "-" ]; then
     for kv in $(echo "$opts" | tr ',' ' '); do
       case "$kv" in
         quicksilver.*) k=${kv%%=*}; echo "${k#quicksilver.}=${kv#*=}" >> run/config/quicksilver.properties;;
+        flywheel.*) k=${kv%%=*}; python3 -I -c 'import json,sys,os; p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}; d[sys.argv[2]]=sys.argv[3]; json.dump(d,open(p,"w"))' run/config/flywheel-client.json "${k#flywheel.}" "${kv#*=}";;
         *) echo "${kv%%=*}:${kv#*=}" >> run/options.txt;;
       esac
     done

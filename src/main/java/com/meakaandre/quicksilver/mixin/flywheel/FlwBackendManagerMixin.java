@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "com.zurrtum.create.client.flywheel.impl.BackendManagerImpl", remap = false)
 public abstract class FlwBackendManagerMixin {
-    @Inject(method = "chooseBackend", at = @At("TAIL"), remap = false, require = 0)
+    @Inject(method = "chooseBackend", at = @At("RETURN"), remap = false, require = 0)
     private static void quicksilver$backendChosen(CallbackInfo ci) {
         FlywheelCompat.backendChosen();
     }

@@ -328,6 +328,26 @@
       "requiresMod": "create",
       "requiresNote": "Create's machines (Create Fly in SIFTEC's pack). The belt and the train are made with /qsci, CI's pin mod's command (Create has no command for either); without it the scene shows the shafts where the belt would be and the station without a train.",
       "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile, instancing on old GPUs), vanilla's block-entity and entity renderers where it is off (Vulkan: Flywheel needs OpenGL). It runs after create_ct, whose F1 (GUI hidden) is still in effect, so no HUD or minimap shows."
+    },
+    {
+      "id": "kinetics_instancing",
+      "title": "The kinetics scene with Flywheel's backend forced to instancing (package 5)",
+      "renderDistance": 8,
+      "settleSeconds": 25,
+      "setup": [
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
+      ],
+      "flywheelConfig": {
+        "backend": "flywheel:instancing"
+      },
+      "requiresMod": "create",
+      "requiresNote": "Create's machines (Create Fly in SIFTEC's pack); the platform is built by the kinetics scene in the first session.",
+      "ciNote": "Its own client session, with Create Fly's config/flywheel-client.json set to backend flywheel:instancing, in vanilla's runs and Quicksilver's alike, so Flywheel's instancing backend draws the same machines, contraption and train as the kinetics scene (whose session leaves Flywheel to choose: indirect on the full profile). On GL 3.3 (old GPU) instancing's shaders don't compile and Flywheel falls back to off, as in vanilla's run; on Vulkan Flywheel is off. GUI shown here (its own session): F1 hides it, as in kinetics.",
+      "ciKeys": [
+        "F1"
+      ]
     }
   ],
   "prepare": [

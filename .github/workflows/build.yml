@@ -55,10 +55,11 @@ jobs:
               matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old","quicksilver-2p-old","vanilla-vk","quicksilver-vk"]}'
               echo "quick_vulkan=1" >> "$GITHUB_OUTPUT";;
             esac
-            # package 5: [siftec] also adds SIFTEC's client suite (the same runs as core's in this quick run), and with
-            # it the siftec-world job, to work on Create and Flywheel without the whole full matrix
+            # package 5: [siftec] also adds SIFTEC's client suite (the same runs as core's in this quick run, plus
+            # vanilla-old: Flywheel's backend follows the GPU profile, so old-GPU runs are compared with vanilla's old-GPU
+            # run), and with it the siftec-world job, to work on Create and Flywheel without the whole full matrix
             case "$MESSAGE" in *"[siftec]"*)
-              matrix=$(echo "$matrix" | sed 's/"suite":\["core"\]/"suite":["core","siftec"]/')
+              matrix=$(echo "$matrix" | sed 's/"suite":\["core"\]/"suite":["core","siftec"]/; s/"run":\["vanilla-a","vanilla-b",/"run":["vanilla-a","vanilla-b","vanilla-old",/')
               echo "quick_siftec=1" >> "$GITHUB_OUTPUT";;
             esac
             # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); SIFTEC and Terralith in full mode.
