@@ -696,6 +696,10 @@ def main():
                                 failures.append(f"{name}/{r}: bench {bj['scene']} has no occlusion report")
                             else:
                                 want_mode = OCCLUSION_MODE.get(r)
+                                # package 5: a scene that sets the occlusion mode in Quicksilver's config runs in that mode
+                                cfg_mode = (scene_def.get("quicksilverConfig") or {}).get("occlusion")
+                                if cfg_mode:
+                                    want_mode = {"still-camera": "still", "two-phase": "two-phase"}.get(cfg_mode, want_mode)
                                 # Vulkan: two-phase only where the backend lets the CPU wait for the GPU within a frame
                                 # (calibration says so); otherwise still camera. The GL runs must always have the wait.
                                 if r in VULKAN_WAIT_OPTIONAL and want_mode == "two-phase" and oc.get("midFrameWait") is False:

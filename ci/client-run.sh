@@ -196,7 +196,7 @@ for g in $groups; do
     for kv in $(echo "$opts" | tr ',' ' '); do
       case "$kv" in
         quicksilver.*) k=${kv%%=*}; echo "${k#quicksilver.}=${kv#*=}" >> run/config/quicksilver.properties;;
-        flywheel.*) k=${kv%%=*}; python3 -I -c 'import json,sys,os; p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}; d[sys.argv[2]]=sys.argv[3]; json.dump(d,open(p,"w"))' run/config/flywheel-client.json "${k#flywheel.}" "${kv#*=}";;
+        flywheel.*) k=${kv%%=*}; python3 -I -c 'import json,sys,os; p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}; d[sys.argv[2]]={"value": sys.argv[3]}; json.dump(d,open(p,"w"))' run/config/flywheel-client.json "${k#flywheel.}" "${kv#*=}";;
         *) echo "${kv%%=*}:${kv#*=}" >> run/options.txt;;
       esac
     done

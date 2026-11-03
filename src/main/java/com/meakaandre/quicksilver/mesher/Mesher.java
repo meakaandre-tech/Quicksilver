@@ -27,8 +27,6 @@ import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.lwjgl.system.MemoryUtil;
-import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
-import org.spongepowered.asm.mixin.transformer.ClassInfo;
 
 /**
  * Quicksilver's section mesher (design doc, package 4c), in place of vanilla's section compiler: vanilla still decides
@@ -324,7 +322,7 @@ public final class Mesher {
         }
         // package 5: what Mixin reports as applied to the compiler (every mod, Quicksilver's included), so the foreign-mixin
         // check above can be seen working in CI's logs
-        QuicksilverClient.LOG.info("Quicksilver mesher: mixins applied to vanilla's section compiler: {}", appliedMixins("net/minecraft/client/renderer/chunk/SectionCompiler"));
+        QuicksilverClient.LOG.info("Quicksilver mesher: mixins applied to vanilla's section compiler (Quicksilver's included): {}", appliedMixins("net/minecraft/client/renderer/chunk/SectionCompiler"));
         List<String> compiler = foreignMixins("net/minecraft/client/renderer/chunk/SectionCompiler");
         compiler.addAll(foreignMixins("net/minecraft/client/renderer/chunk/RenderSectionRegion"));
         if (!compiler.isEmpty()) {
@@ -362,16 +360,13 @@ public final class Mesher {
     private static List<String> foreignMixins(String internalName) {
         List<String> out = new ArrayList<>();
         try {
-            ClassInfo info = ClassInfo.forName(internalName);
-            if (info == null) return out;
-            for (IMixinInfo m : info.getAppliedMixins()) {
-                String n = m.getClassName();
+            for (String n : mergedMixins(internalName)) {
                 if (n.startsWith("com.meakaandre.quicksilver.") || n.startsWith("net.fabricmc.fabric.")) continue;
                 // Flywheel hooks vanilla's block-entity step, which Quicksilver's mesher calls for every block entity
                 if (n.equals("dev.engine_room.flywheel.impl.mixin.visualmanage.SectionCompilerMixin")) continue;
                 // the same hook as Create Fly bundles it (package 5): it cancels vanilla's step for the block entities it draws
                 if (n.equals("com.zurrtum.create.client.mixin.SectionCompilerMixin")) continue;
-                out.add(modOf(m) + "'s mixin " + n);
+                out.add("mixin " + n);
             }
         } catch (Throwable t) {
             out.add("(could not read the mixins applied to " + internalName + ": " + t + ")");
@@ -379,28 +374,34 @@ public final class Mesher {
         return out;
     }
 
-    /** Every mixin Mixin reports as applied to a class (diagnostic, package 5). */
+    /** Every mixin applied to a class, Quicksilver's included (diagnostic, package 5). */
     private static String appliedMixins(String internalName) {
         try {
-            ClassInfo info = ClassInfo.forName(internalName);
-            if (info == null) return "(no class info)";
-            List<String> out = new ArrayList<>();
-            for (IMixinInfo m : info.getAppliedMixins()) out.add(m.getClassName());
-            return out.isEmpty() ? "(none reported)" : String.join(", ", out);
+            java.util.Set<String> all = mergedMixins(internalName);
+            return all.isEmpty() ? "(none)" : String.join(", ", all);
         } catch (Throwable t) {
             return "(could not read: " + t + ")";
         }
     }
 
-    /** The mod a mixin comes from (Fabric's mixin config decoration), or its config file's name. */
-    private static String modOf(IMixinInfo m) {
-        try {
-            String id = org.spongepowered.asm.mixin.FabricUtil.getModId(m.getConfig());
-            if (id != null && !id.isEmpty() && !"(unknown)".equals(id)) return id;
-        } catch (Throwable ignored) {
-            // not Fabric's mixin, or no mod recorded: the config's name says enough
+    /**
+     * The mixins applied to a class, read from the {@code @MixinMerged} marks Mixin leaves on every method and field it
+     * merges into the target (runtime retention). Package 5: until then this asked Mixin's {@code ClassInfo} of the
+     * target for its applied mixins, but Mixin records those on the mixin's own class info, so the target's list was
+     * always empty and no foreign mixin was ever seen (CI's log: "none reported", not even Quicksilver's own).
+     */
+    private static java.util.Set<String> mergedMixins(String internalName) throws ClassNotFoundException {
+        Class<?> c = Class.forName(internalName.replace('/', '.'), false, Mesher.class.getClassLoader());
+        java.util.Set<String> out = new java.util.TreeSet<>();
+        for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+            org.spongepowered.asm.mixin.transformer.meta.MixinMerged a = m.getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
+            if (a != null) out.add(a.mixin());
         }
-        return "the mod of " + m.getConfig().getName();
+        for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+            org.spongepowered.asm.mixin.transformer.meta.MixinMerged a = f.getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
+            if (a != null) out.add(a.mixin());
+        }
+        return out;
     }
 
     private static void off(String why, boolean failure) {
