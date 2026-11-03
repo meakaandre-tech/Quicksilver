@@ -12,9 +12,9 @@ server:
     to it (the runner drifts between rounds by more than a scene's saving; a pair shares the drift), and where the time
     went (round 8's JFR, ci/server/perf-jfr.py).
     Every suite of the run (CI_MODE, CI_EXTRA_SUITES, as compare-server.py) with perf scenes must have results.
-    Gate: every run finished with no failed command; the median of the seven per-round ratios below 1 for core mobs,
-    factory and village (P2-3), at most 1.10 for core random and SIFTEC factory (regression gates: their noise is larger
-    than their saving); others reported.
+    Gate: every run finished with no failed command; the median of the seven per-round ratios below 1 for core mobs and
+    village (P2-3), at most 1.10 for core random and both factory scenes (regression gates: their noise is larger than
+    their saving); others reported.
     Scenes marked `world` in perf-<suite>.txt: every Quicksilver round's saved world equals vanilla round 1's on every
     key where vanilla's rounds (1-8) agree (ci/server/worlddiff.py, the server suite's rule).
   - Logic module (P2-2): every Quicksilver server start (server suite and perf) logs `Quicksilver logic:` with every
@@ -44,9 +44,10 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 # harness's pinned random ticks move it by about +-0.04 ms per JVM against a saving of about 0.02 ms;
 # docs/ci-limits.md); the rest are reported
 GATED_SCENES = {("core", "mobs"): ("faster", 1.0), ("core", "random"): ("no-regression", 1.10),
-                # P2-3: the factory and village scenes must be faster; SIFTEC's factory gates regressions only (Andre,
-                # 2026-11-02: its remaining cost is hoppers' block lookups, kept exact in P2-3 and cached in P2-3b)
-                ("core", "factory"): ("faster", 1.0), ("core", "village"): ("faster", 1.0),
+                # P2-3: the village scene must be faster; both factory scenes gate regressions only (Andre, 2026-11-02
+                # and 2026-11-04: their saving in P2-3 is smaller than their noise; their main cost, hoppers' block and
+                # container lookups, is P2-3b's cache, whose done-when is factory MSPT down)
+                ("core", "factory"): ("no-regression", 1.10), ("core", "village"): ("faster", 1.0),
                 ("siftec", "factory"): ("no-regression", 1.10)}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"

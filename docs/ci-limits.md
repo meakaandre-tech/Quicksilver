@@ -1066,12 +1066,18 @@ release no longer matched `ci/pack-lock.txt`, which stops every SIFTEC job at it
 
 | scene | what | ticks | MSPT gate |
 |---|---|---|---|
-| core `factory` (`scripted-run-core-factory.txt`) | vanilla hoppers as players build them: 32 chains of 12 from full chests, each read by a comparator; 24 furnaces fed by hoppers; 288 hoppers waiting under open air, 32 under empty chests; 4 rings passing items round; a hopper line under dropped items | 12000 | faster: the median of the seven per-round ratios below 1 |
+| core `factory` (`scripted-run-core-factory.txt`) | vanilla hoppers as players build them: 32 chains of 12 from full chests, each read by a comparator; 24 furnaces fed by hoppers; 288 hoppers waiting under open air, 32 under empty chests; 4 rings passing items round; a hopper line under dropped items | 12000 | no-regression: the median ratio at most 1.10 (Andre, 2026-11-04; below) |
 | core `village` (`scripted-run-core-village.txt`) | 24 villagers, 16 beds, 12 job sites, a bell, a hut with a door, 2 iron golems, on a 48-block field | 4800 | faster (world reported, below) |
 | SIFTEC `factory` (`scripted-run-siftec-factory.txt`) | Create presses over depots, millstones between cogwheels, funnels into chutes, on creative motors started at tick 1; vanilla hoppers, furnaces and chests beside them | 2400 | no-regression: the median ratio at most 1.10 (Andre, 2026-11-02: what is left of its cost is hoppers' block and container lookups, kept exact in P2-3 and cached in P2-3b) |
 
-The core factory ran 4800 ticks at first (about 0.3 ms per tick): its median ratio moved from +8% to -9% between runs
-of the same code, so it plays 12000.
+**Why the core factory gates regressions only** (Andre, 2026-11-04): its tick is about 0.35 ms and one round pair moves
+by about +-10% (single ratios 0.73 to 1.22). Its median ratio over this package's runs: +8.3% (run 41347803152, no P2-3
+optimisation yet), +0.3% (41352417613), -9.3% (41355601698, 4800 ticks), +0.5% (41589846004, 12000 ticks). The JFR
+round shows the saving P2-3 makes there, about 6% of the tick (0.399 to 0.376 ms in run 41589846004): the chunk ticking
+check and `BlockEntityType.isValid` (up to 5.7% of samples in vanilla) gone, hoppers' entity lookups a quarter cheaper.
+That is smaller than the scene's noise, so a "faster" gate there would pass or fail on the runner. Most of the factory's
+cost is hoppers' block and container lookups, which P2-3 keeps exact (P2-2's rule); P2-3b caches them and has "factory
+MSPT down against vanilla" as its done-when. The core factory first ran 4800 ticks (0.3 ms per tick), now 12000.
 
 **The village scene's world is reported, not gated** (keep mode `world-report` in `perf-core.txt`; MSPT still gated):
 vanilla's own rounds don't repeat it. Measured in three diagnostic runs (branch `p2-3-diag`): the first version (four cats)
