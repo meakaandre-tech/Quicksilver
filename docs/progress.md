@@ -2654,6 +2654,21 @@ stale report-only comment in build.yml. Left: the first main merge (`8492530`) a
 - Pushing (`LivingEntity.pushEntities`, 7%) and inside-block effects (7%) are untouched: their lookups' results are
   used in vanilla's order.
 
+## Phase 2 plan: P2-3b, hopper container cache (Andre, 2026-11-02)
+
+Starts after P2-3 merges. P2-3 keeps vanilla's exact sequence of block and chunk lookups (P2-2's rule: a miss in the
+level's 4-entry chunk cache can add a 1-tick "unknown" chunk ticket), which leaves most of a hopper's cost (looking up
+the container above it and in front of it every tick) untouched. P2-3b breaks that rule on purpose, behind its own toggle:
+
+- **The cache:** Lithium-style (`block.hopper`, LGPL-3.0-only, with attribution): each hopper remembers the container it
+  takes from and the one it gives to, and looks them up again only when a block in that chunk section has been written
+  since (the per-section write counters P2-2's `block-collisions` already keeps), or the hopper's own state changed.
+  Its own switch (`logic.hopper-cache`) and fallback, off with Lithium installed.
+- **A test of its own for the chunk-ticket difference**, compared with vanilla: hoppers and containers on a chunk border
+  next to a chunk that is about to unload, and a hopper pulling from a hopper minecart crossing the border. Gated like
+  the world diff (equal where vanilla's runs agree).
+- Gates as P2-3's: world diffs exact, every GameTest in the same tick, SIFTEC's checks; the factory scenes' MSPT.
+
 ## Phase 2 plan: later memory package (Andre, 2026-10-31)
 
 Measured in P2-1, not built there: a memory package of its own after P2-1 and before P2-7's sign-off, with its own
