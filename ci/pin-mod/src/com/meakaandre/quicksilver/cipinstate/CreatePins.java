@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  * phase. Outside them nothing changes. Also logs Flywheel's backend (its own choice), in every run.
  */
 public final class CreatePins {
-    public static final Logger LOG = LoggerFactory.getLogger("quicksilver_ci_pin");
+    private static final Logger LOG = LoggerFactory.getLogger("quicksilver_ci_pin");
     /** The pinned clock: an odd tick and a quarter, so shafts and cogs are at an angle and belts part-way. */
     public static final int TICKS = 37;
     public static final float PARTIAL = 0.25f;
