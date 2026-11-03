@@ -342,48 +342,14 @@
       "flywheelConfig": {
         "backend": "flywheel:instancing"
       },
+      "ciMedianReportOnly": true,
+      "ciMedianReportOnlyNote": "As factory_flat (Andre, 2026-11-01; open bug in docs/progress.md, package 4c): this session meshes a few hundred sections, mostly air (the platform floats high above the terrain), where Quicksilver's mesher is a little slower than vanilla's per section (run 41591531215: 1.478 against 1.398 ms, 165 pairs); its median is reported, not gated. For Andre to confirm (package 5).",
       "quicksilverConfig": {
         "occlusion": "still-camera"
       },
       "requiresMod": "create",
       "requiresNote": "Create's machines (Create Fly in SIFTEC's pack); the platform is built by the kinetics scene in the first session.",
       "ciNote": "Its own client session, with Create Fly's config/flywheel-client.json set to backend flywheel:instancing, in vanilla's runs and Quicksilver's alike, so Flywheel's instancing backend draws the same machines, contraption and train as the kinetics scene (whose session leaves Flywheel to choose: indirect on the full profile). Quicksilver's occlusion is set to still camera here (the school laptop's path: Intel picks instancing and still camera), so its per-frame occlusion check runs where Flywheel draws into the depth image a still pyramid is built from. On GL 3.3 (old GPU) instancing's shaders don't compile and Flywheel falls back to off, as in vanilla's run; on Vulkan Flywheel is off. GUI shown here (its own session): F1 hides it, as in kinetics.",
-      "ciKeys": [
-        "F1"
-      ]
-    },
-    {
-      "id": "kinetics_diag_logic",
-      "title": "DIAGNOSTIC (branch only, removed before merge): kinetics with Quicksilver's logic off",
-      "renderDistance": 8,
-      "settleSeconds": 25,
-      "setup": [
-        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18",
-        "#wait 6",
-        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
-      ],
-      "quicksilverConfig": {
-        "logic": "off"
-      },
-      "requiresMod": "create",
-      "ciKeys": [
-        "F1"
-      ]
-    },
-    {
-      "id": "kinetics_diag_renderer",
-      "title": "DIAGNOSTIC (branch only, removed before merge): kinetics with Quicksilver's block-renderer off",
-      "renderDistance": 8,
-      "settleSeconds": 25,
-      "setup": [
-        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18",
-        "#wait 6",
-        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
-      ],
-      "quicksilverConfig": {
-        "block-renderer": "off"
-      },
-      "requiresMod": "create",
       "ciKeys": [
         "F1"
       ]

@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * <ul>
  * <li>{@code /qsci belt X1 Y1 Z1 X2 Y2 Z2}: a belt between two shafts already placed there (Create's belt connector).</li>
  * <li>{@code /qsci train build X Y Z}: the station at X Y Z goes into assembly mode and a one-bogey carriage is built
- * behind it (a bogey, three casings, a blaze burner and two controls, glued); {@code /qsci train assemble X Y Z}
+ * behind it (a bogey, three casings, a fourth casing between two controls, glued); {@code /qsci train assemble X Y Z}
  * assembles it. The train stays at the station (no schedule). As ci/server/harness's CiTrain does.</li>
  * </ul>
  * Each step logs "Quicksilver CI create: STEP done" or "... FAILED"; CI requires the done lines.
@@ -101,7 +101,9 @@ public final class CiCreateCommand implements ModInitializer {
         List<String> cmds = new ArrayList<>();
         cmds.add(set(bogey, "create:small_bogey[axis=" + axis + "]"));
         for (int i = 1; i <= 3; i++) cmds.add(set(track.relative(d, i).above(2), "create:railway_casing"));
-        cmds.add(set(blaze, "create:blaze_burner[blaze=smouldering]"));
+        // a casing where CiTrain has a blaze burner: a standing train needs no conductor, and the burner's flame and
+        // head move by client ticks (not Create's animation clock), so they differed between runs
+        cmds.add(set(blaze, "create:railway_casing"));
         cmds.add(set(blaze.relative(d.getOpposite()), "create:controls[facing=" + d.getName() + "]"));
         cmds.add(set(blaze.relative(d), "create:controls[facing=" + d.getOpposite().getName() + "]"));
         List<BlockPos> parts = new ArrayList<>(List.of(bogey, blaze, blaze.relative(d), blaze.relative(d.getOpposite())));
