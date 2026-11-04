@@ -636,6 +636,12 @@ def main():
                             failures.append(f"{name}/{r}: Quicksilver's mesher fell back to vanilla's section compiler or stayed off (see client log)")
                         if "Quicksilver mesher: on " not in t:
                             failures.append(f"{name}/{r}: Quicksilver's mesher never turned on")
+                        # package 4c's mesh order (nearest and visible first): on, never fallen back to vanilla's order
+                        # (it fell back at the first section in every run until package 5 and nothing failed)
+                        if "Quicksilver mesher: nearest-and-visible-first order off" in t:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order fell back to vanilla's order (see client log)")
+                        if "Quicksilver mesher: nearest-and-visible-first order reads " not in t:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order never read vanilla's meshing task")
                         if "Quicksilver mesher: fluid self-test:" not in t:
                             failures.append(f"{name}/{r}: the mesher's fluid self-test did not run (see client log)")
                         # package 5 (Andre, 2026-11-04): with The Sift installed, only its own fluids go through vanilla's
@@ -653,7 +659,7 @@ def main():
                         nwarn = len(re.findall(r"Quicksilver mesher check:", t))
                         if nwarn:
                             failures.append(f"{name}/{r}: mesher check: {nwarn} sections where Quicksilver's mesh differed from vanilla's compiler's (see client log)")
-                        checked = kept = 0
+                        checked = kept = order_visible = 0
                         for f in glob.glob(os.path.join(d, "bench", "*.json")):
                             me = json.load(open(f)).get("mesher") or {}
                             checked = max(checked, me.get("checked", 0))
@@ -684,10 +690,16 @@ def main():
                                 failures.append(f"{name}/{r}: bench {sid}: {me.get('checkedPairs')} like-for-like pairs, the scene asks for {want}")
                             if me.get("state") != "on" or me.get("fallbacks", 0) != 0 or me.get("mismatched", 0) != 0 or me.get("check") != "on":
                                 failures.append(f"{name}/{r}: bench {json.load(open(f))['scene']}: mesher {me.get('state')} ({me.get('reason')}), fallbacks {me.get('fallbacks')}, mismatched {me.get('mismatched')}, check {me.get('check')}")
+                            mo = me.get("order") or {}
+                            if mo.get("state") != "on":
+                                failures.append(f"{name}/{r}: bench {sid}: the mesher's nearest-and-visible-first order is {mo.get('state')}")
+                            order_visible = max(order_visible, mo.get("picksVisibleSinceStart") or 0)
                         if os.path.isdir(os.path.join(d, "bench")) and checked == 0:
                             failures.append(f"{name}/{r}: the mesher check compared no section with vanilla's compiler")
                         if os.path.isdir(os.path.join(d, "bench")) and kept == 0:
                             failures.append(f"{name}/{r}: the mesher's biome lookups for tints were never kept (the hook into vanilla's blend did not apply)")
+                        if os.path.isdir(os.path.join(d, "bench")) and order_visible == 0:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order never picked a visible section")
                         for f in glob.glob(os.path.join(d, "bench", "*.json")):
                             bj = json.load(open(f))
                             vis = bj.get("visibility")

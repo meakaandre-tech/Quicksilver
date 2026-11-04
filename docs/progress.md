@@ -3273,10 +3273,14 @@ renderer, above). As asked:
 - **Phase 1 track (Andre, 2026-11-04):** 2b's draw-call gate on `core/old-gpu-2p/flythrough` sits 0.3 above main's own
   reading (limit old-GPU's 67.41 + 3 = 70.41; main 70.13, package 2b's branch 69.17, P2-3's runs 70.54 and 69.96);
   re-collect it by the noise rule from 3 clean runs.
-- **Mesher order fallback in every CI run (found 2026-11-03, package 5; package 4c's).** Each Quicksilver client
-  logs at its first section: "nearest-and-visible-first order off, vanilla's order from now on" (`MeshPriority`: "2
-  sections, 1 cancelled flags, 1 other booleans" in `SectionRenderDispatcher$RenderSection$CompileTask`), on main
-  too (core and SIFTEC). So the visible-first order (package 4c) never runs in CI. Not fixed here.
+- **Mesher order fallback in every CI run: fixed in package 5 (Andre, 2026-11-04; package 4c's bug).** Every
+  Quicksilver client logged at its first section "nearest-and-visible-first order off, vanilla's order from now on":
+  26.3's meshing task (`SectionRenderDispatcher$RenderSection$CompileTask`) holds its section twice (a field of its
+  own and the enclosing section), and `MeshPriority` took two section fields as "not as expected". So package 4c's
+  order never ran in CI (meshes, pictures and the mesher check were unaffected: only the order fell back), and no
+  check caught it (the mesher's fallback check matched other wording). Now the declared field is read and checked
+  against the enclosing one on every read (different sections: vanilla's order, as before); CI fails on the
+  fallback line, on a bench whose order is not on, and on a run whose order never picked a visible section.
 - **core/old-gpu translucent_move direct buffers** on `package-5` (runs 41596247834, 41605550531): 8.24 MB against
   the limit 8.10, one new direct buffer of 4 MB at that scene; the measure run of the same profile got the same new
   buffer at 2 MB. Package 5 changes nothing in the core suite; the open direct-buffer bug below.
