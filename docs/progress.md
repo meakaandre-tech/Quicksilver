@@ -2610,7 +2610,8 @@ factories); phase 1's client suite passed; no Logic fallback.
   `docs/ci-limits.md`, "P2-3"); its MSPT stays gated "faster".
 - 2026-11-04: verify mode also gets a run of its own: in full mode each quicksilver server-suite run plays the scripted
   area again with verify on (`verify-server.log`, must finish; no fallback).
-- 2026-11-04: diagnostic branch `p2-3-diag` deleted. Squash-merge P2-3 once the full run with the verify run is green;
+- 2026-11-04: diagnostic branch `p2-3-diag` to be deleted, with `ci-logs-p2-3-diag` and `ci-logs-server-p2-3-diag`
+  (Andre: the agent session's proxy doesn't allow deleting branches). Squash-merge P2-3 once the full run with the verify run is green;
   P2-3b in a new chat.
 
 ### Review
