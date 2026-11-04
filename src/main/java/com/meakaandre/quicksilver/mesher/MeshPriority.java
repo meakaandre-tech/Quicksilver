@@ -119,17 +119,17 @@ public final class MeshPriority {
      * section (the task's enclosing section), its cancelled flag (an atomic flag, or a boolean named for it) and
      * whether it re-meshes a section that has a mesh (the other boolean). Anything else: the order stays vanilla's.
      */
-    private record TaskFields(java.lang.invoke.VarHandle section, java.lang.invoke.VarHandle outer, boolean atomic,
+    private record TaskFields(java.lang.invoke.VarHandle section, java.lang.invoke.VarHandle[] others, boolean atomic,
                               java.lang.invoke.VarHandle cancelled, java.lang.invoke.VarHandle recompile, String names) {
         boolean cancelled(Object t) {
             return atomic ? ((java.util.concurrent.atomic.AtomicBoolean) cancelled.get(t)).get() : (boolean) cancelled.get(t);
         }
 
-        /** The task's section; with a declared section field and the enclosing one, both must hold the same section. */
+        /** The task's section; every other field of the section's type must hold the same section. */
         Object sectionOf(Object t) {
             Object s = section.get(t);
-            if (outer != null && outer.get(t) != s) {
-                throw new IllegalStateException("vanilla's meshing task holds two different sections (" + names + ")");
+            for (java.lang.invoke.VarHandle o : others) {
+                if (o.get(t) != s) throw new IllegalStateException("vanilla's meshing task holds different sections (" + names + ")");
             }
             return s;
         }
@@ -143,15 +143,16 @@ public final class MeshPriority {
 
     /**
      * The task's fields, found once by type and name (read through VarHandles: this runs under vanilla's queue lock for
-     * every waiting task). The section: the one declared field of the section's type, or the enclosing section (the
-     * compiler's synthetic field) when there is no declared one; with both (26.3's task), every read checks they hold
-     * the same section. The cancelled flag: the one field named for it (an atomic flag or a boolean); the re-mesh flag:
+     * every waiting task). The section: the one declared field of the section's type, or else the enclosing section (the
+     * compiler's synthetic field; 26.3's task and its superclass are both inner classes of the section, so it has two);
+     * every read checks that all of them hold the same section. The cancelled flag: the one field named for it (an atomic flag or a boolean); the re-mesh flag:
      * the only other boolean. Anything else, or more than one candidate: the order stays vanilla's.
      */
     private static TaskFields fields(Object task) {
         return FIELDS.computeIfAbsent(task.getClass(), c -> {
-            java.lang.reflect.Field section = null, outer = null, cancelled = null, recompile = null;
-            int declared = 0, enclosing = 0, cancels = 0, booleans = 0;
+            java.lang.reflect.Field section = null, cancelled = null, recompile = null;
+            java.util.List<java.lang.reflect.Field> enclosing = new java.util.ArrayList<>();
+            int declared = 0, cancels = 0, booleans = 0;
             StringBuilder names = new StringBuilder();
             for (Class<?> k = c; k != null && k != Object.class; k = k.getSuperclass()) {
                 for (java.lang.reflect.Field g : k.getDeclaredFields()) {
@@ -161,8 +162,7 @@ public final class MeshPriority {
                     if (type == SectionRenderDispatcher.RenderSection.class) {
                         names.append(names.isEmpty() ? "" : ", ").append(g.getName()).append(g.isSynthetic() ? " (enclosing)" : "");
                         if (g.isSynthetic()) {
-                            outer = g;
-                            enclosing++;
+                            enclosing.add(g);
                         } else {
                             section = g;
                             declared++;
@@ -176,17 +176,16 @@ public final class MeshPriority {
                     }
                 }
             }
-            if (declared > 1 || enclosing > 1 || declared + enclosing == 0 || cancels != 1 || booleans != 1) {
+            if (declared > 1 || declared + enclosing.size() == 0 || cancels != 1 || booleans != 1) {
                 throw new IllegalStateException("vanilla's meshing task does not look as expected (" + c.getName() + ": sections ["
                     + names + "], " + cancels + " cancelled flags, " + booleans + " other booleans)");
             }
-            if (section == null) {
-                section = outer;
-                outer = null;
-            }
+            if (section == null) section = enclosing.remove(0);
             try {
                 java.lang.invoke.MethodHandles.Lookup l = java.lang.invoke.MethodHandles.privateLookupIn(c, java.lang.invoke.MethodHandles.lookup());
-                TaskFields f = new TaskFields(handle(l, section), outer == null ? null : handle(l, outer), cancelled.getType() != boolean.class,
+                java.lang.invoke.VarHandle[] others = new java.lang.invoke.VarHandle[enclosing.size()];
+                for (int i = 0; i < others.length; i++) others[i] = handle(l, enclosing.get(i));
+                TaskFields f = new TaskFields(handle(l, section), others, cancelled.getType() != boolean.class,
                     handle(l, cancelled), handle(l, recompile), names.toString());
                 QuicksilverClient.LOG.info("Quicksilver mesher: nearest-and-visible-first order reads {}'s section, cancelled and re-mesh flags ({}, {}, {})",
                     c.getSimpleName(), names, cancelled.getName(), recompile.getName());
