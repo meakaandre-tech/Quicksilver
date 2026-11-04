@@ -1,0 +1,108 @@
+suite=siftec run=quicksilver-old
+old-GPU profile: MESA_EXTENSION_OVERRIDE='-GL_ARB_multi_draw_indirect -GL_ARB_buffer_storage' MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330
+old-GPU Quicksilver run: -Dquicksilver.debug.forceIntelMdiIssue=true
+Quicksilver run JVM properties:-Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true
+pack lock: set siftec matches ci/pack-lock.txt
+total 66044
+-rw-r--r-- 1 runner runner  3486296 Nov  4 22:53 FarmersDelight-26.3-3.6.27%2Brefabricated.jar
+-rw-r--r-- 1 runner runner  1779949 Nov  4 22:53 cgs-fabric-26.3.jar
+-rw-r--r-- 1 runner runner    28339 Nov  4 22:53 ci-pin.jar
+-rw-r--r-- 1 runner runner 21140042 Nov  4 22:53 create-fly-26.3.jar
+-rw-r--r-- 1 runner runner  1031418 Nov  4 22:53 create-new-age-26.3.jar
+-rw-r--r-- 1 runner runner  3500335 Nov  4 22:53 createdieselgenerators-fabric-26.3.jar
+-rw-r--r-- 1 runner runner  2620967 Nov  4 22:53 fabric-api.jar
+-rw-r--r-- 1 runner runner   609574 Nov  4 22:53 forge-config-api-port.jar
+-rw-r--r-- 1 runner runner  1191230 Nov  4 22:53 geckolib-fabric-26.3-5.5.7.jar
+-rw-r--r-- 1 runner runner  2825077 Nov  4 22:53 mapmod-26.3.jar
+-rw-r--r-- 1 runner runner 20632725 Nov  4 22:53 mielon%27s-the-sift-1.1.2-mc26.3-fabric.jar
+-rw-r--r-- 1 runner runner  3810197 Nov  4 22:53 ntgl-fabric-26.3.jar
+-rw-r--r-- 1 runner runner   680886 Nov  4 22:53 quicksilver.jar
+-rw-r--r-- 1 runner runner  2096124 Nov  4 22:53 siftec-26.3.jar
+-rw-r--r-- 1 runner runner   653702 Nov  4 22:53 siftec-selftest-26.3.jar
+-rw-r--r-- 1 runner runner  1515277 Nov  4 22:53 travelersbackpack.jar
+total 63484
+-rw-r--r-- 1 runner runner  3486296 Nov  4 22:55 FarmersDelight-26.3-3.6.27%2Brefabricated.jar
+-rw-r--r-- 1 runner runner  1779949 Nov  4 22:55 cgs-fabric-26.3.jar
+-rw-r--r-- 1 runner runner    28339 Nov  4 22:55 ci-pin.jar
+-rw-r--r-- 1 runner runner 21140042 Nov  4 22:55 create-fly-26.3.jar
+-rw-r--r-- 1 runner runner  1031418 Nov  4 22:55 create-new-age-26.3.jar
+-rw-r--r-- 1 runner runner  3500335 Nov  4 22:55 createdieselgenerators-fabric-26.3.jar
+-rw-r--r-- 1 runner runner   609574 Nov  4 22:55 forge-config-api-port.jar
+-rw-r--r-- 1 runner runner  1191230 Nov  4 22:55 geckolib-fabric-26.3-5.5.7.jar
+-rw-r--r-- 1 runner runner  2825077 Nov  4 22:55 mapmod-26.3.jar
+-rw-r--r-- 1 runner runner 20632725 Nov  4 22:55 mielon%27s-the-sift-1.1.2-mc26.3-fabric.jar
+-rw-r--r-- 1 runner runner  3810197 Nov  4 22:55 ntgl-fabric-26.3.jar
+-rw-r--r-- 1 runner runner   680886 Nov  4 22:55 quicksilver.jar
+-rw-r--r-- 1 runner runner  2096124 Nov  4 22:55 siftec-26.3.jar
+-rw-r--r-- 1 runner runner   653702 Nov  4 22:55 siftec-selftest-26.3.jar
+-rw-r--r-- 1 runner runner  1515277 Nov  4 22:55 travelersbackpack.jar
+sessions: 8|-|factory,sift,hub,mam,ponder,map,hologram,hud,create_ct,kinetics 8|ao=false|factory_flat 8|flywheel.backend=flywheel:instancing,quicksilver.occlusion=still-camera|kinetics_instancing
+preparing the suite
+scene factory: setting up
+scene factory: bench done
+scene sift: setting up
+scene sift: bench done
+scene hub: setting up
+scene hub: bench done
+scene mam: setting up
+scene mam: bench done
+scene ponder: setting up
+scene ponder: bench done
+scene map: skipped (MapMod is being finished (Andre, 2026-10-30): the map scene is out of the bench and CI until then; with it, its limits are re-collected)
+scene hologram: setting up
+scene hologram: bench done
+scene hud: skipped (MapMod is being finished (Andre, 2026-10-30): the HUD scene (its minimap) is out of the bench and CI until then; with it, its limits are re-collected)
+scene create_ct: setting up
+scene create_ct: bench done
+scene kinetics: setting up
+scene kinetics: bench done
+session 2 client options: ao=false
+scene factory_flat: setting up
+scene factory_flat: bench done
+session 3 client options: flywheel.backend=flywheel:instancing,quicksilver.occlusion=still-camera
+scene kinetics_instancing: setting up
+scene kinetics_instancing: bench done
+/tmp/out/siftec-quicksilver-old:
+bench
+client-1.log
+client-2.log
+client-3.log
+client-gradle-1.log
+client-gradle-2.log
+client-gradle-3.log
+drive-factory-sift-hub-mam-ponder-map-hologram-hud-create_ct-kinetics.json
+drive-factory_flat.json
+drive-kinetics_instancing.json
+gfx.txt
+joined-1.txt
+joined-2.txt
+joined-3.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+
+/tmp/out/siftec-quicksilver-old/bench:
+20261104-225959-factory.json
+20261104-230132-sift.json
+20261104-230243-hub.json
+20261104-230355-mam.json
+20261104-230509-ponder.json
+20261104-230633-hologram.json
+20261104-230810-create_ct.json
+20261104-231020-kinetics.json
+20261104-231534-factory_flat.json
+20261104-231834-kinetics_instancing.json
+
+/tmp/out/siftec-quicksilver-old/shots:
+create_ct.png
+factory.png
+factory_flat.png
+hologram.png
+hub.png
+kinetics.png
+kinetics_instancing.png
+mam.png
+ponder.png
+sift.png
