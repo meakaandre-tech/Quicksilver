@@ -341,6 +341,13 @@ def single_player(res, failures, lines):
     if b is None:
         failures.append("core/sp-quicksilver: no bench result for flythrough")
         return
+    # package 4c's mesh order runs here too, under server-aware back-off
+    if "Quicksilver mesher: nearest-and-visible-first order off" in t:
+        failures.append("core/sp-quicksilver: the mesher's nearest-and-visible-first order fell back to vanilla's order (see client log)")
+    if "Quicksilver mesher: nearest-and-visible-first order reads " not in t:
+        failures.append("core/sp-quicksilver: the mesher's nearest-and-visible-first order never read vanilla's meshing task")
+    if ((b.get("mesher") or {}).get("order") or {}).get("state") != "on":
+        failures.append(f"core/sp-quicksilver: bench flythrough: the mesher's nearest-and-visible-first order is {((b.get('mesher') or {}).get('order') or {}).get('state')}")
     sa = (b.get("mesher") or {}).get("serverAware") or {}
     behind_ms = sa.get("benchMsBehind") or 0
     idle_ms = sa.get("benchMsBehindWithNoRunMeshingButWorkWaiting") or 0
@@ -583,6 +590,8 @@ def main():
                                 failures.append(f"{name}/{r}: the {mod} module did not stay off for measuring (no measure-only line in the client log)")
                         if "Quicksilver terrain: on " in t or "Quicksilver visibility: on " in t or "Quicksilver animation: on " in t:
                             failures.append(f"{name}/{r}: a Quicksilver module turned on in a measure run")
+                        if "Quicksilver mesher: nearest-and-visible-first order reads " in t:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order ran in a measure run")
                         for f in glob.glob(os.path.join(d, "bench", "*.json")):
                             bj = json.load(open(f))
                             ter, vis, tg = bj.get("terrain") or {}, bj.get("visibility") or {}, bj.get("terrainGpu") or {}
@@ -594,6 +603,8 @@ def main():
                             me = bj.get("mesher") or {}
                             if me.get("state") != "off" or me.get("reason") != "measure only (CI)" or me.get("sectionsMeshed", 0) != 0:
                                 failures.append(f"{name}/{r}: bench {bj['scene']}: Quicksilver's mesher not off for measuring ({me.get('state')} ({me.get('reason')}), {me.get('sectionsMeshed')} sections meshed)")
+                            if (me.get("order") or {}).get("state") != "off (debug or measure only)":
+                                failures.append(f"{name}/{r}: bench {bj['scene']}: the mesher's nearest-and-visible-first order not off for measuring ({(me.get('order') or {}).get('state')})")
                             an = bj.get("animation") or {}
                             if an.get("state") != "off" or an.get("reason") != "measure only (CI)" or an.get("skippedSinceStart", 0) != 0:
                                 failures.append(f"{name}/{r}: bench {bj['scene']}: animation module not off for measuring ({an.get('state')} ({an.get('reason')}), left out {an.get('skippedSinceStart')})")
