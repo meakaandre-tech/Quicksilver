@@ -67,15 +67,14 @@ final class Optimisations {
                 new String[] {BlockEntityChecks.CHUNK_CACHE, "call:quicksilver$distanceUpdates"})),
         // P2-3b
         new Opt(HopperCache.ID, "hoppers remember the block they take from and the one they give to while its section and block entity stay as they were, answering only where vanilla's chunk lookups change nothing",
+            // (HopperCacheInvoker's static invokers stay in the interface: no member of the target to check; the five
+            // hooks around them are in the same class)
             List.of("HopperCacheMixin", "HopperCacheInvoker", "ServerChunkCacheRecentAccessor", "PalettedContainerMixin"),
             List.<String[]>of(new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$source"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$attached"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$targetState"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$blockContainer"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$stateChanged"},
-                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$vanillaAttached"},
-                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$vanillaSource"},
-                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$vanillaBlockContainer"},
                 new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$lastPos"},
                 new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$lastStatus"},
                 new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$lastChunk"},
