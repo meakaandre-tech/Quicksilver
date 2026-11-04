@@ -12,8 +12,9 @@ server:
     to it (the runner drifts between rounds by more than a scene's saving; a pair shares the drift), and where the time
     went (round 8's JFR, ci/server/perf-jfr.py).
     Every suite of the run (CI_MODE, CI_EXTRA_SUITES, as compare-server.py) with perf scenes must have results.
-    Gate: every run finished with no failed command; the median of the seven per-round ratios below 1 for core mobs, at
-    most 1.10 for core random (a regression gate: that scene's noise is larger than its saving); others reported.
+    Gate: every run finished with no failed command; the median of the seven per-round ratios below 1 for core mobs and
+    village (P2-3), at most 1.10 for core random and both factory scenes (regression gates: their noise is larger than
+    their saving); others reported.
     Scenes marked `world` in perf-<suite>.txt: every Quicksilver round's saved world equals vanilla round 1's on every
     key where vanilla's rounds (1-8) agree (ci/server/worlddiff.py, the server suite's rule).
   - Logic module (P2-2): every Quicksilver server start (server suite and perf) logs `Quicksilver logic:` with every
@@ -42,7 +43,12 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 # must be faster (below 1); the random-tick scene only must not regress (Andre, 2026-11-01: at most 1.10, since the
 # harness's pinned random ticks move it by about +-0.04 ms per JVM against a saving of about 0.02 ms;
 # docs/ci-limits.md); the rest are reported
-GATED_SCENES = {("core", "mobs"): ("faster", 1.0), ("core", "random"): ("no-regression", 1.10)}
+GATED_SCENES = {("core", "mobs"): ("faster", 1.0), ("core", "random"): ("no-regression", 1.10),
+                # P2-3: the village scene must be faster; both factory scenes gate regressions only (Andre, 2026-11-02
+                # and 2026-11-04: their saving in P2-3 is smaller than their noise; their main cost, hoppers' block and
+                # container lookups, is P2-3b's cache, whose done-when is factory MSPT down)
+                ("core", "factory"): ("no-regression", 1.10), ("core", "village"): ("faster", 1.0),
+                ("siftec", "factory"): ("no-regression", 1.10)}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"
 # SIFTEC's suites report only while the workflow's mode job says so (CI_SIFTEC_REPORT_ONLY, ci/siftec_status.py)
@@ -76,7 +82,9 @@ def scenes(suite):
     for line in open(path):
         p = line.split()
         if p and not p[0].startswith("#"):
-            out.append((p[0], p[1], int(p[2]), p[3] == "world"))
+            # keep: "world" (worlds compared and gated where vanilla's rounds agree), "world-report" (compared and
+            # reported only: a scene vanilla's own rounds don't repeat, P2-3's village), "-" (not kept)
+            out.append((p[0], p[1], int(p[2]), p[3] if p[3] in ("world", "world-report") else None))
     return out
 
 
@@ -201,6 +209,11 @@ def perf(res, rep, lines, fails, owed, summary):
                 if (a or 0) < 0.005 and (b or 0) < 0.005:
                     continue
                 t.append("| %s | %s | %s | %s |" % (ph.replace("  ", "&nbsp;&nbsp;"), fmt(a), fmt(b), fmt(a - b) if a is not None and b is not None else "-"))
+            for key, label in (("blockEntities", "Block entity ticking by class"), ("ai", "Brain sensors and behaviours by class")):
+                if jv.get(key) or jq.get(key):
+                    t.append("\n%s (ms per tick, vanilla / Quicksilver): %s" % (label, ", ".join(
+                        "%s %s / %s" % (c, fmt(x["share"] * mv) if mv else "-", fmt(next((y["share"] for y in jq.get(key, []) if y["class"] == c), 0) * mq) if mq else "-")
+                        for c, x in ((x["class"], x) for x in jv.get(key, [])[:12]))))
             t.append("\nServer-thread allocation sampled over the recording: vanilla %s MB, Quicksilver %s MB; GC pauses: vanilla %s ms, Quicksilver %s ms."
                      % (jv.get("allocMB"), jq.get("allocMB"), jv.get("gcPauseMs"), jq.get("gcPauseMs")))
             t.append("\nQuicksilver's allocation by frame (MB): %s" % ", ".join("%s %s" % (x["frame"], x["MB"]) for x in jq.get("allocTop", [])[:15]))
@@ -216,9 +229,10 @@ def perf(res, rep, lines, fails, owed, summary):
                 t.append("\n(no JFR summary for a side)")
             tables.append("\n".join(t) + "\n")
 
-            # the scene's saved worlds (scenes marked world): every Quicksilver round against vanilla round 1, gated
-            # where vanilla's rounds agree
+            # the scene's saved worlds (scenes marked world or world-report): every Quicksilver round against vanilla
+            # round 1, gated where vanilla's rounds agree (world-report: the same comparison, reported only)
             if keep_world:
+                wsink = sink if keep_world == "world" else []
                 wa = os.path.join(d, scene, "vanilla1", "world")
                 noise, missing = set(), False
                 for r in ALL_ROUNDS[1:]:
@@ -242,15 +256,15 @@ def perf(res, rep, lines, fails, owed, summary):
                     bad = sorted(qk - noise)
                     rows.append("| %d | %d | %d | %d |" % (r, chunks, len(qk), len(bad)))
                     if bad:
-                        sink.append("%s perf %s: world of quicksilver round %d differs from vanilla where vanilla agrees: %d keys (first: %s)"
+                        wsink.append("%s perf %s: world of quicksilver round %d differs from vanilla where vanilla agrees: %d keys (first: %s)"
                                     % (suite, scene, r, len(bad), ", ".join(bad[:5])))
                     if chunks == 0:
                         sink.append("%s perf %s: no chunks compared" % (suite, scene))
                 if missing:
                     sink.append("%s perf %s: a vanilla round's world is missing or not compared" % (suite, scene))
-                tables.append("### %s %s: saved worlds\n\nVanilla's own differences across its eight rounds (noise, not gated): %d keys%s.\n\n"
+                tables.append("### %s %s: saved worlds%s\n\nVanilla's own differences across its eight rounds (noise, not gated): %d keys%s.\n\n"
                               "| Quicksilver round | chunks | keys differing from vanilla round 1 | where vanilla agrees |\n|---|---|---|---|\n%s\n"
-                              % (suite, scene, len(noise), (" (first: %s)" % ", ".join(sorted(noise)[:5])) if noise else "", "\n".join(rows)))
+                              % (suite, scene, "" if keep_world == "world" else " (reported, not gated: vanilla's own rounds don't repeat this scene)", len(noise), (" (first: %s)" % ", ".join(sorted(noise)[:5])) if noise else "", "\n".join(rows)))
         lines.append("")
         lines += tables
 
@@ -283,6 +297,17 @@ def server(res, rep):
                 sink.append("siftec contraption: vanilla-a and %s differ (%s / %s)" % (r, got["vanilla-a"][:200], got[r][:200]))
         if got["vanilla-a"] and got["quicksilver"] and got["quicksilver"] != got["vanilla-a"]:
             sink.append("siftec contraption: quicksilver differs from vanilla (%s / %s)" % (got["quicksilver"][:200], got["vanilla-a"][:200]))
+
+    # the verify run (P2-3, full mode): every suite with a scripted run has one in its quicksilver run, and it finished
+    # (its status line and fallbacks are checked below with every other server log's)
+    if os.environ.get("CI_MODE") == "full":
+        for suite in expected_suites():
+            if not os.path.exists(os.path.join(HERE, "scripted-run-%s.txt" % suite)):
+                continue
+            sink = owed if suite in REPORT_ONLY_SUITES else fails
+            log = text(os.path.join(res, suite + "-quicksilver", "verify-server.log"))
+            if "CI HARNESS RUN DONE" not in log:
+                sink.append("%s verify run: missing or did not finish" % suite)
 
     # the Logic module in the server suite's runs (every server start: worldgen, GameTests, scripted, random-tick, heap)
     lines.append("## Logic module in the server suite\n\n| run | status |\n|---|---|")

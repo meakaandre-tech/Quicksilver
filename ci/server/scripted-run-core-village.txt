@@ -1,0 +1,106 @@
+# The core suite's village scene (phase 2, P2-3): villagers with beds, job sites and a bell, and iron golems on a
+# walled field, for mob AI (brains, sensors, behaviours), pathfinding and points of interest. No cats: an animal picks
+# where to wander by light level, which the light engine works out on its own thread, so cats moved differently in
+# vanilla's own runs (P2-3) and every villager after them. Same format as
+# scripted-run-core.txt; played by the perf job for MSPT, its saved worlds compared with vanilla's.
+area minecraft:overworld -4 -4 3 3
+
+cmd time set 1500
+cmd weather clear 100000
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+
+cmd fill -24 198 -24 23 198 23 minecraft:stone
+cmd fill -24 199 -24 23 199 23 minecraft:grass_block
+cmd fill -24 200 -24 23 202 -24 minecraft:glass
+cmd fill -24 200 23 23 202 23 minecraft:glass
+cmd fill -24 200 -24 -24 202 23 minecraft:glass
+cmd fill 23 200 -24 23 202 23 minecraft:glass
+# paths, fences and a small hut with a door
+cmd fill -20 199 0 19 199 0 minecraft:dirt_path
+cmd fill 0 199 -20 0 199 19 minecraft:dirt_path
+cmd fill -12 200 -12 -6 200 -12 minecraft:oak_fence
+cmd fill 6 200 6 6 200 12 minecraft:oak_fence
+cmd fill 10 200 -16 14 203 -12 minecraft:oak_planks
+cmd fill 11 200 -15 13 202 -13 minecraft:air
+cmd setblock 12 200 -12 minecraft:oak_door[facing=south,half=lower]
+cmd setblock 12 201 -12 minecraft:oak_door[facing=south,half=upper]
+cmd setblock 2 200 2 minecraft:bell[attachment=floor,facing=north]
+
+# 12 job sites and 16 beds
+cmd setblock -20 200 -20 minecraft:lectern
+cmd setblock -17 200 -20 minecraft:composter
+cmd setblock -14 200 -20 minecraft:smithing_table
+cmd setblock -11 200 -20 minecraft:blast_furnace
+cmd setblock -8 200 -20 minecraft:smoker
+cmd setblock -5 200 -20 minecraft:cartography_table
+cmd setblock -20 200 16 minecraft:fletching_table
+cmd setblock -17 200 16 minecraft:brewing_stand
+cmd setblock -14 200 16 minecraft:barrel
+cmd setblock -11 200 16 minecraft:loom
+cmd setblock -8 200 16 minecraft:grindstone[face=floor,facing=north]
+cmd setblock -5 200 16 minecraft:stonecutter
+cmd setblock -20 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -20 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -18 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -18 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -16 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -16 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -14 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -14 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -12 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -12 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -10 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -10 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -8 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -8 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -6 200 -6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -6 200 -5 minecraft:white_bed[facing=south,part=head]
+cmd setblock -20 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -20 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -18 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -18 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -16 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -16 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -14 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -14 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -12 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -12 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -10 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -10 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -8 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -8 200 7 minecraft:white_bed[facing=south,part=head]
+cmd setblock -6 200 6 minecraft:white_bed[facing=south,part=foot]
+cmd setblock -6 200 7 minecraft:white_bed[facing=south,part=head]
+
+# 24 villagers, 2 iron golems
+cmd summon minecraft:villager -17.5 200 -9.5
+cmd summon minecraft:villager -14.5 200 -9.5
+cmd summon minecraft:villager -11.5 200 -9.5
+cmd summon minecraft:villager -8.5 200 -9.5
+cmd summon minecraft:villager -5.5 200 -9.5
+cmd summon minecraft:villager -2.5 200 -9.5
+cmd summon minecraft:villager 0.5 200 -9.5
+cmd summon minecraft:villager 3.5 200 -9.5
+cmd summon minecraft:villager -17.5 200 -1.5
+cmd summon minecraft:villager -14.5 200 -1.5
+cmd summon minecraft:villager -11.5 200 -1.5
+cmd summon minecraft:villager -8.5 200 -1.5
+cmd summon minecraft:villager -5.5 200 -1.5
+cmd summon minecraft:villager -2.5 200 -1.5
+cmd summon minecraft:villager 0.5 200 -1.5
+cmd summon minecraft:villager 3.5 200 -1.5
+cmd summon minecraft:villager -17.5 200 6.5
+cmd summon minecraft:villager -14.5 200 6.5
+cmd summon minecraft:villager -11.5 200 6.5
+cmd summon minecraft:villager -8.5 200 6.5
+cmd summon minecraft:villager -5.5 200 6.5
+cmd summon minecraft:villager -2.5 200 6.5
+cmd summon minecraft:villager 0.5 200 6.5
+cmd summon minecraft:villager 3.5 200 6.5
+cmd summon minecraft:iron_golem 8.5 200 8.5
+cmd summon minecraft:iron_golem -8.5 200 -8.5
+
+ticks 1200
+
+qs-at 0 quicksilver bench 50

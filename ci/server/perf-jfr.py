@@ -54,7 +54,24 @@ PHASES = [
     ("  minecarts", r"^AbstractMinecart\.tick$"),
     ("  supporting block (Entity.checkSupportingBlock)", r"^Entity\.checkSupportingBlock$"),
     ("  space checks (noCollision)", r"^CollisionGetter\.noCollision$|^CollisionGetter\.noBlockCollision$"),
-    ("Create (com.simibubi)", r"^@create$"),
+    # P2-3: block entities, AI and villagers in finer phases ("@pkg:" phases match a frame's full class name prefix)
+    ("  hoppers (HopperBlockEntity)", r"^HopperBlockEntity\."),
+    ("  furnaces (AbstractFurnaceBlockEntity)", r"^AbstractFurnaceBlockEntity\."),
+    ("  block entity ticking checks (isTicking)", r"^LevelChunk\.isTicking$|^Level\.shouldTickBlocksAt$|^ServerLevel\.shouldTickBlocksAt$|^ServerLevel\.isPositionTickingWithEntitiesLoaded$"),
+    ("  comparator updates (setChanged, output signal)", r"^Level\.updateNeighbourForOutputSignal$|^BlockEntity\.setChanged$"),
+    ("  container lookups (getContainerAt)", r"^HopperBlockEntity\.getContainerAt$|^HopperBlockEntity\.getBlockContainer$|^HopperBlockEntity\.getEntityContainer$|^HopperBlockEntity\.getSourceContainer$|^HopperBlockEntity\.getAttachedContainer$"),
+    ("  item entity pickup by hoppers", r"^HopperBlockEntity\.getItemsAtAndAbove$|^HopperBlockEntity\.addItem$"),
+    ("  item stack comparisons", r"^ItemStack\.isSameItemSameComponents$|^ItemStack\.isSameItem$|^ItemStack\.matches$|^ItemStack\.hashItemAndComponents$"),
+    ("  Fabric transfer API", r"@pkg:net.fabricmc.fabric.impl.transfer.|net.fabricmc.fabric.api.transfer."),
+    ("  brain sensors", r"^Sensor\.tick$|Sensor\.doTick$"),
+    ("  brain behaviours", r"^Behavior\.tryStart$|^Behavior\.tickOrStop$|^Brain\.startEachNonRunningBehavior$|^Brain\.tickEachRunningBehavior$"),
+    ("  points of interest (POI)", r"^PoiManager\.|^PoiSection\.|^PoiRecord\."),
+    ("  villagers (Villager)", r"^Villager\."),
+    ("Create (Create Fly)", r"@pkg:com.zurrtum.create.|com.simibubi."),
+    ("  Create kinetics", r"@pkg:com.zurrtum.create.content.kinetics."),
+    ("  Create logistics (funnels, chutes, depots, crates)", r"@pkg:com.zurrtum.create.content.logistics."),
+    ("  Create contraptions and trains", r"@pkg:com.zurrtum.create.content.contraptions.|com.zurrtum.create.content.trains."),
+    ("SIFTEC", r"@pkg:com.meakaandre.siftec."),
 ]
 
 FRAME = re.compile(r"^\s+([\w$.]+)\(")
@@ -131,6 +148,7 @@ def main(rec, out):
     self_c, incl = Counter(), Counter()
     callers = {}  # top method -> Counter of the first caller outside the JDK
     phase_c = Counter()
+    be_c, ai_c = Counter(), Counter()
     pats = [(name, re.compile(rx)) for name, rx in PHASES]
     for stack in samples(rec):
         names = [short(f) for f in stack]
@@ -143,13 +161,27 @@ def main(rec, out):
         seen = set(names)
         for x in seen:
             incl[x] += 1
-        create = any(f.startswith("com.simibubi.") for f in stack)
         for name, rx in pats:
-            if (rx.pattern == "^@create$" and create) or any(rx.search(x) for x in seen):
+            if rx.pattern.startswith("@pkg:"):
+                prefixes = tuple(rx.pattern[5:].split("|"))
+                if any(f.startswith(prefixes) for f in stack):
+                    phase_c[name] += 1
+            elif any(rx.search(x) for x in seen):
                 phase_c[name] += 1
+        # P2-3: block entity ticking by class (the first BlockEntity frame called from Level.tickBlockEntities), and
+        # brain sensors and behaviours by class
+        k = next((i for i, x in enumerate(names) if x == "Level.tickBlockEntities"), None)
+        if k is not None:
+            be = next((stack[i] for i in range(k - 1, -1, -1) if re.search(r"BlockEntity(\$\w+)?\.\w+$", names[i]) and not names[i].startswith(("Level.", "LevelChunk"))), None)
+            be_c[short(be).split(".")[0] if be else "(other)"] += 1
+        ai = next((x.split(".")[0] for x in names if re.search(r"(Sensor|Behavior|Behaviour)\w*\.(doTick|tick|tryStart|tickOrStop|start|checkExtraStartConditions)$", x)), None)
+        if ai:
+            ai_c[ai] += 1
     res = {
         "samples": n,
         "phases": [{"phase": name, "share": round(phase_c[name] / n, 4) if n else 0} for name, _ in PHASES],
+        "blockEntities": [{"class": k, "share": round(v / n, 4)} for k, v in be_c.most_common(20)] if n else [],
+        "ai": [{"class": k, "share": round(v / n, 4)} for k, v in ai_c.most_common(15)] if n else [],
         "self": [{"method": k, "share": round(v / n, 4)} for k, v in self_c.most_common(60)] if n else [],
         "inclusive": [{"method": k, "share": round(v / n, 4)} for k, v in incl.most_common(120)] if n else [],
         # for the 25 hottest methods: the first caller outside the JDK, top 4 each
