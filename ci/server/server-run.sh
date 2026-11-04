@@ -17,6 +17,8 @@
 #             server bench's JSON;
 #          3b. random-tick run (core, P2-1): the base world, ci/server/scripted-run-core-random.txt (random ticks pinned
 #             per chunk, precipitation, natural spawning), saved to $OUT/random (world diff);
+#          3c. border run (core, P2-3b): the base world, ci/server/scripted-run-core-border.txt (hoppers on chunk borders,
+#             an area let go, minecarts), saved to $OUT/border (world diff) with its chunk watch in its result;
 #          5. heap run (P2-1, every suite): the base world, the suite's scene (ci/server/heap-<suite>.txt or its
 #             scripted run's) for ten minutes of game time sprinting; live heap and class histograms after load and at
 #             the end in $OUT/heap.
@@ -128,6 +130,26 @@ if [ -f "ci/server/scripted-run-$SUITE-random.txt" ] && [ -f server-base.tar ]; 
   grep -q 'CI HARNESS RUN DONE' "$OUT/random-server.log" || echo "random-tick run: did not finish"
   keep_world "$srv/world" "$OUT/random/world"
   rm -rf "$srv/world"
+fi
+
+# 3c. the border run (core, P2-3b): hoppers and containers on chunk borders next to a force-loaded area that is let go,
+# and hoppers taking from minecarts crossing a border; its chunk watch (every change to the watched chunks' tickets,
+# levels and the server's last four chunks, tick by tick) and its world are compared with vanilla's. In full mode the
+# quicksilver run plays it once more with verify mode (its world isn't kept)
+if [ -f "ci/server/scripted-run-$SUITE-border.txt" ] && [ -f server-base.tar ]; then
+  (cd "$srv" && tar xf "$root/server-base.tar" && mv base world)
+  props world normal
+  serve border 1800 -Dci.harness.run="$root/ci/server/scripted-run-$SUITE-border.txt"
+  grep -q 'CI HARNESS RUN DONE' "$OUT/border-server.log" || echo "border run: did not finish"
+  keep_world "$srv/world" "$OUT/border/world"
+  rm -rf "$srv/world" "$srv/quicksilver"
+  if [ "${CI_MODE:-}" = full ] && [ "$RUN" = quicksilver ]; then
+    (cd "$srv" && tar xf "$root/server-base.tar" && mv base world)
+    props world normal
+    serve border-verify 1800 -Dci.harness.run="$root/ci/server/scripted-run-$SUITE-border.txt" -Dquicksilver.debug.verifyLogic=true
+    grep -q 'CI HARNESS RUN DONE' "$OUT/border-verify-server.log" || echo "border verify run: did not finish"
+    rm -rf "$srv/world" "$srv/quicksilver"
+  fi
 fi
 
 # 5. the heap run (every suite with a base world, P2-1): the scene for ten minutes of game time, sprinting

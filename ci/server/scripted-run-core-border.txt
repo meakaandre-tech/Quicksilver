@@ -1,0 +1,161 @@
+# The core suite's border run (phase 2, P2-3b), played by the CI harness on the base world in every run alike (same
+# format as scripted-run-core.txt; watch-chunks: ci/server/harness/.../ChunkWatch.java). Hoppers and containers on chunk
+# borders, at the edge of a second force-loaded area that is let go at tick 300 (its chunks drop out of block ticking and
+# out of full status), and hoppers taking from a chest minecart and a hopper minecart that cross a chunk border. It tests
+# what logic.hopper-cache could change: a skipped chunk lookup that would have missed the server's last four chunks
+# would give its chunk one tick less of a ticket. The chunk watch writes down every change to the watched chunks'
+# tickets, levels and the last four chunks, tick by tick, and CI requires that history and the saved world (blocks,
+# block entities, entities) equal to vanilla's (ci/server/compare-server.py, "Border run").
+#
+# Chunk levels before tick 300: area A (chunks -1..0) and area B (chunk 3) force-loaded (31); chunks 1, 2 and 4 next to
+# them (32, block ticking); chunk 5 full (33). After: chunk 1 32, chunk 2 33 (full, not ticking), chunk 3 34, chunk 4 35.
+# (Chunks this close to area A never unload from memory: that needs every ticket 11 chunks away, outside the base world.)
+area minecraft:overworld -1 -1 0 0
+area minecraft:overworld 3 -1 3 0
+watch-chunks minecraft:overworld -2 -2 6 1
+
+cmd time set 1000
+cmd weather clear 100000
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+cmd fill -16 199 -16 79 199 15 minecraft:stone
+
+# eastward pairs across each chunk border X|X+1 (z 2): a chest of cobblestone above hopper X, a barrel of sand above
+# hopper X+1, both hoppers facing east, into a chest read by a comparator lighting a lamp (comparators read across
+# chunks too). Placed border by border, so the hoppers tick in alternating chunks (a miss in the last four chunks
+# every few lookups)
+cmd setblock 15 201 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock 15 200 2 minecraft:hopper[facing=east]
+cmd setblock 16 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:sand",count:64},{Slot:1b,id:"minecraft:sand",count:64},{Slot:2b,id:"minecraft:sand",count:64},{Slot:3b,id:"minecraft:sand",count:64},{Slot:4b,id:"minecraft:sand",count:64},{Slot:5b,id:"minecraft:sand",count:64},{Slot:6b,id:"minecraft:sand",count:64},{Slot:7b,id:"minecraft:sand",count:64},{Slot:8b,id:"minecraft:sand",count:64}]}
+cmd setblock 16 200 2 minecraft:hopper[facing=east]
+cmd setblock 17 200 2 minecraft:chest
+cmd setblock 18 200 2 minecraft:comparator[facing=west]
+cmd setblock 19 200 2 minecraft:redstone_lamp
+cmd setblock 31 201 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock 31 200 2 minecraft:hopper[facing=east]
+cmd setblock 32 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:sand",count:64},{Slot:1b,id:"minecraft:sand",count:64},{Slot:2b,id:"minecraft:sand",count:64},{Slot:3b,id:"minecraft:sand",count:64},{Slot:4b,id:"minecraft:sand",count:64},{Slot:5b,id:"minecraft:sand",count:64},{Slot:6b,id:"minecraft:sand",count:64},{Slot:7b,id:"minecraft:sand",count:64},{Slot:8b,id:"minecraft:sand",count:64}]}
+cmd setblock 32 200 2 minecraft:hopper[facing=east]
+cmd setblock 33 200 2 minecraft:chest
+cmd setblock 34 200 2 minecraft:comparator[facing=west]
+cmd setblock 35 200 2 minecraft:redstone_lamp
+cmd setblock 47 201 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock 47 200 2 minecraft:hopper[facing=east]
+cmd setblock 48 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:sand",count:64},{Slot:1b,id:"minecraft:sand",count:64},{Slot:2b,id:"minecraft:sand",count:64},{Slot:3b,id:"minecraft:sand",count:64},{Slot:4b,id:"minecraft:sand",count:64},{Slot:5b,id:"minecraft:sand",count:64},{Slot:6b,id:"minecraft:sand",count:64},{Slot:7b,id:"minecraft:sand",count:64},{Slot:8b,id:"minecraft:sand",count:64}]}
+cmd setblock 48 200 2 minecraft:hopper[facing=east]
+cmd setblock 49 200 2 minecraft:chest
+cmd setblock 50 200 2 minecraft:comparator[facing=west]
+cmd setblock 51 200 2 minecraft:redstone_lamp
+cmd setblock 63 201 2 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock 63 200 2 minecraft:hopper[facing=east]
+cmd setblock 64 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:sand",count:64},{Slot:1b,id:"minecraft:sand",count:64},{Slot:2b,id:"minecraft:sand",count:64},{Slot:3b,id:"minecraft:sand",count:64},{Slot:4b,id:"minecraft:sand",count:64},{Slot:5b,id:"minecraft:sand",count:64},{Slot:6b,id:"minecraft:sand",count:64},{Slot:7b,id:"minecraft:sand",count:64},{Slot:8b,id:"minecraft:sand",count:64}]}
+cmd setblock 64 200 2 minecraft:hopper[facing=east]
+cmd setblock 65 200 2 minecraft:chest
+cmd setblock 66 200 2 minecraft:comparator[facing=west]
+cmd setblock 67 200 2 minecraft:redstone_lamp
+
+# westward pairs (z 5): hopper X+1 facing west into hopper X facing west, into a chest in the chunk before
+cmd setblock 16 201 5 minecraft:chest{Items:[{Slot:0b,id:"minecraft:oak_log",count:64},{Slot:1b,id:"minecraft:oak_log",count:64},{Slot:2b,id:"minecraft:oak_log",count:64},{Slot:3b,id:"minecraft:oak_log",count:64},{Slot:4b,id:"minecraft:oak_log",count:64},{Slot:5b,id:"minecraft:oak_log",count:64},{Slot:6b,id:"minecraft:oak_log",count:64},{Slot:7b,id:"minecraft:oak_log",count:64},{Slot:8b,id:"minecraft:oak_log",count:64}]}
+cmd setblock 16 200 5 minecraft:hopper[facing=west]
+cmd setblock 15 200 5 minecraft:hopper[facing=west]
+cmd setblock 14 200 5 minecraft:chest
+cmd setblock 32 201 5 minecraft:chest{Items:[{Slot:0b,id:"minecraft:oak_log",count:64},{Slot:1b,id:"minecraft:oak_log",count:64},{Slot:2b,id:"minecraft:oak_log",count:64},{Slot:3b,id:"minecraft:oak_log",count:64},{Slot:4b,id:"minecraft:oak_log",count:64},{Slot:5b,id:"minecraft:oak_log",count:64},{Slot:6b,id:"minecraft:oak_log",count:64},{Slot:7b,id:"minecraft:oak_log",count:64},{Slot:8b,id:"minecraft:oak_log",count:64}]}
+cmd setblock 32 200 5 minecraft:hopper[facing=west]
+cmd setblock 31 200 5 minecraft:hopper[facing=west]
+cmd setblock 30 200 5 minecraft:chest
+cmd setblock 48 201 5 minecraft:chest{Items:[{Slot:0b,id:"minecraft:oak_log",count:64},{Slot:1b,id:"minecraft:oak_log",count:64},{Slot:2b,id:"minecraft:oak_log",count:64},{Slot:3b,id:"minecraft:oak_log",count:64},{Slot:4b,id:"minecraft:oak_log",count:64},{Slot:5b,id:"minecraft:oak_log",count:64},{Slot:6b,id:"minecraft:oak_log",count:64},{Slot:7b,id:"minecraft:oak_log",count:64},{Slot:8b,id:"minecraft:oak_log",count:64}]}
+cmd setblock 48 200 5 minecraft:hopper[facing=west]
+cmd setblock 47 200 5 minecraft:hopper[facing=west]
+cmd setblock 46 200 5 minecraft:chest
+cmd setblock 64 201 5 minecraft:chest{Items:[{Slot:0b,id:"minecraft:oak_log",count:64},{Slot:1b,id:"minecraft:oak_log",count:64},{Slot:2b,id:"minecraft:oak_log",count:64},{Slot:3b,id:"minecraft:oak_log",count:64},{Slot:4b,id:"minecraft:oak_log",count:64},{Slot:5b,id:"minecraft:oak_log",count:64},{Slot:6b,id:"minecraft:oak_log",count:64},{Slot:7b,id:"minecraft:oak_log",count:64},{Slot:8b,id:"minecraft:oak_log",count:64}]}
+cmd setblock 64 200 5 minecraft:hopper[facing=west]
+cmd setblock 63 200 5 minecraft:hopper[facing=west]
+cmd setblock 62 200 5 minecraft:chest
+
+# double chests across each border (z 8), fed from above on both halves and emptied from below (a double chest's
+# container depends on its other half, so it is never remembered)
+cmd setblock 15 200 8 minecraft:chest[facing=south,type=left]
+cmd setblock 16 200 8 minecraft:chest[facing=south,type=right]
+cmd setblock 15 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 15 201 8 minecraft:hopper[facing=down]
+cmd setblock 16 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 16 201 8 minecraft:hopper[facing=down]
+cmd setblock 15 199 8 minecraft:hopper[facing=down]
+cmd setblock 15 198 8 minecraft:chest
+cmd setblock 31 200 8 minecraft:chest[facing=south,type=left]
+cmd setblock 32 200 8 minecraft:chest[facing=south,type=right]
+cmd setblock 31 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 31 201 8 minecraft:hopper[facing=down]
+cmd setblock 32 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 32 201 8 minecraft:hopper[facing=down]
+cmd setblock 31 199 8 minecraft:hopper[facing=down]
+cmd setblock 31 198 8 minecraft:chest
+cmd setblock 47 200 8 minecraft:chest[facing=south,type=left]
+cmd setblock 48 200 8 minecraft:chest[facing=south,type=right]
+cmd setblock 47 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 47 201 8 minecraft:hopper[facing=down]
+cmd setblock 48 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 48 201 8 minecraft:hopper[facing=down]
+cmd setblock 47 199 8 minecraft:hopper[facing=down]
+cmd setblock 47 198 8 minecraft:chest
+cmd setblock 63 200 8 minecraft:chest[facing=south,type=left]
+cmd setblock 64 200 8 minecraft:chest[facing=south,type=right]
+cmd setblock 63 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 63 201 8 minecraft:hopper[facing=down]
+cmd setblock 64 202 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64},{Slot:3b,id:"minecraft:dirt",count:64},{Slot:4b,id:"minecraft:dirt",count:64}]}
+cmd setblock 64 201 8 minecraft:hopper[facing=down]
+cmd setblock 63 199 8 minecraft:hopper[facing=down]
+cmd setblock 63 198 8 minecraft:chest
+
+# hoppers facing across each border into air (z 11) and into a furnace (z 13), each filled from a chest above
+cmd setblock 15 201 11 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64},{Slot:1b,id:"minecraft:coal",count:64},{Slot:2b,id:"minecraft:coal",count:64}]}
+cmd setblock 15 200 11 minecraft:hopper[facing=east]
+cmd setblock 15 201 13 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64},{Slot:2b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock 15 200 13 minecraft:hopper[facing=east]
+cmd setblock 16 200 13 minecraft:furnace
+cmd setblock 31 201 11 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64},{Slot:1b,id:"minecraft:coal",count:64},{Slot:2b,id:"minecraft:coal",count:64}]}
+cmd setblock 31 200 11 minecraft:hopper[facing=east]
+cmd setblock 31 201 13 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64},{Slot:2b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock 31 200 13 minecraft:hopper[facing=east]
+cmd setblock 32 200 13 minecraft:furnace
+cmd setblock 47 201 11 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64},{Slot:1b,id:"minecraft:coal",count:64},{Slot:2b,id:"minecraft:coal",count:64}]}
+cmd setblock 47 200 11 minecraft:hopper[facing=east]
+cmd setblock 47 201 13 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64},{Slot:2b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock 47 200 13 minecraft:hopper[facing=east]
+cmd setblock 48 200 13 minecraft:furnace
+cmd setblock 63 201 11 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64},{Slot:1b,id:"minecraft:coal",count:64},{Slot:2b,id:"minecraft:coal",count:64}]}
+cmd setblock 63 200 11 minecraft:hopper[facing=east]
+cmd setblock 63 201 13 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64},{Slot:2b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock 63 200 13 minecraft:hopper[facing=east]
+cmd setblock 64 200 13 minecraft:furnace
+
+# a chest minecart (north side, eastward) and a hopper minecart (south side, westward) going round a loop of powered
+# rails in area A (chunk z -1), across the chunk border x -1|0; on the north side hoppers under the plain rails at x -2..1
+# (no redstone block next to them: they stay enabled) take from the carts as they pass, into chests below
+cmd fill -7 199 -14 6 199 -14 minecraft:redstone_block
+cmd fill -2 199 -14 1 199 -14 minecraft:stone
+cmd setblock -1 199 -14 minecraft:hopper[facing=down]
+cmd setblock 0 199 -14 minecraft:hopper[facing=down]
+cmd setblock -1 198 -14 minecraft:chest
+cmd setblock 0 198 -14 minecraft:chest
+cmd fill -7 200 -14 6 200 -14 minecraft:powered_rail[shape=east_west,powered=true]
+cmd fill -2 200 -14 1 200 -14 minecraft:rail[shape=east_west]
+cmd fill -7 199 -10 6 199 -10 minecraft:redstone_block
+cmd fill -7 200 -10 6 200 -10 minecraft:powered_rail[shape=east_west,powered=true]
+cmd fill -8 199 -13 -8 199 -11 minecraft:redstone_block
+cmd fill -8 200 -13 -8 200 -11 minecraft:powered_rail[shape=north_south,powered=true]
+cmd fill 7 199 -13 7 199 -11 minecraft:redstone_block
+cmd fill 7 200 -13 7 200 -11 minecraft:powered_rail[shape=north_south,powered=true]
+cmd setblock -8 200 -14 minecraft:rail[shape=south_east]
+cmd setblock 7 200 -14 minecraft:rail[shape=south_west]
+cmd setblock -8 200 -10 minecraft:rail[shape=north_east]
+cmd setblock 7 200 -10 minecraft:rail[shape=north_west]
+cmd summon minecraft:chest_minecart -6.5 200.0625 -13.5 {Motion:[0.6d,0.0d,0.0d],Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64},{Slot:4b,id:"minecraft:iron_ingot",count:64},{Slot:5b,id:"minecraft:iron_ingot",count:64},{Slot:6b,id:"minecraft:iron_ingot",count:64},{Slot:7b,id:"minecraft:iron_ingot",count:64},{Slot:8b,id:"minecraft:iron_ingot",count:64}]}
+cmd summon minecraft:hopper_minecart 5.5 200.0625 -9.5 {Motion:[-0.6d,0.0d,0.0d],Items:[{Slot:0b,id:"minecraft:gold_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:64},{Slot:2b,id:"minecraft:gold_ingot",count:64},{Slot:3b,id:"minecraft:gold_ingot",count:64},{Slot:4b,id:"minecraft:gold_ingot",count:64}]}
+
+# area B let go: its chunks drop out of block ticking (chunk 3 to 34, chunk 4 to 35, chunk 2 to 33) while the hoppers in
+# chunk 1 keep giving to containers in chunk 2 (full, not ticking)
+at 200 setblock 33 200 2 minecraft:air
+at 210 setblock 33 200 2 minecraft:chest
+at 220 setblock 31 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:gravel",count:64}]}
+at 300 forceload remove 48 -16 63 15
+ticks 600

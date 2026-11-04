@@ -64,7 +64,27 @@ final class Optimisations {
                 new String[] {"net.minecraft.world.level.Level", "call:quicksilver$shouldTick"},
                 new String[] {"net.minecraft.world.level.chunk.LevelChunk$BoundTickingBlockEntity", "call:quicksilver$valid"},
                 new String[] {BlockEntityChecks.TRACKER, "call:quicksilver$levelChanged"},
-                new String[] {BlockEntityChecks.CHUNK_CACHE, "call:quicksilver$distanceUpdates"})));
+                new String[] {BlockEntityChecks.CHUNK_CACHE, "call:quicksilver$distanceUpdates"})),
+        // P2-3b
+        new Opt(HopperCache.ID, "hoppers remember the block they take from and the one they give to while its section and block entity stay as they were, answering only where vanilla's chunk lookups change nothing",
+            List.of("HopperCacheMixin", "HopperCacheInvoker", "ServerChunkCacheRecentAccessor", "PalettedContainerMixin"),
+            List.<String[]>of(new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$sourceState"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$source"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$attached"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$targetState"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$blockContainer"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$stateChanged"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$vanillaAttached"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$vanillaSource"},
+                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$vanillaBlockContainer"},
+                new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$lastPos"},
+                new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$lastStatus"},
+                new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$lastChunk"},
+                new String[] {"net.minecraft.server.level.ServerChunkCache", "quicksilver$mainThread"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSet"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSetUnchecked"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$set"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$read"})));
 
     /** Each optimisation, in the order the status line lists them. */
     static void register(Map<String, String> m) {
@@ -119,6 +139,7 @@ final class Optimisations {
         if (id.equals(GateBehaviours.ID)) return GateBehaviours.SWITCH;
         if (id.equals(HopperEntities.ID)) return HopperEntities.SWITCH;
         if (id.equals(BlockEntityChecks.ID)) return BlockEntityChecks.SWITCH;
+        if (id.equals(HopperCache.ID)) return HopperCache.SWITCH;
         return null;
     }
 }

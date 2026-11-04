@@ -333,6 +333,11 @@ public final class Harness implements ModInitializer {
                     String[] a = line.split("\\s+");
                     spawnPlayerAt = new double[] {Double.parseDouble(a[1]), Double.parseDouble(a[2]), Double.parseDouble(a[3])};
                 }
+                case "watch-chunks" -> {
+                    // P2-3b, the border run: every change to these chunks' tickets and levels, tick by tick (ChunkWatch)
+                    String[] a = line.split("\\s+");
+                    ChunkWatch.add(a[1], Integer.parseInt(a[2]), Integer.parseInt(a[3]), Integer.parseInt(a[4]), Integer.parseInt(a[5]));
+                }
                 case "spawn" -> {
                     String[] a = line.split("\\s+");
                     spawns.add(new Spawn(Integer.parseInt(a[1]), Integer.parseInt(a[2])));
@@ -603,6 +608,7 @@ public final class Harness implements ModInitializer {
                 CiTrain.tick(server, tick);
                 spawn(server);
                 if (!reports.isEmpty() && (tick <= 3 || tick == 10 || tick == 20 || tick % 100 == 0 || tick == ticks - 1)) report(server);
+                if (!HEAP) ChunkWatch.tick(server, tick);
                 tick++;
                 if (tick >= ticks) {
                     server.tickRateManager().setFrozen(true);
@@ -635,6 +641,7 @@ public final class Harness implements ModInitializer {
                         result.addProperty("train", train);
                         LOG.info("CI TRAIN result={}", train);
                     }
+                    if (!HEAP) ChunkWatch.result(result);
                     String contraption = CiContraption.result();
                     if (contraption != null) {
                         result.addProperty("contraption", contraption);

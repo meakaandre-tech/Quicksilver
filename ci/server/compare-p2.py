@@ -308,6 +308,13 @@ def server(res, rep):
             log = text(os.path.join(res, suite + "-quicksilver", "verify-server.log"))
             if "CI HARNESS RUN DONE" not in log:
                 sink.append("%s verify run: missing or did not finish" % suite)
+        # P2-3b: the border run's verify run too
+        for suite in expected_suites():
+            if not os.path.exists(os.path.join(HERE, "scripted-run-%s-border.txt" % suite)):
+                continue
+            sink = owed if suite in REPORT_ONLY_SUITES else fails
+            if "CI HARNESS RUN DONE" not in text(os.path.join(res, suite + "-quicksilver", "border-verify-server.log")):
+                sink.append("%s border verify run: missing or did not finish" % suite)
 
     # the Logic module in the server suite's runs (every server start: worldgen, GameTests, scripted, random-tick, heap)
     lines.append("## Logic module in the server suite\n\n| run | status |\n|---|---|")

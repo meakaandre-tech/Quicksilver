@@ -109,6 +109,45 @@ def key_y(k):
     return int(m.group(2)) if m else None
 
 
+def border_report(suite, d, rep, lines, s, fails):
+    """P2-3b, the border run (ci/server/scripted-run-<suite>-border.txt): every run finished its ticks with no failed
+    command, and its chunk watch (every change to the watched chunks' tickets, levels and the server's last four
+    chunks, tick by tick; ci/server/harness/.../ChunkWatch.java) is the same history in every run: vanilla's three runs
+    must agree (else the run gates nothing and fails), and Quicksilver's must equal theirs."""
+    lines.append("### Border run (chunk watch)\n\n| run | finished | changes | first difference from vanilla-a |\n|---|---|---|---|")
+    w = {}
+    for r in RUNS:
+        j = load(os.path.join(d[r], "border", "ci-harness-result.json"), {})
+        ok = "msptAvg" in j and "error" not in j
+        if not ok:
+            fails.append("%s border run %s: did not finish (%s)" % (suite, r, j.get("error", "no result")))
+        if j.get("commandErrors", 0):
+            fails.append("%s border run %s: %d commands failed (CI HARNESS CMD in border-server.log)" % (suite, r, j["commandErrors"]))
+        cw = j.get("chunkWatch") or {}
+        w[r] = cw.get("events")
+        if not w[r]:
+            fails.append("%s border run %s: no chunk watch" % (suite, r))
+    a = w["vanilla-a"] or []
+    first = {}
+    for r in RUNS:
+        e = w[r] or []
+        diff = next((i for i in range(max(len(a), len(e))) if i >= len(a) or i >= len(e) or a[i] != e[i]), None)
+        first[r] = None if diff is None else "event %d: %s / vanilla-a %s" % (
+            diff, (e[diff] if diff < len(e) else "(none)")[:160], (a[diff] if diff < len(a) else "(none)")[:160])
+        lines.append("| %s | %s | %d | %s |" % (r, "yes" if w[r] else "no", len(e), first[r] or "none"))
+    for v in OTHER_VANILLA:
+        if w[v] is not None and first[v]:
+            fails.append("%s border run: vanilla-a and %s differ in the chunk watch (harness not deterministic; %s)" % (suite, v, first[v]))
+    if w["quicksilver"] is not None and first["quicksilver"]:
+        fails.append("%s border run: quicksilver's chunk watch differs from vanilla (%s)" % (suite, first["quicksilver"]))
+    with open(os.path.join(rep, "%s-border-watch.txt" % suite), "w") as f:
+        for r in RUNS:
+            f.write("== %s\n" % r)
+            f.write("\n".join(w[r] or []) + "\n")
+    s["border"] = {r: len(w[r] or []) for r in RUNS}
+    lines.append("\nEvery run's history in %s-border-watch.txt.\n" % suite)
+
+
 def histogram(path):
     """A class histogram (the harness's histo-*.txt): {class: (instances, bytes)} and the total bytes."""
     out, total = {}, None
@@ -199,6 +238,7 @@ def main(res, rep):
         # how much of the world they leave ungated.
         has_run = os.path.exists(os.path.join(HERE, "scripted-run-%s.txt" % suite))
         has_random = os.path.exists(os.path.join(HERE, "scripted-run-%s-random.txt" % suite))
+        has_border = os.path.exists(os.path.join(HERE, "scripted-run-%s-border.txt" % suite))
         # worldgen: byte for byte per chunk, and the same chunks block by block (blocks, block entities, scheduled
         # ticks, entities): where vanilla's bytes ever differ from its own, the block-level check still gates them
         # (Andre's decision: byte for byte, per block where vanilla a/b differ)
@@ -235,6 +275,8 @@ def main(res, rep):
             checks.append(("World diff after the scripted run", "run", "world", "blocks, block entities, entity types"))
         if has_random:
             checks.append(("World diff after the random-tick run", "random", "world", "blocks, block entities, entity types"))
+        if has_border:
+            checks.append(("World diff after the border run", "border", "world", "blocks, block entities, entity types"))
         for title, sub, mode, unit in checks:
             lines.append("### %s\n\n| dimension | chunks | vanilla noise (a vs b, a vs c) | quicksilver vs vanilla-a | quicksilver where vanilla agrees |\n|---|---|---|---|---|" % title)
             wa, wq = os.path.join(d["vanilla-a"], sub, "world"), os.path.join(d["quicksilver"], sub, "world")
@@ -384,6 +426,8 @@ def main(res, rep):
             if rr["vanilla-a"] != rr["quicksilver"]:
                 fails.append("%s random-tick run: quicksilver differs from vanilla (%s / %s)" % (suite, rr["quicksilver"], rr["vanilla-a"]))
             lines.append("")
+        if has_border:
+            border_report(suite, d, rep, lines, s, fails)
         heap_report(suite, d, rep, lines, s, fails)
         if has_run:
             bench = sorted(glob.glob(os.path.join(d["quicksilver"], "bench", "*.json")))
