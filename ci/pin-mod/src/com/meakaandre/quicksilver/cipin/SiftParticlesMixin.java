@@ -20,7 +20,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * CI only. In the Sift dimension (only the SIFTEC suite's sift scene goes there), small sprites drift over the canyon at
  * random places, so every run's screenshot has them somewhere else, in vanilla's runs as much as Quicksilver's (package
- * 3). No particle is made there in any CI client run, vanilla and Quicksilver alike; the kinds held off are logged.
+ * 3). No particle is made there in any CI client run, vanilla and Quicksilver alike; the kinds held off are logged. Package 5:
+ * the same while the player is in a Create pin area ({@code CreatePins}).
  */
 @Mixin(ParticleEngine.class)
 public abstract class SiftParticlesMixin {
@@ -31,12 +32,14 @@ public abstract class SiftParticlesMixin {
     protected ClientLevel level;
 
     private boolean quicksilverCi$inSift() {
-        return level != null && "the_sift".equals(level.dimension().identifier().getNamespace());
+        // package 5: also in the Create pin areas (the kinetics scene's train has a blaze burner, which smokes at random)
+        return level != null && ("the_sift".equals(level.dimension().identifier().getNamespace())
+            || com.meakaandre.quicksilver.cipinstate.CreatePins.pinned);
     }
 
     private static void quicksilverCi$held(String kind) {
         int n = HELD.computeIfAbsent(kind, k -> new AtomicInteger()).incrementAndGet();
-        if (n == 1 || n % 500 == 0) LOG.info("Quicksilver CI pin: particles held off in the Sift: {}", HELD);
+        if (n == 1 || n % 500 == 0) LOG.info("Quicksilver CI pin: particles held off in the Sift and the Create pin areas: {}", HELD);
     }
 
     @Inject(method = "createParticle", at = @At("HEAD"), cancellable = true)

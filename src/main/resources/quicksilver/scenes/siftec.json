@@ -6,6 +6,7 @@
     "gamerule advance_time false",
     "gamerule advance_weather false",
     "gamerule send_command_feedback false",
+    "gamerule spawn_wandering_traders false",
     "gamemode spectator @a",
     "time set 6000",
     "weather clear"
@@ -277,6 +278,100 @@
       "requiresMod": "create",
       "requiresNote": "Create's casings and framed glass: without Create the scene would show only stone, so it is skipped.",
       "ciNote": "The design doc's done-when names Create's connected textures: Create draws them through the Fabric Renderer API, so these blocks are tessellated by Quicksilver's renderer in Quicksilver's runs and by Indigo in the vanilla runs. CT blocks in view: create:andesite_casing (a 5x4 wall plus a 3-block return at its west end), create:brass_casing (a 5x4 wall and a 3x3 floor patch in front), create:copper_casing (a 5x4 wall with minecraft:stone set in at its centre left), create:framed_glass (a 5x4 wall); each wall ends against minecraft:stone or minecraft:glass, which do not connect. CI presses F1 after the setup (vanilla's hide-GUI key): SIFTEC's minimap shows whichever tiles it has scanned, which differs from run to run (vanilla against vanilla up to 167 strict pixels in run 40274749083), and a single wrong connected-texture border is smaller than that. It is the suite's last scene, so the hidden GUI reaches only its own bench.",
+      "ciKeys": [
+        "F1"
+      ]
+    },
+    {
+      "id": "kinetics",
+      "title": "Create kinetics on a platform (package 5): a creative motor turning shafts, a large and a small cogwheel, a gearbox, an encased fan and a belt; a mechanical mixer over a basin and a press over a depot; a clockwork bearing's plank hand (a rotating contraption at rest); a train standing at a station (a carriage contraption)",
+      "renderDistance": 8,
+      "settleSeconds": 25,
+      "setup": [
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18",
+        "#wait 6",
+        "execute in minecraft:overworld run fill 2148 285 -2014 2174 305 -1976 minecraft:air",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2138 236 -2018 2184 254 -1999 minecraft:air",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2138 236 -1998 2184 254 -1980 minecraft:air",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run tp @e[type=!minecraft:player,x=2136,y=230,z=-2020,dx=50,dy=30,dz=44] 2160.5 -200 -1998.5",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2138 239 -2016 2184 239 -1982 minecraft:smooth_stone",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2146 241 -2000 create:creative_motor[facing=east]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2147 241 -2000 2148 241 -2000 create:shaft[axis=x]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2149 241 -2000 create:large_cogwheel[axis=x]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2150 241 -2000 create:cogwheel[axis=x]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2151 241 -2000 create:shaft[axis=x]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2152 241 -2000 create:gearbox[axis=y]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2152 241 -2001 create:encased_fan[facing=north]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2152 241 -1999 2152 241 -1998 create:shaft[axis=z]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2156 241 -1998 create:shaft[axis=z]",
+        "#wait 2",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run qsci belt 2152 241 -1998 2156 241 -1998",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2158 240 -2002 create:basin",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2158 242 -2002 create:mechanical_mixer",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2158 243 -2002 create:creative_motor[facing=down]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2163 240 -2002 create:depot",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2163 242 -2002 create:mechanical_press[facing=north]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2162 242 -2002 create:creative_motor[facing=east]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2163 242 -2001 create:creative_motor[facing=north]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2170 241 -2001 create:clockwork_bearing[facing=north]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2169 241 -2002 2171 241 -2002 minecraft:oak_planks",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2170 240 -2002 2170 242 -2002 minecraft:oak_planks",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2170 241 -2000 create:creative_motor[facing=north]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2142 240 -2008 2180 240 -2008 create:track[shape=xo]",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2160 240 -2007 create:track_station{Id:[I;0,0,0,51],TargetTrack:[I;0,0,-1],TargetDirection:1b,Ortho:1b}",
+        "#wait 3",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run qsci train build 2160 240 -2007",
+        "#wait 2",
+        "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run qsci train assemble 2160 240 -2007",
+        "#wait 2",
+        "execute in minecraft:overworld run setblock 2140 236 -2018 minecraft:bedrock",
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
+      ],
+      "ciStrictMask": [
+        [
+          640,
+          260,
+          730,
+          345
+        ]
+      ],
+      "ciStrictMaskNote": "The standing train's carriage (package 5): it lands a fraction of a pixel to one side from run to run, in vanilla's own runs too (up to 78 strict pixels in a vanilla stand-in, run 41633272149; a pin of its client-side track points did not change it), so its rectangle is out of the strict checks; the 8/255 check covers it.",
+      "ciBackendStrict": true,
+      "requiresMod": "create",
+      "requiresNote": "Create's machines (Create Fly in SIFTEC's pack). The belt and the train are made with /qsci, CI's pin mod's command (Create has no command for either); without it the scene shows the shafts where the belt would be and the station without a train.",
+      "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile), vanilla's block-entity and entity renderers where it is off (old GPU: instancing's shaders don't compile on GL 3.3 and Flywheel falls back, as in vanilla's run; Vulkan: Flywheel needs OpenGL). It runs after create_ct, whose F1 (GUI hidden) is still in effect, so no HUD or minimap shows."
+    },
+    {
+      "id": "kinetics_instancing",
+      "title": "The kinetics scene with Flywheel's backend forced to instancing and Quicksilver's occlusion on still camera (package 5)",
+      "renderDistance": 8,
+      "settleSeconds": 25,
+      "setup": [
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
+      ],
+      "flywheelConfig": {
+        "backend": "flywheel:instancing"
+      },
+      "ciMedianReportOnly": true,
+      "ciMedianReportOnlyNote": "As factory_flat (Andre, 2026-11-01; open bug in docs/progress.md, package 4c): this session meshes a few hundred sections, mostly air (the platform floats high above the terrain), where Quicksilver's mesher is a little slower than vanilla's per section (run 41591531215: 1.478 against 1.398 ms, 165 pairs); its median is reported, not gated. For Andre to confirm (package 5).",
+      "quicksilverConfig": {
+        "occlusion": "still-camera"
+      },
+      "ciStrictMask": [
+        [
+          640,
+          260,
+          730,
+          345
+        ]
+      ],
+      "ciStrictMaskNote": "The standing train's carriage (package 5): it lands a fraction of a pixel to one side from run to run, in vanilla's own runs too (up to 78 strict pixels in a vanilla stand-in, run 41633272149; a pin of its client-side track points did not change it), so its rectangle is out of the strict checks; the 8/255 check covers it.",
+      "ciBackendStrict": true,
+      "requiresMod": "create",
+      "requiresNote": "Create's machines (Create Fly in SIFTEC's pack); the platform is built by the kinetics scene in the first session.",
+      "ciNote": "Its own client session, with Create Fly's config/flywheel-client.json set to backend flywheel:instancing, in vanilla's runs and Quicksilver's alike, so Flywheel's instancing backend draws the same machines, contraption and train as the kinetics scene (whose session leaves Flywheel to choose: indirect on the full profile). Quicksilver's occlusion is set to still camera here (the school laptop's path: Intel picks instancing and still camera): while Flywheel holds any visual, still camera builds no pyramid and culls nothing (package 5, for Andre to decide), so on the full profile this checks that nothing is culled wrongly; on old GPU and Vulkan (Flywheel off) still camera culls and its per-frame check runs. On GL 3.3 (old GPU) instancing's shaders don't compile and Flywheel falls back to off, as in vanilla's run; on Vulkan Flywheel is off. GUI shown here (its own session): F1 hides it, as in kinetics.",
       "ciKeys": [
         "F1"
       ]

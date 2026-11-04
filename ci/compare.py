@@ -87,6 +87,15 @@ if QUICK:
         PAIRS["vulkan"] = ("quicksilver-vk", "vanilla-vk")
         RUNS += ["vanilla-vk", "quicksilver-vk"]
         VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-vk")
+    if os.environ.get("CI_QUICK_SIFTEC") == "1":
+        # package 5: [siftec] in the commit message adds SIFTEC's client suite, with the same runs as core's plus
+        # vanilla-old: Flywheel picks its backend from the GPU profile (old GPUs end up with a different one than GL 4.5),
+        # so the old-GPU runs are compared with vanilla's old-GPU run, as in full mode, in both suites
+        SUITES = {"core", "siftec"}
+        PAIRS["old-gpu"] = ("quicksilver-old", "vanilla-old")
+        PAIRS["old-gpu-2p"] = ("quicksilver-2p-old", "vanilla-old")
+        RUNS += ["vanilla-old"]
+        VANILLA_RUNS = tuple(VANILLA_RUNS) + ("vanilla-old",)
 
 
 def diff(a, b, out=None):
@@ -114,9 +123,10 @@ def strict(shot, out_prefix, skip_runs=(), pairs=None, mask=None):
     v = {r: load(shot(r)) for r in VANILLA_RUNS if r not in skip_runs}
     if any(x is None for x in v.values()) or len({x.shape for x in v.values()}) != 1:
         return None, {}, {}
-    agree = np.ones(v["vanilla-a"].shape[:2], bool)
+    base = next(iter(v.values()))
+    agree = np.ones(base.shape[:2], bool)
     for x in v.values():
-        agree &= (x == v["vanilla-a"]).all(axis=2)
+        agree &= (x == base).all(axis=2)
     for x0, y0, x1, y1 in mask or ():
         agree[y0:y1, x0:x1] = False
     out, anyd = {}, {}
@@ -215,6 +225,7 @@ def session_options(suite):
     for x in suite["scenes"]:
         o = dict(x.get("clientOptions") or {})
         o.update({"quicksilver." + k: v for k, v in (x.get("quicksilverConfig") or {}).items()})
+        o.update({"flywheel." + k: v for k, v in (x.get("flywheelConfig") or {}).items()})
         opts = ",".join(k + "=" + str(v) for k, v in sorted(o.items()))
         rd.setdefault((x.get("renderDistance", 8), opts), []).append(x["id"])
     return [k[1] for k in sorted(rd)]
@@ -330,6 +341,13 @@ def single_player(res, failures, lines):
     if b is None:
         failures.append("core/sp-quicksilver: no bench result for flythrough")
         return
+    # package 4c's mesh order runs here too, under server-aware back-off
+    if "Quicksilver mesher: nearest-and-visible-first order off" in t:
+        failures.append("core/sp-quicksilver: the mesher's nearest-and-visible-first order fell back to vanilla's order (see client log)")
+    if "Quicksilver mesher: nearest-and-visible-first order reads " not in t:
+        failures.append("core/sp-quicksilver: the mesher's nearest-and-visible-first order never read vanilla's meshing task")
+    if ((b.get("mesher") or {}).get("order") or {}).get("state") != "on":
+        failures.append(f"core/sp-quicksilver: bench flythrough: the mesher's nearest-and-visible-first order is {((b.get('mesher') or {}).get('order') or {}).get('state')}")
     sa = (b.get("mesher") or {}).get("serverAware") or {}
     behind_ms = sa.get("benchMsBehind") or 0
     idle_ms = sa.get("benchMsBehindWithNoRunMeshingButWorkWaiting") or 0
@@ -355,6 +373,100 @@ def single_player(res, failures, lines):
         failures.append(f"core/sp-quicksilver: no thread meshing with work waiting for {share * 100:.0f}% of the time behind (over {SP_IDLE_SHARE * 100:.0f}%)")
 
 
+FLW_BACKEND = re.compile(r"Quicksilver CI pin: Flywheel backend (\S+)")
+# package 5: the Flywheel backend each profile ends up with, Flywheel's own choice (Create Fly's bundled Flywheel), in
+# vanilla's runs and Quicksilver's alike (run 41580354893): indirect on Mesa's GL 4.5; on the old-GPU profile (GL 3.3, no
+# multi-draw indirect) Flywheel picks instancing, whose shaders don't compile on GLSL 3.30 there, so it falls back to
+# off; off on Vulkan (Flywheel draws with OpenGL only). Off is Flywheel's fallback: vanilla's renderers draw everything.
+# The kinetics_instancing scene's session forces instancing (FLW_FORCED), which compiles on GL 4.5.
+FLW_EXPECT = {"full": "flywheel:indirect", "old": "flywheel:off", "vk": "flywheel:off"}
+FLW_FORCED = {"kinetics_instancing": {"full": "flywheel:instancing", "old": "flywheel:off", "vk": "flywheel:off"}}
+QSCI_STEPS = ("belt 2152 241 -1998 2156 241 -1998", "train build 2160 240 -2007", "train assemble 2160 240 -2007")
+
+
+def run_profile(r):
+    return "vk" if r.endswith("-vk") else "old" if r.endswith("-old") else "full"
+
+
+def flywheel(res, failures, lines):
+    """Package 5: Flywheel with Quicksilver, in SIFTEC's client runs (Create Fly installed). Every run, vanilla's and
+    Quicksilver's, logs Flywheel's own backend choice (CI's pin mod); it must be the profile's (FLW_EXPECT) and the same
+    in Quicksilver's run as in vanilla's. Quicksilver's bench reports the same backend, Flywheel's three hooks on
+    vanilla's classes in place (the block-entity step, light updates, the draw before the terrain) and Create Fly
+    present. Create's animation clock pin must have reached Create's code, and the kinetics scene's /qsci steps must
+    have run (on the server). Pictures and counts of the Create scenes are gated with every other scene."""
+    if SUITES is not None and "siftec" not in SUITES:
+        return
+    rows = []
+    for r in RUNS:
+        d = os.path.join(res, f"siftec-{r}")
+        if not os.path.isdir(d):
+            continue
+        t = logs(d)
+        want = FLW_EXPECT[run_profile(r)]
+        # the backend each session ended up with (the last line of its log: a backend that fails falls back once)
+        got = []
+        sessions = session_options(json.load(open("src/main/resources/quicksilver/scenes/siftec.json")))
+        for f in sorted(glob.glob(os.path.join(d, "client-*.log"))):
+            m_n = re.fullmatch(r"client-(\d+)\.log", os.path.basename(f))
+            if not m_n:
+                continue
+            b = FLW_BACKEND.findall(open(f, errors="replace").read())
+            n = int(m_n.group(1))
+            if not b:
+                # every SIFTEC session has Create Fly and a level, so every one logs Flywheel's backend
+                failures.append(f"siftec/{r}/client-{n}: no Flywheel backend line from CI's pin mod in this session")
+                continue
+            got.append(b[-1])
+            forced = n <= len(sessions) and "flywheel.backend=" in sessions[n - 1]
+            w = FLW_FORCED["kinetics_instancing"][run_profile(r)] if forced else want
+            if b[-1] != w:
+                failures.append(f"siftec/{r}/client-{n}: Flywheel's backend ended as {b[-1]}, expected {w} on this profile"
+                                + (" (session with the backend forced)" if forced else ""))
+        if not got:
+            failures.append(f"siftec/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
+        if "Quicksilver CI pin: Create's animation clock pinned in AnimationTickHolder" not in t:
+            failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned in AnimationTickHolder' line)")
+        if want != "flywheel:off" and "Quicksilver CI pin: Create's animation clock pinned in Flywheel's frame time" not in t:
+            failures.append(f"siftec/{r}: Flywheel's frame time pin never ran though Flywheel draws on this profile")
+        srv = open(os.path.join(d, "server.log"), errors="replace").read() if os.path.exists(os.path.join(d, "server.log")) else ""
+        for step in QSCI_STEPS:
+            if f"Quicksilver CI create: {step} done" not in srv:
+                failures.append(f"siftec/{r}: the kinetics scene's step '/qsci {step}' did not run (see server.log)")
+        bench = {}
+        if r.startswith(("quicksilver", "measure")):
+            for f in sorted(glob.glob(os.path.join(d, "bench", "*.json"))):
+                j = json.load(open(f))
+                fw = j.get("flywheel")
+                if r.startswith("quicksilver"):
+                    if not fw or fw.get("createFly") in (None, "absent"):
+                        failures.append(f"siftec/{r}/{j['scene']}: the bench has no Flywheel block with Create Fly present")
+                        continue
+                    w = FLW_FORCED.get(j["scene"], {}).get(run_profile(r), want)
+                    if fw.get("backend") != w:
+                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {w}")
+                    hooks = fw.get("hooks") or {}
+                    missing = [k for k in ("blockEntityStep", "lightUpdate", "beforeSolid") if not hooks.get(k)]
+                    if missing:
+                        failures.append(f"siftec/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
+                    bench[j["scene"]] = fw
+                    # Quicksilver's own hook in Flywheel (the still-camera stamp hangs on it): where Flywheel draws, the
+                    # Create scenes' benches must have seen its visuals and counted the frames it drew before the terrain
+                    if w != "flywheel:off" and j["scene"] in ("kinetics", "kinetics_instancing") and not (
+                            (fw.get("visuals") or 0) > 0 and (fw.get("framesDrawingBeforeTerrain") or 0) > 0):
+                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver saw no Flywheel visual drawn before the terrain"
+                                        f" (visuals {fw.get('visuals')}, frames {fw.get('framesDrawingBeforeTerrain')}): its hook in Flywheel did not run")
+        kin = bench.get("kinetics") or {}
+        rows.append(f"| {r} | {', '.join(got) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
+    lines.append("## Flywheel (package 5)\n")
+    lines.append("Flywheel's own backend choice per run (CI's pin mod), and in Quicksilver's runs its visuals and the frames it drew"
+                 " before the terrain in the kinetics scene's bench.\n")
+    lines.append("| run | backend per session | kinetics: visuals | frames drawing before terrain |")
+    lines.append("|---|---|---|---|")
+    lines += rows
+    lines.append("")
+
+
 def main():
     res, rep = sys.argv[1], sys.argv[2]
     os.makedirs(os.path.join(rep, "diff"), exist_ok=True)
@@ -371,7 +483,7 @@ def main():
         scenes = [s for s in suite["scenes"]]
         scene_by_id = {s["id"]: s for s in scenes}
         sd = data.setdefault(name, {"noise": {}, "picture": {}, "strict": {}, "counts": {}, "skipped": {}})
-        strict_lines, measure_lines = [], []
+        strict_lines, measure_lines, backend_lines = [], [], []
         lines.append(f"## Suite {name}\n")
         runs = {r: os.path.join(res, f"{name}-{r}") for r in RUNS}
         for r, d in runs.items():
@@ -478,6 +590,8 @@ def main():
                                 failures.append(f"{name}/{r}: the {mod} module did not stay off for measuring (no measure-only line in the client log)")
                         if "Quicksilver terrain: on " in t or "Quicksilver visibility: on " in t or "Quicksilver animation: on " in t:
                             failures.append(f"{name}/{r}: a Quicksilver module turned on in a measure run")
+                        if "Quicksilver mesher: nearest-and-visible-first order reads " in t:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order ran in a measure run")
                         for f in glob.glob(os.path.join(d, "bench", "*.json")):
                             bj = json.load(open(f))
                             ter, vis, tg = bj.get("terrain") or {}, bj.get("visibility") or {}, bj.get("terrainGpu") or {}
@@ -489,6 +603,8 @@ def main():
                             me = bj.get("mesher") or {}
                             if me.get("state") != "off" or me.get("reason") != "measure only (CI)" or me.get("sectionsMeshed", 0) != 0:
                                 failures.append(f"{name}/{r}: bench {bj['scene']}: Quicksilver's mesher not off for measuring ({me.get('state')} ({me.get('reason')}), {me.get('sectionsMeshed')} sections meshed)")
+                            if (me.get("order") or {}).get("state") != "off (debug or measure only)":
+                                failures.append(f"{name}/{r}: bench {bj['scene']}: the mesher's nearest-and-visible-first order not off for measuring ({(me.get('order') or {}).get('state')})")
                             an = bj.get("animation") or {}
                             if an.get("state") != "off" or an.get("reason") != "measure only (CI)" or an.get("skippedSinceStart", 0) != 0:
                                 failures.append(f"{name}/{r}: bench {bj['scene']}: animation module not off for measuring ({an.get('state')} ({an.get('reason')}), left out {an.get('skippedSinceStart')})")
@@ -531,12 +647,30 @@ def main():
                             failures.append(f"{name}/{r}: Quicksilver's mesher fell back to vanilla's section compiler or stayed off (see client log)")
                         if "Quicksilver mesher: on " not in t:
                             failures.append(f"{name}/{r}: Quicksilver's mesher never turned on")
+                        # package 4c's mesh order (nearest and visible first): on, never fallen back to vanilla's order
+                        # (it fell back at the first section in every run until package 5 and nothing failed)
+                        if "Quicksilver mesher: nearest-and-visible-first order off" in t:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order fell back to vanilla's order (see client log)")
+                        if "Quicksilver mesher: nearest-and-visible-first order reads " not in t:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order never read vanilla's meshing task")
                         if "Quicksilver mesher: fluid self-test:" not in t:
                             failures.append(f"{name}/{r}: the mesher's fluid self-test did not run (see client log)")
+                        # package 5 (Andre, 2026-11-04): with The Sift installed, only its own fluids go through vanilla's
+                        # fluid renderer (its mixin changes it); water and lava stay Quicksilver's, checked per section
+                        # against vanilla's compiler (the mesher check below)
+                        if name == "siftec":
+                            if "Quicksilver mesher: the fluids of the_sift go through vanilla's fluid renderer" not in t:
+                                failures.append(f"{name}/{r}: the mesher did not send The Sift's fluids (only) through vanilla's fluid renderer (see client log)")
+                            if "Quicksilver mesher: every fluid goes through vanilla's fluid renderer" in t:
+                                failures.append(f"{name}/{r}: the mesher sent every fluid through vanilla's fluid renderer (a fluid mixin whose mod it could not find)")
+                            if "Quicksilver's fluid mesher draws the_sift:" in t:
+                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher drew one of The Sift's fluids")
+                            if "Quicksilver's fluid mesher draws minecraft:water" not in t:
+                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher never drew water (see client log)")
                         nwarn = len(re.findall(r"Quicksilver mesher check:", t))
                         if nwarn:
                             failures.append(f"{name}/{r}: mesher check: {nwarn} sections where Quicksilver's mesh differed from vanilla's compiler's (see client log)")
-                        checked = kept = 0
+                        checked = kept = order_visible = 0
                         for f in glob.glob(os.path.join(d, "bench", "*.json")):
                             me = json.load(open(f)).get("mesher") or {}
                             checked = max(checked, me.get("checked", 0))
@@ -567,10 +701,16 @@ def main():
                                 failures.append(f"{name}/{r}: bench {sid}: {me.get('checkedPairs')} like-for-like pairs, the scene asks for {want}")
                             if me.get("state") != "on" or me.get("fallbacks", 0) != 0 or me.get("mismatched", 0) != 0 or me.get("check") != "on":
                                 failures.append(f"{name}/{r}: bench {json.load(open(f))['scene']}: mesher {me.get('state')} ({me.get('reason')}), fallbacks {me.get('fallbacks')}, mismatched {me.get('mismatched')}, check {me.get('check')}")
+                            mo = me.get("order") or {}
+                            if mo.get("state") != "on":
+                                failures.append(f"{name}/{r}: bench {sid}: the mesher's nearest-and-visible-first order is {mo.get('state')}")
+                            order_visible = max(order_visible, mo.get("picksVisibleSinceStart") or 0)
                         if os.path.isdir(os.path.join(d, "bench")) and checked == 0:
                             failures.append(f"{name}/{r}: the mesher check compared no section with vanilla's compiler")
                         if os.path.isdir(os.path.join(d, "bench")) and kept == 0:
                             failures.append(f"{name}/{r}: the mesher's biome lookups for tints were never kept (the hook into vanilla's blend did not apply)")
+                        if os.path.isdir(os.path.join(d, "bench")) and order_visible == 0:
+                            failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order never picked a visible section")
                         for f in glob.glob(os.path.join(d, "bench", "*.json")):
                             bj = json.load(open(f))
                             vis = bj.get("visibility")
@@ -602,6 +742,10 @@ def main():
                                 failures.append(f"{name}/{r}: bench {bj['scene']} has no occlusion report")
                             else:
                                 want_mode = OCCLUSION_MODE.get(r)
+                                # package 5: a scene that sets the occlusion mode in Quicksilver's config runs in that mode
+                                cfg_mode = (scene_def.get("quicksilverConfig") or {}).get("occlusion")
+                                if cfg_mode and r != "quicksilver-2p-old":  # that run forces two-phase on the JVM's command line
+                                    want_mode = {"still-camera": "still", "two-phase": "two-phase"}.get(cfg_mode, want_mode)
                                 # Vulkan: two-phase only where the backend lets the CPU wait for the GPU within a frame
                                 # (calibration says so); otherwise still camera. The GL runs must always have the wait.
                                 if r in VULKAN_WAIT_OPTIONAL and want_mode == "two-phase" and oc.get("midFrameWait") is False:
@@ -790,6 +934,30 @@ def main():
                         failures.append(f"{name}/{sid}: strict picture check is missing the {MEASURE[prof]} screenshot (or its size differs)")
                     elif not no_strict and slimit is not None and mc > slimit:
                         failures.append(f"{name}/{sid}: {MEASURE[prof]} (vanilla stand-in) differs from vanilla on {mc} strict pixels (limit {slimit})")
+                # package 5: in the Create scenes Flywheel draws the machines in vanilla a and b (full profile) and
+                # vanilla's renderers draw them in vanilla old and Vulkan (Flywheel off), so the four runs never agree
+                # on those pixels and the check above can't see them. Each profile is checked again where the vanilla
+                # runs drawing the same way agree, against the same strict limit; the measure runs too.
+                if sc.get("ciBackendStrict"):
+                    for group in (("vanilla-a", "vanilla-b"), ("vanilla-old", "vanilla-vk")):
+                        if not all(g in VANILLA_RUNS and g not in skip_runs for g in group):
+                            continue
+                        gskip = tuple(skip_runs) + tuple(r for r in VANILLA_RUNS if r not in group)
+                        gpairs = {p: bv for p, bv in PAIRS.items() if bv[1] in group and p not in skipped_profiles}
+                        for label, pp in (("", gpairs), ("measure", {} if QUICK else {p: (MEASURE[p], bv[1]) for p, bv in gpairs.items()})):
+                            if not pp:
+                                continue
+                            gagree, gcounts, _ = strict(shot, os.path.join(rep, "diff", f"{name}-{sid}-backend{label}"), gskip, pp, mask=sc.get("ciStrictMask"))
+                            sd["strict"][sid].setdefault("sameBackend", {})[f"{'+'.join(group)}{'/' + label if label else ''}"] = {"agreePct": gagree, "pixels": gcounts}
+                            for prof, c in gcounts.items():
+                                who = MEASURE[prof] + " (vanilla stand-in)" if label else prof
+                                if c is None:
+                                    failures.append(f"{name}/{sid}: same-backend strict check is missing the {who} screenshot")
+                                elif slimit is not None and c > slimit:
+                                    failures.append(f"{name}/{sid}: {who} differs from vanilla on {c} pixels where {' and '.join(group)}"
+                                                    f" (drawing the same way) agree exactly, by more than {STRICT_THRESHOLD}/255 (strict limit {slimit})")
+                            backend_lines.append(f"| {sid} | {label or 'Quicksilver'} | {' and '.join(group)} | {gagree} | "
+                                                 + ", ".join(f"{p} {c}" for p, c in gcounts.items()) + " |")
                 measure_lines.append(f"| {sid} | " + " | ".join("skipped" if p not in mrow else ("missing" if mrow[p] is None else f"{mrow[p]['pct']} / {mcounts.get(p)}") for p in PAIRS) + " |")
                 shown = f"not gated ({sc['ciNoStrict']})" if sc.get("ciNoStrict") and f"{name}/{sid}" in NO_STRICT_ALLOWED else (slimit if strict_limits is not None else 'not set yet')
                 strict_lines.append(f"| {sid} | {agree} | {shown} | "
@@ -800,6 +968,13 @@ def main():
         lines.append("| scene | vanilla runs agree on % of pixels | strict limit (pixels) | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
         lines.append("|---|---|---|" + "---|" * len(PAIRS))
         lines.extend(strict_lines)
+        if backend_lines:
+            lines.append("")
+            lines.append("Strict picture where the vanilla runs drawing the same way agree (package 5, Create scenes: Flywheel on in"
+                         " vanilla a and b, off in vanilla old and Vulkan), same strict limits:\n")
+            lines.append("| scene | runs | vanilla runs | agree on % of pixels | strict pixels |")
+            lines.append("|---|---|---|---|---|")
+            lines.extend(backend_lines)
         lines.append("")
         if not QUICK:
             lines.append("Measure runs (Quicksilver loaded, every module off) against vanilla's run of the same profile: % of pixels over"
@@ -1028,6 +1203,7 @@ def main():
                 cell = lambda k: f"{g.get(k)} / {vg.get(k, '-')}"
                 lines.append(f"| {sc['id']} | {cell('drawCallsPerFrame')} | {cell('prepareDrawCallsPerFrame')} | {cell('elementsPerFrame')} | {cell('statesPerFrame')} (pipelines {g.get('pipelinesPerFrame')}, textures {g.get('textureSetupsPerFrame')}, scissors {g.get('scissorAreasPerFrame')}) | {cell('reorderedDrawsPerFrame')} ({cell('reorderedIgnoringTextPerFrame')}) |")
             lines.append("")
+    flywheel(res, failures, lines)
     bench_only(res, failures, lines)
     single_player(res, failures, lines)
     direct_buffers(res, lines)

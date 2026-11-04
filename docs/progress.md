@@ -16,6 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
+| package 5 (Flywheel and Create) | `package-5` | not merged: Andre checks it first; full run green on 7b077f3 (41783885554, rebased on main 8951f5c); see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
@@ -3141,11 +3142,163 @@ Sections drawn per frame (solid/cutout; without culling -> drawn):
 - Try `occlusion=two-phase` on Intel and compare fps and the bench's `waitMsPerFrame` against auto (still camera);
   on Vulkan, check the log line "waiting for the GPU within a frame ..." (a real driver may allow the wait).
 
+## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
+
+### What Flywheel needs, and where it comes from with Quicksilver
+
+Read from Create Fly's code (CC0) and the Flywheel it bundles (`com.zurrtum.create.client.flywheel`, MIT); nothing
+copied. With Sodium, Create Fly's Sodium compat registers a render predicate per block-entity type (Sodium's section
+builder then skips the block entities Flywheel draws) and marks the sprites its renderers use as active. Without
+Sodium it hooks vanilla itself, and Quicksilver keeps every one of those hooks:
+
+- **Block entities Flywheel draws:** Create Fly cancels vanilla's `SectionCompiler.handleBlockEntity` for each one.
+  Quicksilver's mesher calls that very method for every block entity (package 4c), so nothing more was needed. The
+  bench reports the three hooks found in the loaded classes (`flywheel.hooks`).
+- **Light:** Flywheel reads the client light engine and listens to `ClientChunkCache.onLightUpdate`; Quicksilver
+  changes neither.
+- **Section rebuild events:** this Flywheel has none, with Sodium or without.
+- **Animated sprites:** package 8 counts every sprite read outside section meshing as used, which covers Create's
+  and Flywheel's model caches.
+- **Drawing before the terrain:** Flywheel draws its instances into the main colour and depth images at
+  `beforeSolid`. The occlusion module's still-camera pyramid is built from that depth image, so the still-camera
+  stamp now changes in every frame Flywheel drew a visual (`FlywheelCompat.depthStamp`); without Create Fly it is 0
+  and constant.
+
+What Quicksilver adds (`compat/flywheel/`, `mixin/flywheel/`, `quicksilver.flywheel.mixins.json`, loaded only when
+Create Fly and its Flywheel classes are present): Flywheel's backend choice logged with what it means, the frames it
+draws before the terrain counted, and a `flywheel` block in the bench report. Draws go through renderpearl as before;
+Flywheel's own draws are raw OpenGL and in neither run's draw count.
+
+**Found on the way, fixed:** the mesher's foreign-mixin check (package 4c) never saw any mixin: it asked Mixin's
+`ClassInfo` of the target for its applied mixins, which Mixin records on the mixin's own class info. It now reads the
+`@MixinMerged` marks on the target's methods and fields, and logs the full list once. With it working, two mods are
+seen in SIFTEC's pack: Create Fly's `SimpleModelWrapperMixin` (it only makes `bake` return Create's own part class
+for OBJ models, which the hidden-block check never takes; allowed, as Flywheel's section hook is) and The Sift's
+`IchorFluidUvMixin` (changes vanilla's fluid UVs; The Sift's code was not read, its licence could not be checked from
+here). Andre, 2026-11-04: only The Sift's own fluids (`the_sift:ichor`, `the_sift:flowing_ichor`; the mod that owns
+the mixin, found by its jar) go through vanilla's fluid renderer; water, lava and other fluids stay Quicksilver's after
+the per-fluid probe, and the per-section mesher check compares them with vanilla's compiler (Sift mixin included). If a
+fluid mixin's mod can't be found, every fluid goes through vanilla's renderer as before. compare.py checks this in
+every SIFTEC Quicksilver run. Meshing stays under
+vanilla's on every profile (run 41633272149, same-sections median, Quicksilver / vanilla's compiler: full 2.06 / 2.69
+ms at factory).
+
+### CI
+
+- Scenes `kinetics` (creative motor, shafts, cogwheels, gearbox, fan, belt, mixer over basin, press over depot,
+  clockwork bearing's plank hand, a train standing at a station; Flywheel picks its backend) and `kinetics_instancing`
+  (the same view, its own session with Flywheel forced to instancing and Quicksilver's occlusion on still camera).
+  Built by the scene itself on a platform, with the pin mod's `/qsci` for the belt and the train. Details:
+  `docs/ci-limits.md`, "Create scenes (package 5)".
+- Pin mod: Create's animation clock, Flywheel's GPU frame time and particles held in the factory and kinetics areas,
+  every run. `ci/client-run.sh` writes `config/flywheel-client.json` per scene (`flywheelConfig`).
+- compare.py: Flywheel's backend per run and session gated (full `indirect`, old GPU and Vulkan `off`, the forced
+  session `instancing` on full), the `/qsci` steps, the Create clock pin reaching Create's code, and Quicksilver's
+  bench block (hooks present, Create Fly found; where Flywheel draws, the kinetics benches must have seen its visuals
+  drawn before the terrain), a backend line in every SIFTEC session, each Create pin reaching its code (the animation
+  clock; Flywheel's frame time where Flywheel draws); report table "Flywheel (package 5)". `[siftec]` in a commit message
+  adds the SIFTEC suite and vanilla-old to a quick run.
+- Limits: factory strict 500 -> **370**; kinetics and kinetics_instancing strict **30**, with the standing carriage's
+  rectangle masked (its run-to-run noise, vanilla's too) and a second strict check where the vanilla runs that draw the
+  same way agree (Flywheel on in a and b, off in old and Vulkan); 8/255 limits 0.25 (stricter than the rule's 0.30); count baselines for both scenes from runs 41605550531, 41613381142, 41627022279; both on the
+  at-or-under-vanilla draw list (`ci/vanilla-draw-calls.json`).
+- Wandering traders off in every SIFTEC and core session (preamble `gamerule spawn_wandering_traders false`, vanilla's
+  runs and Quicksilver's alike): in run 41644571936 one spawned with two llamas in front of Quicksilver Vulkan's
+  factory_flat camera (1598 strict pixels; the rest of that shot matched vanilla exactly). `spawn_mobs false` and
+  peaceful don't cover them.
+
+### Results (run 41783885554, full, commit 7b077f3, rebased on main: green on attempt 1)
+
+| | full (Flywheel indirect) | old GPU (off) | Vulkan (off) | old GPU two-phase |
+|---|---|---|---|---|
+| kinetics strict pixels, carriage masked (limit 30) | 10 | 8 | 7 | 8 |
+| kinetics, same-backend check (30) | 11 | 8 | 7 | 8 |
+| kinetics_instancing strict (30; full: instancing) | 8 | 8 | 7 | 8 |
+| kinetics_instancing, same-backend check (30) | 9 | 8 | 7 | 8 |
+| factory strict (370) | 0 | 0 | 0 | 0 |
+| sift strict (100; The Sift's ichor through vanilla's fluid renderer) | 55 | 55 | 61 | 55 |
+| kinetics draws per frame, Quicksilver / vanilla (avg) | 8.67 / 101.0 | 10.67 / 127.0 | 8.67 / 102.47 | 11.67 / 127.0 |
+| kinetics terrain GPU MB reserved, Quicksilver / vanilla | 32 / 256 | 32 / 256 | 32 / 256 | 32 / 256 |
+
+Fluids (every SIFTEC profile's log): only `the_sift`'s fluids go through vanilla's renderer; water and lava, still and
+flowing, are drawn by Quicksilver's fluid mesher; no mesher check lines; sift strict pixels as on cc7a8b3 (41657005224).
+
+Mesh order (package 4c), now running: every Quicksilver client log in core and SIFTEC, all four profiles, reads the
+CompileTask and ResortTransparencyTask fields and none falls back; every Quicksilver bench reports the order on (the
+measure runs report it off on purpose). Picks of a visible section during benches, visible / none visible waiting:
+core full 2831 / 79, old GPU 2870 / 63, Vulkan 2788 / 57, two-phase 3064 / 112; SIFTEC 208 / 6, 241 / 1, 173 / 0,
+233 / 4. Pictures, draws and memory as on 1a1fa70; kinetics strict moved within its noise (8-11 against limit 30).
+
+Flywheel on real hardware (read from Flywheel's source in Create Fly, MIT; nothing copied): it picks instancing on
+Intel's driver (indirect's priority drops to 1 there, instancing's is 500) and needs GL 3.3 or
+GL_ARB_shader_bit_encoding for it; its shaders compile at the driver's highest GLSL. CI's old-GPU profile forces GL 3.3
+(GLSL 330), where Create's instance shadow shader does not compile (an int/uint conversion needs GLSL 4.00), so
+Flywheel falls back to off there. A real Intel laptop reports GL 4.6 and runs instancing; CI tests instancing in
+kinetics_instancing on GL 4.5 (Mesa), not on Intel's driver.
+
+Earlier run 41743245393 (1a1fa70), attempts 1 and 2 failed on downloads, not on Quicksilver: in attempt 1 every client's Gradle step got no jars from Maven
+Central (gson, kotlin-metadata, error_prone, cadixdev; their POMs resolved), so no client started; in attempt 2 the
+SIFTEC Quicksilver server's worldgen start died on an SSL error while Fabric's launcher downloaded (its later starts in
+the same job worked). Attempt 3 re-ran that server job and its dependents only. Not fixed: client jobs report success
+when Gradle fails (compare catches it; the workflow is shared with p2-3).
+Vanilla's stand-ins (measure runs) in the same-backend check: 0-4 pixels. Flywheel visuals in the kinetics bench (full):
+24, drawn before the terrain in every frame. Heap and draws at their baselines. Without Create Fly (core suite)
+nothing of this package loads; core passes as before.
+
+**Stock Create Fly:** none exists for 26.3, so only Andre's build is tested (`docs/ci-limits.md`).
+
+### Review (fresh agent, after run 41633272149)
+
+- M1: if reading Flywheel's visual count fails, Quicksilver now counts every frame as Flywheel drawing (it counted none,
+  which let still camera reuse a stale pyramid). M2: kinetics strict limits (70 / 180) were not set by the rule; now 30
+  by package 3's rule with the carriage masked.
+- S1: still camera culls nothing while Flywheel holds visuals; docs corrected, choice 2. S2/S6: CI now fails when
+  Flywheel's hook, a Create pin or a session's backend line is missing. S3: the visual count is read at the end of
+  beforeSolid, after Flywheel's workers. S4: the same-backend strict check. S5: the mesher allowlist matches the
+  mixin and its handler.
+- Nits fixed: notes and comments (old GPU falls back to off, check below, mixin names). Not fixed: `/qsci` has no
+  permission check (CI-only), the bench's frames-drawing count is one over its frame count (window start), kinetics
+  relies on create_ct's F1 coming first.
+- Run 41644571936 (after the fixes) failed factory_flat on Vulkan: a wandering trader spawned in view (see CI);
+  traders are now off.
+
+### Choices (Andre, 2026-11-04)
+
+Confirmed: 1, 2 (keep as is), 3, 5, 6, and factory at 370. Changed: 4 (only The Sift's fluids through vanilla's
+renderer, above). As asked:
+
+1. Stock Create Fly: no 26.3 release; add it to the pack lock when one appears.
+2. On the school laptop (Intel: Flywheel instancing, Quicksilver still camera), still camera culls **nothing** while
+   Flywheel holds any visual anywhere in the level (the stamp changes every frame Flywheel draws; safe, but no
+   occlusion saving in Create worlds). Two-phase (GL with multi-draw indirect) is unaffected. A narrower test (only
+   when Flywheel's instances or frame time change) would need its own CI check.
+3. kinetics_instancing's meshing median is reported, not gated (as factory_flat: mostly-air sections; full 1.12 /
+   0.99 ms in run 41633272149).
+4. The mesher's fixed foreign-mixin check now sends every fluid through vanilla's renderer whenever The Sift is
+   installed (its fluid UV mixin).
+5. The standing train's carriage is out of the strict checks (masked; 8/255 only), because it lands a fraction of a
+   pixel differently in every run, vanilla's too; a pin of its client-side track points did not help.
+6. The mesher's fixed foreign-mixin check also applies without Create Fly: any pack with a mod mixing into vanilla's
+   section compiler, region, plain models or fluid renderer now gets vanilla's code for that part (package 4c's intent;
+   on main such mixins went unnoticed).
+
 ## Open bugs
 
 - **Phase 1 track (Andre, 2026-11-04):** 2b's draw-call gate on `core/old-gpu-2p/flythrough` sits 0.3 above main's own
   reading (limit old-GPU's 67.41 + 3 = 70.41; main 70.13, package 2b's branch 69.17, P2-3's runs 70.54 and 69.96);
   re-collect it by the noise rule from 3 clean runs.
+- **Mesher order fallback in every CI run: fixed in package 5 (Andre, 2026-11-04; package 4c's bug).** Every
+  Quicksilver client logged at its first section "nearest-and-visible-first order off, vanilla's order from now on":
+  26.3's meshing task (`SectionRenderDispatcher$RenderSection$CompileTask`) holds its section twice (it and its
+  superclass are both inner classes of the section, each with its own `this$1`), and `MeshPriority` took two section
+  fields as "not as expected". So package 4c's
+  order never ran in CI (meshes, pictures and the mesher check were unaffected: only the order fell back), and no
+  check caught it (the mesher's fallback check matched other wording). Now one is read and every other section
+  field is checked against it on every read (different sections: vanilla's order, as before); CI fails on the
+  fallback line, on a bench whose order is not on, and on a run whose order never picked a visible section.
+- **core/old-gpu translucent_move direct buffers** on `package-5` (runs 41596247834, 41605550531): 8.24 MB against
+  the limit 8.10, one new direct buffer of 4 MB at that scene; the measure run of the same profile got the same new
+  buffer at 2 MB. Package 5 changes nothing in the core suite; the open direct-buffer bug below.
 
 - **factory_flat meshing gap, package 4c (Andre, 2026-11-01): reported, not gated.** Like-for-like median,
   Quicksilver / vanilla's compiler (ms, same sections, same thread, 564-576 pairs):

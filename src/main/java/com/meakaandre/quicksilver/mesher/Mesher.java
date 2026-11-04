@@ -27,8 +27,6 @@ import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import org.lwjgl.system.MemoryUtil;
-import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
-import org.spongepowered.asm.mixin.transformer.ClassInfo;
 
 /**
  * Quicksilver's section mesher (design doc, package 4c), in place of vanilla's section compiler: vanilla still decides
@@ -46,7 +44,9 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo;
  * <p>Compatibility: vanilla's own block-entity step still runs for every block entity (mods take block entities over
  * there, e.g. Flywheel); fluids a mod draws through Fabric API's fluid handlers go through vanilla's fluid renderer. If
  * a mod Quicksilver doesn't know changes vanilla's section compiler or region copy, vanilla's compiler keeps meshing
- * (one WARN line names the mixins); if one changes vanilla's fluid renderer, every fluid goes through that renderer.
+ * (one WARN line names the mixins); if one changes vanilla's fluid renderer, that mod's own fluids go through vanilla's
+ * renderer (every fluid, if the mixin's mod can't be found), and every other fluid is still compared with vanilla's
+ * renderer once before Quicksilver draws it ({@link FluidProbe}).
  */
 public final class Mesher {
     private Mesher() {
@@ -61,8 +61,13 @@ public final class Mesher {
 
     private static volatile State state = State.STARTING;
     private static volatile String reason = "waiting for the first section";
-    /** Whether fluids go through vanilla's fluid renderer (a mod changes it). */
+    /** Whether every fluid goes through vanilla's fluid renderer (a mod Quicksilver can't name changes it). */
     static volatile boolean fluidsThroughVanilla;
+    /**
+     * The mods (by id, which is their fluids' namespace) that change vanilla's fluid renderer: their fluids go through
+     * it (package 5, Andre 2026-11-04: only The Sift's own fluids, not every fluid, while The Sift is installed).
+     */
+    static volatile java.util.Set<String> fluidModsThroughVanilla = java.util.Set.of();
 
     private static final java.util.concurrent.atomic.AtomicLong CHECK_ORDER = new java.util.concurrent.atomic.AtomicLong();
     /**
@@ -322,11 +327,14 @@ public final class Mesher {
             QuicksilverClient.LOG.warn("Quicksilver debug: quicksilver.debug.vanillaMesher is set, vanilla's section compiler meshes every section");
             return;
         }
+        // package 5: what Mixin reports as applied to the compiler (every mod, Quicksilver's included), so the foreign-mixin
+        // check below can be seen working in CI's logs
+        QuicksilverClient.LOG.info("Quicksilver mesher: mixins applied to vanilla's section compiler (Quicksilver's included): {}", appliedMixins("net/minecraft/client/renderer/chunk/SectionCompiler"));
         List<String> compiler = foreignMixins("net/minecraft/client/renderer/chunk/SectionCompiler");
         compiler.addAll(foreignMixins("net/minecraft/client/renderer/chunk/RenderSectionRegion"));
         if (!compiler.isEmpty()) {
             off("mods change vanilla's section compiler or region: " + String.join(", ", compiler), false);
-            // one line, naming each mod and its mixin
+            // one line, naming each mixin
             QuicksilverClient.LOG.warn("Quicksilver mesher: off for the session (vanilla's section compiler meshes every section): {}",
                 String.join("; ", compiler));
             return;
@@ -342,31 +350,61 @@ public final class Mesher {
         }
         List<String> fluids = foreignMixins("net/minecraft/client/renderer/block/FluidRenderer");
         if (!fluids.isEmpty()) {
-            fluidsThroughVanilla = true;
-            QuicksilverClient.LOG.warn("Quicksilver mesher: every fluid goes through vanilla's fluid renderer, because mods Quicksilver doesn't know"
-                + " change it: {}", String.join(", ", fluids));
+            java.util.Set<String> mods = new java.util.TreeSet<>();
+            boolean unknown = false;
+            for (String line : fluids) {
+                String mod = line.startsWith("mixin ") ? modOf(line.substring("mixin ".length())) : null;
+                if (mod == null) unknown = true;
+                else mods.add(mod);
+            }
+            if (unknown) {
+                fluidsThroughVanilla = true;
+                QuicksilverClient.LOG.warn("Quicksilver mesher: every fluid goes through vanilla's fluid renderer, because mods Quicksilver doesn't know"
+                    + " change it: {}", String.join(", ", fluids));
+            } else {
+                fluidModsThroughVanilla = java.util.Set.copyOf(mods);
+                QuicksilverClient.LOG.warn("Quicksilver mesher: the fluids of {} go through vanilla's fluid renderer, because those mods change it: {};"
+                    + " every other fluid is compared with vanilla's renderer before Quicksilver draws it", String.join(", ", mods), String.join(", ", fluids));
+            }
         }
         state = State.ON;
         reason = "on";
         QuicksilverClient.LOG.info("Quicksilver mesher: on (Quicksilver meshes sections in place of vanilla's section compiler: a snapshot of"
             + " each section, blocks through Quicksilver's Fabric Renderer API renderer, {} fluids, 16-byte vertices written directly)",
-            fluidsThroughVanilla ? "vanilla's renderer for" : "its own mesher for vanilla and Fabric API model");
+            fluidsThroughVanilla ? "vanilla's renderer for"
+                : fluidModsThroughVanilla.isEmpty() ? "its own mesher for vanilla and Fabric API model"
+                : "vanilla's renderer for " + String.join(", ", fluidModsThroughVanilla) + "'s and its own mesher for other");
         if (VERIFY) QuicksilverClient.LOG.info("Quicksilver mesher: per-section check on (debug; outside benches every section Quicksilver meshes"
             + " is also meshed by vanilla's compiler and compared vertex for vertex)");
     }
 
-    /** Mixins applied to a vanilla class by mods other than Quicksilver, Fabric API and Flywheel (whose hooks Quicksilver keeps). */
+    /**
+     * Hooks other mods' mixins add that Quicksilver's mesher keeps, by mixin and merged member (Mixin renames handlers
+     * with a prefix and keeps the handler's own name at the end), so anything else the same mixin class adds later is
+     * still caught.
+     */
+    private static final String[][] KEPT = {
+        // Flywheel hooks vanilla's block-entity step, which Quicksilver's mesher calls for every block entity
+        {"dev.engine_room.flywheel.impl.mixin.visualmanage.SectionCompilerMixin", "flywheel$tryAddBlockEntity"},
+        // the same hook as Create Fly bundles it (package 5): it cancels vanilla's step for the block entities it draws
+        {"com.zurrtum.create.client.mixin.SectionCompilerMixin", "flywheel$tryAddBlockEntity"},
+        // Create Fly's model mixin only makes SimpleModelWrapper.bake return Create's own part class for OBJ models;
+        // the hidden-block check takes parts of exactly vanilla's class, so those are always asked of their model
+        {"com.zurrtum.create.client.mixin.SimpleModelWrapperMixin", "$bake"},
+    };
+
+    /** Mixins applied to a vanilla class by mods other than Quicksilver and Fabric API, but for the hooks in {@link #KEPT}. */
     private static List<String> foreignMixins(String internalName) {
         List<String> out = new ArrayList<>();
         try {
-            ClassInfo info = ClassInfo.forName(internalName);
-            if (info == null) return out;
-            for (IMixinInfo m : info.getAppliedMixins()) {
-                String n = m.getClassName();
+            for (String[] m : mergedMembers(internalName)) {
+                String n = m[0];
                 if (n.startsWith("com.meakaandre.quicksilver.") || n.startsWith("net.fabricmc.fabric.")) continue;
-                // Flywheel hooks vanilla's block-entity step, which Quicksilver's mesher calls for every block entity
-                if (n.equals("dev.engine_room.flywheel.impl.mixin.visualmanage.SectionCompilerMixin")) continue;
-                out.add(modOf(m) + "'s mixin " + n);
+                boolean kept = false;
+                for (String[] k : KEPT) kept |= n.equals(k[0]) && m[1].endsWith(k[1]);
+                if (kept) continue;
+                String line = "mixin " + n;
+                if (!out.contains(line)) out.add(line);
             }
         } catch (Throwable t) {
             out.add("(could not read the mixins applied to " + internalName + ": " + t + ")");
@@ -374,15 +412,51 @@ public final class Mesher {
         return out;
     }
 
-    /** The mod a mixin comes from (Fabric's mixin config decoration), or its config file's name. */
-    private static String modOf(IMixinInfo m) {
+    /** The id of the mod whose jar holds a (mixin) class, or null if none does. */
+    private static String modOf(String className) {
+        String path = className.replace('.', '/') + ".class";
         try {
-            String id = org.spongepowered.asm.mixin.FabricUtil.getModId(m.getConfig());
-            if (id != null && !id.isEmpty() && !"(unknown)".equals(id)) return id;
-        } catch (Throwable ignored) {
-            // not Fabric's mixin, or no mod recorded: the config's name says enough
+            for (net.fabricmc.loader.api.ModContainer mod : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {
+                String id = mod.getMetadata().getId();
+                if (id.equals("minecraft") || id.equals("java")) continue;
+                if (mod.findPath(path).isPresent()) return id;
+            }
+        } catch (Throwable t) {
+            if (t instanceof VirtualMachineError e) throw e;
         }
-        return "the mod of " + m.getConfig().getName();
+        return null;
+    }
+
+    /** Every mixin applied to a class, Quicksilver's included (diagnostic, package 5). */
+    private static String appliedMixins(String internalName) {
+        try {
+            java.util.Set<String> all = new java.util.TreeSet<>();
+            for (String[] m : mergedMembers(internalName)) all.add(m[0]);
+            return all.isEmpty() ? "(none)" : String.join(", ", all);
+        } catch (Throwable t) {
+            return "(could not read: " + t + ")";
+        }
+    }
+
+    /**
+     * Every method and field mixins merged into a class, as {mixin, member name}, read from the {@code @MixinMerged}
+     * marks Mixin leaves on them (runtime retention; injector handlers and overwrites included). Package 5: until then
+     * this asked Mixin's {@code ClassInfo} of the target for its applied mixins, but Mixin records those on the mixin's
+     * own class info, so the target's list was always empty and no foreign mixin was ever seen. Not seen either way:
+     * changes that merge nothing (a final made mutable, access wideners) and mixins into supertypes or interfaces.
+     */
+    private static List<String[]> mergedMembers(String internalName) throws ClassNotFoundException {
+        Class<?> c = Class.forName(internalName.replace('/', '.'), false, Mesher.class.getClassLoader());
+        List<String[]> out = new ArrayList<>();
+        for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+            org.spongepowered.asm.mixin.transformer.meta.MixinMerged a = m.getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
+            if (a != null) out.add(new String[] {a.mixin(), m.getName()});
+        }
+        for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+            org.spongepowered.asm.mixin.transformer.meta.MixinMerged a = f.getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
+            if (a != null) out.add(new String[] {a.mixin(), f.getName()});
+        }
+        return out;
     }
 
     private static void off(String why, boolean failure) {

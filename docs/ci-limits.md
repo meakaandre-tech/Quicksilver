@@ -52,7 +52,7 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | core/particles (+ bare) | a missing, misplaced or wrongly drawn particle (package 8) | of the 49 particles visible in the shot, measured against the `bare` shot without them: **smallest 9 pixels**, next 16, median about 200 | 4 (Andre, 2026-10-27; was 10) | yes, every particle |
 | core/animation (+ behind, front) | an animated block or particle showing another frame than vanilla's (package 8) | the lantern ~600; a block face ~2,500 | 10 | yes |
 | core/animated_items | an animated sprite outside terrain (hotbar, held block, item frame, block display, fire on a mob) showing another frame than vanilla's | the item frame's magma block (~20 px square, ~400) | 10 | yes |
-| siftec/factory | a wrongly drawn Create machine part | a machine ~4,800; one ladder strip ~320 | 500 | machine yes; one ladder strip alone **no** |
+| siftec/factory | a wrongly drawn Create machine part | a machine ~4,800; one ladder strip ~320 | 370 (was 500; package 5) | machine yes; one ladder strip alone **no** |
 | siftec/sift | a wrong block or light in the Sift terrain | a block face at mid distance (~24 px): ~580 | 100 | yes |
 | siftec/hub | a wrong GUI element or text line (package 7) | a line of text ~2,000; one glyph ~20-40 | 10 (was 12,506) | yes |
 | siftec/mam | a wrong item icon or GUI element (package 7) | one item icon (32 px): ~1,000 | 10 (was 155,106) | yes |
@@ -64,6 +64,8 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | core/renderer_off (package 4) | a block drawn wrongly with the block renderer off | one block face (~35 px): ~1,200 | 10 | yes |
 | siftec/factory_flat (package 4) | a wrongly flat-lit Create or SIFTEC part | as factory: a machine ~4,800; one ladder strip ~320 | 40 | yes |
 | siftec/create_ct (package 4) | a wrong connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
+| siftec/kinetics (package 5) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,500; one shaft block (~60 px by 7): ~200; the shaft piece showing between the two cogwheels ~80; the train's carriage ~5,000 | 30 (the carriage's rectangle masked out: 8/255 check only, 2,304 px) | yes, but the carriage: whole carriage yes, one part of it **no** |
+| siftec/kinetics_instancing (package 5) | as kinetics, with Flywheel's instancing backend and still-camera occlusion | as kinetics | 30 (as kinetics) | as kinetics |
 
 The **no** rows are limits already set (by the rule and Andre's earlier decisions) that are larger than the smallest
 thing the scene shows; they are listed for Andre, not changed. Package 7 made the hub and mam scenes quiet and gave
@@ -306,6 +308,9 @@ pixels: the smallest hideable object seen there, the iron golem in the doorway, 
 | core/renderer_off (package 4) | 0/0 in the same three | 0 | 10 |
 | SIFTEC/factory_flat (package 4) | 0/0, 0/26, 0/0 (runs 40274749083, 40279156080, 40287221751) | 0 | 40 (26 x 1.5, rounded up to 10) |
 | SIFTEC/create_ct (package 4; the GUI hidden from 40279156080 on) | 0/0, 0/0 (runs 40279156080, 40287221751; the third run is the branch's final run); before: 32/167 (minimap) | 0 | 10 (floor) |
+| SIFTEC/factory (package 5, Create's clock pinned) | runs 41596247834, 41605550531, 41613381142, 41627022279, 41633272149: 0 everywhere but one state flip of 243 pixels (quicksilver-2p-old in 41605550531; measure-old, a vanilla stand-in, in 41627022279) | 0 or 243 | **370** (was 500; 243 x 1.5, rounded up to 10) |
+| SIFTEC/kinetics (package 5; carriage masked, also checked where same-backend vanilla runs agree) | runs 41613381142, 41627022279, 41633272149 (after the lighting fix): outside the carriage, measure runs (vanilla stand-ins) 0-1 | 7-10, all along the track ties: the 16-byte vertex's rounding | **30** (package 3's finer rule: 10 for the noise, plus 1.5 x the rounding extra 10, rounded up to 10) |
+| SIFTEC/kinetics_instancing (package 5; as kinetics) | the same three runs, outside the carriage: 0-1 | 7-10 (track ties) | **30** (as kinetics) |
 | SIFTEC/ponder (package 7) | final setup: 0/0 in runs 40273668937, 40276630375, 40288414898 (earlier placements: 0/0) | final setup: 0 in every Quicksilver and measure run of those three runs (earlier placements: 3-5 pixels of the minimap in every Quicksilver and measure run, 425 and 578 once; see below) | **10** |
 | core/outline, outline.bare (package 7) | 0/0 in runs 40249146134 to 40260847921 (bare: 40260847921) | 0 (measure runs 0) | **10** |
 
@@ -346,8 +351,10 @@ had no strict limits (skipped since package 1). Factory's first limit (100, run 
 four, a yellow-and-black striped part of one Create machine in the factory is in another phase (its angle or
 texture follows time), in vanilla's runs too (vanilla b against a: 315 pixels in run 40156711337 attempt 2;
 Quicksilver 313-315 in runs 40162905190 and 40166776073). By the rule, 315 x 1.5 = 472.5, rounded up to 100: **500**
-(Andre's OK, 2026-10-25). Package 5 (Flywheel and Create) makes that animation repeatable in CI, vanilla and Quicksilver
-alike, then re-collects and lowers this limit. The map's first limit (13,100, one run) was under-sampled: vanilla runs differ from each
+(Andre's OK, 2026-10-25). Package 5 pinned Create's animation clock in CI (vanilla and Quicksilver alike, see
+"Create scenes (package 5)" below) and re-collected the limit over five full runs: **370**. One flip of 243 pixels
+is left (a yellow-and-black striped part of the leftmost machine, a fraction of a pixel to one side; once in a
+Quicksilver run and once in a vanilla stand-in, both old-GPU, Flywheel off); it does not follow Create's clock. The map's first limit (13,100, one run) was under-sampled: vanilla runs differ from each
 other there by up to 22,532 pixels, because SIFTEC's map shows whichever tiles it has scanned by the time it opens.
 Two attempts to make it steady from the client side (Andre's time box) did not: waiting until two captures 5 s apart
 were identical (run 40161774743: every run steady at once, vanilla runs still 37-44k pixels apart) and standing 60 s
@@ -929,6 +936,44 @@ p99, frames over 50 ms, draw calls and the largest upload per frame.
 - **Measure runs**: no section culled, no pyramid built, no pass split.
 - **`[vulkan]`** in a commit message adds vanilla-vk and quicksilver-vk to a quick run (compared as in full mode; the
   strict check then uses the pixels all three vanilla runs agree on).
+
+## Create scenes (package 5)
+
+**Stock Create Fly:** the brief asks for every Create scene with the stock Create Fly release as well as Andre's
+build. No stock Create Fly exists for 26.3 (Modrinth's newest is 26.2-6.0.9-2, 2026-10-13; the upstream git
+repository's tags and branches stop at 26.2, checked 2026-11-03), so CI runs Andre's build only, from the
+`pack-snapshot` release. When a stock 26.3 release appears it goes in `ci/pack-sources.txt` at a pinned version with
+its hash in the lock, as a second SIFTEC pack.
+
+**What the pin mod holds (every client run, vanilla and Quicksilver alike, only while the player is in the factory
+or kinetics area):** Create's CPU animation clock (`AnimationTickHolder.getTicks`, `getPartialTicks`: 37 ticks +
+0.25), Flywheel's GPU frame time (the ticks and partial tick written into its frame uniforms) and particles. The
+kinetics scene builds itself on a platform at y 239 (guarded by a bedrock marker), with the pin mod's `/qsci`
+command for what has no plain command: a belt (Create's own `BeltConnectorItem.createBelts`) and a train
+(the station's assembly mode, a carriage of casings on a bogey, glued, assembled; nothing burning, a blaze
+burner's flame follows the client tick). Its setup clears the hologram scene's platform above it (y 288-289),
+which shades it on OpenGL and not on Vulkan, where the hologram scene doesn't run.
+
+**What stays noisy:** a standing train's carriage lands a fraction of a pixel to one side from run to run, in
+vanilla's own runs too (vanilla stand-ins up to 78 strict pixels on the carriage, run 41633272149). A pin that put
+the client's carriage points at the server's synced places (runs 41627022279, 41633272149) did not change that and
+was removed. The carriage's rectangle (`ciStrictMask` 640,260-730,345) is left out of the strict checks; the 8/255
+check (0.25%, 2,304 pixels) still sees a missing or doubled carriage, not a wrong part of it. Outside it, about 10
+single pixels along the track's ties differ in every Quicksilver run and in no measure run: the 16-byte vertex's
+rounding (23.5% of the scene's vertices rounded; package 3's rounding extra).
+
+**Same-backend strict check** (`ciBackendStrict`, kinetics scenes): vanilla a and b draw the machines through
+Flywheel, vanilla old and Vulkan through vanilla's renderers, so the four runs agree on none of those pixels
+(96.1% agreement, about 36,000 pixels short of a and b's) and the usual strict check can't see a wrong machine on the
+full profile. Each profile is checked again on the pixels where the vanilla runs drawing the same way agree (full
+against a and b, 99.2%; old GPU and Vulkan against old and Vulkan, 96.0%), with the same limit, measure runs included.
+Run 41633272149, carriage masked: 8-9 strict pixels per profile, all on the track ties.
+
+**Flywheel's backend per profile** (checked by compare.py from the pin mod's log, each session): full
+`flywheel:indirect`; kinetics_instancing's session `flywheel:instancing` (forced in `config/flywheel-client.json`);
+old GPU `flywheel:off` (GL 3.3: instancing's shaders don't compile, vanilla's run falls back too); Vulkan
+`flywheel:off` (no OpenGL). Flywheel draws with raw OpenGL, outside renderpearl, so its draws are in neither
+run's draw count.
 
 ## Server suite (phase 2, P2-0)
 

@@ -24,6 +24,8 @@ import net.minecraft.world.level.material.FluidState;
  * that differs anywhere (a mod's fluid drawn in a way Quicksilver's mesher doesn't know, such as a texture spread over
  * several blocks), or whose drawing fails on the made-up level, goes through vanilla's renderer for the session, as a
  * fluid with a Fabric API handler does. The answer is kept per fluid and model, so a resource reload asks again.
+ * A fluid of a mod that changes vanilla's fluid renderer ({@link Mesher#fluidModsThroughVanilla}) goes through vanilla's
+ * renderer without a probe: its mixin may draw it differently on the real level than on the made-up one.
  */
 final class FluidProbe {
     private FluidProbe() {
@@ -50,8 +52,10 @@ final class FluidProbe {
         }
         String bad;
         long t0 = System.nanoTime();
+        String ns = net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getType()).getNamespace();
         try {
-            bad = probe(worker.prober(), renderer, region.cardinalLighting(), region.getLightEngine(), fluid);
+            bad = Mesher.fluidModsThroughVanilla.contains(ns) ? "its mod changes vanilla's fluid renderer"
+                : probe(worker.prober(), renderer, region.cardinalLighting(), region.getLightEngine(), fluid);
         } catch (Throwable t) {
             if (t instanceof VirtualMachineError e) throw e;
             bad = "drawing it on a made-up level failed: " + t;

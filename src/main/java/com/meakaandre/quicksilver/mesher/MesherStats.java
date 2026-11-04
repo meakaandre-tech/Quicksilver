@@ -143,7 +143,9 @@ public final class MesherStats {
         o.addProperty("state", Mesher.state());
         o.addProperty("reason", Mesher.reason());
         o.addProperty("fallbacks", FALLBACKS.get());
-        o.addProperty("fluids", Mesher.fluidsThroughVanilla ? "vanilla's renderer" : "Quicksilver's");
+        o.addProperty("fluids", Mesher.fluidsThroughVanilla ? "vanilla's renderer"
+            : Mesher.fluidModsThroughVanilla.isEmpty() ? "Quicksilver's"
+            : "Quicksilver's, vanilla's renderer for " + String.join(", ", Mesher.fluidModsThroughVanilla) + "'s");
         long m = MESHED.get();
         o.addProperty("sectionsMeshed", m);
         o.addProperty("msPerSectionSinceStart", m == 0 ? 0 : Math.round(MESHED_NANOS.get() / 1e3 / m) / 1000.0);

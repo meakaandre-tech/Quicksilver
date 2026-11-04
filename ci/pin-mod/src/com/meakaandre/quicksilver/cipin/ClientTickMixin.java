@@ -13,5 +13,6 @@ public abstract class ClientTickMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void quicksilverCi$pinAreas(CallbackInfo ci) {
         Pins.clientTick((Minecraft) (Object) this);
+        com.meakaandre.quicksilver.cipinstate.CreatePins.clientTick((Minecraft) (Object) this);
     }
 }
