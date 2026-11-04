@@ -17,7 +17,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 | track | branch | status |
 |---|---|---|
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
-| phase 2, P2-3 (logic II) | branch `p2-3`, not merged | final full run: see "Phase 2, P2-3", "Final run"; brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -11%, mobs -10%, factories within noise (P2-3b next); Andre checks it |
+| phase 2, P2-3 (logic II) | branch `p2-3`, not merged | full run 41743838980 green (`a75e831`); see "Phase 2, P2-3"; brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -11%, mobs -10%, factories within noise (P2-3b next); Andre checks it |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
@@ -2579,7 +2579,26 @@ not a P2-3 difference; no limit touched. The next full run measures it again (re
 
 ### Final run
 
-Full run 41742863681 (pending).
+Full run [41743838980](https://github.com/meakaandre-tech/Quicksilver/actions/runs/41743838980) on `a75e831` (rebased on
+main `6a8f81d`): **green**. `core/old-gpu-2p/flythrough` read 69.96 draw calls per frame (limit 70.41).
+
+| scene | vanilla MSPT median | Quicksilver MSPT median | Quicksilver / vanilla, median (rounds) | gate |
+|---|---|---|---|---|
+| core `village` | 1.047 | 0.908 | -13.7% (0.81 to 0.93) | faster: pass |
+| core `mobs` | 1.908 | 1.751 | -10.9% (0.88 to 0.94) | faster: pass |
+| core `factory` | 0.292 | 0.278 | -4.5% (0.91 to 1.11) | no-regression: pass |
+| SIFTEC `factory` | 0.927 | 0.891 | -1.6% (0.92 to 1.05) | no-regression: pass |
+| core `random` | 0.388 | 0.411 | +2.2% | no-regression: pass |
+| core `run` | 0.571 | 0.569 | 0.0% | reported |
+| SIFTEC `train` | 1.589 | 1.521 | -4.9% | reported |
+
+Where it came from (JFR round, ms per tick, vanilla to Quicksilver): village 1.06 to 1.01 (brain behaviours 0.46 to 0.39,
+block state reads 0.12 to 0.07); core factory 0.33 to 0.31 (block entity ticking checks 0.026 to 0.010, container and
+item lookups 0.08 to 0.07); SIFTEC factory 1.00 to 0.99 (block entities 0.46 to 0.44); mobs 2.11 to 1.86 (P2-2's
+block state reads 0.42 to 0.12). Correctness as in "Results": worldgen byte for byte (core, SIFTEC, Terralith), world
+diffs, random-tick run, every GameTest in the same tick (villager_trade at 41 in all four runs), SIFTEC's self-tests, the
+train's 11 arrivals at the same ticks, the contraption check, network, heap; perf worlds equal in every round (mobs, both
+factories); phase 1's client suite passed; no Logic fallback.
 
 ### Andre's decisions
 
