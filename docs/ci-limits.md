@@ -1086,15 +1086,17 @@ optimisation switched off in turn Quicksilver's rounds landed in the same few ou
 Without cats, 92 to 147 keys (run 41582130588: 24 vanilla rounds); on a smaller field inside the force-loaded area,
 121 to 137 (run 41585188944: villagers spawned iron golems). With that much of the world in vanilla's noise, "equal
 where vanilla's eight rounds agree" is a sample of whatever those rounds happened to agree on, and failed on outcomes
-vanilla also reaches: judged against the other seven of its own rounds, each vanilla round fails that gate in 4 or 5
-of 8 rounds in each of the three scenes of run 41585188944. The scene keeps no cats (an animal chooses where to wander by light level, worked out on the light
+vanilla also reaches. Tested vanilla against itself (run 41585188944, each of its three scenes): each of vanilla's
+rounds 2 to 8, compared with round 1 and taking the other six of rounds 2 to 8 as the noise, has keys outside that noise
+in 4 or 5 of the 7. The scene keeps no cats (an animal chooses where to wander by light level, worked out on the light
 engine's thread). What P2-3 changes in villagers is gated where vanilla repeats: the server suite's scripted run (three
-villagers with job sites, world diff exact), the villager_job and villager_trade GameTests (same tick), SIFTEC's runs,
-and verify mode (below) on every brain walk there.
+villagers with job sites, world diff exact) and the villager_job and villager_trade GameTests (same tick), in core and
+SIFTEC; verify mode (below) checks every brain walk in the heap run.
 
 **Verify mode** (`-Dquicksilver.debug.verifyLogic=true`, the server suite's heap run, `ci/server/server-run.sh`): each P2-3
 shortcut is checked against vanilla's own answer as it is used (a brain's copy against its behaviour maps; a skipped
 hopper entity lookup run anyway and required empty; a kept chunk-ticking or `isValid` answer against vanilla's call), and
 the optimisation falls back on any difference, which CI fails. Only the heap run (12000 ticks of the scripted area in
 every suite; its world isn't diffed) has it: worldgen, the GameTests, the scripted and random-tick runs and the perf job
-play the code that ships, and their worlds are gated.
+play the code that ships, and their worlds are gated. The heap gate (P2-1) is measured in that run with verify on: the
+checks call vanilla's own lookups as well, so Quicksilver's side does more work there, never less.

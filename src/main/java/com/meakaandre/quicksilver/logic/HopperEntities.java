@@ -64,7 +64,7 @@ public final class HopperEntities {
             // time that ever happens the class object gets its hash code, and every hash code the server thread hands out
             // after that depends on when. Ask for it here too, at the same point (later calls cost nothing and change
             // nothing; the per-section lists vanilla's lookup would also make are never read in an order that matters)
-            ITEM_CLASS.hashCode();
+            ITEM_CLASS.hashCode(); // its result isn't needed: the call itself is the point, so it must stay
         }
         return !any.found;
     }

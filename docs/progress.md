@@ -17,7 +17,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 | track | branch | status |
 |---|---|---|
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
-| phase 2, P2-3 (logic II) | branch `p2-3`, not merged | full run green on the final SHA (see "Phase 2, P2-3"); brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -11%, mobs -10%, factories within noise (P2-3b next); Andre checks it |
+| phase 2, P2-3 (logic II) | branch `p2-3`, not merged | final full run: see "Phase 2, P2-3", "Final run"; brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -11%, mobs -10%, factories within noise (P2-3b next); Andre checks it |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
@@ -2502,7 +2502,7 @@ Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQ
 `LevelBlockEntityTickMixin`, `BoundTickingBlockEntityMixin`, `SimulationChunkTrackerMixin`,
 `ServerChunkCacheChangesMixin`; `Optimisations.java`, `LogicMixins.java`, `Logic.java`), the perf scenes
 (`ci/server/scripted-run-core-factory.txt`, `scripted-run-core-village.txt`, `scripted-run-siftec-factory.txt`,
-`perf-core.txt`, `perf-siftec.txt`), `perf-jfr.py` (finer phases), `perf-run.sh` and `compare-p2.py` (gates, the
+`perf-core.txt`, `perf-siftec.txt`), `quicksilver.logic.mixins.json`, `perf-jfr.py` (finer phases), `perf-run.sh` and `compare-p2.py` (gates, the
 `world-report` mode), `server-run.sh` (verify mode in the heap run), `NOTICE`, `docs/ci-limits.md` (section "P2-3").
 Rebased on main after package 2b (`6a8f81d`); no phase 1 file touched.
 
@@ -2541,13 +2541,16 @@ ticks vanilla runs; a sleeping furnace is exact only with every wake-up hooked, 
 POI and pathfinding (under 0.1 ms in the village); Lithium's `non_poi_block_search` and `useless_sensors` (sensors
 0.05 ms).
 
-### Results (full run 41589846004 on `f13bc56`; same runner, seven round pairs, median of the per-round ratios)
+### Results (full run 41589846004 on `f13bc56`: failed; same runner, seven round pairs, median of the per-round ratios)
+
+That run failed two gates: core `factory` under the gate then in force ("faster": median 1.005, not below 1; Andre then
+moved it to no-regression, 2026-11-04) and one client line (below, "Client suite"). The gate column shows today's gates.
 
 | scene | vanilla MSPT median | Quicksilver MSPT median | Quicksilver / vanilla, median | gate |
 |---|---|---|---|---|
 | core `mobs` | 2.454 | 2.174 | -10.2% | faster: pass |
 | core `village` | 1.329 | 1.195 | -11.0% (every round 0.85 to 0.92) | faster: pass |
-| core `factory` | 0.373 | 0.369 | +0.5% (0.88 to 1.04) | no-regression: pass |
+| core `factory` | 0.373 | 0.369 | +0.5% (0.88 to 1.04) | no-regression: pass ("faster" then: failed) |
 | SIFTEC `factory` | 0.659 | 0.670 | +1.7% (0.92 to 1.05) | no-regression: pass |
 | core `random` | 0.516 | 0.497 | +1.2% | no-regression: pass |
 | core `run` | 0.731 | 0.709 | -4.2% | reported |
@@ -2572,13 +2575,19 @@ Run 41589846004: every pixel check and count passed except one line, package 2b'
 read 70.13 on main's own full run (41396095000, `e8e771c`) and 69.17 on package 2b's branch, with the same sections
 drawn (312.5 of 402.9 here, 312.7 of 401.0 on main). P2-3 changes nothing on the client's renderer; it runs only in the
 client's integrated server (which can move when chunks arrive). Read as package 2b's gate sitting at main's own value,
-not a P2-3 difference; no limit touched. The next full run measures it again (result in "Final run").
+not a P2-3 difference; no limit touched. The next full run measures it again (result in "Final run", below).
+
+### Final run
+
+Full run 41742863681 (pending).
 
 ### Andre's decisions
 
 - 2026-11-02: P2-3 keeps vanilla's exact block and chunk lookups; the hopper container cache is P2-3b (plan above).
 - 2026-11-02: SIFTEC factory MSPT gates regressions only (at most 1.10), reported otherwise.
 - 2026-11-04: core factory MSPT gates regressions only too; "factory MSPT down" is P2-3b's done-when.
+- **Awaiting Andre:** the village scene's world reported, not gated (vanilla's own rounds don't repeat it;
+  `docs/ci-limits.md`, "P2-3"); its MSPT stays gated "faster".
 
 ### Review
 
@@ -2599,6 +2608,8 @@ seven, fails it in 4 or 5 of 8). Nits fixed: docs (hopper counts, cats, verify),
   copy carries on. No vanilla path does this.
 - The village world isn't gated (vanilla's noise); villagers are gated in the server suite's scripted run, the
   villager GameTests and SIFTEC's runs, and checked by verify mode in the heap run.
+- No CI scene or GameTest has a container entity (a hopper minecart or chest boat) for a hopper to find, so
+  hopper-entities' "found one" path (vanilla's lookup runs) is not exercised; P2-3b's minecart test covers it.
 - Diagnostic branch `p2-3-diag` (the runs that found the village's noise) is still on the remote; not for merge.
 
 ## Phase 2, P2-2: Logic I, movement and access (merged as `be948a4`; main green, run 41313195874)
@@ -2779,7 +2790,8 @@ the container above it and in front of it every tick) untouched. P2-3b breaks th
   since (the per-section write counters P2-2's `block-collisions` already keeps), or the hopper's own state changed.
   Its own switch (`logic.hopper-cache`) and fallback, off with Lithium installed.
 - **A test of its own for the chunk-ticket difference**, compared with vanilla: hoppers and containers on a chunk border
-  next to a chunk that is about to unload, and a hopper pulling from a hopper minecart crossing the border. Gated like
+  next to a chunk that is about to unload, and a hopper pulling from a hopper minecart crossing the border (this also
+  covers P2-3's hopper-entities finding a container entity, which no CI scene has yet). Gated like
   the world diff (equal where vanilla's runs agree).
 - **Done when** (Andre, 2026-11-04): factory MSPT down against vanilla (the core and SIFTEC factory scenes, same
   runner; both gate regressions only in P2-3, whose saving there is smaller than their noise: `docs/ci-limits.md`,

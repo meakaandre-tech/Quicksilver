@@ -126,8 +126,9 @@ if [ -f "$heap_script" ] && [ -f server-base.tar ]; then
   (cd "$srv" && tar xf "$root/server-base.tar" && mv base world)
   props world normal
   # P2-3: the heap run (12000 ticks of the scripted area; its world isn't diffed) also checks every Logic shortcut against
-  # vanilla's own answer as it is used (verify mode: any difference falls back, which CI fails); the gated runs above
-  # play the code that ships
+  # vanilla's own answer as it is used (verify mode: any difference falls back, which CI fails); the world-diffed runs
+  # above play the code that ships. The heap gate is measured here with verify on (more work on Quicksilver's side, not
+  # less)
   serve heap 1800 -Dci.harness.run="$root/$heap_script" -Dci.harness.heap=true -Dci.harness.ticks=12000 -Dquicksilver.debug.verifyLogic=true
   grep -q 'CI HARNESS RUN DONE' "$OUT/heap-server.log" || echo "heap run: did not finish"
   rm -rf "$srv/world" "$srv/quicksilver"
