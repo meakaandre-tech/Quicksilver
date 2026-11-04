@@ -1146,3 +1146,33 @@ the optimisation falls back on any difference, which CI fails. The verify run (`
 suite with a scripted run (`compare-p2.py`); its world isn't kept. Only those two runs (neither world is diffed) have it: worldgen, the GameTests, the scripted and random-tick runs and the perf job
 play the code that ships, and their worlds are gated. The heap gate (P2-1) is measured in that run with verify on: the
 checks call vanilla's own lookups as well, so Quicksilver's side does more work there, never less.
+
+### P2-3b: hopper container cache, the border run
+
+**The border run** (core, `ci/server/scripted-run-core-border.txt`, `server-run.sh` step 3c, saved to `border/`): hoppers
+and containers on each chunk border from x 15|16 to 63|64 (pairs facing east and west, double chests across the
+border, hoppers into air and into furnaces, comparators), at the edge of a second force-loaded area (chunk 3) that the
+run lets go at tick 300, so chunk 2 drops to full-not-ticking (33), chunk 3 to 34 and chunk 4 to 35 while chunk 1's
+hoppers keep giving to containers in chunk 2; and a chest minecart and a hopper minecart going round a powered-rail
+loop across the chunk border x -1|0, with hoppers under the track taking from them (the "found one" path of P2-3's
+hopper-entities, which no other scene has). Placed border by border, so consecutive hoppers tick in different chunks
+and the server's four-chunk lookup cache misses often.
+
+**The chunk watch** (script line `watch-chunks`, `ChunkWatch.java`): at the end of every tick, for each chunk in
+x -2..6, z -2..1, its tickets (every field, the type by registry name), its holder's ticket level and full status and
+whether it ticks blocks, and the server's last four chunks (read by reflection, without changing them). Each change is
+written down with its tick. A chunk lookup that misses the four gives its chunk a one-tick ticket and moves the four
+along, so a lookup added or skipped where vanilla's would miss changes this history at the tick it happens.
+
+| check | key | gate |
+|---|---|---|
+| border run (core) | the run finishes its ticks, no failed command | always |
+| border run's chunk watch | the whole history of changes, event by event | vanilla-a, b and c equal (else the harness isn't deterministic: fail); Quicksilver equal to them |
+| world diff after the border run | the world diff's keys | equal where vanilla agrees |
+| border verify run (full mode, quicksilver) | the border run again with verify mode (`border-verify-server.log`), world not kept | must finish; no fallback |
+
+Smallest thing it must catch: one ticket at one tick (one skipped or added miss), one change to the last four chunks,
+one block entity field, one item stack. Known limit: chunks this close to area A never unload from memory (that needs
+every ticket 11 chunks away, outside the base world); "about to unload" here is dropping out of full status and of
+block ticking. Chunks aren't let go and loaded again within the run either: a chunk's entities then load from disk on
+another thread, at no fixed tick.
