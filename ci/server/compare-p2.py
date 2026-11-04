@@ -298,6 +298,17 @@ def server(res, rep):
         if got["vanilla-a"] and got["quicksilver"] and got["quicksilver"] != got["vanilla-a"]:
             sink.append("siftec contraption: quicksilver differs from vanilla (%s / %s)" % (got["quicksilver"][:200], got["vanilla-a"][:200]))
 
+    # the verify run (P2-3, full mode): every suite with a scripted run has one in its quicksilver run, and it finished
+    # (its status line and fallbacks are checked below with every other server log's)
+    if os.environ.get("CI_MODE") == "full":
+        for suite in expected_suites():
+            if not os.path.exists(os.path.join(HERE, "scripted-run-%s.txt" % suite)):
+                continue
+            sink = owed if suite in REPORT_ONLY_SUITES else fails
+            log = text(os.path.join(res, suite + "-quicksilver", "verify-server.log"))
+            if "CI HARNESS RUN DONE" not in log:
+                sink.append("%s verify run: missing or did not finish" % suite)
+
     # the Logic module in the server suite's runs (every server start: worldgen, GameTests, scripted, random-tick, heap)
     lines.append("## Logic module in the server suite\n\n| run | status |\n|---|---|")
     for d in sorted(glob.glob(os.path.join(res, "*-*"))):

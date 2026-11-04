@@ -522,6 +522,8 @@ jobs:
           SUITE: ${{ matrix.suite }}
           RUN: ${{ matrix.run }}
           OUT: /tmp/sout/${{ matrix.suite }}-${{ matrix.run }}
+          # P2-3: full mode adds a verify run of the scripted area to the quicksilver run
+          CI_MODE: ${{ needs.mode.outputs.mode }}
         run: bash ci/server/server-run.sh
       - uses: actions/upload-artifact@v4
         if: always()

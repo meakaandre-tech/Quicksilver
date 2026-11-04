@@ -1093,10 +1093,11 @@ engine's thread). What P2-3 changes in villagers is gated where vanilla repeats:
 villagers with job sites, world diff exact) and the villager_job and villager_trade GameTests (same tick), in core and
 SIFTEC; verify mode (below) checks every brain walk in the heap run.
 
-**Verify mode** (`-Dquicksilver.debug.verifyLogic=true`, the server suite's heap run, `ci/server/server-run.sh`): each P2-3
+**Verify mode** (`-Dquicksilver.debug.verifyLogic=true`, the server suite's heap run and, in full mode, a verify run of
+the scripted area in each quicksilver run, `ci/server/server-run.sh`; Andre, 2026-11-04): each P2-3
 shortcut is checked against vanilla's own answer as it is used (a brain's copy against its behaviour maps; a skipped
 hopper entity lookup run anyway and required empty; a kept chunk-ticking or `isValid` answer against vanilla's call), and
-the optimisation falls back on any difference, which CI fails. Only the heap run (12000 ticks of the scripted area in
-every suite; its world isn't diffed) has it: worldgen, the GameTests, the scripted and random-tick runs and the perf job
+the optimisation falls back on any difference, which CI fails. The verify run (`verify-server.log`) must finish in every
+suite with a scripted run (`compare-p2.py`); its world isn't kept. Only those two runs (neither world is diffed) have it: worldgen, the GameTests, the scripted and random-tick runs and the perf job
 play the code that ships, and their worlds are gated. The heap gate (P2-1) is measured in that run with verify on: the
 checks call vanilla's own lookups as well, so Quicksilver's side does more work there, never less.

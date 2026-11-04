@@ -2533,7 +2533,8 @@ vanilla, no reflection, no threads, no block or chunk lookup added or skipped.
 | `hopper-entities` | each entity section counts its item entities and container entities; a hopper's item or container entity lookup answers vanilla's empty list when no section vanilla's lookup would visit holds one. A skipped item lookup still asks for the item class's hash code where vanilla's first ever lookup would (review) | own; idea from Lithium's hopper entity trackers |
 | `block-entity-checks` | in `tickBlockEntities`, a "yes" from the chunk ticking check given again for the same chunk while no simulation level can have changed (a counter on every simulation-level write and distance-manager update); `BlockEntityType.isValid` remembered per tick wrapper for the same state and type | Lithium `chunk_tickable` (header, NOTICE), with the change counter added; `isValid` own |
 
-Verify mode (`-Dquicksilver.debug.verifyLogic=true`, the server suite's heap run): every shortcut checked against
+Verify mode (`-Dquicksilver.debug.verifyLogic=true`, the server suite's heap run and, in full mode, a verify run of the
+scripted area): every shortcut checked against
 vanilla's own answer as it is used; a difference falls back, which CI fails.
 
 Not built: hopper container caching (P2-3b, Andre 2026-11-02); Lithium's furnace and hopper sleeping (they skip
@@ -2605,8 +2606,12 @@ factories); phase 1's client suite passed; no Logic fallback.
 - 2026-11-02: P2-3 keeps vanilla's exact block and chunk lookups; the hopper container cache is P2-3b (plan above).
 - 2026-11-02: SIFTEC factory MSPT gates regressions only (at most 1.10), reported otherwise.
 - 2026-11-04: core factory MSPT gates regressions only too; "factory MSPT down" is P2-3b's done-when.
-- **Awaiting Andre:** the village scene's world reported, not gated (vanilla's own rounds don't repeat it;
+- 2026-11-04: the village scene's world stays reported, not gated (vanilla's own rounds don't repeat it;
   `docs/ci-limits.md`, "P2-3"); its MSPT stays gated "faster".
+- 2026-11-04: verify mode also gets a run of its own: in full mode each quicksilver server-suite run plays the scripted
+  area again with verify on (`verify-server.log`, must finish; no fallback).
+- 2026-11-04: diagnostic branch `p2-3-diag` deleted. Squash-merge P2-3 once the full run with the verify run is green;
+  P2-3b in a new chat.
 
 ### Review
 
@@ -2629,7 +2634,6 @@ seven, fails it in 4 or 5 of 8). Nits fixed: docs (hopper counts, cats, verify),
   villager GameTests and SIFTEC's runs, and checked by verify mode in the heap run.
 - No CI scene or GameTest has a container entity (a hopper minecart or chest boat) for a hopper to find, so
   hopper-entities' "found one" path (vanilla's lookup runs) is not exercised; P2-3b's minecart test covers it.
-- Diagnostic branch `p2-3-diag` (the runs that found the village's noise) is still on the remote; not for merge.
 
 ## Phase 2, P2-2: Logic I, movement and access (merged as `be948a4`; main green, run 41313195874)
 
@@ -3136,6 +3140,10 @@ Sections drawn per frame (solid/cutout; without culling -> drawn):
   on Vulkan, check the log line "waiting for the GPU within a frame ..." (a real driver may allow the wait).
 
 ## Open bugs
+
+- **Phase 1 track (Andre, 2026-11-04):** 2b's draw-call gate on `core/old-gpu-2p/flythrough` sits 0.3 above main's own
+  reading (limit old-GPU's 67.41 + 3 = 70.41; main 70.13, package 2b's branch 69.17, P2-3's runs 70.54 and 69.96);
+  re-collect it by the noise rule from 3 clean runs.
 
 - **factory_flat meshing gap, package 4c (Andre, 2026-11-01): reported, not gated.** Like-for-like median,
   Quicksilver / vanilla's compiler (ms, same sections, same thread, 564-576 pairs):
