@@ -135,6 +135,18 @@ public final class HopperCache {
         }
     }
 
+    /**
+     * A hopper's lookup of {@code pos} whose block vanilla has already read ({@code state}): started here if its block
+     * read didn't start it (that hook is optional). Vanilla's read was the lookup's first chunk lookup, so whether the
+     * rest would miss is decided after it, as for any lookup.
+     */
+    public static void beginAfterRead(Level level, Entry e, BlockPos pos, BlockState state) {
+        if (current == e && isCurrent(pos)) return;
+        begin(level, e, pos);
+        if (currentHit && state != e.state) currentHit = false;
+        if (!currentHit) currentState = state;
+    }
+
     /** Ends the current lookup (always, also on an exception). */
     public static void end() {
         current = null;

@@ -135,6 +135,11 @@ public final class Logic {
             return;
         }
         LOG.info("Quicksilver logic: {}", status());
+        if (on(HopperCache.ID) && LogicMixins.transformed("net.minecraft.world.level.block.entity.HopperBlockEntity")) {
+            // logic.hopper-cache's one optional hook: the block read just before a hopper's source lookup
+            LOG.info("Quicksilver logic: hopper-cache source block read {}",
+                LogicMixins.called("net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$sourceState") ? "hooked" : "not hooked (vanilla reads it)");
+        }
     }
 
     /** One line: every optimisation's state, for the log at start-up (and CI). */

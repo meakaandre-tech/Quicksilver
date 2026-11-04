@@ -68,8 +68,7 @@ final class Optimisations {
         // P2-3b
         new Opt(HopperCache.ID, "hoppers remember the block they take from and the one they give to while its section and block entity stay as they were, answering only where vanilla's chunk lookups change nothing",
             List.of("HopperCacheMixin", "HopperCacheInvoker", "ServerChunkCacheRecentAccessor", "PalettedContainerMixin"),
-            List.<String[]>of(new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$sourceState"},
-                new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$source"},
+            List.<String[]>of(new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$source"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$attached"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$targetState"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$blockContainer"},
@@ -110,14 +109,17 @@ final class Optimisations {
         for (Opt o : ALL) {
             Logic.Switch s = switchOf(o.id());
             if (s == null || !s.on) continue;
+            List<String> missing = new java.util.ArrayList<>();
             for (String[] h : o.hooks()) {
                 String key = o.id() + "#" + h[0] + "#" + h[1];
                 if (CHECKED.contains(key) || !LogicMixins.transformed(h[0])) continue;
                 // "call:" an injection that must be called from the target's own code; otherwise a member it must have
                 boolean ok = h[1].startsWith("call:") ? LogicMixins.called(h[0], h[1].substring(5)) : LogicMixins.member(h[0], h[1]);
                 CHECKED.add(key);
-                if (!ok) Logic.fallback(s, "hook " + h[1] + " did not land in " + h[0], null);
+                if (!ok) missing.add(h[1] + " in " + h[0]);
             }
+            // every hook that didn't land, in one line (the first one alone leaves the rest unknown)
+            if (!missing.isEmpty()) Logic.fallback(s, "hook" + (missing.size() > 1 ? "s " : " ") + String.join(", ", missing) + " did not land", null);
         }
     }
 

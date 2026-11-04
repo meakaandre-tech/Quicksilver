@@ -88,6 +88,14 @@ public abstract class HopperCacheMixin implements HopperCache.Holder {
     @Redirect(method = "suckInItems(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/block/entity/Hopper;)Z",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/HopperBlockEntity;getSourceContainer(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/block/entity/Hopper;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/world/Container;"))
     private static Container quicksilver$source(Level level, Hopper hopper, BlockPos pos, BlockState state) {
+        if (HopperCache.SWITCH.on && hopper instanceof HopperCache.Holder h) {
+            try {
+                HopperCache.beginAfterRead(level, h.quicksilver$extract(), pos, state);
+            } catch (Throwable t) {
+                HopperCache.SWITCH.fail(t);
+                HopperCache.end();
+            }
+        }
         try {
             return HopperCacheInvoker.quicksilver$vanillaSource(level, hopper, pos, state);
         } finally {
