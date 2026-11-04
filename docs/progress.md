@@ -16,7 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
-| package 5 (Flywheel and Create) | `package-5` | not merged: Andre checks it first; full run green on 1a1fa70 (41743245393); see "Package 5" below |
+| package 5 (Flywheel and Create) | `package-5` | not merged: Andre checks it first; full run green on 7b077f3 (41783885554, rebased on main 8951f5c); see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
@@ -3207,22 +3207,36 @@ ms at factory).
   factory_flat camera (1598 strict pixels; the rest of that shot matched vanilla exactly). `spawn_mobs false` and
   peaceful don't cover them.
 
-### Results (run 41743245393, full, commit 1a1fa70: green on attempt 3)
+### Results (run 41783885554, full, commit 7b077f3, rebased on main: green on attempt 1)
 
 | | full (Flywheel indirect) | old GPU (off) | Vulkan (off) | old GPU two-phase |
 |---|---|---|---|---|
-| kinetics strict pixels, carriage masked (limit 30) | 8 | 8 | 7 | 9 |
-| kinetics, same-backend check (30) | 9 | 8 | 7 | 9 |
+| kinetics strict pixels, carriage masked (limit 30) | 10 | 8 | 7 | 8 |
+| kinetics, same-backend check (30) | 11 | 8 | 7 | 8 |
 | kinetics_instancing strict (30; full: instancing) | 8 | 8 | 7 | 8 |
 | kinetics_instancing, same-backend check (30) | 9 | 8 | 7 | 8 |
 | factory strict (370) | 0 | 0 | 0 | 0 |
 | sift strict (100; The Sift's ichor through vanilla's fluid renderer) | 55 | 55 | 61 | 55 |
-| kinetics draws per frame, Quicksilver / vanilla (avg) | 8.67 / 104.77 | 10.67 / 126.92 | 8.67 / 102.39 | 11.67 / 126.92 |
+| kinetics draws per frame, Quicksilver / vanilla (avg) | 8.67 / 101.0 | 10.67 / 127.0 | 8.67 / 102.47 | 11.67 / 127.0 |
 | kinetics terrain GPU MB reserved, Quicksilver / vanilla | 32 / 256 | 32 / 256 | 32 / 256 | 32 / 256 |
 
 Fluids (every SIFTEC profile's log): only `the_sift`'s fluids go through vanilla's renderer; water and lava, still and
 flowing, are drawn by Quicksilver's fluid mesher; no mesher check lines; sift strict pixels as on cc7a8b3 (41657005224).
-Attempts 1 and 2 failed on downloads, not on Quicksilver: in attempt 1 every client's Gradle step got no jars from Maven
+
+Mesh order (package 4c), now running: every Quicksilver client log in core and SIFTEC, all four profiles, reads the
+CompileTask and ResortTransparencyTask fields and none falls back; every Quicksilver bench reports the order on (the
+measure runs report it off on purpose). Picks of a visible section during benches, visible / none visible waiting:
+core full 2831 / 79, old GPU 2870 / 63, Vulkan 2788 / 57, two-phase 3064 / 112; SIFTEC 208 / 6, 241 / 1, 173 / 0,
+233 / 4. Pictures, draws and memory as on 1a1fa70; kinetics strict moved within its noise (8-11 against limit 30).
+
+Flywheel on real hardware (read from Flywheel's source in Create Fly, MIT; nothing copied): it picks instancing on
+Intel's driver (indirect's priority drops to 1 there, instancing's is 500) and needs GL 3.3 or
+GL_ARB_shader_bit_encoding for it; its shaders compile at the driver's highest GLSL. CI's old-GPU profile forces GL 3.3
+(GLSL 330), where Create's instance shadow shader does not compile (an int/uint conversion needs GLSL 4.00), so
+Flywheel falls back to off there. A real Intel laptop reports GL 4.6 and runs instancing; CI tests instancing in
+kinetics_instancing on GL 4.5 (Mesa), not on Intel's driver.
+
+Earlier run 41743245393 (1a1fa70), attempts 1 and 2 failed on downloads, not on Quicksilver: in attempt 1 every client's Gradle step got no jars from Maven
 Central (gson, kotlin-metadata, error_prone, cadixdev; their POMs resolved), so no client started; in attempt 2 the
 SIFTEC Quicksilver server's worldgen start died on an SSL error while Fabric's launcher downloaded (its later starts in
 the same job worked). Attempt 3 re-ran that server job and its dependents only. Not fixed: client jobs report success
