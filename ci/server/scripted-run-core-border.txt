@@ -106,6 +106,33 @@ cmd setblock 64 201 8 minecraft:hopper[facing=down]
 cmd setblock 63 199 8 minecraft:hopper[facing=down]
 cmd setblock 63 198 8 minecraft:chest
 
+# the same double chests with the halves the other way round (z 9): a chest's type names the side its other half is
+# on as seen from the chest's facing, so one of the two rows is the true double chest across the border
+cmd setblock 15 200 9 minecraft:chest[facing=south,type=right]
+cmd setblock 16 200 9 minecraft:chest[facing=south,type=left]
+cmd setblock 15 201 9 minecraft:hopper[facing=down]
+cmd setblock 16 201 9 minecraft:hopper[facing=down]
+cmd setblock 15 199 9 minecraft:hopper[facing=down]
+cmd setblock 15 198 9 minecraft:chest
+cmd setblock 31 200 9 minecraft:chest[facing=south,type=right]
+cmd setblock 32 200 9 minecraft:chest[facing=south,type=left]
+cmd setblock 31 201 9 minecraft:hopper[facing=down]
+cmd setblock 32 201 9 minecraft:hopper[facing=down]
+cmd setblock 31 199 9 minecraft:hopper[facing=down]
+cmd setblock 31 198 9 minecraft:chest
+cmd setblock 47 200 9 minecraft:chest[facing=south,type=right]
+cmd setblock 48 200 9 minecraft:chest[facing=south,type=left]
+cmd setblock 47 201 9 minecraft:hopper[facing=down]
+cmd setblock 48 201 9 minecraft:hopper[facing=down]
+cmd setblock 47 199 9 minecraft:hopper[facing=down]
+cmd setblock 47 198 9 minecraft:chest
+cmd setblock 63 200 9 minecraft:chest[facing=south,type=right]
+cmd setblock 64 200 9 minecraft:chest[facing=south,type=left]
+cmd setblock 63 201 9 minecraft:hopper[facing=down]
+cmd setblock 64 201 9 minecraft:hopper[facing=down]
+cmd setblock 63 199 9 minecraft:hopper[facing=down]
+cmd setblock 63 198 9 minecraft:chest
+
 # hoppers facing across each border into air (z 11) and into a furnace (z 13), each filled from a chest above
 cmd setblock 15 201 11 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64},{Slot:1b,id:"minecraft:coal",count:64},{Slot:2b,id:"minecraft:coal",count:64}]}
 cmd setblock 15 200 11 minecraft:hopper[facing=east]
@@ -129,8 +156,8 @@ cmd setblock 63 200 13 minecraft:hopper[facing=east]
 cmd setblock 64 200 13 minecraft:furnace
 
 # a chest minecart (north side, eastward) and a hopper minecart (south side, westward) going round a loop of powered
-# rails in area A (chunk z -1), across the chunk border x -1|0; on the north side hoppers under the plain rails at x -2..1
-# (no redstone block next to them: they stay enabled) take from the carts as they pass, into chests below
+# rails in area A (chunk z -1), across the chunk border x -1|0; on the north side hoppers under the plain rails at x -1 and 0
+# (plain rails and stone at x -2..1, no redstone block next to them: they stay enabled) take from the carts as they pass, into chests below
 cmd fill -7 199 -14 6 199 -14 minecraft:redstone_block
 cmd fill -2 199 -14 1 199 -14 minecraft:stone
 cmd setblock -1 199 -14 minecraft:hopper[facing=down]
@@ -151,6 +178,46 @@ cmd setblock -8 200 -10 minecraft:rail[shape=north_east]
 cmd setblock 7 200 -10 minecraft:rail[shape=north_west]
 cmd summon minecraft:chest_minecart -6.5 200.0625 -13.5 {Motion:[0.6d,0.0d,0.0d],Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:iron_ingot",count:64},{Slot:2b,id:"minecraft:iron_ingot",count:64},{Slot:3b,id:"minecraft:iron_ingot",count:64},{Slot:4b,id:"minecraft:iron_ingot",count:64},{Slot:5b,id:"minecraft:iron_ingot",count:64},{Slot:6b,id:"minecraft:iron_ingot",count:64},{Slot:7b,id:"minecraft:iron_ingot",count:64},{Slot:8b,id:"minecraft:iron_ingot",count:64}]}
 cmd summon minecraft:hopper_minecart 5.5 200.0625 -9.5 {Motion:[-0.6d,0.0d,0.0d],Items:[{Slot:0b,id:"minecraft:gold_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:64},{Slot:2b,id:"minecraft:gold_ingot",count:64},{Slot:3b,id:"minecraft:gold_ingot",count:64},{Slot:4b,id:"minecraft:gold_ingot",count:64}]}
+
+# what makes a remembered container stale, each changed at a fixed tick below (review of P2-3b):
+# - a single chest that becomes half of a double chest across the border x 15|16 (z -3 and z -5: the new half placed
+#   with either type, so one of the two connects; the first chest's own type changes with it), fed by a hopper in
+#   chunk 0 and emptied by one below
+cmd setblock 14 201 -3 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock 14 200 -3 minecraft:hopper[facing=east]
+cmd setblock 15 200 -3 minecraft:chest[facing=south]
+cmd setblock 15 199 -3 minecraft:hopper[facing=down]
+cmd setblock 15 198 -3 minecraft:chest
+cmd setblock 14 201 -5 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64}]}
+cmd setblock 14 200 -5 minecraft:hopper[facing=east]
+cmd setblock 15 200 -5 minecraft:chest[facing=south]
+cmd setblock 15 199 -5 minecraft:hopper[facing=down]
+cmd setblock 15 198 -5 minecraft:chest
+# - a hopper whose facing changes (east into one chest, then south into another), then turned off and on by a
+#   redstone block next to it
+cmd setblock 4 201 -7 minecraft:chest{Items:[{Slot:0b,id:"minecraft:sand",count:64},{Slot:1b,id:"minecraft:sand",count:64},{Slot:2b,id:"minecraft:sand",count:64},{Slot:3b,id:"minecraft:sand",count:64},{Slot:4b,id:"minecraft:sand",count:64},{Slot:5b,id:"minecraft:sand",count:64},{Slot:6b,id:"minecraft:sand",count:64},{Slot:7b,id:"minecraft:sand",count:64},{Slot:8b,id:"minecraft:sand",count:64}]}
+cmd setblock 4 200 -7 minecraft:hopper[facing=east]
+cmd setblock 5 200 -7 minecraft:chest
+cmd setblock 4 200 -6 minecraft:chest
+# - composters (a new container for every lookup, never remembered): fed seeds from a hopper in chunk 0 across the
+#   border and from above, emptied into a chest below
+cmd setblock 15 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:wheat_seeds",count:64},{Slot:1b,id:"minecraft:wheat_seeds",count:64},{Slot:2b,id:"minecraft:wheat_seeds",count:64},{Slot:3b,id:"minecraft:wheat_seeds",count:64},{Slot:4b,id:"minecraft:wheat_seeds",count:64},{Slot:5b,id:"minecraft:wheat_seeds",count:64},{Slot:6b,id:"minecraft:wheat_seeds",count:64},{Slot:7b,id:"minecraft:wheat_seeds",count:64},{Slot:8b,id:"minecraft:wheat_seeds",count:64}]}
+cmd setblock 15 200 -8 minecraft:hopper[facing=east]
+cmd setblock 16 200 -8 minecraft:composter
+cmd setblock 8 203 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:wheat_seeds",count:64},{Slot:1b,id:"minecraft:wheat_seeds",count:64},{Slot:2b,id:"minecraft:wheat_seeds",count:64},{Slot:3b,id:"minecraft:wheat_seeds",count:64},{Slot:4b,id:"minecraft:wheat_seeds",count:64},{Slot:5b,id:"minecraft:wheat_seeds",count:64},{Slot:6b,id:"minecraft:wheat_seeds",count:64},{Slot:7b,id:"minecraft:wheat_seeds",count:64},{Slot:8b,id:"minecraft:wheat_seeds",count:64}]}
+cmd setblock 8 202 -8 minecraft:hopper[facing=down]
+cmd setblock 8 201 -8 minecraft:composter
+cmd setblock 8 200 -8 minecraft:hopper[facing=down]
+cmd setblock 8 199 -8 minecraft:chest
+at 150 setblock 16 200 -3 minecraft:chest[facing=south,type=left]
+at 150 setblock 16 200 -5 minecraft:chest[facing=south,type=right]
+at 160 setblock 4 200 -7 minecraft:hopper[facing=south]
+at 170 setblock 3 200 -7 minecraft:redstone_block
+at 180 setblock 3 200 -7 minecraft:air
+# - a barrel replaced by a barrel with new contents (the same block; the hopper below it takes from it), and one
+#   replaced by a barrel facing another way
+at 240 setblock 16 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64}]}
+at 250 setblock 16 201 2 minecraft:barrel[facing=down]{Items:[{Slot:0b,id:"minecraft:andesite",count:64},{Slot:1b,id:"minecraft:andesite",count:64},{Slot:2b,id:"minecraft:andesite",count:64}]}
 
 # area B let go: its chunks drop out of block ticking (chunk 3 to 34, chunk 4 to 35, chunk 2 to 33) while the hoppers in
 # chunk 1 keep giving to containers in chunk 2 (full, not ticking)

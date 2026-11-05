@@ -127,6 +127,9 @@ def border_report(suite, d, rep, lines, s, fails):
         w[r] = cw.get("events")
         if not w[r]:
             fails.append("%s border run %s: no chunk watch" % (suite, r))
+        elif cw.get("changes") != len(w[r]):
+            # every change must be among the events compared below (the harness errors on this too)
+            fails.append("%s border run %s: chunk watch kept %d of %s changes" % (suite, r, len(w[r]), cw.get("changes")))
     a = w["vanilla-a"] or []
     first = {}
     for r in RUNS:

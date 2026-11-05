@@ -90,6 +90,22 @@ public final class Logic {
     }
 
     /**
+     * Turns an optimisation off for the session because something it can't account for is installed (not a failure: one
+     * info line, the status line says why). Only at start-up, before any server thread.
+     */
+    public static void off(Switch s, String reason) {
+        synchronized (Logic.class) {
+            load();
+            if (STATE.get(s.id) != State.ON) return;
+            STATE.put(s.id, State.OFF);
+            WHY.put(s.id, reason);
+        }
+        s.on = false;
+        // (not "Quicksilver logic:", which CI reads as the status line; that line says it too)
+        LOG.info("Quicksilver {}: off for the session ({}); vanilla's code runs instead", s.id, reason);
+    }
+
+    /**
      * One optimisation's switch as a plain field, read on every call of a hot path: on at start-up if the
      * optimisation is, and cleared for good by {@link #fallback}.
      */
@@ -113,9 +129,16 @@ public final class Logic {
         load();
         // logic.entity-collisions reads the game's entity classes here, on the main thread, before any server thread
         EntityCollisions.init();
+        // logic.hopper-cache reads which mixins are applied to vanilla's hopper here too (main thread)
+        HopperCache.init();
         // the status line at start-up (a client that only joins servers logs only this one), then once a server has started
         LOG.info("Quicksilver logic: {}", moduleOff != null ? "off, " + moduleOff : status());
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> report());
+        if (VERIFY) {
+            // verify mode: how many remembered answers were checked (CI requires some in the border run's verify run)
+            net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server ->
+                LOG.info("Quicksilver verify: hopper-cache checked {} remembered answers against vanilla's", HopperCache.checks()));
+        }
         // hooks in classes the game loads later are checked as they appear (cheap; stops once all are seen)
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (!hooksDone && server.getTickCount() % 100 == 0) {
@@ -137,7 +160,8 @@ public final class Logic {
         LOG.info("Quicksilver logic: {}", status());
         if (on(HopperCache.ID) && LogicMixins.transformed("net.minecraft.world.level.block.entity.HopperBlockEntity")) {
             // logic.hopper-cache's one optional hook: the block read just before a hopper's source lookup
-            LOG.info("Quicksilver logic: hopper-cache source block read {}",
+            // (not "Quicksilver logic:": CI reads every such line as a status line)
+            LOG.info("Quicksilver hopper-cache: source block read {}",
                 LogicMixins.called("net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$sourceState") ? "hooked" : "not hooked (vanilla reads it)");
         }
     }

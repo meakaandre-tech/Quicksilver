@@ -313,8 +313,15 @@ def server(res, rep):
             if not os.path.exists(os.path.join(HERE, "scripted-run-%s-border.txt" % suite)):
                 continue
             sink = owed if suite in REPORT_ONLY_SUITES else fails
-            if "CI HARNESS RUN DONE" not in text(os.path.join(res, suite + "-quicksilver", "border-verify-server.log")):
+            blog = text(os.path.join(res, suite + "-quicksilver", "border-verify-server.log"))
+            if "CI HARNESS RUN DONE" not in blog:
                 sink.append("%s border verify run: missing or did not finish" % suite)
+            # and the cache answered there (a verify run in which it never answers checks nothing)
+            m = re.findall(r"Quicksilver verify: hopper-cache checked (\d+) remembered answers", blog)
+            if not m or int(m[-1]) == 0:
+                sink.append("%s border verify run: hopper-cache checked %s remembered answers (must be more than 0)" % (suite, m[-1] if m else "no"))
+            else:
+                lines.append("%s border verify run: hopper-cache checked %s remembered answers against vanilla's.\n" % (suite, m[-1]))
 
     # the Logic module in the server suite's runs (every server start: worldgen, GameTests, scripted, random-tick, heap)
     lines.append("## Logic module in the server suite\n\n| run | status |\n|---|---|")

@@ -32,7 +32,9 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
  * them: {@link #peek}), and then every lookup vanilla's code makes for that block finds it there too (it changes
  * nothing). Otherwise vanilla's own code runs, misses and tickets included, and the answer is remembered afresh. So the
  * server's four chunks, its tickets and which chunks stay loaded are exactly vanilla's, at every tick (CI's border run
- * logs them, ci/server/scripted-run-core-border.txt).
+ * logs them at every tick's end, ci/server/scripted-run-core-border.txt, and its verify run checks every remembered
+ * answer as it is given). That is the game's state; the one thing an answered lookup leaves out is the profiler's count of
+ * chunk lookups (a debug counter, not game state).
  *
  * <p>What is remembered, and only that (anything else runs vanilla's code every time):
  * <ul>
@@ -46,8 +48,12 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
  * follow a "none" are left to vanilla's code, in their usual place.
  *
  * <p>The idea (hoppers remembering the containers they use) is Lithium's {@code block.hopper}; this design (the section
- * write counts, the four-chunk rule) and its code are Quicksilver's own. No identity hash, reflection or thread: the
- * remembered objects are compared by reference.
+ * write counts, the four-chunk rule) and its code are Quicksilver's own. No identity hash, and no reflection or thread
+ * on the server thread (the one reflective read, of the mixins applied to hoppers, is at start-up on the main thread:
+ * {@link #init}); the remembered objects are compared by reference.
+ *
+ * <p>Other mods: with a mixin of any mod but Quicksilver in vanilla's hopper (Fabric API's two transfer hooks aside), the
+ * cache stays off for the session ({@link #init}).
  *
  * <p>With {@code -Dquicksilver.debug.verifyLogic=true} every remembered answer is checked against vanilla's own lookup
  * as it is given (the same state, the same container, and the server's four chunks unchanged by the lookup: no miss);
@@ -64,7 +70,6 @@ public final class HopperCache {
     /** One remembered lookup: one block a hopper takes from or gives to. */
     public static final class Entry {
         BlockPos pos;
-        LevelChunk chunk;
         int sectionIndex;
         LevelChunkSection section;
         PalettedContainer<BlockState> states;
@@ -75,7 +80,6 @@ public final class HopperCache {
 
         void clear() {
             pos = null;
-            chunk = null;
             section = null;
             states = null;
             state = null;
@@ -105,11 +109,6 @@ public final class HopperCache {
         Thread quicksilver$mainThread();
     }
 
-    /** The hopper's facing (accessor mixin). */
-    public interface Facing {
-        net.minecraft.core.Direction quicksilver$facing();
-    }
-
     // ---- the lookup in progress (server thread only; one at a time: set by the hopper's own hook, used by the hooks
     // inside vanilla's lookup for exactly that position, then cleared)
 
@@ -120,13 +119,16 @@ public final class HopperCache {
     /** The state vanilla read for the current lookup when it isn't answered from the entry. */
     private static BlockState currentState;
 
-    /** Starts a hopper's lookup of {@code pos} with its entry: decides whether the entry answers it. */
+    /**
+     * Starts a hopper's lookup of {@code pos} with its entry: decides whether the entry answers it. Only a server level's
+     * lookup on its own server thread starts one (anywhere else nothing is set and vanilla's code runs as it is).
+     */
     public static void begin(Level level, Entry e, BlockPos pos) {
+        end();
+        if (!SWITCH.on || !(level instanceof ServerLevel server)
+            || Thread.currentThread() != ((Recent) server.getChunkSource()).quicksilver$mainThread()) return;
         current = e;
         currentPos = pos;
-        currentState = null;
-        currentHit = false;
-        if (!SWITCH.on) return;
         try {
             currentHit = valid(level, e, pos);
         } catch (Throwable t) {
@@ -236,15 +238,17 @@ public final class HopperCache {
 
     /** Whether the entry answers a lookup of {@code pos} now, exactly as vanilla's code would. */
     static boolean valid(Level level, Entry e, BlockPos pos) {
-        if (e.chunk == null || !(level instanceof ServerLevel server) || !pos.equals(e.pos)) return false;
+        if (e.section == null || !(level instanceof ServerLevel server) || !pos.equals(e.pos)) return false;
         LevelChunk c = peek(server, pos.getX() >> 4, pos.getZ() >> 4);
-        if (c != e.chunk) return false;
+        // (the same section object: the same chunk, still loaded; a chunk loaded again has new sections)
+        if (c == null) return false;
         LevelChunkSection[] sections = c.getSections();
         int i = e.sectionIndex;
         if (i < 0 || i >= sections.length || sections[i] != e.section) return false;
         PalettedContainer<BlockState> states = e.section.getStates();
         if (states != e.states || ((SectionMasks.Writes) states).quicksilver$writes() != e.writes) return false;
-        return e.blockEntity == null || !e.blockEntity.isRemoved();
+        // (and still at that position: a mod that moves block entities without removing them)
+        return e.blockEntity == null || (!e.blockEntity.isRemoved() && e.blockEntity.getBlockPos().equals(pos));
     }
 
     /**
@@ -268,7 +272,7 @@ public final class HopperCache {
             if (c != null) return;
         } else {
             be = chunk.getBlockEntities().get(pos);
-            if (be == null || be.isRemoved()) return;
+            if (be == null || be.isRemoved() || !be.getBlockPos().equals(pos)) return;
             if (c == be) {
                 // a chest that is half of a double chest: its container depends on the other half
                 if (state.hasProperty(BlockStateProperties.CHEST_TYPE) && state.getValue(BlockStateProperties.CHEST_TYPE) != ChestType.SINGLE) return;
@@ -278,7 +282,6 @@ public final class HopperCache {
         }
         PalettedContainer<BlockState> states = section.getStates();
         e.pos = pos.immutable();
-        e.chunk = chunk;
         e.sectionIndex = i;
         e.section = section;
         e.states = states;
@@ -290,30 +293,97 @@ public final class HopperCache {
 
     // ---- CI's verify mode: the caller runs vanilla's own read or lookup as well, between these two calls
 
+    /** Remembered answers checked against vanilla's in verify mode (server thread; logged when the server stops). */
+    private static long checks = 0;
+
+    public static long checks() {
+        return checks;
+    }
+
     /** Before vanilla's read in verify mode: the cache's four chunks as they are. */
-    public static long[] before(Level level) {
+    public static Object[] before(Level level) {
         return snapshot((ServerLevel) level);
     }
 
-    /** After it: vanilla's answer must be the remembered one, and its chunk lookups must not have missed. */
-    public static void check(Level level, BlockPos pos, long[] before, Object remembered, Object vanilla, String what) {
+    /**
+     * After it: vanilla's answer must be the remembered one, and its chunk lookups must not have missed (the four slots'
+     * positions, statuses and chunks unchanged). Returns the answer to give: vanilla's (the same one, or after a difference,
+     * which falls back).
+     */
+    public static <T> T check(Level level, BlockPos pos, Object[] before, T remembered, T vanilla, String what) {
+        checks++;
         if (vanilla != remembered) {
             Logic.fallback(SWITCH, "verify: remembered " + what + " " + remembered + " at " + pos + " but vanilla finds " + vanilla, null);
-        } else if (!java.util.Arrays.equals(before, snapshot((ServerLevel) level))) {
+        } else if (!sameSlots(before, snapshot((ServerLevel) level))) {
             Logic.fallback(SWITCH, "verify: vanilla's " + what + " lookup at " + pos + " was not among the last four chunks", null);
         }
+        // (after a difference the lookup is answered by vanilla's code from here on)
+        if (!SWITCH.on) end();
+        return vanilla;
     }
 
-    /** The cache's four positions, and what each slot holds (enough to see a miss, which moves them along). */
-    private static long[] snapshot(ServerLevel level) {
+    /** The cache's four slots: positions (boxed, compared by value), statuses and chunks (compared by reference). */
+    private static Object[] snapshot(ServerLevel level) {
         Recent r = (Recent) level.getChunkSource();
-        long[] out = new long[8];
+        Object[] out = new Object[12];
         long[] pos = r.quicksilver$lastPos();
+        ChunkStatus[] status = r.quicksilver$lastStatus();
         ChunkAccess[] chunks = r.quicksilver$lastChunk();
         for (int i = 0; i < 4; i++) {
             out[i] = pos[i];
-            out[4 + i] = chunks[i] == null ? 0 : (chunks[i] instanceof LevelChunk ? 1 : 2);
+            out[4 + i] = status[i];
+            out[8 + i] = chunks[i];
         }
         return out;
+    }
+
+    private static boolean sameSlots(Object[] a, Object[] b) {
+        for (int i = 0; i < 12; i++) {
+            if (i < 4 ? !a[i].equals(b[i]) : a[i] != b[i]) return false;
+        }
+        return true;
+    }
+
+    // ---- other mods' changes to hoppers (at start-up, on the main thread, before any server thread)
+
+    /** Fabric API's transfer hooks, which run after vanilla's lookups and change none of them (allowed). */
+    private static final String[][] KEPT = {
+        {"net.fabricmc.fabric.mixin.transfer.HopperBlockEntityMixin", "hookInsert"},
+        {"net.fabricmc.fabric.mixin.transfer.HopperBlockEntityMixin", "hookExtract"},
+    };
+
+    /**
+     * Main thread, at start-up: every mixin merged into vanilla's hopper (read from the {@code @MixinMerged} marks Mixin
+     * leaves on the members it adds, as the mesher does). One from a mod other than Quicksilver, but for Fabric API's two
+     * transfer hooks, could make a lookup's answer depend on something the cache doesn't watch, so then the cache stays
+     * off for the session (one line naming each). Not seen: a mod's change to the code vanilla's lookup calls (a chest's
+     * own container, the level's block entity lookup).
+     */
+    static void init() {
+        if (!SWITCH.on) return;
+        java.util.Set<String> all = new java.util.TreeSet<>();
+        java.util.Set<String> foreign = new java.util.TreeSet<>();
+        try {
+            Class<?> c = Class.forName("net.minecraft.world.level.block.entity.HopperBlockEntity", false, HopperCache.class.getClassLoader());
+            java.util.List<java.lang.reflect.Member> members = new java.util.ArrayList<>(java.util.List.of(c.getDeclaredMethods()));
+            members.addAll(java.util.List.of(c.getDeclaredFields()));
+            for (java.lang.reflect.Member m : members) {
+                org.spongepowered.asm.mixin.transformer.meta.MixinMerged a =
+                    ((java.lang.reflect.AnnotatedElement) m).getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
+                if (a == null) continue;
+                all.add(a.mixin());
+                if (a.mixin().startsWith("com.meakaandre.quicksilver.")) continue;
+                boolean kept = false;
+                for (String[] k : KEPT) kept |= a.mixin().equals(k[0]) && m.getName().endsWith(k[1]);
+                if (!kept) foreign.add("mixin " + a.mixin() + " (" + m.getName() + ")");
+            }
+        } catch (Throwable t) {
+            Logic.fallback(SWITCH, "could not read the mixins applied to hoppers: " + t, t);
+            return;
+        }
+        // (seen in CI's logs: which mixins the check found)
+        Logic.LOG.info("Quicksilver hopper-cache: mixins applied to vanilla's hopper (Quicksilver's included): {}",
+            all.isEmpty() ? "(none)" : String.join(", ", all));
+        if (!foreign.isEmpty()) Logic.off(SWITCH, "mods change vanilla's hopper: " + String.join(", ", foreign));
     }
 }

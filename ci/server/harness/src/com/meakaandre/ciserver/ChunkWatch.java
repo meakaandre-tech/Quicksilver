@@ -19,7 +19,11 @@ import net.minecraft.server.level.ServerLevel;
  * changing them). Whenever any of that changes from the tick before it is written down ({@code t=TICK X,Z state}), so the
  * result is the whole history of those chunks' tickets and levels; CI requires it equal in every run, vanilla's and
  * Quicksilver's. A chunk lookup that missed the last four chunks gives its chunk a one-tick ticket (and moves the four
- * along), so any lookup Quicksilver skipped or added where vanilla's would miss shows up here at the tick it happened.
+ * along), so a lookup Quicksilver skipped or added where vanilla's would miss shows up here as a different ticket or
+ * a different four at that tick's end, unless the same chunk had that ticket anyway that tick and later lookups in the
+ * tick moved the four back to where they would have been (read at tick ends only, this can't see every lookup). The
+ * border run's verify run is the check for each lookup: every remembered answer is compared with vanilla's own as it is
+ * given, with the four chunks' positions, statuses and chunks before and after it, so a miss there falls back.
  *
  * <p>The tickets and holders are read by reflection (CI only, after the tick, the same in every run).
  */
@@ -76,6 +80,8 @@ final class ChunkWatch {
         JsonObject w = new JsonObject();
         w.addProperty("changes", changes);
         w.add("events", events);
+        // every change must be in the events CI compares (a history cut short could hide a difference after the cut)
+        if (error == null && changes > events.size()) error = "the history has " + changes + " changes, more than the " + events.size() + " kept";
         if (error != null) {
             w.addProperty("error", error);
             result.addProperty("error", "chunk watch: " + error);
@@ -169,7 +175,11 @@ final class ChunkWatch {
     private static String value(Object v) {
         if (v == null || v instanceof Number || v instanceof Boolean || v instanceof CharSequence || v instanceof Enum<?>) return String.valueOf(v);
         Object name = typeName(v);
-        return name != null ? String.valueOf(name) : v.getClass().getSimpleName();
+        if (name != null) return String.valueOf(name);
+        // a ticket type without a registry name would print as its class alone, every type alike: the history would
+        // no longer tell tickets apart, so that stops the watch (an error, CI fails on it)
+        if (v.getClass().getSimpleName().contains("TicketType")) throw new IllegalStateException("ticket type " + v.getClass().getName() + " has no registry name");
+        return v.getClass().getSimpleName();
     }
 
     /** A ticket type's registry name, if the game registers ticket types (else null). */
@@ -178,7 +188,9 @@ final class ChunkWatch {
             Field f = net.minecraft.core.registries.BuiltInRegistries.class.getField("TICKET_TYPE");
             Object registry = f.get(null);
             Method getKey = registry.getClass().getMethod("getKey", Object.class);
-            return getKey.invoke(registry, v);
+            Object key = getKey.invoke(registry, v);
+            // (a type not in the registry: null, or the registry's default)
+            return key;
         } catch (ReflectiveOperationException | RuntimeException e) {
             return null;
         }

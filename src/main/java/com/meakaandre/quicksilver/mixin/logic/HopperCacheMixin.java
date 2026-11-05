@@ -77,12 +77,11 @@ public abstract class HopperCacheMixin implements HopperCache.Holder {
         }
         try {
             HopperCache.begin(level, h.quicksilver$extract(), pos);
-            return quicksilver$read(level, pos);
         } catch (Throwable t) {
             HopperCache.SWITCH.fail(t);
             HopperCache.end();
-            return level.getBlockState(pos);
         }
+        return quicksilver$read(level, pos);
     }
 
     @Redirect(method = "suckInItems(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/level/block/entity/Hopper;)Z",
@@ -130,13 +129,7 @@ public abstract class HopperCacheMixin implements HopperCache.Holder {
     @Redirect(method = "getContainerAt(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/Container;",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;getBlockState(Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/block/state/BlockState;"))
     private static BlockState quicksilver$targetState(Level level, BlockPos pos) {
-        try {
-            return quicksilver$read(level, pos);
-        } catch (Throwable t) {
-            HopperCache.SWITCH.fail(t);
-            HopperCache.end();
-            return level.getBlockState(pos);
-        }
+        return quicksilver$read(level, pos);
     }
 
     // ---- inside vanilla's lookup: the block container at the lookup's position
@@ -155,29 +148,52 @@ public abstract class HopperCacheMixin implements HopperCache.Holder {
         if (answers) {
             Container c = HopperCache.answerContainer();
             if (HopperCache.VERIFY) {
-                long[] before = HopperCache.before(level);
-                HopperCache.check(level, pos, before, c, HopperCacheInvoker.quicksilver$vanillaBlockContainer(level, pos, state), "container");
+                Object[] before = HopperCache.before(level);
+                // (vanilla's answer is given, the same one or after a difference, which falls back)
+                c = HopperCache.check(level, pos, before, c, HopperCacheInvoker.quicksilver$vanillaBlockContainer(level, pos, state), "container");
             }
             return c;
         }
+        // vanilla's own lookup outside any try: an exception in it is vanilla's, and it runs once
         Container c = HopperCacheInvoker.quicksilver$vanillaBlockContainer(level, pos, state);
-        HopperCache.found(level, pos, state, c);
+        try {
+            HopperCache.found(level, pos, state, c);
+        } catch (Throwable t) {
+            HopperCache.SWITCH.fail(t);
+            HopperCache.end();
+        }
         return c;
     }
 
-    /** A block read at the current lookup's position: the remembered state, or vanilla's read (kept to be remembered). */
+    /**
+     * A block read at the current lookup's position: the remembered state, or vanilla's read (kept to be remembered).
+     * Vanilla's read is outside any try (an exception in it is vanilla's, and it runs once).
+     */
     @Unique
     private static BlockState quicksilver$read(Level level, BlockPos pos) {
-        if (HopperCache.answersState(pos)) {
+        boolean answers;
+        try {
+            answers = HopperCache.answersState(pos);
+        } catch (Throwable t) {
+            HopperCache.SWITCH.fail(t);
+            HopperCache.end();
+            answers = false;
+        }
+        if (answers) {
             BlockState s = HopperCache.answerState();
             if (HopperCache.VERIFY) {
-                long[] before = HopperCache.before(level);
-                HopperCache.check(level, pos, before, s, level.getBlockState(pos), "state");
+                Object[] before = HopperCache.before(level);
+                s = HopperCache.check(level, pos, before, s, level.getBlockState(pos), "state");
             }
             return s;
         }
         BlockState s = level.getBlockState(pos);
-        HopperCache.read(pos, s);
+        try {
+            HopperCache.read(pos, s);
+        } catch (Throwable t) {
+            HopperCache.SWITCH.fail(t);
+            HopperCache.end();
+        }
         return s;
     }
 }

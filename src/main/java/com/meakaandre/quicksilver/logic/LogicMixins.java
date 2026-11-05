@@ -27,7 +27,10 @@ public final class LogicMixins implements IMixinConfigPlugin {
     public static boolean called(String target, String handler) {
         Set<String> c = CALLED.getOrDefault(target, Set.of());
         if (c.contains(handler)) return true;
-        // a handler MixinExtras rewrote (a redirect with @Local, say) is called under its name plus a suffix of its own
+        // a handler with MixinExtras sugar (@Local on a redirect: logic.hopper-cache's quicksilver$sourceState) is called
+        // through a method MixinExtras generates, named the handler's name, a '$' and a suffix of its own (P2-3b: the hook
+        // then showed as landed, full run 41941881973). Only that shape: the whole name and then '$', so a different
+        // handler whose name merely starts the same (quicksilver$source, quicksilver$sourceState) is never taken for it
         for (String n : c) if (n.startsWith(handler + "$")) return true;
         return false;
     }
