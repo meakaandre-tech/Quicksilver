@@ -346,10 +346,19 @@ public final class HopperCache {
 
     // ---- other mods' changes to hoppers (at start-up, on the main thread, before any server thread)
 
-    /** Fabric API's transfer hooks, which run after vanilla's lookups and change none of them (allowed). */
+    /**
+     * Other mods' hopper hooks that change none of the lookups the cache answers (by mixin and handler name, as the
+     * mesher's list): anything else those mixins add later is still caught.
+     */
     private static final String[][] KEPT = {
+        // Fabric API's transfer hooks: run after vanilla's lookups, on a "none", outside the lookup
         {"net.fabricmc.fabric.mixin.transfer.HopperBlockEntityMixin", "hookInsert"},
         {"net.fabricmc.fabric.mixin.transfer.HopperBlockEntityMixin", "hookExtract"},
+        // SIFTEC's claims (CI run 41968436348): at the head of suckInItems and ejectItems, they read the hopper's own
+        // state and cancel the whole transfer across a claim or sealed-building border, before any lookup starts; when
+        // they don't, vanilla's code runs as usual (their block read is before the lookup, in vanilla's runs too)
+        {"com.meakaandre.siftec.mixin.claim.ClaimHopperMixin", "siftec$noSiphon"},
+        {"com.meakaandre.siftec.mixin.claim.ClaimHopperMixin", "siftec$noPush"},
     };
 
     /**
