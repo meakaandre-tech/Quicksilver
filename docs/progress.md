@@ -18,7 +18,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 |---|---|---|
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
-| phase 2, P2-3b (hopper cache) | `p2-3b` | quick run 41931547072 green (cache on, border run equal); full run and review next; see "Phase 2, P2-3b" below |
+| phase 2, P2-3b (hopper cache) | `p2-3b` (not merged: Andre checks it) | **full run 41972539797 green** on `34dfa1e` (rebased on main `d0422f2`), after an independent review and its fixes; exact (border chunk watch and world diff equal, 9910 answers verified); factory MSPT only within noise of vanilla's (-0.4% core, -1.8% SIFTEC); see "Phase 2, P2-3b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
@@ -2523,7 +2523,8 @@ Quicksilver's own (nothing in NOTICE: no Lithium code taken). Verify mode checks
 vanilla's lookup and that vanilla's chunk lookups didn't miss.
 
 Hooks: the source lookup starts at `getSourceContainer` in suckInItems; the block read just before it is an extra,
-optional hook (logged at start: `hopper-cache source block read hooked|not hooked`). Two hook-check fixes on the way:
+optional hook (logged at start: `Quicksilver hopper-cache: source block read hooked|not hooked`; "hooked" in every run of
+full run 41972539797). Two hook-check fixes on the way:
 static invokers stay in their accessor interface (no member of the target to check), and a handler MixinExtras renames
 (a redirect with `@Local`) is found by its prefix. A fallback now names every hook that didn't land, not the first only.
 
@@ -2536,7 +2537,7 @@ gated event by event (vanilla's three runs must agree) plus the world diff. Run 
 41931547072 (cache on): 1741 changes, identical in all four runs; world diff 0 differences where vanilla agrees (2 keys
 of vanilla noise).
 
-### Results (quick run 41931547072 on `1087f26`, SIFTEC added; same runner, seven round pairs)
+### Results before the review (quick run 41931547072, on the branch's head then, since rebased; SIFTEC added; seven round pairs)
 
 | scene | vanilla MSPT median | Quicksilver MSPT median | median ratio | gate |
 |---|---|---|---|---|
@@ -2551,6 +2552,63 @@ JFR round, core factory (ms per tick, vanilla to Quicksilver): block state reads
 container lookup is already cheap and what follows (the entity lookup, P2-3's; the Fabric transfer API's lookup, which
 reads the block and the chunk again) is outside this cache. Correctness: worldgen, world diffs, random-tick run,
 GameTests, SIFTEC's self-tests, train, contraption check, network, heap, border run: all equal; no Logic fallback.
+
+### Independent review and its fixes
+
+A fresh agent reviewed the branch (hit prediction, exclusions, staleness, lookup context, licence, CI). It found the
+design exact, and two must-fixes: nothing guarded against other mods' mixins on the lookups, and no full run had passed
+(41941881973 failed the border world diff on two pending water ticks in chunk 3,-2: vanilla noise from the harness's
+save, fixed by marking chunks no longer full as changed before the stop's save; the border run's vanilla noise is 0
+since). Fixed:
+
+- **Other mods:** at start-up (main thread, before any server thread) the cache reads every mixin merged into vanilla's
+  hopper from Mixin's `@MixinMerged` marks, as the mesher does; one from a mod other than Quicksilver turns the cache
+  off for the session (`Logic.off`: one info line and the status line say why; not a fallback). Kept, by mixin and
+  handler (their lambdas too): Fabric API's two transfer hooks, and SIFTEC's claim hooks (`ClaimHopperMixin`
+  `siftec$noSiphon`, `siftec$noPush`: at the head of suckInItems and ejectItems, they cancel a whole transfer across a
+  claim or sealed-building border before any lookup). Quick runs 41963694647 and 41968436348 found both (the cache off
+  in every run, then in SIFTEC's); each was allowed with that reasoning. Not seen: a mod's change to code vanilla's
+  lookup calls (a chest's container, the level's block entity lookup).
+- **Verify mode:** counts the answers it checks (CI needs more than 0 in the border verify run: 9910), gives vanilla's
+  answer after a difference, and compares the four recent chunks' statuses and chunk objects as well as positions.
+- **Chunk watch:** an error when its history is cut short (CI also compares the change count) or a ticket type has no
+  registry name. Its claim is now worded as what it is: tick-end samples; the verify run is the per-lookup check.
+- **Hooks:** vanilla's own block read and container lookup outside the hooks' try blocks (an exception there runs
+  once); a lookup only starts for a server level on its server thread.
+- **Entries:** keep the section, not the chunk (no unloaded chunk kept alive); a block entity must still be at its
+  position. The unused `Facing` interface is gone; the source-read log line no longer starts with CI's status prefix.
+- **Border run:** a single chest becoming half of a double chest across x 15|16, a hopper turned to another chest and
+  switched off and on, composters fed across the border and from above, barrels replaced by new ones (new contents, then
+  another facing), and the double chests with both orders of their halves' types (one order is the true double chest).
+
+### Results (full run 41972539797 on `34dfa1e`, green; seven round pairs per scene)
+
+| scene | vanilla MSPT median | Quicksilver MSPT median | median ratio | gate |
+|---|---|---|---|---|
+| core `factory` | 0.229 | 0.228 | -0.4% | no-regression: pass |
+| SIFTEC `factory` | 0.815 | 0.829 | -1.8% | no-regression: pass |
+| core `mobs` | 1.437 | 1.282 | -9.9% | faster: pass |
+| core `village` | 0.814 | 0.749 | -10.6% | faster: pass |
+| core `random` | 0.293 | 0.283 | -2.3% | no-regression: pass |
+| SIFTEC `train` | 1.503 | 1.538 | -2.5% | reported |
+
+Correctness, every suite (core, SIFTEC, Terralith): worldgen, world diffs, random-tick run, GameTests, SIFTEC's
+self-tests, train arrivals, contraption check, network, heap, verify runs: all equal or passing; border run chunk watch
+1240 changes, identical in all four runs; border world diff 0 differences, 0 vanilla noise; border verify run 9910
+remembered answers checked, no fallback; cache on in every Quicksilver run.
+
+**"Factory MSPT down" is not clearly met.** Both factory scenes are within noise of vanilla's, as in the quick run
+before the review (-2.7%, -7.6% then; the ratios' spread is wider than either). Why (JFR, quick run 41931547072): the
+cache does cut block state reads and chunk lookups, but most lookups a waiting factory hopper makes are of air above
+it, where vanilla is already cheap; the rest of the time goes to the entity lookup (P2-3's) and to the Fabric transfer
+API's lookup after a "none", which reads the block and chunk again and is outside the cache. Caching Fabric's "none" is
+not exact in general (another mod's fallback provider can depend on anything), so it was left out: Andre's call.
+
+### Known limits
+
+- Other mods' changes inside code the lookup calls (not mixins into the hopper itself) aren't detected.
+- The kept list names SIFTEC's claim hooks by handler: a change in what they do needs a look at that list.
+- The chunk watch samples tick ends; the verify run is what checks each lookup.
 
 ## Phase 2, P2-3: Logic II, hoppers, block entities, AI (merged as `8951f5c`; main green, run 41781297724)
 
@@ -3434,8 +3492,11 @@ strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
 **Package 2b (phase 1):** merged as `e8e771c`; main full run 41396095000 green, latest rebuilt. See "Package 2b".
 
-**Now (P2-3):** merged (`8951f5c`; main green 41781297724, `latest` rebuilt). Next in phase 2: P2-3b (hopper container
-cache, plan above), in a new chat, then P2-4.
+**Now (P2-3b):** branch `p2-3b`, full run 41972539797 green, not merged: Andre checks it (see "Phase 2, P2-3b"). Open
+for Andre: whether to cache the Fabric transfer API's "none" (not exact in general), since the factory saving is within
+noise without it. Then P2-4.
+
+**Before (P2-3):** merged (`8951f5c`; main green 41781297724, `latest` rebuilt).
 
 **Before (P2-2):** merged (`be948a4`; main green 41313195874, `latest` rebuilt); the GameTest pins (`1c1ea7c`, main green
 41298048808) before it. Next in phase 2 is P2-3 (Logic II: hoppers, block entities, AI), in a new chat. Perf numbers:
