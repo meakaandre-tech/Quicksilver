@@ -374,7 +374,8 @@ public final class HopperCache {
                 all.add(a.mixin());
                 if (a.mixin().startsWith("com.meakaandre.quicksilver.")) continue;
                 boolean kept = false;
-                for (String[] k : KEPT) kept |= a.mixin().equals(k[0]) && m.getName().endsWith(k[1]);
+                // (the handler itself, prefixed by Mixin, or a lambda inside it: "...$lambda$hookExtract$0$0", CI 41963694647)
+                for (String[] k : KEPT) kept |= a.mixin().equals(k[0]) && (m.getName().endsWith("$" + k[1]) || m.getName().contains("$lambda$" + k[1] + "$"));
                 if (!kept) foreign.add("mixin " + a.mixin() + " (" + m.getName() + ")");
             }
         } catch (Throwable t) {
