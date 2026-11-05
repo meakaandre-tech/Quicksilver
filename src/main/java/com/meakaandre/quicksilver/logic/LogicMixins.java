@@ -25,7 +25,11 @@ public final class LogicMixins implements IMixinConfigPlugin {
 
     /** Whether an injection handler (its name ends with {@code quicksilver$<name>}) is called in the target class. */
     public static boolean called(String target, String handler) {
-        return CALLED.getOrDefault(target, Set.of()).contains(handler);
+        Set<String> c = CALLED.getOrDefault(target, Set.of());
+        if (c.contains(handler)) return true;
+        // a handler MixinExtras rewrote (a redirect with @Local, say) is called under its name plus a suffix of its own
+        for (String n : c) if (n.startsWith(handler + "$")) return true;
+        return false;
     }
 
     /** Whether the target class has been transformed (loaded, with this config's mixins applied). */

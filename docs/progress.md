@@ -18,6 +18,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 |---|---|---|
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
+| phase 2, P2-3b (hopper cache) | `p2-3b` | quick run 41931547072 green (cache on, border run equal); full run and review next; see "Phase 2, P2-3b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
@@ -2494,6 +2495,62 @@ quicksilver run is checked, GameTest's included; `WHY_TICKS` removed; docs corre
 face shapes and vanilla's identity-keyed caches, the spawner's re-seed (above), writing final fields by reflection
 (works on Java 25; a later JDK may refuse), the config file rewritten without the user's comments when keys are
 added.
+
+## Phase 2, P2-3b: hopper container cache (branch `p2-3b`, not merged: Andre checks it first)
+
+Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQDDDppdrxu45), P2-3; plan: "Phase 2 plan: P2-3b"
+below. Files: `logic/HopperCache.java`, `mixin/logic/HopperCacheMixin.java`, `HopperCacheInvoker.java`,
+`ServerChunkCacheRecentAccessor.java` (and P2-2's `PalettedContainerMixin`, now shared), `Optimisations.java`,
+`LogicMixins.java` (hook check), `Logic.java` (status line); CI: `ci/server/scripted-run-core-border.txt`,
+`ci/server/harness/.../ChunkWatch.java`, `Harness.java` (`watch-chunks`), `server-run.sh` (step 3c), `compare-server.py`
+(border run), `compare-p2.py` (border verify run), `docs/ci-limits.md` ("P2-3b"). No phase 1 file touched.
+
+### What was built
+
+`logic.hopper-cache` (own switch and fallback, off with Lithium installed or in measure runs): each hopper remembers,
+for the block it takes from and the block it faces, what vanilla's lookup found (the state; the container or none; the
+block entity), with the chunk section it was read from and that section's block write count (P2-2's per-container
+counter). The remembered answer is given while the section is unwritten, the block entity (if any) not removed and the
+hopper's state unchanged, and **only when vanilla's first chunk lookup for that block would hit the server's last four
+chunks** (read without changing them). A miss would give the chunk a one-tick ticket and move the four along, so it
+runs vanilla's code. Result: the server's chunk lookups, tickets and which chunks stay loaded are exactly vanilla's at
+every tick, rather than the different-but-tested behaviour the plan allowed for (no decision of Andre's is changed:
+the plan let the cache break P2-2's rule; it doesn't need to). Remembered: a block without a block entity (not a
+composter-type `WorldlyContainerHolder`) as "none"; a block entity that is vanilla's container (not half of a double
+chest); a block entity that isn't a container as "none". The entity container lookup and the Fabric transfer API's
+lookup after a "none" run as before. Idea from Lithium `block.hopper` (LGPL-3.0-only); the design and code are
+Quicksilver's own (nothing in NOTICE: no Lithium code taken). Verify mode checks every remembered answer against
+vanilla's lookup and that vanilla's chunk lookups didn't miss.
+
+Hooks: the source lookup starts at `getSourceContainer` in suckInItems; the block read just before it is an extra,
+optional hook (logged at start: `hopper-cache source block read hooked|not hooked`). Two hook-check fixes on the way:
+static invokers stay in their accessor interface (no member of the target to check), and a handler MixinExtras renames
+(a redirect with `@Local`) is found by its prefix. A fallback now names every hook that didn't land, not the first only.
+
+### The border run (CI, `docs/ci-limits.md` "P2-3b")
+
+Hoppers and containers on each chunk border x 15|16 to 63|64 next to a second force-loaded area let go at tick 300,
+and a chest minecart and a hopper minecart crossing x -1|0 over hoppers (P2-3's hopper-entities "found one" path). The
+chunk watch logs every change to the watched chunks' tickets, levels and the server's last four chunks, tick by tick;
+gated event by event (vanilla's three runs must agree) plus the world diff. Run 41917025047 (cache fallen back) and
+41931547072 (cache on): 1741 changes, identical in all four runs; world diff 0 differences where vanilla agrees (2 keys
+of vanilla noise).
+
+### Results (quick run 41931547072 on `1087f26`, SIFTEC added; same runner, seven round pairs)
+
+| scene | vanilla MSPT median | Quicksilver MSPT median | median ratio | gate |
+|---|---|---|---|---|
+| core `factory` | 0.386 | 0.373 | -2.7% (0.88 to 1.01) | no-regression: pass |
+| SIFTEC `factory` | 0.726 | 0.700 | -7.6% (0.89 to 1.17) | no-regression: pass |
+| core `mobs` | 2.543 | 2.299 | -12.0% | faster: pass |
+| core `village` | 1.446 | 1.302 | -10.7% | faster: pass |
+| core `random` | 0.554 | 0.547 | -1.6% | no-regression: pass |
+
+JFR round, core factory (ms per tick, vanilla to Quicksilver): block state reads 0.061 to 0.042, chunk lookups 0.065 to
+0.042. The saving is small: most lookups the factory's waiting hoppers make are of air above them, where vanilla's
+container lookup is already cheap and what follows (the entity lookup, P2-3's; the Fabric transfer API's lookup, which
+reads the block and the chunk again) is outside this cache. Correctness: worldgen, world diffs, random-tick run,
+GameTests, SIFTEC's self-tests, train, contraption check, network, heap, border run: all equal; no Logic fallback.
 
 ## Phase 2, P2-3: Logic II, hoppers, block entities, AI (merged as `8951f5c`; main green, run 41781297724)
 
