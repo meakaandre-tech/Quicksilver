@@ -741,21 +741,52 @@ public final class Harness implements ModInitializer {
      * the clock picked (the furnace's cooking time, the bearing's angle, the cave's pending ticks, all equal in every
      * run up to the last tick and different on disk). The same in vanilla's runs and Quicksilver's.
      */
+    private static java.lang.reflect.Method visibleHolder, latestChunk;
+
+    /** Marks the chunk holder's latest chunk (any status) as changed, by reflection (CI only); false if there is none. */
+    private static boolean latestUnsaved(ServerLevel level, int cx, int cz) {
+        try {
+            if (visibleHolder == null) {
+                visibleHolder = net.minecraft.server.level.ServerChunkCache.class.getDeclaredMethod("getVisibleChunkIfPresent", long.class);
+                visibleHolder.setAccessible(true);
+                latestChunk = visibleHolder.getReturnType().getMethod("getLatestChunk");
+            }
+            Object holder = visibleHolder.invoke(level.getChunkSource(), chunkKey(cx, cz));
+            if (holder == null) return false;
+            Object chunk = latestChunk.invoke(holder);
+            if (!(chunk instanceof net.minecraft.world.level.chunk.ChunkAccess a)) return false;
+            a.markUnsaved();
+            return true;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            LOG.error("CI HARNESS FAILED: marking a chunk that isn't full as changed", e);
+            result.addProperty("error", "markUnsaved: " + e);
+            return false;
+        }
+    }
+
     private static void markUnsaved(MinecraftServer server) {
-        int n = 0;
+        int n = 0, notFull = 0;
         for (Area a : areas) {
             ServerLevel level = server.getLevel(a.dim());
             if (level == null) continue;
             for (int cz = a.z1() - 3; cz <= a.z2() + 3; cz++) {
                 for (int cx = a.x1() - 3; cx <= a.x2() + 3; cx++) {
                     net.minecraft.world.level.chunk.LevelChunk c = level.getChunkSource().getChunkNow(cx, cz);
-                    if (c == null) continue;
-                    c.markUnsaved();
-                    n++;
+                    if (c != null) {
+                        c.markUnsaved();
+                        n++;
+                    } else if (latestUnsaved(level, cx, cz)) {
+                        // P2-3b: a chunk that has dropped out of full status (the border run lets an area go) is still
+                        // saved as the server stops, but only if marked changed; else what is on disk is whatever the
+                        // wall-clock autosave last wrote (its pending fluid ticks differed between vanilla's runs)
+                        n++;
+                        notFull++;
+                    }
                 }
             }
         }
         result.addProperty("chunksResaved", n);
+        result.addProperty("chunksResavedNotFull", notFull);
         LOG.info("CI HARNESS RUN: {} chunks marked to be saved as they are now", n);
     }
 

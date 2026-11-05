@@ -1023,6 +1023,11 @@ pixel check gates only where every vanilla run agrees. Three vanilla samples are
   writes each as it is at the last tick (P2-1). The game also saves chunks during a run on a wall-clock timer, and one
   it didn't count as changed since wasn't written again: SIFTEC's furnace (cooking time) and Create's bearing (angle),
   and the cave's pending ticks, were equal in every run at the last tick and differed on disk.
+- P2-3b: the same for chunks that have dropped out of full status by the end (the border run lets an area go): each is
+  marked changed through its chunk holder, so the stop's save writes it as it is. Full run 41941881973 had the border
+  run's two pending water ticks at y 19 in chunk 3,-2 (34 after tick 300) on disk in vanilla's three runs and not in
+  Quicksilver's, with every ticket and level equal tick by tick; the quick runs before it had 2 keys of vanilla noise
+  there. Whatever the wall-clock autosave last wrote was what was compared.
 - SIFTEC's bearing motor and furnace are placed at tick 1 (Create and SIFTEC tick them through their own hooks while the
   game is frozen before tick 0). Their saved fields are logged during the run (`report` lines, `CI REPORT`).
 - GameTest server only (fix-villager-flake, 2026-11-01): the GameTest server starts tests when it is ready, a varying
