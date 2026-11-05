@@ -1161,22 +1161,30 @@ run lets go at tick 300, so chunk 2 drops to full-not-ticking (33), chunk 3 to 3
 hoppers keep giving to containers in chunk 2; and a chest minecart and a hopper minecart going round a powered-rail
 loop across the chunk border x -1|0, with hoppers under the track taking from them (the "found one" path of P2-3's
 hopper-entities, which no other scene has). Placed border by border, so consecutive hoppers tick in different chunks
-and the server's four-chunk lookup cache misses often.
+and the server's four-chunk lookup cache misses often. And what makes a remembered container stale, each at a fixed
+tick (after the review): a single chest that becomes half of a double chest across x 15|16, a hopper turned to face
+another chest and then switched off and on, composters fed across the border and from above, a barrel replaced by one
+with new contents and then by one facing another way, and the double chests with both orders of their halves' types.
 
 **The chunk watch** (script line `watch-chunks`, `ChunkWatch.java`): at the end of every tick, for each chunk in
 x -2..6, z -2..1, its tickets (every field, the type by registry name), its holder's ticket level and full status and
 whether it ticks blocks, and the server's last four chunks (read by reflection, without changing them). Each change is
 written down with its tick. A chunk lookup that misses the four gives its chunk a one-tick ticket and moves the four
-along, so a lookup added or skipped where vanilla's would miss changes this history at the tick it happens.
+along, so a lookup added or skipped where vanilla's would miss changes this history at that tick's end, unless the
+chunk had that ticket anyway that tick and later lookups put the four back as they would have been: read at tick ends,
+the watch can't see each lookup. The verify run is the per-lookup check (below). The history is kept in full (at
+most 20000 changes; more is an error) and a ticket type without a registry name is an error, not a class name.
 
 | check | key | gate |
 |---|---|---|
 | border run (core) | the run finishes its ticks, no failed command | always |
 | border run's chunk watch | the whole history of changes, event by event | vanilla-a, b and c equal (else the harness isn't deterministic: fail); Quicksilver equal to them |
 | world diff after the border run | the world diff's keys | equal where vanilla agrees |
-| border verify run (full mode, quicksilver) | the border run again with verify mode (`border-verify-server.log`), world not kept | must finish; no fallback |
+| border run's change count | `chunkWatch.changes` against the events kept | equal (nothing cut off) |
+| border verify run (full mode, quicksilver) | the border run again with verify mode (`border-verify-server.log`), world not kept: every remembered answer compared with vanilla's as it is given, and the four recent chunks' positions, statuses and chunk objects unchanged by it | must finish; no fallback; more than 0 answers checked (`Quicksilver verify: hopper-cache checked N`) |
 
-Smallest thing it must catch: one ticket at one tick (one skipped or added miss), one change to the last four chunks,
+Smallest thing it must catch: one ticket at one tick, one change to the last four chunks at a tick's end, one lookup
+that missed among the cache's answers (verify run),
 one block entity field, one item stack. Known limit: chunks this close to area A never unload from memory (that needs
 every ticket 11 chunks away, outside the base world); "about to unload" here is dropping out of full status and of
 block ticking. Chunks aren't let go and loaded again within the run either: a chunk's entities then load from disk on
