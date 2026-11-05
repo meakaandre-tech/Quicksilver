@@ -16,7 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
-| package 5 (Flywheel and Create) | `package-5` | not merged: Andre checks it first; full run green on 7b077f3 (41783885554, rebased on main 8951f5c); see "Package 5" below |
+| package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
