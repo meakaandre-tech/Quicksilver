@@ -995,9 +995,43 @@
         "setblock 2957 202 -2001 minecraft:orange_wall_banner[facing=south]{patterns:[{pattern:\"minecraft:globe\",color:\"blue\"}]}",
         "setblock 2959 202 -2001 minecraft:purple_wall_banner[facing=south]",
         "setblock 2961 205 -2000 minecraft:oak_hanging_sign[rotation=0]{front_text:{messages:[\"hanging\",\"\",\"\",\"\"]}}",
-        "execute in minecraft:overworld run tp @a 2950.5 203.5 -1983.5 180 22"
+        "execute in minecraft:overworld run tp @a 2950.5 203.5 -1983.5 180 22",
+        "setblock 2950 194 -1990 minecraft:stone"
       ],
-      "ciNote": "Package 6's baked block entities against vanilla's renderers; the counts are package 6's draw-call evidence for still block entities."
+      "ciNote": "Package 6's block entities against vanilla's renderers (the entity atlas, and baking). CI's pin mod holds this area's banners at a swayed pose fixed by each banner's position (running with the game time during the bench, after the step at 0.5 s sets the marker block under the floor), so the banners are checked away from rest. Extra shots: four lids opened by /qscichest (a single and a double chest, an ender chest, a shulker box; open after the 3 s wait, resting open), two signs' text changed with /data, then the lids closed again (resting closed).",
+      "measureSteps": [
+        {
+          "at": 0.5,
+          "command": "setblock 2950 194 -1990 minecraft:redstone_block"
+        }
+      ],
+      "ciShots": [
+        {
+          "name": "chest_open",
+          "commands": [
+            "qscichest open 2941 200 -1990",
+            "qscichest open 2947 200 -1990",
+            "qscichest open 2952 200 -1990",
+            "qscichest open 2959 200 -1990"
+          ]
+        },
+        {
+          "name": "sign_edit",
+          "commands": [
+            "data merge block 2939 200 -1994 {front_text:{messages:[\"edited\",\"by CI\",\"\",\"\"]}}",
+            "data merge block 2953 202 -2001 {front_text:{messages:[\"\",\"changed\",\"\",\"\"]}}"
+          ]
+        },
+        {
+          "name": "closed",
+          "commands": [
+            "qscichest close 2941 200 -1990",
+            "qscichest close 2947 200 -1990",
+            "qscichest close 2952 200 -1990",
+            "qscichest close 2959 200 -1990"
+          ]
+        }
+      ]
     }
   ]
 }
