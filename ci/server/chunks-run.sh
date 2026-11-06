@@ -48,6 +48,15 @@ ls -l chunks-base.tar
 (cd "$srv" && tar xf "$root/chunks-base.tar") && python3 -I ci/server/regiondump.py "$srv/chunksbase" "$OUT/base.json"
 rm -rf "$srv/chunksbase"
 
+# the shapes of the methods P2-4's mixins target (CI SIG lines; a vanilla start of its own, not measured)
+props world normal
+(cd "$srv" && tar xf "$root/chunks-base.tar" && mv chunksbase world)
+mkdir -p "$OUT/sig"
+(cd "$srv" && timeout 600 java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$OUT/sig" -Dci.harness.run="$root/ci/server/chunks-sig.txt" \
+   "-Dci.harness.signatures=net.minecraft.server.level.ChunkMap#save|saveChunkIfNeeded|saveAllChunks|saveChunksEagerly|processUnloads|scheduleUnload|scheduleChunkLoad|readChunk|protoChunkToFullChunk|write|flushWorker|markPosition,net.minecraft.world.level.chunk.storage.SerializableChunkData#copyOf|read|parse|write|*record|packStructureData|unpackStructureStart|saveTicks|makeBiomeCodec,net.minecraft.world.level.chunk.storage.IOWorker#store|loadAsync|synchronize|storePendingChunk|runStore|submitTask|scheduleWrite|tellStorePending,net.minecraft.world.level.chunk.storage.ChunkStorage#write|read|flushWorker|upgradeChunkTag,net.minecraft.world.level.chunk.storage.RegionFile#write|getChunkDataOutputStream|getChunkDataInputStream|flush|close|<init>,net.minecraft.world.level.chunk.storage.RegionFileStorage#write|read|getRegionFile|flush|<init>,net.minecraft.world.level.chunk.storage.RegionFileVersion#getCompressionFormat|wrap|getSelected|<init>,net.minecraft.server.MinecraftServer#autoSave|saveEverything|saveAllChunks|computeNextAutosaveInterval,net.minecraft.server.level.ServerLevel#save|saveLevelData,net.minecraft.world.level.chunk.LevelChunkSection#copy|<init>,net.minecraft.world.level.chunk.PalettedContainer#copy|<init>|pack|unpack|codecRW,net.minecraft.world.level.chunk.DataLayer#copy|<init>|isEmpty,net.minecraft.world.level.chunk.LevelChunk#postProcessGeneration|getBlockEntityNbtForSaving|runPostLoad|<init>|registerAllBlockEntitiesAfterLevelLoad,net.minecraft.world.level.chunk.ChunkAccess#getBlockEntityNbtForSaving|getTicksForSerialization|tryMarkSaved|markUnsaved|isUnsaved|getAllStarts|getPostProcessing,net.minecraft.world.entity.ai.village.poi.PoiManager#flush,net.minecraft.world.level.chunk.storage.SectionStorage#flush|flushAll|writeColumn|tick,net.minecraft.world.level.chunk.storage.EntityStorage#storeEntities|loadEntities|flush,net.minecraft.world.level.entity.PersistentEntitySectionManager#autoSave|saveAll|storeChunkSections,net.minecraft.server.level.DistanceManager#runAllUpdates" -jar server.jar --nogui < /dev/null > "$OUT/sig-server.log" 2>&1)
+grep 'CI SIG' "$OUT/sig-server.log" | sed 's/.*CI SIG/CI SIG/'
+rm -rf "$srv/world"
+
 # one run: side (vanilla|quicksilver) round scene script ticks speed
 one() {
   local side=$1 round=$2 scene=$3 script=$4 ticks=$5 speed=$6

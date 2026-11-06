@@ -106,6 +106,7 @@ public final class Harness implements ModInitializer {
         result.addProperty("startupMs", startedAt - jvm);
         result.addProperty("worldLoadMs", startedAt - startingAt);
         result.addProperty("quicksilverLoaded", quicksilver());
+        signatures();
         String gen = System.getProperty("ci.harness.gen");
         String run = System.getProperty("ci.harness.run");
         try {
@@ -129,6 +130,43 @@ public final class Harness implements ModInitializer {
             result.addProperty("error", String.valueOf(e));
             write();
             server.halt(false);
+        }
+    }
+
+    /**
+     * P2-4 research (CI only): {@code -Dci.harness.signatures=pkg.Class#m1|m2,pkg.Other#m3|*record}: logs the parameter
+     * and return types of the named methods of those classes ({@code *record}: a record's component types), one
+     * {@code CI SIG} line each: the shapes a mixin targets, nothing of their code.
+     */
+    private static void signatures() {
+        String spec = System.getProperty("ci.harness.signatures");
+        if (spec == null) return;
+        for (String part : spec.split(",")) {
+            String[] cm = part.split("#", 2);
+            try {
+                Class<?> c = Class.forName(cm[0]);
+                java.util.Set<String> names = new java.util.HashSet<>(Arrays.asList(cm.length > 1 ? cm[1].split("\\|") : new String[0]));
+                if (names.contains("*record") && c.isRecord()) {
+                    StringBuilder b = new StringBuilder();
+                    for (java.lang.reflect.RecordComponent r : c.getRecordComponents()) b.append(r.getGenericType().getTypeName()).append(' ').append(r.getName()).append("; ");
+                    LOG.info("CI SIG {} record: {}", c.getSimpleName(), b);
+                }
+                for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+                    if (!names.contains(m.getName())) continue;
+                    StringBuilder b = new StringBuilder();
+                    for (Class<?> t : m.getParameterTypes()) b.append(b.length() == 0 ? "" : ", ").append(t.getName());
+                    LOG.info("CI SIG {}.{}({}) -> {} [{}]", c.getSimpleName(), m.getName(), b, m.getReturnType().getName(),
+                        java.lang.reflect.Modifier.toString(m.getModifiers()));
+                }
+                for (java.lang.reflect.Constructor<?> k : c.getDeclaredConstructors()) {
+                    if (!names.contains("<init>")) break;
+                    StringBuilder b = new StringBuilder();
+                    for (Class<?> t : k.getParameterTypes()) b.append(b.length() == 0 ? "" : ", ").append(t.getName());
+                    LOG.info("CI SIG {}.<init>({}) [{}]", c.getSimpleName(), b, java.lang.reflect.Modifier.toString(k.getModifiers()));
+                }
+            } catch (Throwable t) {
+                LOG.info("CI SIG {}: {}", cm[0], t.toString());
+            }
         }
     }
 

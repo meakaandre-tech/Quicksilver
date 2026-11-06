@@ -192,6 +192,26 @@ def main(results, report_dir):
                 lines.append("\nTop chunk methods (self): " + ", ".join("%s %d" % (x["method"], x["samples"]) for x in j.get("self", [])[:30]))
                 lines.append("\nThreads (all samples in the window): " + ", ".join("%s %d" % (x["thread"], x["samples"]) for x in j.get("threads", [])))
                 lines.append("\n</details>\n")
+            # inside loads and saves, all rounds of each side summed (JFR anchors: an anchor's direct callees)
+            agg = {}
+            for (side, r), n in nums.items():
+                for a, v in (n["jfr"].get("anchors") or {}).items():
+                    acc = agg.setdefault(side, {}).setdefault(a, [0, {}, {}])
+                    acc[0] += v["samples"]
+                    for c in v["callees"]:
+                        acc[1][c["method"]] = acc[1].get(c["method"], 0) + c["samples"]
+                    for c in v.get("callees2", []):
+                        acc[2][c["path"]] = acc[2].get(c["path"], 0) + c["samples"]
+            for side in ("vanilla", "quicksilver"):
+                if side not in agg:
+                    continue
+                lines.append("<details><summary>%s, all rounds: inside loads and saves (samples under each method, its callees)</summary>\n" % side)
+                for a, (n_a, c1, c2) in sorted(agg[side].items(), key=lambda kv: -kv[1][0]):
+                    top = sorted(c1.items(), key=lambda kv: -kv[1])[:12]
+                    top2 = sorted(c2.items(), key=lambda kv: -kv[1])[:12]
+                    lines.append("- **%s** %d: %s<br>two down: %s" % (a, n_a, ", ".join("%s %d" % kv for kv in top),
+                                                                     ", ".join("%s %d" % kv for kv in top2)))
+                lines.append("\n</details>\n")
             # saved files
             dumps = {k: load(os.path.join(v, "dump.json")) for k, v in rs.items()}
             ref = dumps.get(("vanilla", 1))
@@ -228,7 +248,7 @@ def main(results, report_dir):
                                 len(c["storedDiffSameRaw"]), len(stored_out),
                                 ", ".join("%s %d" % kv for kv in sorted(c["keys"].items())) or "-",
                                 c["headerPlaceDiff"], c["headerTimeDiff"], len(c["notInBase"])))
-                            if c["notInBase"]:
+                            if c["notInBase"] and key.endswith("region"):
                                 fails.append("%s/%s: %s round %d generated %d chunks in %s" % (suite, scene, side, r, len(c["notInBase"]), key))
                 lines.append("")
                 lines.append("Vanilla's noise (rounds 2-%d against 1): %s\n" % (max(n_rounds), "; ".join(

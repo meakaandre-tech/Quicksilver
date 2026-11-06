@@ -41,6 +41,12 @@ PHASES = [
                                                r"^ChunkTaskDispatcher\.|^ChunkTaskPriorityQueue\.|^ChunkTrackingView\."),
     ("tick, other", r"^MinecraftServer\.tickServer$"),
 ]
+# for each anchor: the methods it calls directly (the frame below it on the stack) and two levels down, in the samples
+# that pass through it: where inside a load or a save the time goes
+ANCHORS = ["SerializableChunkData.copyOf", "ChunkMap.save", "ChunkMap.saveChunksEagerly", "ChunkMap.processUnloads",
+           "ChunkMap.saveAllChunks", "MinecraftServer.saveEverything", "ServerLevel.save", "SerializableChunkData.read",
+           "ChunkMap.protoChunkToFullChunk", "LevelChunk.postProcessGeneration", "DistanceManager.runAllUpdates",
+           "LevelChunk.<init>", "LevelChunk.runPostLoad", "SectionStorage.flush", "PersistentEntitySectionManager.autoSave"]
 SUMMED = ("chunk load", "chunk to full (promote)", "entity load", "POI load")
 SAVE = ("chunk save", "entity save", "POI save", "autosave")
 
@@ -109,6 +115,7 @@ def main(rec, out, ticks, start_ms, end_ms):
     threads = Counter()
     self_c, incl = Counter(), Counter()
     total = Counter()
+    anchors = {a: [0, Counter(), Counter()] for a in ANCHORS}
     outside, untimed = 0, 0
     for kind, thread, stack, _, t in events(rec, ["jdk.ExecutionSample", "jdk.NativeMethodSample"]):
         if t is None:
@@ -126,6 +133,14 @@ def main(rec, out, ticks, start_ms, end_ms):
         ph = phase_of(names, pats) or ("idle or other" if where == "between" else "tick, other")
         by[ph][where + " " + kind_s] += 1
         total[where + " " + kind_s] += 1
+        for a, acc in anchors.items():
+            if a in names:
+                i = names.index(a)  # stack[0] is the top frame: callees have lower indices
+                acc[0] += 1
+                if i >= 1:
+                    acc[1][names[i - 1]] += 1
+                if i >= 2:
+                    acc[2][names[i - 1] + " > " + names[i - 2]] += 1
         if ph not in ("tick, other", "idle or other"):
             self_c[names[0]] += 1
             for x in set(names):
@@ -155,6 +170,9 @@ def main(rec, out, ticks, start_ms, end_ms):
 
     res = {"ticks": ticks, "windowMs": end_ms - start_ms, "samplesOutsideWindow": outside, "samplesUntimed": untimed, "samples": dict(total), "phases": phases,
            "load": summed(SUMMED), "save": summed(SAVE), "autosave": summed(("autosave",)),
+           "anchors": {a: {"samples": v[0], "callees": [{"method": k, "samples": n} for k, n in v[1].most_common(15)],
+                           "callees2": [{"path": k, "samples": n} for k, n in v[2].most_common(20)]}
+                       for a, v in anchors.items() if v[0]},
            "self": [{"method": k, "samples": v} for k, v in self_c.most_common(60)],
            "inclusive": [{"method": k, "samples": v} for k, v in incl.most_common(150)],
            "threads": [{"thread": k, "samples": v} for k, v in threads.most_common(30)]}
