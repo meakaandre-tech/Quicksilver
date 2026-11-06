@@ -103,6 +103,7 @@ public final class EntityAtlas {
             if (state != State.ON) return false;
         }
         try {
+            if (uv instanceof Slot) return false; // the atlas's own submit, made by the hook
             submits++;
             if (type == null) return skip("no render type");
             if (uv != null) return skip("already mapped");
@@ -225,7 +226,11 @@ public final class EntityAtlas {
         String sampler = (String) e.getKey();
         Identifier location = (Identifier) mLocation.invoke(e.getValue());
         Object supplier = mSamplerOf.invoke(e.getValue());
-        Kind kind = KINDS.computeIfAbsent(new KindKey(name, others, sampler, supplier), k -> new Kind(name, setup, sampler, supplier));
+        // keyed by the sampler the supplier gives, not the supplier: each texture's binding has its own supplier object
+        // (run 42162330832: one atlas render type per texture, no draws merged), but they give the same cached sampler
+        Object resolved = supplier instanceof Supplier<?> sp ? sp.get() : null;
+        Kind kind = KINDS.computeIfAbsent(new KindKey(name, others, sampler, resolved == null ? supplier : resolved),
+            k -> new Kind(name, setup, sampler, supplier));
         return new Template(kind, location);
     }
 
@@ -457,6 +462,8 @@ public final class EntityAtlas {
         o.addProperty("fallbacks", fallbacks);
         o.addProperty("pages", PAGES.size());
         o.addProperty("textures", SLOTS.size());
+        o.addProperty("renderTypeKinds", KINDS.size());
+        o.addProperty("vanillaRenderTypesSeen", BY_TYPE.size());
         o.addProperty("uploads", uploads);
         o.addProperty("uploadBytes", uploadBytes);
         o.addProperty("modelSubmitsPerFrame", per(submits, frames));
