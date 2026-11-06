@@ -1,0 +1,1595 @@
+{
+ "ticks": 1200,
+ "windowMs": 59847,
+ "samplesOutsideWindow": 17640,
+ "samplesUntimed": 0,
+ "samples": {
+  "tick java": 1060,
+  "tick native": 2,
+  "between java": 360,
+  "between native": 4
+ },
+ "phases": [
+  {
+   "phase": "autosave",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "chunk save",
+   "tickJava": 284,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.2367,
+   "msPerTickAll": 0.2367,
+   "allocMB": 337.31
+  },
+  {
+   "phase": "entity save",
+   "tickJava": 19,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0158,
+   "msPerTickAll": 0.0158,
+   "allocMB": 12.92
+  },
+  {
+   "phase": "POI save",
+   "tickJava": 5,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0042,
+   "msPerTickAll": 0.0042,
+   "allocMB": 0.67
+  },
+  {
+   "phase": "chunk load",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 49,
+   "betweenNative": 3,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0433,
+   "allocMB": 65.15
+  },
+  {
+   "phase": "chunk to full (promote)",
+   "tickJava": 68,
+   "tickNative": 0,
+   "betweenJava": 49,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0567,
+   "msPerTickAll": 0.0975,
+   "allocMB": 35.01
+  },
+  {
+   "phase": "entity load",
+   "tickJava": 8,
+   "tickNative": 0,
+   "betweenJava": 2,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0067,
+   "msPerTickAll": 0.0083,
+   "allocMB": 0.35
+  },
+  {
+   "phase": "POI load",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "chunk unload",
+   "tickJava": 10,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0083,
+   "msPerTickAll": 0.0083,
+   "allocMB": 24.44
+  },
+  {
+   "phase": "light",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 1,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0008,
+   "allocMB": 0.31
+  },
+  {
+   "phase": "chunk system (tickets, holders, tasks)",
+   "tickJava": 344,
+   "tickNative": 1,
+   "betweenJava": 183,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.2875,
+   "msPerTickAll": 0.44,
+   "allocMB": 245.61
+  },
+  {
+   "phase": "tick, other",
+   "tickJava": 322,
+   "tickNative": 1,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.2692,
+   "msPerTickAll": 0.2692,
+   "allocMB": 12.26
+  },
+  {
+   "phase": "idle or other",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 76,
+   "betweenNative": 1,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0642,
+   "allocMB": 0.0
+  }
+ ],
+ "load": {
+  "msPerTickInTick": 0.0633,
+  "msPerTickAll": 0.1492
+ },
+ "save": {
+  "msPerTickInTick": 0.2567,
+  "msPerTickAll": 0.2567
+ },
+ "autosave": {
+  "msPerTickInTick": 0.0,
+  "msPerTickAll": 0.0
+ },
+ "anchors": {
+  "SerializableChunkData.copyOf": {
+   "samples": 179,
+   "callees": [
+    {
+     "method": "LevelChunkSection.copy",
+     "samples": 46
+    },
+    {
+     "method": "LightEngine.getDataLayerData",
+     "samples": 35
+    },
+    {
+     "method": "LevelChunk.getBlockEntityNbtForSaving",
+     "samples": 34
+    },
+    {
+     "method": "LevelChunk.getTicksForSerialization",
+     "samples": 21
+    },
+    {
+     "method": "SerializableChunkData.packStructureData",
+     "samples": 15
+    },
+    {
+     "method": "DataLayer.copy",
+     "samples": 7
+    },
+    {
+     "method": "ReferencePipeline.toArray",
+     "samples": 5
+    },
+    {
+     "method": "Collections$UnmodifiableCollection$1.hasNext",
+     "samples": 4
+    },
+    {
+     "method": "ChunkAccess.getBlockEntitiesPos",
+     "samples": 3
+    },
+    {
+     "method": "ProblemReporter$ScopedCollector.<init>",
+     "samples": 2
+    },
+    {
+     "method": "EnumMap.<init>",
+     "samples": 1
+    },
+    {
+     "method": "UpgradeData.copy",
+     "samples": 1
+    },
+    {
+     "method": "ChunkAccess.getAllReferences",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "LevelChunkSection.copy > LevelChunkSection.<init>",
+     "samples": 45
+    },
+    {
+     "path": "LightEngine.getDataLayerData > LayerLightSectionStorage.getDataLayerData",
+     "samples": 35
+    },
+    {
+     "path": "LevelChunk.getBlockEntityNbtForSaving > BlockEntity.saveWithFullMetadata",
+     "samples": 33
+    },
+    {
+     "path": "LevelChunk.getTicksForSerialization > LevelChunkTicks.pack",
+     "samples": 21
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > StructureStart.createTag",
+     "samples": 12
+    },
+    {
+     "path": "DataLayer.copy > DataLayer.<init>",
+     "samples": 6
+    },
+    {
+     "path": "ReferencePipeline.toArray > AbstractPipeline.evaluateToArrayNode",
+     "samples": 5
+    },
+    {
+     "path": "ProblemReporter$ScopedCollector.<init> > ProblemReporter$Collector.<init>",
+     "samples": 2
+    },
+    {
+     "path": "ChunkAccess.getBlockEntitiesPos > AbstractCollection.addAll",
+     "samples": 2
+    },
+    {
+     "path": "EnumMap.<init> > EnumMap.getKeyUniverse",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > RegistryAccess.lookupOrThrow",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > Identifier.toString",
+     "samples": 1
+    },
+    {
+     "path": "ChunkAccess.getBlockEntitiesPos > Sets.newHashSet",
+     "samples": 1
+    },
+    {
+     "path": "ChunkAccess.getAllReferences > Collections.unmodifiableMap",
+     "samples": 1
+    }
+   ]
+  },
+  "ChunkMap.save": {
+   "samples": 182,
+   "callees": [
+    {
+     "method": "SerializableChunkData.copyOf",
+     "samples": 179
+    },
+    {
+     "method": "CompletableFuture.supplyAsync",
+     "samples": 1
+    },
+    {
+     "method": "SimpleRegionStorage.write",
+     "samples": 1
+    },
+    {
+     "method": "ChunkMap.markPosition",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "SerializableChunkData.copyOf > LevelChunkSection.copy",
+     "samples": 46
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LightEngine.getDataLayerData",
+     "samples": 35
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LevelChunk.getBlockEntityNbtForSaving",
+     "samples": 34
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LevelChunk.getTicksForSerialization",
+     "samples": 21
+    },
+    {
+     "path": "SerializableChunkData.copyOf > SerializableChunkData.packStructureData",
+     "samples": 15
+    },
+    {
+     "path": "SerializableChunkData.copyOf > DataLayer.copy",
+     "samples": 7
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ReferencePipeline.toArray",
+     "samples": 5
+    },
+    {
+     "path": "SerializableChunkData.copyOf > Collections$UnmodifiableCollection$1.hasNext",
+     "samples": 4
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ChunkAccess.getBlockEntitiesPos",
+     "samples": 3
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ProblemReporter$ScopedCollector.<init>",
+     "samples": 2
+    },
+    {
+     "path": "SerializableChunkData.copyOf > EnumMap.<init>",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > UpgradeData.copy",
+     "samples": 1
+    },
+    {
+     "path": "CompletableFuture.supplyAsync > CompletableFuture.asyncSupplyStage",
+     "samples": 1
+    },
+    {
+     "path": "SimpleRegionStorage.write > IOWorker.store",
+     "samples": 1
+    },
+    {
+     "path": "ChunkMap.markPosition > Long2ByteOpenHashMap.put",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ChunkAccess.getAllReferences",
+     "samples": 1
+    }
+   ]
+  },
+  "ChunkMap.saveChunksEagerly": {
+   "samples": 267,
+   "callees": [
+    {
+     "method": "ChunkMap.saveChunkIfNeeded",
+     "samples": 183
+    },
+    {
+     "method": "GenerationChunkHolder.getLatestChunk",
+     "samples": 54
+    },
+    {
+     "method": "Long2ObjectLinkedOpenHashMap.get",
+     "samples": 13
+    },
+    {
+     "method": "LongLinkedOpenHashSet$SetIterator.nextLong",
+     "samples": 4
+    }
+   ],
+   "callees2": [
+    {
+     "path": "ChunkMap.saveChunkIfNeeded > ChunkMap.save",
+     "samples": 166
+    },
+    {
+     "path": "GenerationChunkHolder.getLatestChunk > GenerationChunkHolder.getChunkIfPresentUnchecked",
+     "samples": 54
+    },
+    {
+     "path": "ChunkMap.saveChunkIfNeeded > Long2LongOpenHashMap.getOrDefault",
+     "samples": 10
+    },
+    {
+     "path": "ChunkMap.saveChunkIfNeeded > GenerationChunkHolder.getLatestChunk",
+     "samples": 4
+    }
+   ]
+  },
+  "ChunkMap.processUnloads": {
+   "samples": 293,
+   "callees": [
+    {
+     "method": "ChunkMap.saveChunksEagerly",
+     "samples": 267
+    },
+    {
+     "method": "CompletableFuture$Completion.run",
+     "samples": 23
+    },
+    {
+     "method": "ChunkMap.scheduleUnload",
+     "samples": 2
+    },
+    {
+     "method": "Long2ObjectLinkedOpenHashMap.get",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "ChunkMap.saveChunksEagerly > ChunkMap.saveChunkIfNeeded",
+     "samples": 183
+    },
+    {
+     "path": "ChunkMap.saveChunksEagerly > GenerationChunkHolder.getLatestChunk",
+     "samples": 54
+    },
+    {
+     "path": "CompletableFuture$Completion.run > CompletableFuture$UniRun.tryFire",
+     "samples": 23
+    },
+    {
+     "path": "ChunkMap.saveChunksEagerly > Long2ObjectLinkedOpenHashMap.get",
+     "samples": 13
+    },
+    {
+     "path": "ChunkMap.saveChunksEagerly > LongLinkedOpenHashSet$SetIterator.nextLong",
+     "samples": 4
+    },
+    {
+     "path": "ChunkMap.scheduleUnload > CompletableFuture.whenComplete",
+     "samples": 1
+    },
+    {
+     "path": "ChunkMap.scheduleUnload > DirectMethodHandle.allocateInstance",
+     "samples": 1
+    }
+   ]
+  },
+  "SerializableChunkData.read": {
+   "samples": 52,
+   "callees": [
+    {
+     "method": "SerializableChunkData.unpackStructureStart",
+     "samples": 31
+    },
+    {
+     "method": "PoiManager.checkConsistencyWithBlocks",
+     "samples": 8
+    },
+    {
+     "method": "LevelChunkTicks.<init>",
+     "samples": 6
+    },
+    {
+     "method": "SerializableChunkData.unpackStructureReferences",
+     "samples": 2
+    },
+    {
+     "method": "LevelChunk.<init>",
+     "samples": 2
+    },
+    {
+     "method": "Objects.equals",
+     "samples": 1
+    },
+    {
+     "method": "ImposterProtoChunk.<init>",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "SerializableChunkData.unpackStructureStart > StructureStart.loadStaticStart",
+     "samples": 29
+    },
+    {
+     "path": "LevelChunkTicks.<init> > ObjectOpenCustomHashSet.add",
+     "samples": 6
+    },
+    {
+     "path": "PoiManager.checkConsistencyWithBlocks > Util.ifElse",
+     "samples": 5
+    },
+    {
+     "path": "PoiManager.checkConsistencyWithBlocks > SectionStorage.getOrLoad",
+     "samples": 3
+    },
+    {
+     "path": "SerializableChunkData.unpackStructureReferences > CompoundTag.forEach",
+     "samples": 2
+    },
+    {
+     "path": "Objects.equals > ChunkPos.equals",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.unpackStructureStart > RegistryAccess.lookupOrThrow",
+     "samples": 1
+    },
+    {
+     "path": "ImposterProtoChunk.<init> > ProtoChunk.<init>",
+     "samples": 1
+    },
+    {
+     "path": "LevelChunk.<init> > ChunkAccess.<init>",
+     "samples": 1
+    },
+    {
+     "path": "LevelChunk.<init> > Heightmap.<init>",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.unpackStructureStart > CompoundTag.getCompoundOrEmpty",
+     "samples": 1
+    }
+   ]
+  },
+  "LevelChunk.postProcessGeneration": {
+   "samples": 150,
+   "callees": [
+    {
+     "method": "Block.updateFromNeighbourShapes",
+     "samples": 86
+    },
+    {
+     "method": "BlockBehaviour$BlockStateBase.tick",
+     "samples": 24
+    },
+    {
+     "method": "FluidState.tick",
+     "samples": 21
+    },
+    {
+     "method": "LevelChunk.getBlockState",
+     "samples": 5
+    },
+    {
+     "method": "UpgradeData.upgrade",
+     "samples": 3
+    },
+    {
+     "method": "LevelWriter.setBlock",
+     "samples": 3
+    },
+    {
+     "method": "ImmutableList.copyOf",
+     "samples": 2
+    },
+    {
+     "method": "FluidState.isEmpty",
+     "samples": 2
+    },
+    {
+     "method": "ShortArrayList.clear",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "Block.updateFromNeighbourShapes > Level.getBlockState",
+     "samples": 52
+    },
+    {
+     "path": "Block.updateFromNeighbourShapes > BlockBehaviour$BlockStateBase.updateShape",
+     "samples": 32
+    },
+    {
+     "path": "BlockBehaviour$BlockStateBase.tick > LiquidBlock.tick",
+     "samples": 24
+    },
+    {
+     "path": "FluidState.tick > FlowingFluid.tick",
+     "samples": 21
+    },
+    {
+     "path": "LevelChunk.getBlockState > LevelChunkSection.getBlockState",
+     "samples": 5
+    },
+    {
+     "path": "LevelWriter.setBlock > Level.setBlock",
+     "samples": 3
+    },
+    {
+     "path": "ImmutableList.copyOf > HashMap$KeySet.toArray",
+     "samples": 1
+    },
+    {
+     "path": "UpgradeData.upgrade > Iterable.forEach",
+     "samples": 1
+    },
+    {
+     "path": "UpgradeData.upgrade > UpgradeData.upgradeInside",
+     "samples": 1
+    }
+   ]
+  },
+  "DistanceManager.runAllUpdates": {
+   "samples": 326,
+   "callees": [
+    {
+     "method": "LoadingChunkTracker.runDistanceUpdates",
+     "samples": 210
+    },
+    {
+     "method": "ChunkHolder.updateFutures",
+     "samples": 100
+    },
+    {
+     "method": "GenerationChunkHolder.updateHighestAllowedStatus",
+     "samples": 8
+    },
+    {
+     "method": "ReferenceOpenHashSet$SetIterator.next",
+     "samples": 5
+    },
+    {
+     "method": "SimulationChunkTracker.runAllUpdates",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "LoadingChunkTracker.runDistanceUpdates > DynamicGraphMinFixedPoint.runUpdates",
+     "samples": 210
+    },
+    {
+     "path": "ChunkHolder.updateFutures > ChunkMap.prepareAccessibleChunk",
+     "samples": 24
+    },
+    {
+     "path": "ChunkHolder.updateFutures > ChunkMap.onLevelChange",
+     "samples": 23
+    },
+    {
+     "path": "ChunkHolder.updateFutures > ChunkHolder.demoteFullChunk",
+     "samples": 20
+    },
+    {
+     "path": "ChunkHolder.updateFutures > ChunkMap.prepareEntityTickingChunk",
+     "samples": 16
+    },
+    {
+     "path": "ChunkHolder.updateFutures > ChunkMap.prepareTickingChunk",
+     "samples": 11
+    },
+    {
+     "path": "GenerationChunkHolder.updateHighestAllowedStatus > GenerationChunkHolder.failAndClearPendingFuturesBetween",
+     "samples": 3
+    },
+    {
+     "path": "ChunkHolder.updateFutures > GenerationChunkHolder.getChunkIfPresentUnchecked",
+     "samples": 2
+    },
+    {
+     "path": "ChunkHolder.updateFutures > CompletableFuture.complete",
+     "samples": 1
+    },
+    {
+     "path": "GenerationChunkHolder.updateHighestAllowedStatus > ChunkLevel.generationStatus",
+     "samples": 1
+    }
+   ]
+  },
+  "LevelChunk.<init>": {
+   "samples": 2,
+   "callees": [
+    {
+     "method": "ChunkAccess.<init>",
+     "samples": 1
+    },
+    {
+     "method": "Heightmap.<init>",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "ChunkAccess.<init> > ChunkSkyLightSources.<init>",
+     "samples": 1
+    },
+    {
+     "path": "Heightmap.<init> > Mth.ceillog2",
+     "samples": 1
+    }
+   ]
+  },
+  "LevelChunk.runPostLoad": {
+   "samples": 32,
+   "callees": [
+    {
+     "method": "SerializableChunkData.lambda$postLoadChunk$0",
+     "samples": 32
+    }
+   ],
+   "callees2": [
+    {
+     "path": "SerializableChunkData.lambda$postLoadChunk$0 > BlockEntity.loadStatic",
+     "samples": 25
+    },
+    {
+     "path": "SerializableChunkData.lambda$postLoadChunk$0 > LevelChunk.getBlockState",
+     "samples": 2
+    },
+    {
+     "path": "SerializableChunkData.lambda$postLoadChunk$0 > BlockEntity.getPosFromTag",
+     "samples": 2
+    },
+    {
+     "path": "SerializableChunkData.lambda$postLoadChunk$0 > LevelChunk.setBlockEntity",
+     "samples": 2
+    },
+    {
+     "path": "SerializableChunkData.lambda$postLoadChunk$0 > CompoundTag.getBooleanOr",
+     "samples": 1
+    }
+   ]
+  }
+ },
+ "self": [
+  {
+   "method": "LongOpenHashSet.contains",
+   "samples": 65
+  },
+  {
+   "method": "Long2ObjectLinkedOpenHashMap.get",
+   "samples": 61
+  },
+  {
+   "method": "PalettedContainer.get",
+   "samples": 51
+  },
+  {
+   "method": "GenerationChunkHolder.getChunkIfPresentUnchecked",
+   "samples": 49
+  },
+  {
+   "method": "ChunkTracker.getComputedLevel",
+   "samples": 38
+  },
+  {
+   "method": "PalettedContainer$Data.copy",
+   "samples": 38
+  },
+  {
+   "method": "Long2ByteOpenHashMap.get",
+   "samples": 24
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.get",
+   "samples": 24
+  },
+  {
+   "method": "DynamicGraphMinFixedPoint.checkNeighbor",
+   "samples": 23
+  },
+  {
+   "method": "ServerChunkCache.getChunk",
+   "samples": 21
+  },
+  {
+   "method": "VarHandleReferences$Array.getVolatile",
+   "samples": 16
+  },
+  {
+   "method": "ChunkMap.saveChunksEagerly",
+   "samples": 13
+  },
+  {
+   "method": "Comparator.lambda$comparingLong$6043328a$1",
+   "samples": 13
+  },
+  {
+   "method": "Long2ObjectFunctions$SynchronizedFunction.get",
+   "samples": 11
+  },
+  {
+   "method": "ChunkMap.onLevelChange",
+   "samples": 11
+  },
+  {
+   "method": "CompletableFuture.postComplete",
+   "samples": 10
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.getOrDefault",
+   "samples": 10
+  },
+  {
+   "method": "ReferenceOpenHashSet.add",
+   "samples": 10
+  },
+  {
+   "method": "Long2LongOpenHashMap.getOrDefault",
+   "samples": 10
+  },
+  {
+   "method": "LongLinkedOpenHashSet.add",
+   "samples": 8
+  },
+  {
+   "method": "ConcurrentLinkedQueue.offer",
+   "samples": 8
+  },
+  {
+   "method": "BlockBehaviour$BlockStateBase.updateShape",
+   "samples": 7
+  },
+  {
+   "method": "FluidState.isEmpty",
+   "samples": 6
+  },
+  {
+   "method": "NaturalSpawner.createState",
+   "samples": 6
+  },
+  {
+   "method": "StateHolder.valueIndex",
+   "samples": 6
+  },
+  {
+   "method": "HashMap.getNode",
+   "samples": 6
+  },
+  {
+   "method": "DataLayer.<init>",
+   "samples": 6
+  },
+  {
+   "method": "GenerationChunkHolder.increaseGenerationRefCount",
+   "samples": 6
+  },
+  {
+   "method": "Vec3i.equals",
+   "samples": 6
+  },
+  {
+   "method": "AbstractConsecutiveExecutor.schedule",
+   "samples": 6
+  },
+  {
+   "method": "DynamicGraphMinFixedPoint.runUpdates",
+   "samples": 5
+  },
+  {
+   "method": "ReferenceOpenHashSet$SetIterator.next",
+   "samples": 5
+  },
+  {
+   "method": "LongLinkedOpenHashSet.rehash",
+   "samples": 5
+  },
+  {
+   "method": "MultifaceBlock.updateShape",
+   "samples": 4
+  },
+  {
+   "method": "GenerationChunkHolder.updateHighestAllowedStatus",
+   "samples": 4
+  },
+  {
+   "method": "ServerChunkCache.tickChunks",
+   "samples": 4
+  },
+  {
+   "method": "LocalCache.connectAccessOrder",
+   "samples": 4
+  },
+  {
+   "method": "CrudeIncrementalIntIdentityHashBiMap.byId",
+   "samples": 4
+  },
+  {
+   "method": "LongLinkedOpenHashSet$SetIterator.nextLong",
+   "samples": 4
+  },
+  {
+   "method": "ConcurrentLinkedQueue.poll",
+   "samples": 4
+  },
+  {
+   "method": "Collections$UnmodifiableCollection$1.hasNext",
+   "samples": 4
+  },
+  {
+   "method": "DynamicGraphMinFixedPoint.checkEdge",
+   "samples": 4
+  },
+  {
+   "method": "Long2ByteOpenHashMap.insert",
+   "samples": 4
+  },
+  {
+   "method": "NbtOps.getMapValues",
+   "samples": 4
+  },
+  {
+   "method": "ArrayList.<init>",
+   "samples": 4
+  },
+  {
+   "method": "SerializableChunkData.copyOf",
+   "samples": 4
+  },
+  {
+   "method": "PalettedContainer.<init>",
+   "samples": 3
+  },
+  {
+   "method": "RegularImmutableMap.get",
+   "samples": 3
+  },
+  {
+   "method": "LevelChunk.postProcessGeneration",
+   "samples": 3
+  },
+  {
+   "method": "ChunkHolder.updateFutures",
+   "samples": 3
+  },
+  {
+   "method": "TagValueOutput.store",
+   "samples": 3
+  },
+  {
+   "method": "Encoder$1.encode",
+   "samples": 3
+  },
+  {
+   "method": "CrudeIncrementalIntIdentityHashBiMap.indexOf",
+   "samples": 3
+  },
+  {
+   "method": "PriorityQueue.siftUpUsingComparator",
+   "samples": 3
+  },
+  {
+   "method": "Inflater.inflateBytesBytes",
+   "samples": 3
+  },
+  {
+   "method": "ChunkMap.saveChunkIfNeeded",
+   "samples": 3
+  },
+  {
+   "method": "PersistentEntitySectionManager.addEntity",
+   "samples": 3
+  },
+  {
+   "method": "LinearPalette.valueFor",
+   "samples": 3
+  },
+  {
+   "method": "DataResult$Success.map",
+   "samples": 3
+  },
+  {
+   "method": "PalettedContainer.copy",
+   "samples": 3
+  }
+ ],
+ "inclusive": [
+  {
+   "method": "MinecraftServer.lambda$spin$0",
+   "samples": 1024
+  },
+  {
+   "method": "MinecraftServer.runServer",
+   "samples": 1024
+  },
+  {
+   "method": "Thread.run",
+   "samples": 1019
+  },
+  {
+   "method": "MinecraftServer.tickServer",
+   "samples": 739
+  },
+  {
+   "method": "DedicatedServer.tickServer",
+   "samples": 739
+  },
+  {
+   "method": "MinecraftServer.processPacketsAndTick",
+   "samples": 739
+  },
+  {
+   "method": "MinecraftServer.tickChildren",
+   "samples": 737
+  },
+  {
+   "method": "ServerLevel.tick",
+   "samples": 737
+  },
+  {
+   "method": "ServerChunkCache.tick",
+   "samples": 693
+  },
+  {
+   "method": "ServerChunkCache.runDistanceManagerUpdates",
+   "samples": 328
+  },
+  {
+   "method": "DistanceManager.runAllUpdates",
+   "samples": 326
+  },
+  {
+   "method": "ChunkMap.tick",
+   "samples": 308
+  },
+  {
+   "method": "ChunkMap.processUnloads",
+   "samples": 293
+  },
+  {
+   "method": "MinecraftServer.pollTaskInternal",
+   "samples": 286
+  },
+  {
+   "method": "ServerChunkCache.pollTask",
+   "samples": 286
+  },
+  {
+   "method": "ServerChunkCache$MainThreadExecutor.pollTask",
+   "samples": 286
+  },
+  {
+   "method": "MinecraftServer.pollTask",
+   "samples": 286
+  },
+  {
+   "method": "MinecraftServer.waitUntilNextTick",
+   "samples": 285
+  },
+  {
+   "method": "BlockableEventLoop.pollTask",
+   "samples": 282
+  },
+  {
+   "method": "BlockableEventLoop.doRunTask",
+   "samples": 278
+  },
+  {
+   "method": "ServerChunkCache$MainThreadExecutor.doRunTask",
+   "samples": 277
+  },
+  {
+   "method": "ChunkMap.saveChunksEagerly",
+   "samples": 267
+  },
+  {
+   "method": "BlockableEventLoop.managedBlock",
+   "samples": 261
+  },
+  {
+   "method": "CompletableFuture$Completion.run",
+   "samples": 244
+  },
+  {
+   "method": "CompletableFuture$UniApply.tryFire",
+   "samples": 214
+  },
+  {
+   "method": "DynamicGraphMinFixedPoint.runUpdates",
+   "samples": 210
+  },
+  {
+   "method": "LoadingChunkTracker.runDistanceUpdates",
+   "samples": 210
+  },
+  {
+   "method": "ChunkMap.saveChunkIfNeeded",
+   "samples": 183
+  },
+  {
+   "method": "ChunkMap.save",
+   "samples": 182
+  },
+  {
+   "method": "SerializableChunkData.copyOf",
+   "samples": 179
+  },
+  {
+   "method": "ChunkTracker.checkNeighborsAfterUpdate",
+   "samples": 173
+  },
+  {
+   "method": "DynamicGraphMinFixedPoint.checkNeighbor",
+   "samples": 171
+  },
+  {
+   "method": "ChunkMap.lambda$prepareTickingChunk$1",
+   "samples": 157
+  },
+  {
+   "method": "ChunkResult$Success.map",
+   "samples": 157
+  },
+  {
+   "method": "ChunkMap.lambda$prepareTickingChunk$2",
+   "samples": 156
+  },
+  {
+   "method": "LevelChunk.postProcessGeneration",
+   "samples": 150
+  },
+  {
+   "method": "DynamicGraphMinFixedPoint.checkEdge",
+   "samples": 106
+  },
+  {
+   "method": "ChunkHolder.updateFutures",
+   "samples": 100
+  },
+  {
+   "method": "ChunkTracker.getComputedLevel",
+   "samples": 87
+  },
+  {
+   "method": "Block.updateFromNeighbourShapes",
+   "samples": 86
+  },
+  {
+   "method": "LoadingChunkTracker.getLevel",
+   "samples": 78
+  },
+  {
+   "method": "Level.getBlockState",
+   "samples": 73
+  },
+  {
+   "method": "LongOpenHashSet.contains",
+   "samples": 65
+  },
+  {
+   "method": "GenerationChunkHolder.getChunkIfPresentUnchecked",
+   "samples": 65
+  },
+  {
+   "method": "ChunkMap$DistanceManager.isChunkToRemove",
+   "samples": 64
+  },
+  {
+   "method": "Long2ObjectLinkedOpenHashMap.get",
+   "samples": 61
+  },
+  {
+   "method": "PalettedContainer.get",
+   "samples": 60
+  },
+  {
+   "method": "GenerationChunkHolder.getLatestChunk",
+   "samples": 58
+  },
+  {
+   "method": "LevelChunk.getBlockState",
+   "samples": 54
+  },
+  {
+   "method": "SerializableChunkData.read",
+   "samples": 52
+  },
+  {
+   "method": "ChunkMap.lambda$scheduleChunkLoad$3",
+   "samples": 52
+  },
+  {
+   "method": "LevelChunkSection.getBlockState",
+   "samples": 52
+  },
+  {
+   "method": "ServerChunkCache.tickChunks",
+   "samples": 51
+  },
+  {
+   "method": "ChunkMap.getChunkRangeFuture",
+   "samples": 50
+  },
+  {
+   "method": "CompletableFuture$AsyncSupply.run",
+   "samples": 49
+  },
+  {
+   "method": "LevelChunkSection.copy",
+   "samples": 46
+  },
+  {
+   "method": "PalettedContainer.copy",
+   "samples": 45
+  },
+  {
+   "method": "LevelChunkSection.<init>",
+   "samples": 45
+  },
+  {
+   "method": "PalettedContainer.<init>",
+   "samples": 42
+  },
+  {
+   "method": "ChunkStatusTasks.lambda$full$0",
+   "samples": 40
+  },
+  {
+   "method": "NaturalSpawner.createState",
+   "samples": 39
+  },
+  {
+   "method": "AbstractPipeline.evaluate",
+   "samples": 39
+  },
+  {
+   "method": "PalettedContainer$Data.copy",
+   "samples": 39
+  },
+  {
+   "method": "GenerationChunkHolder.scheduleChunkGenerationTask",
+   "samples": 37
+  },
+  {
+   "method": "AbstractPipeline.wrapAndCopyInto",
+   "samples": 36
+  },
+  {
+   "method": "ChunkGenerationTask.create",
+   "samples": 35
+  },
+  {
+   "method": "ChunkMap.scheduleGenerationTask",
+   "samples": 35
+  },
+  {
+   "method": "GenerationChunkHolder.rescheduleChunkTask",
+   "samples": 35
+  },
+  {
+   "method": "AbstractPipeline.copyInto",
+   "samples": 35
+  },
+  {
+   "method": "LightEngine.getDataLayerData",
+   "samples": 35
+  },
+  {
+   "method": "LayerLightSectionStorage.getDataLayerData",
+   "samples": 35
+  },
+  {
+   "method": "StaticCache2D.create",
+   "samples": 34
+  },
+  {
+   "method": "LevelChunk.getBlockEntityNbtForSaving",
+   "samples": 34
+  },
+  {
+   "method": "ChunkGenerationTask.lambda$create$0",
+   "samples": 33
+  },
+  {
+   "method": "StaticCache2D.<init>",
+   "samples": 33
+  },
+  {
+   "method": "CompletableFuture$UniRun.tryFire",
+   "samples": 33
+  },
+  {
+   "method": "BlockEntity.saveWithFullMetadata",
+   "samples": 33
+  },
+  {
+   "method": "Encoder.encodeStart",
+   "samples": 33
+  },
+  {
+   "method": "ChunkMap.acquireGeneration",
+   "samples": 32
+  },
+  {
+   "method": "LevelChunk.runPostLoad",
+   "samples": 32
+  },
+  {
+   "method": "SerializableChunkData.lambda$postLoadChunk$0",
+   "samples": 32
+  },
+  {
+   "method": "BlockBehaviour$BlockStateBase.updateShape",
+   "samples": 32
+  },
+  {
+   "method": "SerializableChunkData.unpackStructureStart",
+   "samples": 31
+  },
+  {
+   "method": "TagValueOutput.store",
+   "samples": 31
+  },
+  {
+   "method": "StructureStart.loadStaticStart",
+   "samples": 29
+  },
+  {
+   "method": "PiecesContainer.load",
+   "samples": 29
+  },
+  {
+   "method": "PersistentEntitySectionManager.tick",
+   "samples": 28
+  },
+  {
+   "method": "ReferencePipeline.forEach",
+   "samples": 27
+  },
+  {
+   "method": "Level.getChunk",
+   "samples": 26
+  },
+  {
+   "method": "ServerChunkCache.getChunk",
+   "samples": 26
+  },
+  {
+   "method": "ChunkMap.onFullChunkStatusChange",
+   "samples": 26
+  },
+  {
+   "method": "PersistentEntitySectionManager.updateChunkStatus",
+   "samples": 26
+  },
+  {
+   "method": "BlockEntity.saveWithoutMetadata",
+   "samples": 26
+  },
+  {
+   "method": "ForEachOps$ForEachOp$OfRef.evaluateSequential",
+   "samples": 26
+  },
+  {
+   "method": "ForEachOps$ForEachOp.evaluateSequential",
+   "samples": 26
+  },
+  {
+   "method": "BlockableEventLoop.runAllTasks",
+   "samples": 25
+  },
+  {
+   "method": "BlockEntity.loadStatic",
+   "samples": 25
+  },
+  {
+   "method": "PoolElementStructurePiece.<init>",
+   "samples": 25
+  },
+  {
+   "method": "ServerChunkCache.getFullChunk",
+   "samples": 24
+  },
+  {
+   "method": "LevelReader.getChunk",
+   "samples": 24
+  },
+  {
+   "method": "LiquidBlock.tick",
+   "samples": 24
+  },
+  {
+   "method": "BlockBehaviour$BlockStateBase.tick",
+   "samples": 24
+  },
+  {
+   "method": "ChunkMap.prepareAccessibleChunk",
+   "samples": 24
+  },
+  {
+   "method": "Long2ByteOpenHashMap.get",
+   "samples": 24
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.get",
+   "samples": 24
+  },
+  {
+   "method": "Codec$2.encode",
+   "samples": 24
+  },
+  {
+   "method": "ReferencePipeline$Head.forEach",
+   "samples": 23
+  },
+  {
+   "method": "ChunkMap.onLevelChange",
+   "samples": 23
+  },
+  {
+   "method": "SinglePoolElement.getBoundingBox",
+   "samples": 22
+  },
+  {
+   "method": "Either$Left.map",
+   "samples": 22
+  },
+  {
+   "method": "Long2ObjectFunctions$SynchronizedFunction.get",
+   "samples": 22
+  },
+  {
+   "method": "ChunkMap.lambda$scheduleUnload$0",
+   "samples": 22
+  },
+  {
+   "method": "BubbleColumnBlock.updateColumn",
+   "samples": 21
+  },
+  {
+   "method": "MultifaceBlock.updateShape",
+   "samples": 21
+  },
+  {
+   "method": "FlowingFluid.tick",
+   "samples": 21
+  },
+  {
+   "method": "FlowingFluid.spread",
+   "samples": 21
+  },
+  {
+   "method": "FluidState.tick",
+   "samples": 21
+  },
+  {
+   "method": "StructureTemplateManager.getOrCreate",
+   "samples": 21
+  },
+  {
+   "method": "SinglePoolElement.getTemplate",
+   "samples": 21
+  },
+  {
+   "method": "StructureTemplateManager.tryLoad",
+   "samples": 21
+  },
+  {
+   "method": "StructureTemplateManager.get",
+   "samples": 21
+  },
+  {
+   "method": "ConcurrentHashMap.computeIfAbsent",
+   "samples": 21
+  },
+  {
+   "method": "DataResult$Success.flatMap",
+   "samples": 21
+  },
+  {
+   "method": "LevelChunk.getTicksForSerialization",
+   "samples": 21
+  },
+  {
+   "method": "LevelChunkTicks.pack",
+   "samples": 21
+  },
+  {
+   "method": "PersistentEntitySectionManager.processChunkUnload",
+   "samples": 20
+  },
+  {
+   "method": "PersistentEntitySectionManager.lambda$processUnloads$0",
+   "samples": 20
+  },
+  {
+   "method": "PersistentEntitySectionManager.storeChunkSections",
+   "samples": 20
+  },
+  {
+   "method": "PersistentEntitySectionManager.processUnloads",
+   "samples": 20
+  },
+  {
+   "method": "LongCollection.removeIf",
+   "samples": 20
+  },
+  {
+   "method": "TemplateSource.load",
+   "samples": 20
+  },
+  {
+   "method": "ResourceManagerTemplateSource.load",
+   "samples": 20
+  },
+  {
+   "method": "TemplateSource.readStructure",
+   "samples": 20
+  },
+  {
+   "method": "Spliterator$OfLong.forEachRemaining",
+   "samples": 20
+  },
+  {
+   "method": "ChunkHolder.demoteFullChunk",
+   "samples": 20
+  },
+  {
+   "method": "Decoder.parse",
+   "samples": 19
+  },
+  {
+   "method": "LoadingChunkTracker.setLevel",
+   "samples": 19
+  },
+  {
+   "method": "PrimitiveIterator$OfLong.forEachRemaining",
+   "samples": 19
+  },
+  {
+   "method": "Spliterators$LongIteratorSpliterator.forEachRemaining",
+   "samples": 19
+  },
+  {
+   "method": "ChunkResult$Success.ifSuccess",
+   "samples": 18
+  },
+  {
+   "method": "NaturalSpawner.lambda$createState$0",
+   "samples": 18
+  },
+  {
+   "method": "BlockEntity.loadWithComponents",
+   "samples": 18
+  },
+  {
+   "method": "FlowingFluid.spreadToSides",
+   "samples": 18
+  },
+  {
+   "method": "EntityStorage.storeEntities",
+   "samples": 18
+  },
+  {
+   "method": "EnvironmentAttributeReader.getValue",
+   "samples": 17
+  },
+  {
+   "method": "LevelWriter.setBlock",
+   "samples": 17
+  },
+  {
+   "method": "Level.setBlock",
+   "samples": 17
+  },
+  {
+   "method": "CompletableFuture.postComplete",
+   "samples": 17
+  },
+  {
+   "method": "RecordCodecBuilder$2.encode",
+   "samples": 17
+  },
+  {
+   "method": "EnvironmentAttributeSystem.lambda$addBiomeLayerForAttribute$0",
+   "samples": 16
+  }
+ ],
+ "threads": [
+  {
+   "thread": "Netty Epoll IO ",
+   "samples": 50522
+  },
+  {
+   "thread": "IO-Worker",
+   "samples": 6349
+  },
+  {
+   "thread": "Worker-Main",
+   "samples": 2856
+  },
+  {
+   "thread": "Server thread",
+   "samples": 1426
+  },
+  {
+   "thread": "JFR Periodic Tasks",
+   "samples": 9
+  }
+ ]
+}
