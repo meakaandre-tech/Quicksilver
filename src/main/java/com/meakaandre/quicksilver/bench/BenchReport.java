@@ -114,6 +114,7 @@ final class BenchReport {
         out.add("terrainGpu", TerrainGpuMemory.json());
         out.add("effects", EffectsStats.json(n));
         out.add("gui", com.meakaandre.quicksilver.gui.GuiStats.json());
+        out.add("features", com.meakaandre.quicksilver.entity.FeatureStats.json());
         out.add("server", com.meakaandre.quicksilver.phase2.ServerNumbers.json(seconds, false));
         JsonObject counters = new JsonObject();
         JsonArray missing = new JsonArray(), notLoaded = new JsonArray(), applied = new JsonArray();
@@ -204,6 +205,7 @@ final class BenchReport {
         if (o.has("modules")) line(b, "modules", o.get("modules").getAsString());
         line(b, "effects", EffectsStats.line(o.getAsJsonObject("effects")));
         line(b, "gui", com.meakaandre.quicksilver.gui.GuiStats.line(o.getAsJsonObject("gui")));
+        line(b, "features", com.meakaandre.quicksilver.entity.FeatureStats.line(o.getAsJsonObject("features")));
         line(b, "server", com.meakaandre.quicksilver.phase2.ServerNumbers.line(o.getAsJsonObject("server")));
         JsonObject cnt = o.getAsJsonObject("counters");
         line(b, "counters", cnt.getAsJsonArray("applied").size() + " applied, missing " + cnt.get("missing")
