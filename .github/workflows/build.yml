@@ -592,6 +592,46 @@ jobs:
           path: /tmp/sout
           retention-days: 3
 
+  server-chunks:
+    # P2-4: chunk loading and saving on the server thread, vanilla and Quicksilver alternately on ONE runner, in the
+    # chunk scenes (ci/server/chunks-run.sh, ci/server/chunks-<suite>.txt: flying over saved terrain at 12 chunks,
+    # saving the world), with JFR in every round and the saved files as hashes; compared in server-compare
+    # (ci/server/compare-chunks.py). Core only. The saved terrain is vanilla's, generated once and cached on its inputs
+    needs: [mode, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: actions/download-artifact@v4
+        with:
+          name: quicksilver-jar
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-server-harness-jar
+          path: ci-server-harness
+      - uses: actions/cache@v4
+        with:
+          path: chunks-base.tar
+          key: chunks-base-core-${{ hashFiles('ci/server/chunks-area-core.txt', 'ci/server/harness/**', 'gradle.properties', 'ci/server/fetch-server.sh') }}
+      - name: Chunk scenes, vanilla and Quicksilver alternately
+        shell: bash
+        env:
+          SUITE: core
+          OUT: /tmp/sout/core-chunks
+        run: bash ci/server/chunks-run.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sres-core-chunks
+          path: /tmp/sout
+          retention-days: 3
+
   server-net:
     # the network check: a vanilla client on a Quicksilver server and a Quicksilver client on a vanilla server,
     # through the scripted run (ci/server/net-run.sh)
@@ -638,7 +678,7 @@ jobs:
           retention-days: 3
 
   server-compare:
-    needs: [mode, build, server, server-net, server-perf]
+    needs: [mode, build, server, server-net, server-perf, server-chunks]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -672,7 +712,11 @@ jobs:
           CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-p2.py server /tmp/sres /tmp/sci/compare
           p2=$?
           cat /tmp/sci/compare/p2.md >> "$GITHUB_STEP_SUMMARY"
-          echo "status=$(( self || cmp || p2 ))" >> "$GITHUB_OUTPUT"
+          # P2-4: the chunk scenes (ci/server/compare-chunks.py)
+          python3 -I ci/server/compare-chunks.py /tmp/sres /tmp/sci/compare
+          chunks=$?
+          cat /tmp/sci/compare/chunks.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$(( self || cmp || p2 || chunks ))" >> "$GITHUB_OUTPUT"
       - name: Publish the server suite's logs to ci-logs-server-<branch>
         if: always()
         shell: bash
