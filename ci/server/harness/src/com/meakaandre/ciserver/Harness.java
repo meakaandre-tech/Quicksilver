@@ -939,7 +939,7 @@ public final class Harness implements ModInitializer {
     }
 
     /** P2-4: the game's own autosave started (harness mixin AutosaveMixin), at this run tick: logged and recorded. */
-    static void autosave(String what) {
+    public static void autosave(String what) {
         JsonArray a = result.has("autosaves") ? result.getAsJsonArray("autosaves") : new JsonArray();
         JsonObject o = new JsonObject();
         o.addProperty("stage", stage.toString());
