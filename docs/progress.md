@@ -2604,6 +2604,28 @@ it, where vanilla is already cheap; the rest of the time goes to the entity look
 API's lookup after a "none", which reads the block and chunk again and is outside the cache. Caching Fabric's "none" is
 not exact in general (another mod's fallback provider can depend on anything), so it was left out: Andre's call.
 
+### Fabric's "none" (Andre, 2026-11-06: one attempt at a safe version)
+
+Cached only where it can only be "none": a block without a block entity, not a WorldlyContainerHolder, with no provider
+of its own (seen in Fabric's own provider lookup, so no extra hash), and exactly Fabric's two fallback providers
+(checked at start-up on the main thread, and by reference before each use; else off for the session with a log line).
+Remembered with the hopper's entry (same section, same write count), given while the entry holds and Fabric's block
+read would hit the four recent chunks. Verify mode runs Fabric's find where it would be skipped (CI: more than 0 in the
+border verify run, full mode only). Border run: a barrel, chests (same chunk and across x 15|16) and a composter appear
+where "none" was remembered; air becomes stone, then a chest.
+
+Quick run 42148691737 (`0fdc6e2`, SIFTEC added), green: cached in every core and SIFTEC Quicksilver run; border chunk
+watch identical in all four runs (1241 changes); border world diff 0, vanilla noise 0. Factory MSPT, seven round pairs
+per scene on one runner each (median of round ratios):
+
+| scene | vanilla median | Quicksilver median | median ratio |
+|---|---|---|---|
+| core `factory` | 0.223 | 0.222 | -1.8% |
+| SIFTEC `factory` | 0.899 | 0.864 | +2.5% |
+
+Still within noise (round ratios 0.95 to 1.19 core, 0.89 to 1.16 SIFTEC). Stopped here for Andre: merge the cache or
+shelve it. The Fabric part has had no full run (so no border verify run) yet.
+
 ### Known limits
 
 - Other mods' changes inside code the lookup calls (not mixins into the hopper itself) aren't detected.
@@ -3492,9 +3514,9 @@ strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
 **Package 2b (phase 1):** merged as `e8e771c`; main full run 41396095000 green, latest rebuilt. See "Package 2b".
 
-**Now (P2-3b):** branch `p2-3b`, full run 41972539797 green, not merged: Andre checks it (see "Phase 2, P2-3b"). Open
-for Andre: whether to cache the Fabric transfer API's "none" (not exact in general), since the factory saving is within
-noise without it. Then P2-4.
+**Now (P2-3b):** branch `p2-3b`, not merged. Full run 41972539797 green before Fabric's "none"; with it (`0fdc6e2`)
+quick run 42148691737 green, factory MSPT still within noise (see "Fabric's \"none\""). Andre decides: merge the cache
+or shelve it (a merge needs a full run of `0fdc6e2` first). Then P2-4.
 
 **Before (P2-3):** merged (`8951f5c`; main green 41781297724, `latest` rebuilt).
 
