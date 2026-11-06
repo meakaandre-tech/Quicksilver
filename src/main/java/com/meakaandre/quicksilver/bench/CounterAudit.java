@@ -43,6 +43,18 @@ public final class CounterAudit implements IMixinConfigPlugin {
         EXPECTED.put("com.mojang.renderpearl.backend.vulkan.VulkanTransientMemory", transientMemory);
         EXPECTED.put("com.mojang.renderpearl.backend.opengl.GlBuffer$Direct", List.of("quicksilver$map", "quicksilver$mapEnd"));
         EXPECTED.put("com.mojang.renderpearl.backend.vulkan.VulkanGpuBuffer$Direct", List.of("quicksilver$map", "quicksilver$mapEnd"));
+        // package 6: what the feature pass (entities, block entities, items, text) draws, measured first (bench "features" block)
+        List<String> phases = new java.util.ArrayList<>();
+        for (String n : List.of("Solid", "Translucent", "WaterMask", "Oit", "Outline", "TranslucentAfterTerrain", "SeeThrough", "AlwaysOnTop")) {
+            phases.add("quicksilver$feature" + n);
+            phases.add("quicksilver$feature" + n + "End");
+        }
+        EXPECTED.put("net.minecraft.client.renderer.feature.FeatureRenderDispatcher$PreparedFrame", phases);
+        EXPECTED.put("net.minecraft.client.renderer.feature.FeatureRenderDispatcher$PreparedGroup", List.of("quicksilver$featureGroup"));
+        EXPECTED.put("net.minecraft.client.renderer.rendertype.PreparedRenderType", List.of("quicksilver$featureDraw"));
+        EXPECTED.put("net.minecraft.client.renderer.rendertype.RenderType", List.of("quicksilver$featureTransforms"));
+        EXPECTED.put("net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher", List.of("quicksilver$blockEntitySubmit"));
+        EXPECTED.put("net.minecraft.client.renderer.entity.EntityRenderDispatcher", List.of("quicksilver$entitySubmit"));
         // package 8: what vanilla's effects draw and how many particles it keeps (bench "effects" block)
         EXPECTED.put("net.minecraft.client.renderer.SkyRenderer", List.of("quicksilver$skyStart", "quicksilver$skyEnd"));
         EXPECTED.put("net.minecraft.client.renderer.WeatherEffectRenderer", List.of("quicksilver$weatherStart", "quicksilver$weatherEnd"));

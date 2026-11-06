@@ -42,6 +42,7 @@ public final class GpuCounters {
             DRAWS[kind.ordinal()].increment();
             PHASE_DRAWS[phase.ordinal()].increment();
             com.meakaandre.quicksilver.gui.GuiStats.onDraw();
+            com.meakaandre.quicksilver.entity.FeatureStats.onBackendDraw();
         }
     }
 
