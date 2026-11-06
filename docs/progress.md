@@ -19,6 +19,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
+| phase 2, P2-3b (hopper cache) | **shelved** (branch `p2-3b` kept on GitHub, not merged) | exact (border run equal in every run, verify run 9910 answers), but factory MSPT within noise after two attempts; see "Phase 2, P2-3b" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
 | package 4c (Quicksilver's mesher) | merged | `bcbdbd9` (squash of `package-4c`; branch full run 41298022851 green), **main full run 41303167046 green, `latest` rebuilt**; factory_flat reported, not gated (open gap); Quicksilver meshes sections itself; rebased on main (`93e7a3e`, squashed; pre-rebase head `0f16f86`); Andre checks it; see "Package 4c" below |
 | phase 2, P2-1 (memory) | merged | `5c98187` (squash of `p2-1`; branch green full run 40989347563), **main full run 41137485459 green, `latest` rebuilt with `quicksilver-26.3.jar` and `quicksilver-bench-26.3.jar`**; harness fixes (scheduled ticks, furnace and bearing gated again; random-tick and spawning run), Memory module; heap 7% (core), 22% (SIFTEC), 32% (Terralith) below vanilla; see "Phase 2, P2-1" below |
@@ -2495,6 +2496,41 @@ face shapes and vanilla's identity-keyed caches, the spawner's re-seed (above), 
 (works on Java 25; a later JDK may refuse), the config file rewritten without the user's comments when keys are
 added.
 
+## Phase 2, P2-3b: hopper container cache (shelved, Andre 2026-11-06; branch `p2-3b` kept on GitHub, not merged)
+
+**What it was.** `logic.hopper-cache`: each hopper remembered the container it takes from and gives to, keyed on P2-2's
+per-section write counters, and answered from it only where vanilla's own chunk lookups would hit the server's four
+recent chunks (so no chunk ticket or recent-chunk difference). Off with Lithium or with another mod's mixin in vanilla's
+hopper (Fabric API's transfer hooks and SIFTEC's claim hooks allowed by name). Second attempt (Andre, 2026-11-06):
+Fabric's transfer-lookup "none" cached too, only for a block without a block entity or provider of its own and with
+exactly Fabric's two fallback providers. Full design, review and CI changes: `docs/progress.md` and `docs/ci-limits.md`
+on the branch.
+
+**Exactness: proven.** A border run (hoppers and containers on chunk borders, a chunk let go mid-run, hopper minecarts
+crossing a border, containers that change at fixed ticks) recorded every chunk's tickets, level and the four recent
+chunks at each tick end: identical in vanilla's three runs and Quicksilver's (full run 41972539797: 1240 changes; quick
+run 42148691737 with Fabric's "none": 1241), border world diff 0 with no vanilla noise. Its verify run compared every
+remembered answer with vanilla's as it was given, with the four recent chunks unchanged: 9910 answers, no difference
+(full run 41972539797; the Fabric part had no full run, so no verify run of its own). Every other check green in both
+runs.
+
+**Results (median of seven round ratios, vanilla and Quicksilver alternating on one runner per scene):**
+
+| scene | cache only (full run 41972539797) | with Fabric's "none" (quick run 42148691737) | round ratios (42148691737) |
+|---|---|---|---|
+| core `factory` | -0.4% | -1.8% | 0.95 to 1.19 |
+| SIFTEC `factory` | -1.8% | +2.5% | 0.89 to 1.16 |
+
+The quick run before the review (41931547072) showed -2.7% and -7.6%: the same noise.
+
+**Why shelved.** No measurable gain in either factory scene after two attempts: every result is smaller than the
+spread of the rounds it comes from. Most of a waiting factory hopper's lookups are of air or a block without a container,
+where vanilla's lookup is already cheap, and the rest of a hopper's tick is elsewhere.
+
+**When to revisit.** If a laptop bench or a larger-factory bench shows hoppers as a real cost (a measurable share of
+MSPT in the hopper lookups). The branch can then be rebased and given a full run, including the border verify run for
+the Fabric part.
+
 ## Phase 2, P2-3: Logic II, hoppers, block entities, AI (merged as `8951f5c`; main green, run 41781297724)
 
 Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQDDDppdrxu45), P2-3. Files: the Logic module
@@ -2805,7 +2841,7 @@ stale report-only comment in build.yml. Left: the first main merge (`8492530`) a
 - **Cull translucent sections** with package 2b's occlusion culling (today only solid and cutout layers are culled; the
   translucent layer is drawn after the pyramid, in vanilla's sorted order).
 
-## Phase 2 plan: P2-3b, hopper container cache (Andre, 2026-11-02)
+## Phase 2 plan: P2-3b, hopper container cache (Andre, 2026-11-02; shelved 2026-11-06, see "Phase 2, P2-3b")
 
 Starts after P2-3 merges. P2-3 keeps vanilla's exact sequence of block and chunk lookups (P2-2's rule: a miss in the
 level's 4-entry chunk cache can add a 1-tick "unknown" chunk ticket), which leaves most of a hopper's cost (looking up
@@ -3377,8 +3413,10 @@ strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
 **Package 2b (phase 1):** merged as `e8e771c`; main full run 41396095000 green, latest rebuilt. See "Package 2b".
 
-**Now (P2-3):** merged (`8951f5c`; main green 41781297724, `latest` rebuilt). Next in phase 2: P2-3b (hopper container
-cache, plan above), in a new chat, then P2-4.
+**Now (P2-3b):** shelved (Andre, 2026-11-06): exact, but no measurable factory gain after two attempts; branch `p2-3b`
+kept on GitHub, not merged (see "Phase 2, P2-3b"). Next in phase 2: P2-4 (chunk saving and loading), in a new chat.
+
+**Before (P2-3):** merged (`8951f5c`; main green 41781297724, `latest` rebuilt).
 
 **Before (P2-2):** merged (`be948a4`; main green 41313195874, `latest` rebuilt); the GameTest pins (`1c1ea7c`, main green
 41298048808) before it. Next in phase 2 is P2-3 (Logic II: hoppers, block entities, AI), in a new chat. Perf numbers:
