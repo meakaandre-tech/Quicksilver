@@ -50,6 +50,9 @@ final class BenchSections {
                 return com.meakaandre.quicksilver.mesher.MesherStats.line(o);
             }
         });
+        // package 6: the entity texture atlas
+        BenchModules.register(BenchModules.section("entityAtlas", com.meakaandre.quicksilver.entity.EntityAtlas::startWindow,
+            com.meakaandre.quicksilver.entity.EntityAtlas::json, com.meakaandre.quicksilver.entity.EntityAtlas::line));
         BenchModules.register(BenchModules.section("terrain", null, TerrainStats::terrainJson, ter ->
             ter.get("state").getAsString() + " (" + ter.get("reason").getAsString() + "), fallbacks " + ter.get("fallbacks")
                 + ", " + ter.get("vertexBytes") + "-byte vertices (vanilla " + ter.get("vanillaVertexBytes")
