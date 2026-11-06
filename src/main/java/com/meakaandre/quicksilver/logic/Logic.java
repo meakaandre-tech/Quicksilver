@@ -137,7 +137,8 @@ public final class Logic {
         if (VERIFY) {
             // verify mode: how many remembered answers were checked (CI requires some in the border run's verify run)
             net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPING.register(server ->
-                LOG.info("Quicksilver verify: hopper-cache checked {} remembered answers against vanilla's", HopperCache.checks()));
+                LOG.info("Quicksilver verify: hopper-cache checked {} remembered answers against vanilla's ({} of them Fabric's \"none\")",
+                    HopperCache.checks(), HopperCache.fabricChecks()));
         }
         // hooks in classes the game loads later are checked as they appear (cheap; stops once all are seen)
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -163,6 +164,14 @@ public final class Logic {
             // (not "Quicksilver logic:": CI reads every such line as a status line)
             LOG.info("Quicksilver hopper-cache: source block read {}",
                 LogicMixins.called("net.minecraft.world.level.block.entity.HopperBlockEntity", "quicksilver$sourceState") ? "hooked" : "not hooked (vanilla reads it)");
+            // and Fabric's "none" (its own three hooks in Fabric API's block lookup; without them it is not cached)
+            String fab = "net.fabricmc.fabric.impl.lookup.block.BlockApiLookupImpl";
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            for (String h : new String[] {"quicksilver$fabricFind", "quicksilver$fabricProvider", "quicksilver$fabricResult"}) {
+                if (!LogicMixins.called(fab, h)) missing.add(h);
+            }
+            if (!missing.isEmpty()) HopperCache.fabricOff("hook(s) " + String.join(", ", missing) + " in " + fab + " did not land");
+            if (HopperCache.fabricOn()) LOG.info("Quicksilver hopper-cache: Fabric's \"none\" cached");
         }
     }
 

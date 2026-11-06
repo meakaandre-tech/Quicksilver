@@ -69,7 +69,9 @@ final class Optimisations {
         new Opt(HopperCache.ID, "hoppers remember the block they take from and the one they give to while its section and block entity stay as they were, answering only where vanilla's chunk lookups change nothing",
             // (HopperCacheInvoker's static invokers stay in the interface: no member of the target to check; the five
             // hooks around them are in the same class)
-            List.of("HopperCacheMixin", "HopperCacheInvoker", "ServerChunkCacheRecentAccessor", "PalettedContainerMixin"),
+            // (HopperCacheFabricMixin: its three hooks are checked on their own, Logic.report: without them only Fabric's
+            // "none" is not cached)
+            List.of("HopperCacheMixin", "HopperCacheInvoker", "ServerChunkCacheRecentAccessor", "PalettedContainerMixin", "HopperCacheFabricMixin"),
             List.<String[]>of(new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$source"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$attached"},
                 new String[] {"net.minecraft.world.level.block.entity.HopperBlockEntity", "call:quicksilver$targetState"},

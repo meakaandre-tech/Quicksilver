@@ -96,7 +96,9 @@ public abstract class HopperCacheMixin implements HopperCache.Holder {
             }
         }
         try {
-            return HopperCacheInvoker.quicksilver$vanillaSource(level, hopper, pos, state);
+            Container c = HopperCacheInvoker.quicksilver$vanillaSource(level, hopper, pos, state);
+            quicksilver$after(level, pos, c);
+            return c;
         } finally {
             HopperCache.end();
         }
@@ -119,9 +121,21 @@ public abstract class HopperCacheMixin implements HopperCache.Holder {
             HopperCache.end();
         }
         try {
-            return HopperCacheInvoker.quicksilver$vanillaAttached(level, pos, hopper);
+            Container c = HopperCacheInvoker.quicksilver$vanillaAttached(level, pos, hopper);
+            if (c == null && HopperCache.SWITCH.on) quicksilver$after(level, pos.relative(((HopperCacheMixin) (Object) hopper).facing), c);
+            return c;
         } finally {
             HopperCache.end();
+        }
+    }
+
+    /** Vanilla's lookup is done: on a "none", Fabric's lookup at that position comes next ({@link HopperCache#after}). */
+    @Unique
+    private static void quicksilver$after(Level level, BlockPos pos, Container c) {
+        try {
+            HopperCache.after(level, pos, c);
+        } catch (Throwable t) {
+            HopperCache.SWITCH.fail(t);
         }
     }
 

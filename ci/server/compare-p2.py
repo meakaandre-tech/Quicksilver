@@ -322,6 +322,12 @@ def server(res, rep):
                 sink.append("%s border verify run: hopper-cache checked %s remembered answers (must be more than 0)" % (suite, m[-1] if m else "no"))
             else:
                 lines.append("%s border verify run: hopper-cache checked %s remembered answers against vanilla's.\n" % (suite, m[-1]))
+            # and Fabric's "none" among them (the border run has hoppers at air and at blocks without a block entity)
+            mf = re.findall(r"remembered answers against vanilla's \((\d+) of them Fabric's", blog)
+            if not mf or int(mf[-1]) == 0:
+                sink.append("%s border verify run: %s of the checked answers were Fabric's \"none\" (must be more than 0)" % (suite, mf[-1] if mf else "none"))
+            else:
+                lines.append("%s border verify run: %s of them Fabric's \"none\".\n" % (suite, mf[-1]))
 
     # the Logic module in the server suite's runs (every server start: worldgen, GameTests, scripted, random-tick, heap)
     lines.append("## Logic module in the server suite\n\n| run | status |\n|---|---|")
@@ -337,6 +343,22 @@ def server(res, rep):
             st = logic_status(text(p), qs_server, "%s %s" % (name, os.path.basename(p)), sink)
             if qs_server:
                 lines.append("| %s %s | %s |" % (name, os.path.basename(p), (st or "missing")[:200]))
+    lines.append("")
+
+    # P2-3b: whether Fabric's "none" is cached in each Quicksilver server run (core: must be; other packs: reported, as
+    # a mod's own fallback provider for item storage turns it off by design)
+    lines.append("## hopper-cache: Fabric's \"none\"\n\n| run | cached |\n|---|---|")
+    for d in sorted(glob.glob(os.path.join(res, "*-quicksilver"))):
+        suite = os.path.basename(d)[:-len("-quicksilver")]
+        for p in sorted(glob.glob(os.path.join(d, "*-server.log"))):
+            log = text(p)
+            if not re.search(re.escape(LOGIC_ON) + r" .*hopper-cache=on", log):
+                continue
+            no = re.findall(r"Fabric's \"none\" not cached for the session \((.*)\)", log)
+            yes = 'Fabric\'s "none" cached' in log and not no
+            lines.append("| %s %s | %s |" % (os.path.basename(d), os.path.basename(p), "yes" if yes else ("no: " + no[0][:200] if no else "no line")))
+            if not yes and suite == "core":
+                fails.append("%s %s: hopper-cache does not cache Fabric's \"none\" (%s)" % (os.path.basename(d), os.path.basename(p), no[0][:200] if no else "no line"))
     lines.append("")
 
     # no identity hash in the Logic module (P2-1's rule)

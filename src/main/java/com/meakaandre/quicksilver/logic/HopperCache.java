@@ -78,7 +78,14 @@ public final class HopperCache {
         BlockEntity blockEntity;
         Container container;
 
+        /**
+         * Fabric's transfer lookup at this position (ItemStorage.SIDED) found nothing, under these same section writes,
+         * for a block without a block entity that no provider is registered for ({@link #fabricRemember}).
+         */
+        boolean fabricNone;
+
         void clear() {
+            fabricNone = false;
             pos = null;
             section = null;
             states = null;
@@ -125,6 +132,7 @@ public final class HopperCache {
      */
     public static void begin(Level level, Entry e, BlockPos pos) {
         end();
+        pending = null;
         if (!SWITCH.on || !(level instanceof ServerLevel server)
             || Thread.currentThread() != ((Recent) server.getChunkSource()).quicksilver$mainThread()) return;
         current = e;
@@ -344,6 +352,156 @@ public final class HopperCache {
         return true;
     }
 
+    // ---- Fabric's transfer lookup after a "none" (Andre, 2026-11-06)
+    //
+    // When vanilla's lookup finds no container, Fabric API's hopper hooks ask ItemStorage.SIDED at the same position
+    // (BlockApiLookupImpl.find: the block read, its block entity if the state has one, the block's own provider, then
+    // the fallback providers in order). For a block without a block entity, that is not a WorldlyContainerHolder and has
+    // no provider of its own, with exactly Fabric's two fallbacks registered, that answer is "none" whatever the
+    // direction: the first fallback needs a block entity, the second one too or a WorldlyContainerHolder. So it is
+    // remembered with the entry (the same section and write count) and given again, without the call, while the entry
+    // holds and Fabric's own block read would hit the four chunks (peek). Not given: anything else, or for the session
+    // once the fallback list is not exactly Fabric's two (one line in the log). The skipped call's provider lookup hashes
+    // a Block by identity: a hash the game computed when it registered the block, so skipping it changes no later hash.
+
+    /** Whether Fabric's "none" is cached this session (and why not). */
+    private static volatile boolean fabricOn = true;
+    private static volatile String fabricWhy = null;
+
+    /** Fabric's own two fallback providers, as at start-up (compared by reference before each use). */
+    private static Object fabric0, fabric1;
+    private static java.util.List<?> fabricList;
+
+    /** The hopper lookup that just found "none" (set after vanilla's lookup, taken by Fabric's next find). */
+    private static Entry pending;
+    private static BlockPos pendingPos;
+    private static Level pendingLevel;
+    /** The server thread these belong to (Fabric's find is also called on other threads: those leave them alone). */
+    private static Thread owner;
+
+    /** Inside Fabric's find for that lookup: the entry to remember "none" in, and whether the block had no provider. */
+    private static Entry observing;
+    private static boolean observedNoProvider;
+    private static Object[] fabricBefore;
+    private static long fabricChecks = 0;
+
+    public static long fabricChecks() {
+        return fabricChecks;
+    }
+
+    public static boolean fabricOn() {
+        return fabricOn;
+    }
+
+    public static String fabricWhy() {
+        return fabricWhy;
+    }
+
+    /** Fabric's "none" off for the session (one line). */
+    public static void fabricOff(String why) {
+        if (!fabricOn) return;
+        fabricOn = false;
+        fabricWhy = why;
+        Logic.LOG.info("Quicksilver hopper-cache: Fabric's \"none\" not cached for the session ({})", why);
+    }
+
+    /** Main thread, at start-up: Fabric's fallback providers for ItemStorage.SIDED must be exactly its own two. */
+    static void fabricInit() {
+        try {
+            java.util.List<?> list = ((net.fabricmc.fabric.impl.lookup.block.BlockApiLookupImpl<?, ?>)
+                net.fabricmc.fabric.api.transfer.v1.item.ItemStorage.SIDED).getFallbackProviders();
+            java.util.List<String> names = new java.util.ArrayList<>();
+            boolean fabrics = list.size() == 2;
+            for (Object f : list) {
+                String n = f.getClass().getName();
+                names.add(n);
+                fabrics &= n.startsWith("net.fabricmc.fabric.api.transfer.v1.item.ItemStorage$$");
+            }
+            if (!fabrics) {
+                fabricOff("the fallback providers for item storage are not exactly Fabric's two: " + names);
+                return;
+            }
+            fabricList = list;
+            fabric0 = list.get(0);
+            fabric1 = list.get(1);
+        } catch (Throwable t) {
+            fabricOff("could not read Fabric's fallback providers: " + t);
+        }
+    }
+
+    /** The fallback list still exactly Fabric's two (a mod that registers one later turns this off for the session). */
+    private static boolean fabricListSame() {
+        java.util.List<?> l = fabricList;
+        if (l != null && l.size() == 2 && l.get(0) == fabric0 && l.get(1) == fabric1) return true;
+        fabricOff("a fallback provider for item storage was registered after start-up");
+        return false;
+    }
+
+    /** The entry's block: no block entity, not a WorldlyContainerHolder, remembered as "none" by vanilla's lookup. */
+    private static boolean fabricEligible(Entry e) {
+        return e.section != null && e.state != null && e.blockEntity == null && e.container == null
+            && !e.state.hasBlockEntity() && !(e.state.getBlock() instanceof WorldlyContainerHolder);
+    }
+
+    /** After a hopper's lookup of {@code pos}: vanilla's answer was "none", so Fabric's lookup comes next. */
+    public static void after(Level level, BlockPos pos, Container c) {
+        pending = null;
+        if (c != null || !fabricOn || !SWITCH.on || current == null || !isCurrent(pos)) return;
+        pending = current;
+        pendingPos = pos;
+        pendingLevel = level;
+        owner = Thread.currentThread();
+    }
+
+    /**
+     * Head of Fabric's find: true to answer "none" without it. Only the find of the hopper lookup just marked (the same
+     * level and position, ItemStorage.SIDED, no state or block entity passed: Fabric's hooks).
+     */
+    public static boolean fabricAnswers(Object lookup, Level level, BlockPos pos, BlockState state, BlockEntity be) {
+        if (Thread.currentThread() != owner) return false;
+        Entry e = pending;
+        // (a find inside the observed one, or any other find: whatever was being observed is dropped)
+        observing = null;
+        fabricBefore = null;
+        if (e == null) return false;
+        pending = null;
+        if (lookup != net.fabricmc.fabric.api.transfer.v1.item.ItemStorage.SIDED || state != null || be != null
+            || level != pendingLevel || !pos.equals(pendingPos) || !fabricOn || !SWITCH.on) return false;
+        if (!fabricEligible(e) || !valid(level, e, pos) || !fabricListSame()) return false;
+        if (e.fabricNone) {
+            if (!VERIFY) return true;
+            // verify mode: Fabric's find runs, and must find nothing without a chunk lookup that misses
+            fabricBefore = before(level);
+            observing = e;
+            return false;
+        }
+        observing = e;
+        observedNoProvider = false;
+        return false;
+    }
+
+    /** Fabric's find asked for the block's own provider (only noted for the lookup being observed). */
+    public static void fabricProvider(Object provider) {
+        if (observing != null && Thread.currentThread() == owner) observedNoProvider = provider == null;
+    }
+
+    /** End of Fabric's find: remember its "none" (or, in verify mode, check the remembered one). */
+    public static Object fabricResult(Level level, BlockPos pos, Object result) {
+        Entry e = observing;
+        if (e == null || Thread.currentThread() != owner) return result;
+        observing = null;
+        Object[] before = fabricBefore;
+        fabricBefore = null;
+        if (before != null) {
+            fabricChecks++;
+            return check(level, pos, before, null, result, "Fabric lookup");
+        }
+        if (result == null && observedNoProvider && fabricOn && SWITCH.on && fabricEligible(e) && valid(level, e, pos)) {
+            e.fabricNone = true;
+        }
+        return result;
+    }
+
     // ---- other mods' changes to hoppers (at start-up, on the main thread, before any server thread)
 
     /**
@@ -394,6 +552,10 @@ public final class HopperCache {
         // (seen in CI's logs: which mixins the check found)
         Logic.LOG.info("Quicksilver hopper-cache: mixins applied to vanilla's hopper (Quicksilver's included): {}",
             all.isEmpty() ? "(none)" : String.join(", ", all));
-        if (!foreign.isEmpty()) Logic.off(SWITCH, "mods change vanilla's hopper: " + String.join(", ", foreign));
+        if (!foreign.isEmpty()) {
+            Logic.off(SWITCH, "mods change vanilla's hopper: " + String.join(", ", foreign));
+            return;
+        }
+        fabricInit();
     }
 }

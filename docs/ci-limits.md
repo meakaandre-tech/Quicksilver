@@ -1180,6 +1180,9 @@ most 20000 changes; more is an error) and a ticket type without a registry name 
 | border run (core) | the run finishes its ticks, no failed command | always |
 | border run's chunk watch | the whole history of changes, event by event | vanilla-a, b and c equal (else the harness isn't deterministic: fail); Quicksilver equal to them |
 | world diff after the border run | the world diff's keys | equal where vanilla agrees |
+| border run, Fabric's "none" | hoppers at air and at blocks without a block entity where a barrel, a chest (same chunk and across x 15\|16) or a composter appears later, and air that becomes stone and then a chest | in the chunk watch and the world diff above |
+| Fabric's "none" cached (core) | each core Quicksilver server log says `Fabric's "none" cached` (not `not cached for the session (...)`); other suites reported in p2.md | must say cached |
+| border verify run, Fabric's part | `(N of them Fabric's "none")` in the verify line: Fabric's lookup run where the cache would skip it, which must find nothing without a chunk lookup that misses | more than 0 |
 | border run's change count | `chunkWatch.changes` against the events kept | equal (nothing cut off) |
 | border verify run (full mode, quicksilver) | the border run again with verify mode (`border-verify-server.log`), world not kept: every remembered answer compared with vanilla's as it is given, and the four recent chunks' positions, statuses and chunk objects unchanged by it | must finish; no fallback; more than 0 answers checked (`Quicksilver verify: hopper-cache checked N`) |
 

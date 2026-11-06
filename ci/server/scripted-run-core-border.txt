@@ -219,6 +219,26 @@ at 180 setblock 3 200 -7 minecraft:air
 at 240 setblock 16 201 2 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:dirt",count:64},{Slot:1b,id:"minecraft:dirt",count:64},{Slot:2b,id:"minecraft:dirt",count:64}]}
 at 250 setblock 16 201 2 minecraft:barrel[facing=down]{Items:[{Slot:0b,id:"minecraft:andesite",count:64},{Slot:1b,id:"minecraft:andesite",count:64},{Slot:2b,id:"minecraft:andesite",count:64}]}
 
+# Fabric's "none" (the cache remembers Fabric's transfer lookup finding nothing at a block without a block entity):
+# a block entity, or a block with a lookup provider of its own, appears where it was remembered
+# - taking: a hopper under air (into a chest east of it); a barrel of gravel appears above it
+cmd setblock 10 200 -12 minecraft:hopper[facing=east]
+cmd setblock 11 200 -12 minecraft:chest
+at 200 setblock 10 201 -12 minecraft:barrel{Items:[{Slot:0b,id:"minecraft:gravel",count:64},{Slot:1b,id:"minecraft:gravel",count:64},{Slot:2b,id:"minecraft:gravel",count:64}]}
+# - giving: a full hopper facing air; a chest appears there (in the same chunk, and across the border x 15|16)
+cmd setblock 10 200 -13 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64}]}
+at 205 setblock 11 200 -13 minecraft:chest
+cmd setblock 15 200 -13 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64}]}
+at 210 setblock 16 200 -13 minecraft:chest
+# - a composter (a block with its own Fabric provider, and vanilla's own container) where air was
+cmd setblock 13 200 -12 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:wheat_seeds",count:64}]}
+at 215 setblock 14 200 -12 minecraft:composter
+# - air, then stone (still nothing, a new write), then a chest of sand above a hopper
+cmd setblock 12 200 -14 minecraft:hopper[facing=east]
+cmd setblock 13 200 -14 minecraft:chest
+at 190 setblock 12 201 -14 minecraft:stone
+at 220 setblock 12 201 -14 minecraft:chest{Items:[{Slot:0b,id:"minecraft:sand",count:64},{Slot:1b,id:"minecraft:sand",count:64},{Slot:2b,id:"minecraft:sand",count:64}]}
+
 # area B let go: its chunks drop out of block ticking (chunk 3 to 34, chunk 4 to 35, chunk 2 to 33) while the hoppers in
 # chunk 1 keep giving to containers in chunk 2 (full, not ticking)
 at 200 setblock 33 200 2 minecraft:air
