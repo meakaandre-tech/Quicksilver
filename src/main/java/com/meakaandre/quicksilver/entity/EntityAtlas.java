@@ -86,6 +86,7 @@ public final class EntityAtlas {
     private static long redirected, submits;
     private static final Map<String, long[]> SKIPPED = new HashMap<>();
     private static final Map<String, long[]> NOT_ALLOWED = new HashMap<>();
+    private static final Map<String, long[]> SPLITS = new java.util.TreeMap<>();
     private static long uploads, uploadBytes;
 
     private EntityAtlas() {
@@ -229,9 +230,29 @@ public final class EntityAtlas {
         // keyed by the sampler the supplier gives, not the supplier: each texture's binding has its own supplier object
         // (run 42162330832: one atlas render type per texture, no draws merged), but they give the same cached sampler
         Object resolved = supplier instanceof Supplier<?> sp ? sp.get() : null;
-        Kind kind = KINDS.computeIfAbsent(new KindKey(name, others, sampler, resolved == null ? supplier : resolved),
-            k -> new Kind(name, setup, sampler, supplier));
+        KindKey key = new KindKey(name, others, sampler, resolved == null ? supplier : resolved);
+        if (!KINDS.containsKey(key)) noteSplit(key);
+        Kind kind = KINDS.computeIfAbsent(key, k -> new Kind(name, setup, sampler, supplier));
         return new Template(kind, location);
+    }
+
+    /** Why a new kind did not join one of the same name already there (which part of the key differs): bench only. */
+    private static void noteSplit(KindKey key) {
+        for (KindKey k : KINDS.keySet()) {
+            if (!k.name().equals(key.name())) continue;
+            List<String> diff = new ArrayList<>();
+            for (var e : key.others().entrySet()) {
+                if (!java.util.Objects.equals(e.getValue(), k.others().get(e.getKey()))) diff.add(e.getKey() + "=" + describe(e.getValue()) + "/" + describe(k.others().get(e.getKey())));
+            }
+            if (!key.sampler().equals(k.sampler())) diff.add("samplerName");
+            if (!java.util.Objects.equals(key.supplier(), k.supplier())) diff.add("sampler=" + describe(key.supplier()) + "/" + describe(k.supplier()));
+            SPLITS.computeIfAbsent(key.name() + ": " + String.join(", ", diff), x -> new long[1])[0]++;
+            return;
+        }
+    }
+
+    private static String describe(Object o) {
+        return o == null ? "null" : o.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(o));
     }
 
     /** A copy of {@code t}'s render type with its one texture replaced by {@code atlas}; every other field is the same. */
@@ -463,6 +484,9 @@ public final class EntityAtlas {
         o.addProperty("pages", PAGES.size());
         o.addProperty("textures", SLOTS.size());
         o.addProperty("renderTypeKinds", KINDS.size());
+        JsonArray splits = new JsonArray();
+        for (var e : SPLITS.entrySet()) splits.add(e.getKey() + " (" + e.getValue()[0] + ")");
+        o.add("kindSplits", splits);
         o.addProperty("vanillaRenderTypesSeen", BY_TYPE.size());
         o.addProperty("uploads", uploads);
         o.addProperty("uploadBytes", uploadBytes);
