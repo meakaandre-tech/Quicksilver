@@ -730,6 +730,7 @@ public final class TerrainRenderer {
         if (!prepared || !Terrain.drawing()) return;
         int li = TerrainStore.layerIndex(layer);
         if (li < 0) return;
+        if (li == 0 && Boolean.getBoolean("quicksilver.debug.diagSkipSolid")) return;
         if (li == TerrainStore.TRANSLUCENT) {
             drawTranslucent(pass, override, overrideMultidraw);
             return;
