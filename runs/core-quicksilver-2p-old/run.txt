@@ -1,0 +1,47 @@
+suite=core run=quicksilver-2p-old
+old-GPU profile: MESA_EXTENSION_OVERRIDE='-GL_ARB_multi_draw_indirect -GL_ARB_buffer_storage' MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330
+old-GPU Quicksilver run: -Dquicksilver.debug.forceIntelMdiIssue=true
+two-phase occlusion run: -Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.occlusion=two-phase
+DIAG modules off: -Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.occlusion=two-phase -Dquicksilver.debug.diagOff.frapi=true
+Quicksilver run JVM properties:-Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.occlusion=two-phase -Dquicksilver.debug.diagOff.frapi=true -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true
+core server and world: from the core-world job
+pack lock: set core matches ci/pack-lock.txt
+total 3308
+-rw-r--r-- 1 runner runner   31169 Nov  9 07:38 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov  9 07:38 fabric-api.jar
+-rw-r--r-- 1 runner runner  730492 Nov  9 07:38 quicksilver.jar
+total 748
+-rw-r--r-- 1 runner runner  31169 Nov  9 07:39 ci-pin.jar
+-rw-r--r-- 1 runner runner 730492 Nov  9 07:39 quicksilver.jar
+sessions: 8|-|spawn,water_glass,nether,mobs,outline,occlusion,occlusion_move,occlusion_corner,translucent_move,particles,animation,animated_items,block_entities 8|ao=false|flat_plants 8|ao=false,quicksilver.block-renderer=off|renderer_off 8|improvedTransparency=true|water_glass_oit,translucent_move_oit 12|-|flythrough
+scene spawn: setting up
+scene spawn: bench timeout
+scene water_glass: setting up
+scene water_glass: bench timeout
+scene nether: setting up
+scene nether: bench timeout
+scene mobs: setting up
+scene mobs: bench timeout
+scene outline: setting up
+scene outline: bench timeout
+scene occlusion: setting up
+scene occlusion: bench timeout
+scene occlusion_move: setting up
+scene occlusion_move: bench timeout
+scene occlusion_corner: setting up
+scene occlusion_corner: bench timeout
+scene translucent_move: setting up
+scene translucent_move: bench timeout
+scene particles: setting up
+scene particles: bench timeout
+scene animation: setting up
+scene animation: bench timeout
+scene animated_items: setting up
+scene animated_items: bench timeout
+scene block_entities: setting up
+scene block_entities: bench timeout
+session 2 client options: ao=false
+scene flat_plants: setting up
+scene flat_plants: bench timeout
+session 3 client options: ao=false,quicksilver.block-renderer=off
+scene renderer_off: setting up
