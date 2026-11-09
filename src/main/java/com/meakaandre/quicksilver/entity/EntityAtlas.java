@@ -61,12 +61,16 @@ public final class EntityAtlas {
     /** Larger textures stay on their own (a page must hold several). */
     static final int MAX = 256;
 
-    /** Vanilla's entity and block-entity render types that sample one plain texture through the model's UVs. */
+    /**
+     * Vanilla's entity and block-entity render types that sample one plain texture through the model's UVs and do not
+     * blend (plus entity_eyes, whose additive blend gives the same result in any order). Merging textures into one draw
+     * interleaves their submits; a blended type would then blend in a different order than vanilla's per-texture groups,
+     * so the translucent ones stay as they are.
+     */
     static final Set<String> ALLOWED = Set.of(
         "entity_solid", "entity_solid_z_offset_forward", "entity_cutout", "entity_cutout_cull", "entity_cutout_z_offset",
         "entity_cutout_no_cull", "entity_cutout_no_cull_z_offset", "entity_smooth_cutout", "entity_no_outline",
-        "entity_translucent", "entity_translucent_cull", "item_entity_translucent_cull", "entity_decal",
-        "armor_cutout_no_cull", "armor_translucent", "entity_eyes", "entity_translucent_emissive");
+        "armor_cutout_no_cull", "entity_eyes");
 
     private static State state = State.STARTING;
     private static String reason = "not started";
@@ -218,7 +222,7 @@ public final class EntityAtlas {
         if (textures == null || textures.size() != 1) return NONE;
         Map<String, Object> others = new LinkedHashMap<>();
         for (Field f : setupFields) {
-            if (f == fTextures) continue;
+            if (f.equals(fTextures)) continue; // equals: getDeclaredFields gives copies, never fTextures itself
             Object v = f.get(setup);
             if (v instanceof TextureTransform tt && tt != TextureTransform.DEFAULT_TEXTURING) return NONE;
             others.put(f.getName(), v);
