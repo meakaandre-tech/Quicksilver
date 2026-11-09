@@ -43,6 +43,7 @@ case "$RUN" in quicksilver-old|quicksilver-2p-old|measure-old) client_jvm="-Dqui
 # package 2b (Andre, 2026-11-02): one more old-GPU run with occlusion culling forced to two-phase (auto is still-camera
 # on that path), so the laptop's plain path is tested with the CPU waiting for the GPU too
 case "$RUN" in quicksilver-2p-old) client_jvm="$client_jvm -Dquicksilver.occlusion=two-phase"; echo "two-phase occlusion run: $client_jvm";; esac
+case "$RUN" in quicksilver-old) client_jvm="$client_jvm -Dquicksilver.debug.diagOff.memory=true";; quicksilver-2p-old) client_jvm="$client_jvm -Dquicksilver.debug.diagOff.logic=true";; esac; echo "DIAG modules off: $client_jvm"
 # every Quicksilver run: the visibility module checks each entity and block entity it hides with rays from the camera
 # (package 2's pop-in check; ci/compare.py fails on any violation). VISIBILITY_DRY_RUN=1 makes it decide and count but hide
 # nothing (used once to sample the new occlusion scene's noise with Quicksilver drawing exactly vanilla's set).
