@@ -834,11 +834,23 @@ config: animation never ran, the scenes showed frame 0 in every run alike).
 | scene / shot | runs | samples (8/255 %: vanilla a/b, Quicksilver; strict: Quicksilver) | limit % | strict limit |
 |---|---|---|---|---|
 | core/mobs.far (the crowd at 53-67 blocks, LOD off) | 42550160930 attempts 1-3 (quick, `4947305b`) | all 0.0; strict all 0 | 0.25 | 10 |
+| core/block_entities | 42550160930 attempts 1-3 (quick), 42572488452 (full); all after `4947305b` | a/b 0.0012-0.0262; Quicksilver at most 0.0259; strict at most 180 | 0.3 | 270 |
+| core/block_entities.chest_open | the same | a/b at most 0.0277; Quicksilver at most 0.0272; strict at most 156 | 0.3 | 240 |
+| core/block_entities.sign_edit | the same | a/b at most 0.0173; Quicksilver at most 0.0243; strict at most 145 | 0.3 | 220 |
+| core/block_entities.closed | the same | a/b at most 0.0101; Quicksilver at most 0.0142; strict at most 83 | 0.3 | 130 |
 
 Limit = max(2 x largest, largest + 0.25, 0.1) rounded up to 0.05; strict = largest x 1.5 rounded up to 10, at least 10.
-core/block_entities and its shots (chest_open, sign_edit, closed) are not set yet: a Quicksilver-only difference
-(below) comes first. Its vanilla a/b samples once the copper chest was waxed (`4947305b`, three attempts): 0.0012-0.0173%
-(the ender chest's particles); before it, 0.63% in two of five runs (the copper chest oxidising on a random tick).
+block_entities' samples: vanilla's own noise is the ender chest's particles (a/b 0.0012-0.0277%; the measure runs, Quicksilver
+loaded with every module off, 5-110 strict pixels, all in the ender chest's area), the same area as nearly all of
+Quicksilver's strict pixels. The rest is the 16-byte vertex's rounding (package 3, Andre's decision): five pixels, one
+every three rows, along the right edge of the spruce sign's post. In 26.3 sign boards, sign posts and beds are terrain
+(only sign text is a block entity), scaled by 2/3 off the 1/2048-block grid; the five pixels are in every Quicksilver
+profile and in no vanilla run on either API, and go with Quicksilver's terrain switched off (diagnostic runs
+42579890612, 42589945739; the entity atlas, LOD, occlusion, the mesher, animation, memory, logic, visibility and the
+block renderer each switched off left them). Earlier samples (the copper chest oxidising on a random tick: 0.63% in two
+of five runs, before `4947305b` waxed it) are not counted. Baselines (`ci/baselines/core-*.json`) are the highest of
+the same runs (`ci/make-baselines.py`'s rule); old-GPU's direct buffers keep the 8.24 MB of the two-phase run in attempt
+2, the open direct-buffer bug (4.24-5.99 MB in the others), as the last re-collection of SIFTEC's baselines kept theirs.
 
 ### Far entity LOD (`ci/lod-limits.json`, `ci/references/`)
 
