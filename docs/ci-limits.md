@@ -829,6 +829,33 @@ ticks they took. Not noise: no limit changed. compare.py now also fails a run wh
 ticks of animation done" line (the fix's first run, 40496751536, passed with the new mixin missing from the pin's
 config: animation never ran, the scenes showed frame 0 in every run alike).
 
+## Package 6: entities and block entities
+
+| scene / shot | runs | samples (8/255 %: vanilla a/b, Quicksilver; strict: Quicksilver) | limit % | strict limit |
+|---|---|---|---|---|
+| core/mobs.far (the crowd at 53-67 blocks, LOD off) | 42550160930 attempts 1-3 (quick, `4947305b`) | all 0.0; strict all 0 | 0.25 | 10 |
+
+Limit = max(2 x largest, largest + 0.25, 0.1) rounded up to 0.05; strict = largest x 1.5 rounded up to 10, at least 10.
+core/block_entities and its shots (chest_open, sign_edit, closed) are not set yet: a Quicksilver-only difference
+(below) comes first. Its vanilla a/b samples once the copper chest was waxed (`4947305b`, three attempts): 0.0012-0.0173%
+(the ender chest's particles); before it, 0.63% in two of five runs (the copper chest oxidising on a random tick).
+
+### Far entity LOD (`ci/lod-limits.json`, `ci/references/`)
+
+LOD has no vanilla picture to match, so its shots (scene key `ciLodShots`, Quicksilver runs only: each turns LOD on with
+`/quicksilver lod on`, takes the shot and turns it off) are compared with a stored reference, on the picture check's
+8/255 measure. A reference is committed only after its shot was checked against vanilla's picture of the same view with
+LOD off (the scene's `vanillaShot`); compare.py reports that difference with every run.
+
+| shot | reference | runs | samples % (reference; vanilla same view) | limit % |
+|---|---|---|---|---|
+| core/mobs.far_lod | run 42545903745, old-GPU (identical to vanilla a's mobs.far and the two-phase shot, pixel for pixel) | 42550160930 attempts 1-3 | all 0.0; 0.0 | 0.25 |
+
+At 53-67 blocks LOD holds about half of the far mobs' animation updates and skips no cube (165,636 tested in run
+42545903745): every cube is still at least a pixel there, and vanilla stops drawing small mobs not much further out
+(entity distance scaling 1.0). The limit is the pixel rule's floor; any change to what LOD draws there shows as a
+difference from the reference.
+
 ## Counter audit
 
 The counting mixins have their own config (not required, `defaultRequire: 0`), so a counter that no longer fits the
