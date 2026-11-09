@@ -26,8 +26,8 @@ import org.joml.Vector3f;
  *   <li>update their animation at most once per game tick (50 ms): between updates every animation float of the render
  *   state (age, walk cycle, head turn and each renderer's own animation floats) keeps the value it had at the last
  *   update; position, body turn, death, size and shadow stay live;</li>
- *   <li>skip model cubes smaller than half a pixel on screen (an over-estimate of the cube's size by its diagonal and its
- *   distance, so off-centre cubes, nearer than their distance in depth, are not skipped while still a pixel).</li>
+ *   <li>skip model cubes smaller than a pixel on screen: the cube's bounding sphere (its diagonal) at the depth of its
+ *   nearest point, an upper bound on the size it is drawn at anywhere on screen.</li>
  * </ul>
  * Off, nothing here runs past the first check, so the picture is vanilla's. On, CI checks it against its own stored
  * references (docs/ci-limits.md, "Far entity LOD"). Players are never held or thinned.
@@ -37,8 +37,8 @@ public final class EntityLod {
     public static volatile boolean enabled = Boolean.getBoolean("quicksilver.entityLod") && !Boolean.getBoolean("quicksilver.ci.measureOnly");
     public static volatile double distance = Double.parseDouble(System.getProperty("quicksilver.entityLod.distance", "32"));
     static final long HOLD_NANOS = 50_000_000L;
-    /** A cube is skipped when its diagonal covers less than this many pixels at its distance. */
-    static final float SKIP_PIXELS = 0.5f;
+    /** A cube is skipped when its bounding sphere would cover less than this many pixels on screen. */
+    static final float SKIP_PIXELS = 1f;
 
     /** Render-state floats that stay live (not animation, or a jump would show). */
     static final Set<String> LIVE = Set.of("bodyRot", "deathTime", "scale", "ageScale", "boundingBoxWidth", "boundingBoxHeight",
@@ -52,6 +52,7 @@ public final class EntityLod {
 
     // the model being written right now (render thread only): its pixels per block at distance 1, or 0 when not thinned
     private static float modelPixels;
+    private static Matrix4f viewRotation;
     private static final Vector3f TMP = new Vector3f();
 
     private static long states, heldStates, cubesTested, cubesSkipped, models;
@@ -113,6 +114,8 @@ public final class EntityLod {
         try {
             var cam = Minecraft.getInstance().gameRenderer.gameRenderState().levelRenderState.cameraRenderState;
             if (cam == null || cam.projectionMatrix == null) return;
+            if (cam.viewRotationMatrix == null) return;
+            viewRotation = cam.viewRotationMatrix;
             modelPixels = cam.projectionMatrix.m11() * Minecraft.getInstance().getWindow().getHeight() * 0.5f;
             models++;
         } catch (Throwable t) {
@@ -134,8 +137,9 @@ public final class EntityLod {
         float scale = Math.max(m.getScale(TMP).x, Math.max(TMP.y, TMP.z));
         float diag = (float) Math.sqrt(sx * sx + sy * sy + sz * sz) * scale;
         m.transformPosition((cube.minX + cube.maxX) / 32f, (cube.minY + cube.maxY) / 32f, (cube.minZ + cube.maxZ) / 32f, TMP);
-        float dist = TMP.length();
-        if (dist <= 0 || diag * k >= SKIP_PIXELS * dist) return false;
+        viewRotation.transformPosition(TMP);
+        float near = -TMP.z - diag * 0.5f; // the sphere's nearest depth
+        if (near <= 0 || diag * k >= SKIP_PIXELS * near) return false;
         cubesSkipped++;
         return true;
     }
@@ -166,7 +170,9 @@ public final class EntityLod {
         }
         enabled = on;
         HELD.clear();
-        com.meakaandre.quicksilver.QuicksilverClient.LOG.info("Quicksilver entity LOD: {}", on ? "on" : "off");
+        com.meakaandre.quicksilver.QuicksilverClient.LOG.info("Quicksilver entity LOD: {} (since the last switch: far states {}, held {}, models {}, cubes tested {}, skipped {})",
+            on ? "on" : "off", states, heldStates, models, cubesTested, cubesSkipped);
+        states = heldStates = cubesTested = cubesSkipped = models = 0;
         src.sendFeedback(net.minecraft.network.chat.Component.literal("[Quicksilver] Far entity LOD " + (on ? "on" : "off") + "."));
         return 1;
     }
