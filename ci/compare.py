@@ -41,6 +41,7 @@ block or shade, large enough to ignore rounding.
 """
 import glob
 import json
+import shutil
 import os
 import re
 import sys
@@ -144,6 +145,53 @@ def strict(shot, out_prefix, skip_runs=(), pairs=None, mask=None):
         if out[prof]:
             Image.fromarray((bad * 255).astype(np.uint8)).save(f"{out_prefix}-{prof}-strict.png")
     return round(float(agree.mean() * 100), 2), out, anyd
+
+
+def lod_check(name, scenes, runs, rep, sd, failures, lines):
+    """Package 6: far entity LOD's shots ("ciLodShots", Quicksilver runs only) against their stored references
+    (ci/references/<suite>/<shot>.png) with the limits in ci/lod-limits.json (share of pixels over 8/255, as the picture
+    check). A missing reference fails and the shot is copied to the report's new-references folder for review: a
+    reference is only committed after its picture was checked against the vanilla shot of the same view (docs/ci-limits.md,
+    "Far entity LOD"). Also reported: how far each LOD shot is from vanilla's picture of the same view (LOD off)."""
+    lod_limits = json.load(open("ci/lod-limits.json")) if os.path.exists("ci/lod-limits.json") else {}
+    rows = []
+    for sc in scenes:
+        if sc.get("skip"):
+            continue
+        for extra in sc.get("ciLodShots", []):
+            shot_id = sc["id"] + "." + extra["name"]
+            ref = os.path.join("ci", "references", name, shot_id + ".png")
+            limit = lod_limits.get(name, {}).get(shot_id)
+            same_view = extra.get("vanillaShot")
+            res = sd.setdefault("lod", {}).setdefault(shot_id, {})
+            for prof, (b, v) in PAIRS.items():
+                if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
+                    continue
+                got = os.path.join(runs[b], "shots", shot_id + ".png")
+                if not os.path.exists(got):
+                    failures.append(f"{name}/{shot_id}: no {prof} LOD screenshot")
+                    continue
+                vs_vanilla = diff(got, os.path.join(runs[v], "shots", sc["id"] + "." + same_view + ".png")) if same_view else None
+                if not os.path.exists(ref):
+                    os.makedirs(os.path.join(rep, "new-references", name), exist_ok=True)
+                    shutil.copy(got, os.path.join(rep, "new-references", name, f"{shot_id}-{prof}.png"))
+                    failures.append(f"{name}/{shot_id}: no stored reference in {ref} (this run's shot is in new-references for review)")
+                    res[prof] = {"reference": None, "vanilla": vs_vanilla}
+                    rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | missing | {limit} | {vs_vanilla['pct'] if vs_vanilla else ''} |")
+                    continue
+                d = diff(got, ref, os.path.join(rep, "diff", f"{name}-{shot_id}-{prof}-reference.png"))
+                res[prof] = {"reference": d, "vanilla": vs_vanilla}
+                if limit is None:
+                    failures.append(f"{name}/{shot_id}: no LOD limit in ci/lod-limits.json")
+                elif d["pct"] > limit:
+                    failures.append(f"{name}/{shot_id}: {prof} differs from its stored reference on {d['pct']}% of pixels (limit {limit}%)")
+                rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | {d['pct']} | {limit} | {vs_vanilla['pct'] if vs_vanilla else ''} |")
+    if rows:
+        lines.append("")
+        lines.append("Far entity LOD (on) against its stored references, % of pixels over 8/255; last column: against vanilla's picture of the same view (LOD off), reported only:\n")
+        lines.append("| shot | profile | reference % | limit % | vanilla % |")
+        lines.append("|---|---|---|---|---|")
+        lines.extend(rows)
 
 
 def bench_results(run_dir):
@@ -968,6 +1016,7 @@ def main():
         lines.append("| scene | vanilla runs agree on % of pixels | strict limit (pixels) | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
         lines.append("|---|---|---|" + "---|" * len(PAIRS))
         lines.extend(strict_lines)
+        lod_check(name, scenes, runs, rep, sd, failures, lines)
         if backend_lines:
             lines.append("")
             lines.append("Strict picture where the vanilla runs drawing the same way agree (package 5, Create scenes: Flywheel on in"
