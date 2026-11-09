@@ -57,7 +57,7 @@ elif [ $qs = 1 ]; then
   # package 4b: the terrain upload budget logs when meshes wait for a later frame and when it has caught up, so
   # drive.py takes no screenshot while a section is still waiting (vanilla uploads at once and logs nothing)
   # package 4c: every section meshed outside a bench is also meshed by vanilla's compiler and compared, vertex by vertex
-  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true"
+  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true -Dquicksilver.debug.drawAllFaces=true -Dquicksilver.debug.forcePlainTerrain=true -Dquicksilver.debug.vanillaMesher=true"
   if [ "${VISIBILITY_DRY_RUN:-0}" = 1 ]; then client_jvm="$client_jvm -Dquicksilver.debug.visibilityDryRun=true"; fi
   if [ "${TRANSLUCENCY_DRY_RUN:-0}" = 1 ]; then client_jvm="$client_jvm -Dquicksilver.debug.translucencyDryRun=true"; fi
   echo "Quicksilver run JVM properties:$client_jvm"
