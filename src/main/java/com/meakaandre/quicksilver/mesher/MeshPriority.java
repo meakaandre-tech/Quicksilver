@@ -26,7 +26,7 @@ public final class MeshPriority {
     private MeshPriority() {
     }
 
-    private static final boolean DISABLED = Boolean.getBoolean("quicksilver.debug.vanillaMeshOrder") || Boolean.getBoolean("quicksilver.ci.measureOnly");
+    private static final boolean DISABLED = Boolean.getBoolean("quicksilver.debug.vanillaMeshOrder") || (Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.mesher"));
     /** This frame's visible sections: a new set each frame, never changed after, so a worker reading an older one is safe. */
     private static volatile LongOpenHashSet visible = new LongOpenHashSet();
     static volatile boolean off;

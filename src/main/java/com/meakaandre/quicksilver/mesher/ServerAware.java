@@ -27,7 +27,7 @@ public final class ServerAware {
     private static final double BEHIND = 0.8, CAUGHT_UP = 0.6;
     /** Debug: never back off (CI's A/B runs and the laptop's comparison). */
     private static final boolean DISABLED = Boolean.getBoolean("quicksilver.debug.serverAwareOff")
-        || Boolean.getBoolean("quicksilver.ci.measureOnly");
+        || (Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.mesher"));
 
     private static volatile boolean behind;
     private static volatile double tickMsAvg = -1;
@@ -188,7 +188,7 @@ public final class ServerAware {
 
     static JsonObject json() {
         JsonObject o = new JsonObject();
-        o.addProperty("state", DISABLED ? (Boolean.getBoolean("quicksilver.ci.measureOnly") ? "off (measure only (CI))" : "off (quicksilver.debug.serverAwareOff)")
+        o.addProperty("state", DISABLED ? ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.mesher")) ? "off (measure only (CI))" : "off (quicksilver.debug.serverAwareOff)")
             : hookSeen ? "on" : "no meshing seen yet");
         o.addProperty("singlePlayer", singlePlayer());
         o.addProperty("behindNow", behind);

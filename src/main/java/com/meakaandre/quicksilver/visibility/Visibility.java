@@ -140,7 +140,7 @@ public final class Visibility {
     }
 
     private static boolean start() {
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.visibility"))) {
             // CI's measure runs (package 3): vanilla decides what to draw, the bench measures vanilla's own counts
             state = State.OFF;
             reason = "measure only (CI)";

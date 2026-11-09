@@ -628,7 +628,7 @@ public final class Animation {
     // ---- states
 
     private static void start() {
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.animation"))) {
             state = State.OFF;
             reason = "measure only (CI)";
             QuicksilverClient.LOG.warn("Quicksilver animation: off, quicksilver.ci.measureOnly is set (vanilla redraws every animated texture)");

@@ -54,7 +54,7 @@ public final class Logic {
         loaded = true;
         Optimisations.register(OPTIMISATIONS);
         Properties p = read();
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.logic"))) {
             // CI's measure runs stand in for vanilla: every Quicksilver module off
             moduleOff = "quicksilver.ci.measureOnly is set";
         } else if (FabricLoader.getInstance().isModLoaded("lithium")) {

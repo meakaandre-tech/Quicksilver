@@ -86,7 +86,7 @@ public final class QuicksilverRenderer implements Renderer {
      * {@code contains_renderer}, so Indigo draws there as in the vanilla runs.
      */
     public static void register() {
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.frapi"))) {
             QuicksilverClient.LOG.warn("Quicksilver renderer: off, quicksilver.ci.measureOnly is set (Indigo draws)");
             return;
         }

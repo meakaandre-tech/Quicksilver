@@ -318,7 +318,7 @@ public final class Mesher {
     /** Once, at the first section: on, or off with the reason (measure runs, the debug switch, a mod changing the compiler). */
     private static synchronized void start() {
         if (state != State.STARTING) return;
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.mesher"))) {
             off("measure only (CI)", false);
             return;
         }

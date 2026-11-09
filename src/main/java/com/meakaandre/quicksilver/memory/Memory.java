@@ -52,7 +52,7 @@ public final class Memory {
         if (loaded) return;
         loaded = true;
         Properties p = read();
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.memory"))) {
             // CI's measure runs stand in for vanilla: every Quicksilver module off
             moduleOff = "quicksilver.ci.measureOnly is set";
         } else if (FabricLoader.getInstance().isModLoaded("ferritecore")) {

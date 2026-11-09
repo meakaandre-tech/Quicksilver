@@ -151,7 +151,7 @@ public final class Terrain {
     }
 
     private static void activate() {
-        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+        if ((Boolean.getBoolean("quicksilver.ci.measureOnly") || Boolean.getBoolean("quicksilver.debug.diagOff.terrain"))) {
             // CI's measure runs (package 3): vanilla draws all terrain, the bench measures vanilla's own counts
             state = State.OFF;
             reason = "measure only (CI)";
