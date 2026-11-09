@@ -80,6 +80,13 @@
       "title": "A crowd of 64 mobs (no AI, fixed variants, so they hold still and look the same every run)",
       "renderDistance": 8,
       "settleSeconds": 20,
+      "ciShots": [
+        {"name": "far", "commands": ["execute in minecraft:overworld run tp @a 2100.5 212 -1950.5 180 10"]}
+      ],
+      "ciLodShots": [
+        {"name": "far_lod", "vanillaShot": "far", "commands": ["execute in minecraft:overworld run tp @a 2100.5 212 -1950.5 180 10"]}
+      ],
+      "ciNoteLod": "package 6: far is the crowd from 43-57 blocks (vanilla picture, LOD off, gated against vanilla); far_lod the same view with far entity LOD on (Quicksilver runs only, against ci/references/core/mobs.far_lod.png)",
       "setup": [
         "execute in minecraft:overworld run tp @a 2100.5 208 -1985.5 180 30",
         "#wait 6",

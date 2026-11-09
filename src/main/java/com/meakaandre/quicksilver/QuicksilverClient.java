@@ -38,6 +38,8 @@ public final class QuicksilverClient implements ClientModInitializer {
             mc -> com.meakaandre.quicksilver.memory.Memory.report());
         // package 6: a reloaded entity texture empties the entity atlas between frames
         ClientTickEvents.START_CLIENT_TICK.register(mc -> com.meakaandre.quicksilver.entity.EntityAtlas.tick());
+        // package 6: far entity LOD's command (/quicksilver lod on|off|distance N)
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> com.meakaandre.quicksilver.entity.EntityLod.register(dispatcher));
         // package 4c: server-aware meshing threads (listens to the integrated server's ticks)
         com.meakaandre.quicksilver.mesher.ServerAware.init();
         // CI: the renderer's self-test, once in a world (package 4)
