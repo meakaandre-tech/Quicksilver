@@ -433,7 +433,7 @@ public final class EntityAtlas {
             off("measure only (CI)");
             return;
         }
-        if ("false".equals(System.getProperty("quicksilver.entityAtlas"))) {
+        if (!"true".equals(System.getProperty("quicksilver.entityAtlas"))) { // DIAGNOSTIC ONLY: atlas off by default
             off("quicksilver.entityAtlas=false");
             return;
         }
