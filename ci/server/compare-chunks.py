@@ -84,6 +84,20 @@ def numbers(d):
     }
 
 
+def save_spikes(d, n):
+    """The tick times of the script's save-all ticks (plain and flush), and of the game's own autosave ticks."""
+    t = load(os.path.join(d, "ticks.json")) or []
+    plain, flush = [], []
+    for l in text(os.path.join(d, "script.txt")).splitlines():
+        m = re.match(r"at (\d+) save-all( flush)?\s*$", l.strip())
+        if m and int(m.group(1)) < len(t):
+            (flush if m.group(2) else plain).append(t[int(m.group(1))])
+    auto = [t[k] for k in n["autosaveTicks"] if 0 <= k < len(t)]
+    n["saveAllMs"] = statistics.mean(plain) if plain else None
+    n["flushMs"] = statistics.mean(flush) if flush else None
+    n["autosaveMs"] = statistics.mean(auto) if auto else None
+
+
 CHUNKS_ON = "Quicksilver chunks:"
 CHUNKS_FALLBACK = "Quicksilver chunks fallback:"
 # a chunk the game could not read or write (vanilla's log lines for it)
@@ -261,6 +275,7 @@ def main(results, report_dir):
                         fails.append("%s/%s: %s round %d missing" % (suite, scene, side, r))
                         continue
                     am = autosave_ms(rs[(side, r)], n)
+                    save_spikes(rs[(side, r)], n)
                     lines.append("| %d | %s | %s | %s | %s | %s | %s | %s (%s) | %s (%s) | %s | %s | %s |" % (
                         r, side, "yes" if n["finished"] else "**no** %s" % (n["error"] or ""), fmt(n["msptAvg"]),
                         fmt(n["msptP99"]), fmt(n["msptMax"]), fmt(n["over50"]), fmt(n["loadAll"]), fmt(n["loadInTick"]),
@@ -278,7 +293,9 @@ def main(results, report_dir):
             for m, label in (("msptAvg", "MSPT average"), ("msptP99", "MSPT p99"), ("msptMax", "slowest tick (ms)"),
                              ("over50", "ticks over 50 ms"), ("loadAll", "chunk load, ms per tick (server thread)"),
                              ("loadInTick", "  of it in the tick"), ("saveAll", "chunk save, ms per tick (server thread)"),
-                             ("saveInTick", "  of it in the tick"), ("autosaveAll", "autosave, ms per tick")):
+                             ("saveInTick", "  of it in the tick"), ("autosaveAll", "autosave, ms per tick"),
+                             ("saveAllMs", "save-all tick (ms, mean of the script's)"), ("flushMs", "save-all flush tick (ms)"),
+                             ("autosaveMs", "autosave tick (ms, the game's own)")):
                 v = [nums[("vanilla", r)][m] for r in n_rounds if ("vanilla", r) in nums]
                 q = [nums[("quicksilver", r)][m] for r in n_rounds if ("quicksilver", r) in nums]
                 ratios = []
