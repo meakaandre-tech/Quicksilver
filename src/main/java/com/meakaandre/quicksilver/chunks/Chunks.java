@@ -80,6 +80,49 @@ public final class Chunks {
             if (!on) WHY.put(id, moduleOff != null ? moduleOff : "chunks." + id + "=off");
         }
         if (moduleOff != null) LOG.info("Quicksilver chunks: off, {}", moduleOff);
+        // cow-sections: off with a mod known to write sections' storage directly (before its mixins would apply)
+        if (STATE.get(CowSections.ID) == State.ON) {
+            String writer = knownWriter();
+            if (writer != null) {
+                STATE.put(CowSections.ID, State.OFF);
+                WHY.put(CowSections.ID, writer + " is installed");
+                LOG.info("Quicksilver {}: off for the session ({} is installed: it can write sections' storage directly); vanilla's code runs instead",
+                    CowSections.ID, writer);
+            }
+        }
+    }
+
+    /**
+     * Turns an optimisation off for the session because something it can't account for is installed (not a failure: one
+     * info line; the status line says why too). Only at start-up, before any server thread.
+     */
+    static void off(Switch s, String reason) {
+        synchronized (Chunks.class) {
+            load();
+            if (STATE.get(s.id) != State.ON) return;
+            STATE.put(s.id, State.OFF);
+            WHY.put(s.id, reason);
+        }
+        s.on = false;
+        // (not "Quicksilver chunks:", which CI reads as the status line; that line says it too)
+        LOG.info("Quicksilver {}: off for the session ({}); vanilla's code runs instead", s.id, reason);
+    }
+
+    // (here, not in CowSections: load() runs in the mixin plugin, before the game's classes may be touched)
+    /** Mods known to write sections' storage directly (mod id, name): cow-sections is off with any of them. */
+    static final String[][] WRITERS = {
+        {"worldedit", "WorldEdit"},
+        {"fastasyncworldedit", "FastAsyncWorldEdit"},
+        {"fawe", "FastAsyncWorldEdit"},
+        {"axiom", "Axiom"},
+    };
+
+    /** The first known writer installed ("Name (id)"), or null. */
+    static String knownWriter() {
+        for (String[] w : WRITERS) {
+            if (FabricLoader.getInstance().isModLoaded(w[0])) return w[1] + " (" + w[0] + ")";
+        }
+        return null;
     }
 
     private static boolean c2me() {
@@ -127,6 +170,8 @@ public final class Chunks {
     /** Main entrypoint: the status line at start-up and once a server has started (CI reads it). */
     public static void init() {
         load();
+        // cow-sections reads which mixins are applied to sections' containers here, on the main thread, before any server thread
+        CowSections.init();
         LOG.info("Quicksilver chunks: {}", moduleOff != null ? "off, " + moduleOff : status());
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> report());
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {

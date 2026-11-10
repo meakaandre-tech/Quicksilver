@@ -22,6 +22,10 @@ import net.minecraft.world.level.chunk.PalettedContainer;
  * <p>Verify mode ({@link Chunks#VERIFY}, CI's full runs): every shared container also keeps a real copy, and when the
  * snapshot has been serialised the shared data is compared with it, raw storage and palette; any difference falls
  * back (CI fails on it).
+ *
+ * <p>Other mods: a mod that writes a section's storage without the container's setters would change data a snapshot
+ * shares. With a mod known to do so ({@link Chunks#WRITERS}) or a mixin of any mod but Quicksilver in vanilla's section or its
+ * containers ({@link #init}), cow-sections stays off for the session, with one line naming it.
  */
 public final class CowSections {
     public static final String ID = "cow-sections";
@@ -90,5 +94,50 @@ public final class CowSections {
         if (pa.getSize() != pb.getSize()) return "palette size " + pa.getSize() + " vs " + pb.getSize();
         for (int i = 0; i < pa.getSize(); i++) if (pa.valueFor(i) != pb.valueFor(i)) return "palette entry " + i;
         return null;
+    }
+
+    // ---- other mods' writes to sections (at start-up, on the main thread, before any server thread)
+
+    /** The classes whose storage a snapshot shares: a mixin of another mod in any of them turns cow-sections off. */
+    static final String[] GUARDED = {
+        "net.minecraft.world.level.chunk.LevelChunkSection",
+        "net.minecraft.world.level.chunk.PalettedContainer",
+        "net.minecraft.world.level.chunk.PalettedContainer$Data",
+    };
+
+    /**
+     * Main thread, at start-up: every mixin merged into the guarded classes (read from the {@code @MixinMerged} marks
+     * Mixin leaves on the members it adds, as logic.hopper-cache does). One from a mod other than Quicksilver could write a
+     * shared container's storage without unsharing it, so then cow-sections stays off for the session (one line naming
+     * each). Not seen: a mod writing the storage from its own classes through vanilla's public getters (the known
+     * writers above).
+     */
+    static void init() {
+        if (!SWITCH.on) return;
+        java.util.Set<String> all = new java.util.TreeSet<>();
+        java.util.Set<String> foreign = new java.util.TreeSet<>();
+        try {
+            for (String name : GUARDED) {
+                Class<?> c = Class.forName(name, false, CowSections.class.getClassLoader());
+                java.util.List<java.lang.reflect.Member> members = new java.util.ArrayList<>(java.util.List.of(c.getDeclaredMethods()));
+                members.addAll(java.util.List.of(c.getDeclaredFields()));
+                members.addAll(java.util.List.of(c.getDeclaredConstructors()));
+                for (java.lang.reflect.Member m : members) {
+                    org.spongepowered.asm.mixin.transformer.meta.MixinMerged a =
+                        ((java.lang.reflect.AnnotatedElement) m).getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
+                    if (a == null) continue;
+                    all.add(a.mixin());
+                    if (a.mixin().startsWith("com.meakaandre.quicksilver.")) continue;
+                    foreign.add("mixin " + a.mixin() + " (" + m.getName() + ")");
+                }
+            }
+        } catch (Throwable t) {
+            Chunks.fallback(SWITCH, "could not read the mixins applied to sections: " + t, t);
+            return;
+        }
+        // (seen in CI's logs: which mixins the check found)
+        Chunks.LOG.info("Quicksilver cow-sections: mixins applied to sections and their containers (Quicksilver's included): {}",
+            all.isEmpty() ? "(none)" : String.join(", ", all));
+        if (!foreign.isEmpty()) Chunks.off(SWITCH, "mods change sections' storage: " + String.join(", ", foreign));
     }
 }

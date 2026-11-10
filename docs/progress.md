@@ -2542,6 +2542,18 @@ module (`src/main/java/com/meakaandre/quicksilver/chunks/`, `mixin/chunks/`, `qu
 | save | autosave tick (ms, one per run) | 44.5 | 52.2 | 0.814 (0.50-1.23) |
 | save | save-all flush tick (ms) | 2304 | 2317 | 1.020 (0.89-1.10) |
 
+The autosave tick per round (ms; one autosave per run, at tick ~5740):
+
+| round | 1 | 2 | 3 | 4 | 5 | 6 | 7 | median |
+|---|---|---|---|---|---|---|---|---|
+| vanilla | 64.2 | 44.2 | 106.8 | 44.5 | 42.2 | 106.5 | 40.5 | 44.5 |
+| Quicksilver | 52.2 | 51.1 | 54.8 | 54.9 | 26.9 | 53.8 | 49.6 | 52.2 |
+| ratio | 0.81 | 1.16 | 0.51 | 1.23 | 0.64 | 0.51 | 1.22 | 0.81 |
+
+The 0.81 is the median of the per-round ratios; it comes from vanilla's two slow rounds (~107 ms) and round 5. Round
+for round it goes either way, and Quicksilver's median tick is higher than vanilla's: one sample per round is too few to
+call the autosave tick faster. The save-all tick (three per round) is the gated measure.
+
 Every save's content (each chunk tag serialised, against vanilla's save of that chunk at the same tick): no difference
 in any round of any scene, nor in the verify runs. Kill check: 0 other, 0 unreadable on both sides.
 
@@ -2569,8 +2581,10 @@ Fixed:
 9. The verify run's saved files and saves are gated in `save` and `churn`.
 10. Churn now grows palettes (18 block kinds). Not covered: writes into an all-air section (they change light, which
     the saved files then follow).
-Not changed: another mod writing section storage without the game's setters would bypass copy on write (only C2ME turns
-the module off; a known limit); the cancellable inject on `PalettedContainer.copy` allocates a callback per copy (copies
+Another mod writing section storage without the game's setters would bypass copy on write: fixed after the review
+(Andre, 2026-11-11): with WorldEdit, FastAsyncWorldEdit or Axiom installed, or a mixin of any mod but Quicksilver in
+`LevelChunkSection`, `PalettedContainer` or its `Data`, cow-sections is off for the session (one line naming it).
+Not changed: the cancellable inject on `PalettedContainer.copy` allocates a callback per copy (copies
 outside saves are rare).
 
 ### Not built (choices for Andre)
