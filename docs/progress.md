@@ -3336,6 +3336,14 @@ vanilla's far shot).
 - The sign-post pixels in block_entities are the 16-byte vertex's rounding (package 3): diagnostic runs switched each
   module off and only Quicksilver's terrain removed them. Limits and baselines: `docs/ci-limits.md`, "Package 6".
 - The build dumps the game's shaders (`.github/dump-shaders`) with the bytecode list, for reading only.
+- Full run 42755201376 (`03f7c17f`, review fixes) failed without a check finding a difference: four client jobs
+  (core vanilla-a, siftec vanilla-vk, siftec quicksilver-vk, siftec measure-full; three of them load no Quicksilver)
+  stopped between listing their mods and the first game session (Xvfb, the graphics probes, the server's `op` line)
+  and hit the 90-minute timeout, so the game never started and every check reading those runs failed for missing
+  data. The one count over its limit, `core/old-gpu-2p/translucent_move` direct buffers 8.24 MB (baseline 3.73), is
+  the open direct-buffer bug (package 5 got it on the same scene): the JVM's pool stepped from 4.24 to 8.24 between
+  occlusion_corner and translucent_move, flat inside each scene, and kept that size for the session. Not re-collected;
+  the next full run is on a new commit.
 
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 

@@ -833,7 +833,7 @@ config: animation never ran, the scenes showed frame 0 in every run alike).
 
 | scene / shot | runs | samples (8/255 %: vanilla a/b, Quicksilver; strict: Quicksilver) | limit % | strict limit |
 |---|---|---|---|---|
-| core/mobs.far (the crowd at 53-67 blocks, LOD off) | 42550160930 attempts 1-3 (quick, `4947305b`) | all 0.0; strict all 0 | 0.25 | 10 |
+| core/mobs.far (the crowd at 53-67 blocks, LOD off) | 42550160930 attempts 1-3 (quick, `4947305b`); 42754284510 (full, `7e3f4801`: full, old-GPU, Vulkan, two-phase) | all 0.0; strict all 0 | 0.25 | 10 |
 | core/block_entities | 42550160930 attempts 1-3 (quick), 42572488452 (full); all after `4947305b` | a/b 0.0012-0.0262; Quicksilver at most 0.0259; strict at most 180 | 0.3 | 270 |
 | core/block_entities.chest_open | the same | a/b at most 0.0277; Quicksilver at most 0.0272; strict at most 156 | 0.3 | 240 |
 | core/block_entities.sign_edit | the same | a/b at most 0.0173; Quicksilver at most 0.0243; strict at most 145 | 0.3 | 220 |
@@ -861,7 +861,7 @@ LOD off (the scene's `vanillaShot`); compare.py reports that difference with eve
 
 | shot | reference | runs | samples % (reference; vanilla same view) | limit % |
 |---|---|---|---|---|
-| core/mobs.far_lod | run 42545903745, old-GPU (identical to vanilla a's mobs.far and the two-phase shot, pixel for pixel) | 42550160930 attempts 1-3 | all 0.0; 0.0 | 0.25 |
+| core/mobs.far_lod | run 42545903745, old-GPU (identical to vanilla a's mobs.far and the two-phase shot, pixel for pixel) | 42550160930 attempts 1-3 (old-GPU, two-phase); 42754284510 (full, `7e3f4801`: full, old-GPU, Vulkan, two-phase) | at most 0.0014 (Vulkan); 0.0 | 0.25 |
 
 At 53-67 blocks LOD holds about half of the far mobs' animation updates and skips no cube (165,636 tested in run
 42545903745): every cube is still at least a pixel there, and vanilla stops drawing small mobs not much further out
