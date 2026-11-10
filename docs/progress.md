@@ -2528,18 +2528,22 @@ module (`src/main/java/com/meakaandre/quicksilver/chunks/`, `mixin/chunks/`, `qu
   a real copy beside each share and fails on any difference once the snapshot is serialised. It needs one class
   tweaker line (`PalettedContainer$Data` accessible) and the game's own unpacking constructor (an invoker).
 
-### Results (quick run 42796271430, `b4d209f`)
+### Results (full run 42823617151, `2ac309b`)
 
 | scene | measure | vanilla | Quicksilver | median ratio (range) |
 |---|---|---|---|---|
-| fly-over | server-thread save, ms per tick | 0.306 | 0.312 | 0.918 (0.79-1.28) |
-| fly-over | load, ms per tick | 0.153 | 0.167 | 1.030 (0.99-1.19) |
-| fly-over | p99 / slowest tick (ms) | 8.18 / 18.7 | 7.44 / 20.8 | 0.951 / 1.082 |
+| fly-over | server-thread save, ms per tick | 0.345 | 0.312 | 0.911 (0.87-1.01) |
+| fly-over | load, ms per tick | 0.171 | 0.177 | 1.046 (0.79-1.30) |
+| fly-over | p99 / slowest tick (ms) | 8.16 / 22.8 | 7.78 / 22.9 | 0.954 / 1.003 |
 | fly-over | ticks over 50 ms | 0 | 0 | - |
-| churn | server-thread save, ms per tick | 0.860 | 0.758 | 0.886 (0.88-0.90) |
-| save | save-all tick (ms) | 61.5 | 55.5 | 0.826 (0.58-1.23) |
-| save | autosave tick (ms, one per run) | 51.3 | 36.2 | 0.760 (0.31-1.52) |
-| save | save-all flush tick (ms) | 1865 | 1835 | 0.992 |
+| churn | server-thread save, ms per tick | 1.360 | 1.190 | 0.884 (0.67-1.04) |
+| churn | MSPT | 14.27 | 14.85 | 1.051 (0.92-1.06) |
+| save | save-all tick (ms) | 75.2 | 61.3 | 0.877 (0.66-1.26) |
+| save | autosave tick (ms, one per run) | 44.5 | 52.2 | 0.814 (0.50-1.23) |
+| save | save-all flush tick (ms) | 2304 | 2317 | 1.020 (0.89-1.10) |
+
+Every save's content (each chunk tag serialised, against vanilla's save of that chunk at the same tick): no difference
+in any round of any scene, nor in the verify runs. Kill check: 0 other, 0 unreadable on both sides.
 
 `PalettedContainer$Data.copy` is gone from the server thread's samples (319 to 0 in the fly-over, 102 to 0 in the save
 scene); churn allocates 1197 to 813 MB in its saves. Saved region files: equal to vanilla's in every save and churn
