@@ -178,6 +178,7 @@ def kill_check(sdir, lines, out, fails):
         log = text(os.path.join(d, "server.log"))
         mid = os.path.exists(os.path.join(d, "kill.txt")) and "CI HARNESS CMD t=100 " not in log
         status_check(os.path.join(kd, "%s-complete%s" % (side, r)), side, where + " (complete)", fails)
+        status_check(d, side, where, fails)
         rd = os.path.join(kd, "%s-reload%s" % (side, r))
         reloaded = "CI HARNESS RUN DONE" in text(os.path.join(rd, "server.log"))
         status_check(rd, side, where + " (reload)", fails)

@@ -29,8 +29,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * <li>{@code dirty-at T}: every chunk of the window marked changed at the start of tick T (before that tick's
  * commands, so {@code at T save-all} saves all of them).</li>
  * <li>{@code churn N}: every tick from 1, N blocks of the window set (flag 2: no neighbour updates, no drops), at fixed
- * positions spread over the window's chunks and three sections of each, alternating stone and glass by tick: sections
- * written while their chunks' saves are being serialised (P2-4's copy-on-write sections).</li>
+ * positions spread over the window's chunks and three sections of each (y 8, 24, 40: underground), alternating andesite
+ * and diorite by tick (both opaque: after the first set at a position, no light changes, so the saved light doesn't follow
+ * the light engine's timing): sections written while their chunks' saves are being serialised (P2-4's copy-on-write
+ * sections).</li>
  * <li>{@code save-every K}: {@code save-all} every K ticks from K, after that tick's churn.</li>
  * </ul>
  * Nothing here draws on any random; the only blocks it changes are churn's (fixed positions and states); the same calls in
@@ -202,13 +204,13 @@ final class CiChunks {
         }
         if (churn > 0 && tick > 0) {
             int side = 2 * radius + 1;
-            net.minecraft.world.level.block.state.BlockState a = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
-            net.minecraft.world.level.block.state.BlockState b = net.minecraft.world.level.block.Blocks.GLASS.defaultBlockState();
+            net.minecraft.world.level.block.state.BlockState a = net.minecraft.world.level.block.Blocks.ANDESITE.defaultBlockState();
+            net.minecraft.world.level.block.state.BlockState b = net.minecraft.world.level.block.Blocks.DIORITE.defaultBlockState();
             for (int i = 0; i < churn; i++) {
                 int k = (i * 7 + tick) % (side * side);
                 int x = (cx - radius + k % side) * 16 + (i * 3) % 16;
                 int z = (cz - radius + k / side) * 16 + (i * 5) % 16;
-                int y = 100 + (i % 3) * 16;
+                int y = 8 + (i % 3) * 16;
                 level.setBlock(new net.minecraft.core.BlockPos(x, y, z), ((tick + i) & 1) == 0 ? a : b, 2);
                 churned++;
             }

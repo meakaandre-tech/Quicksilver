@@ -40,7 +40,7 @@ public final class Chunks {
     static final List<Opt> ALL = List.of(
         new Opt(CowSections.ID, "a chunk's sections are shared with its save snapshot instead of copied; a section is copied only if"
             + " it is written before the save is done (copy on write)",
-            List.of("PalettedContainerCowMixin", "SerializableChunkDataCowMixin"),
+            List.of("PalettedContainerCowMixin", "PalettedContainerInvoker", "SerializableChunkDataCowMixin"),
             List.<String[]>of(new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$share"},
                 new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSet"},
                 new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSetUnchecked"},

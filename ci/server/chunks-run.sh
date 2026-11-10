@@ -61,7 +61,8 @@ rm -rf "$srv/world"
 # one run: side (vanilla|quicksilver), name (its directory under the scene), scene, script, ticks, speed, kind:
 #   run       measured: JFR, the saved world's dump
 #   verify    Quicksilver with chunks verify mode (-Dquicksilver.debug.verifyChunks): the dump, no JFR
-#   complete  the kill check's complete save: the dump
+#   complete  the kill check's complete save: kill -9 as soon as the tick-100 save-all flush has returned (every write
+#             done); the dump
 #   killed    the kill check's killed run: kill -9 about $KILL_AFTER s after the first "CI CHUNKS t=100" line; the dump of
 #             what is on disk; the world is kept for reload
 #   reload    the killed world (kept from the killed run) loaded again; the world is then thrown away
@@ -83,12 +84,14 @@ one() {
   [ "$kind" = run ] && extra+=("-XX:StartFlightRecording=filename=$dir/rec.jfr,dumponexit=true,settings=profile,jdk.ExecutionSample#period=1ms,jdk.NativeMethodSample#period=1ms")
   [ "$kind" = verify ] && extra+=("-Dquicksilver.debug.verifyChunks=true")
   local t0=$(date +%s)
-  if [ "$kind" = killed ]; then
+  if [ "$kind" = killed ] || [ "$kind" = complete ]; then
+    local mark='CI CHUNKS t=100 ' after=${KILL_AFTER:-1.0}
+    [ "$kind" = complete ] && { mark='CI HARNESS CMD t=100 '; after=0; }
     (cd "$srv" && exec java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$dir" -Dci.harness.run="$dir/script.txt" \
        -Dci.harness.ticks="$ticks" -jar server.jar --nogui < /dev/null > "$dir/server.log" 2>&1) &
     local pid=$! w=0
-    until grep -q 'CI CHUNKS t=100 ' "$dir/server.log" 2>/dev/null || ! kill -0 $pid 2>/dev/null || [ $w -ge 6000 ]; do sleep 0.05; w=$((w + 1)); done
-    sleep "${KILL_AFTER:-1.0}"
+    until grep -q "$mark" "$dir/server.log" 2>/dev/null || ! kill -0 $pid 2>/dev/null || [ $w -ge 6000 ]; do sleep 0.05; w=$((w + 1)); done
+    sleep "$after"
     if kill -0 $pid 2>/dev/null; then
       kill -9 $pid; echo "  killed $(grep -c 'CI HARNESS CMD t=100 ' "$dir/server.log") (1 = after the save had finished)"
       echo "KILLED" >> "$dir/kill.txt"
@@ -107,7 +110,7 @@ j=json.load(open(sys.argv[1]))
 print('$scene $name: mspt avg/p99/max', j.get('msptAvg'), j.get('msptP99'), j.get('msptMax'), 'over 50 ms', j.get('ticksOver50ms'), 'autosaves', [a.get('tick') for a in j.get('autosaves', []) if a.get('stage') == 'RUNNING'], j.get('chunks'), j.get('error',''))
 " "$dir/ci-harness-result.json" 2>/dev/null || echo "$scene $name: no result"
   echo "  ($(( $(date +%s) - t0 )) s)"
-  [ "$kind" = killed ] || grep -q 'CI HARNESS RUN DONE' "$dir/server.log" || { echo "  did not finish:"; tail -n 5 "$dir/server.log"; }
+  [ "$kind" = killed ] || [ "$kind" = complete ] || grep -q 'CI HARNESS RUN DONE' "$dir/server.log" || { echo "  did not finish:"; tail -n 5 "$dir/server.log"; }
   grep -E 'Quicksilver chunks' "$dir/server.log" | sed 's/^.*Quicksilver chunks/  Quicksilver chunks/' | sort -u | head -5
   if [ -f "$dir/rec.jfr" ]; then
     read -r a b < <(python3 -c "import json,sys; j=json.load(open(sys.argv[1])); print(j.get('runStartEpochMs',0), j.get('runEndEpochMs',0))" "$dir/ci-harness-result.json" 2>/dev/null)

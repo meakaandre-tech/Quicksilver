@@ -1,11 +1,10 @@
 package com.meakaandre.quicksilver.mixin.chunks;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Local;
 import com.meakaandre.quicksilver.chunks.Chunks;
 import com.meakaandre.quicksilver.chunks.CowSections;
 import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.Strategy;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -13,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * P2-4, chunks.cow-sections ({@link CowSections}): a container's copy shares its data while a save snapshot is taken,
@@ -23,6 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PalettedContainerCowMixin<T> implements CowSections.Shared {
     @Shadow
     private PalettedContainer.Data<T> data;
+    @Shadow
+    @Final
+    private Strategy strategy;
 
     @Unique
     private boolean quicksilver$isShared;
@@ -49,21 +52,21 @@ public abstract class PalettedContainerCowMixin<T> implements CowSections.Shared
         return data;
     }
 
-    // the copy constructor: share the other container's data instead of copying it, while a snapshot is taken
-    @WrapOperation(method = "<init>(Lnet/minecraft/world/level/chunk/PalettedContainer;)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/chunk/PalettedContainer$Data;copy()Lnet/minecraft/world/level/chunk/PalettedContainer$Data;"))
-    private PalettedContainer.Data<T> quicksilver$share(PalettedContainer.Data<T> d, Operation<PalettedContainer.Data<T>> copy,
-                                                       @Local(argsOnly = true) PalettedContainer<T> other) {
-        if (!CowSections.sharing()) return copy.call(d);
+    // a copy made while a save snapshot is taken: a new container over the same storage and palette (no copy), both
+    // marked shared (the new container is built as the game builds an unpacked one: strategy, configuration, storage, palette)
+    @Inject(method = "copy", at = @At("HEAD"), cancellable = true)
+    private void quicksilver$share(CallbackInfoReturnable<PalettedContainer<T>> cir) {
+        if (!CowSections.sharing()) return;
         try {
-            if (Chunks.VERIFY) quicksilver$verify = copy.call(d);
-            ((PalettedContainerCowMixin<?>) (Object) other).quicksilver$isShared = true;
+            PalettedContainer.Data<T> d = data;
+            PalettedContainer<T> copy = PalettedContainerInvoker.quicksilver$create(strategy, d.configuration(), d.storage(), d.palette());
+            PalettedContainerCowMixin<?> c = (PalettedContainerCowMixin<?>) (Object) copy;
+            if (Chunks.VERIFY) c.quicksilver$verify = d.copy();
+            c.quicksilver$isShared = true;
             quicksilver$isShared = true;
-            return d;
+            cir.setReturnValue(copy);
         } catch (Throwable t) {
             CowSections.SWITCH.fail(t);
-            quicksilver$verify = null;
-            return copy.call(d);
         }
     }
 
