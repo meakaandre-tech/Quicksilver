@@ -513,7 +513,7 @@ public final class Harness implements ModInitializer {
     private static int commandErrors = 0;
 
     /** Runs one command and logs its result; a command that fails (throws) is counted (gated by CI). */
-    private static void command(MinecraftServer server, String cmd) {
+    static void command(MinecraftServer server, String cmd) {
         String c = cmd.startsWith("/") ? cmd.substring(1) : cmd;
         try {
             int r = server.getCommands().getDispatcher().execute(c, server.createCommandSourceStack().withSuppressedOutput());

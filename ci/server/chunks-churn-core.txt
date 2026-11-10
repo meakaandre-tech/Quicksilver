@@ -1,0 +1,15 @@
+# P2-4: saving while sections change (ci/server/chunks-run.sh), on the saved terrain of chunks-area-core.txt, sprinting.
+# The 289 chunks within 8 of chunk 0,0 loaded (not ticking); 96 blocks of them set every tick (CiChunks churn: three
+# sections of each chunk in turn, stone and glass by tick) and the world saved every 5 ticks, so sections are written
+# while the saves that snapshotted them are still being serialised (chunks.cow-sections must copy them first); biomes
+# changed with fillbiome now and then (31-block cubes, inside the game's command block limit). The saved chunks must be vanilla's exactly.
+window minecraft:overworld 0 0 8
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+churn 96
+save-every 5
+at 52 fillbiome -15 100 -15 15 130 15 minecraft:desert
+at 153 fillbiome 20 100 20 50 130 50 minecraft:jungle
+at 254 fillbiome -15 100 -15 15 130 15 minecraft:snowy_plains
+at 355 fillbiome -60 100 30 -30 130 60 minecraft:desert
+ticks 600

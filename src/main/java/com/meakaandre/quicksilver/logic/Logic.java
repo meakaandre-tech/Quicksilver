@@ -171,9 +171,7 @@ public final class Logic {
             if (changed) {
                 Files.createDirectories(file.getParent());
                 try (OutputStream out = Files.newOutputStream(file)) {
-                    p.store(out, "Quicksilver. block-renderer: on (Quicksilver's Fabric Renderer API renderer) or off (every block and item drawn"
-                        + " by vanilla's own code). memory: on or off (the Memory module); memory.<name>: on or off (one of its optimisations)."
-                        + " logic: on or off (the Logic module); logic.<name>: on or off (one of its optimisations). Each needs a restart.");
+                    p.store(out, com.meakaandre.quicksilver.chunks.Chunks.COMMENT);
                 }
             }
         } catch (IOException e) {

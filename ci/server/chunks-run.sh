@@ -7,8 +7,9 @@
 # SUITE: the scenes in ci/server/chunks-<SUITE>.txt on the saved terrain of ci/server/chunks-area-<SUITE>.txt, generated
 # by vanilla once (the harness's gen mode; chunks-base.tar, kept by the workflow's cache while its inputs don't change).
 # Every run loads the CI harness and runs with -Dmax.bg.threads=1, as the server suite does.
-# Output: $OUT/<scene>/<side><round>/ (ci-harness-result.json, ticks.json, the server log, jfr.json, dump.json) and
-# $OUT/base.json (the saved terrain's dump).
+# Output: $OUT/<scene>/<side><round>/ (ci-harness-result.json, ticks.json, the server log, jfr.json, dump.json), the
+# full runs' verify run ($OUT/<scene>/quicksilver-verify/), the kill check ($OUT/kill/<side>-complete|killed|reload<round>/)
+# and $OUT/base.json (the saved terrain's dump). ROUNDS caps every scene's rounds.
 set +e
 root=$PWD
 SUITE=${SUITE:-core}
@@ -57,50 +58,89 @@ mkdir -p "$OUT/sig"
 grep 'CI SIG' "$OUT/sig-server.log" | sed 's/.*CI SIG/CI SIG/'
 rm -rf "$srv/world"
 
-# one run: side (vanilla|quicksilver) round scene script ticks speed
+# one run: side (vanilla|quicksilver), name (its directory under the scene), scene, script, ticks, speed, kind:
+#   run       measured: JFR, the saved world's dump
+#   verify    Quicksilver with chunks verify mode (-Dquicksilver.debug.verifyChunks): the dump, no JFR
+#   complete  the kill check's complete save: the dump
+#   killed    the kill check's killed run: kill -9 about $KILL_AFTER s after the first "CI CHUNKS t=100" line; the dump of
+#             what is on disk; the world is kept for reload
+#   reload    the killed world (kept from the killed run) loaded again; the world is then thrown away
 one() {
-  local side=$1 round=$2 scene=$3 script=$4 ticks=$5 speed=$6
-  local dir="$OUT/$scene/$side$round"
+  local side=$1 name=$2 scene=$3 script=$4 ticks=$5 speed=$6 kind=${7:-run}
+  local dir="$OUT/$scene/$name"
   mkdir -p "$dir"
   rm -f "$srv/mods/quicksilver.jar"
   [ "$side" = quicksilver ] && cp dist/quicksilver.jar "$srv/mods/"
-  rm -rf "$srv/world" "$srv/quicksilver" "$srv/crash-reports"
-  (cd "$srv" && tar xf "$root/chunks-base.tar" && mv chunksbase world)
+  rm -rf "$srv/quicksilver" "$srv/crash-reports"
+  if [ "$kind" != reload ]; then
+    rm -rf "$srv/world"
+    (cd "$srv" && tar xf "$root/chunks-base.tar" && mv chunksbase world)
+  fi
   props world normal
   cp "ci/server/$script" "$dir/script.txt"
   [ "$speed" = sprint ] && printf '\nat 0 tick sprint %s\n' "$ticks" >> "$dir/script.txt"
+  local extra=()
+  [ "$kind" = run ] && extra+=("-XX:StartFlightRecording=filename=$dir/rec.jfr,dumponexit=true,settings=profile,jdk.ExecutionSample#period=1ms,jdk.NativeMethodSample#period=1ms")
+  [ "$kind" = verify ] && extra+=("-Dquicksilver.debug.verifyChunks=true")
   local t0=$(date +%s)
-  (cd "$srv" && timeout 1800 java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$dir" -Dci.harness.run="$dir/script.txt" \
-     -Dci.harness.ticks="$ticks" \
-     "-XX:StartFlightRecording=filename=$dir/rec.jfr,dumponexit=true,settings=profile,jdk.ExecutionSample#period=1ms,jdk.NativeMethodSample#period=1ms" \
-     -jar server.jar --nogui < /dev/null > "$dir/server.log" 2>&1
-   echo "EXIT $?" >> "$dir/server.log")
+  if [ "$kind" = killed ]; then
+    (cd "$srv" && exec java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$dir" -Dci.harness.run="$dir/script.txt" \
+       -Dci.harness.ticks="$ticks" -jar server.jar --nogui < /dev/null > "$dir/server.log" 2>&1) &
+    local pid=$! w=0
+    until grep -q 'CI CHUNKS t=100 ' "$dir/server.log" 2>/dev/null || ! kill -0 $pid 2>/dev/null || [ $w -ge 6000 ]; do sleep 0.05; w=$((w + 1)); done
+    sleep "${KILL_AFTER:-1.0}"
+    if kill -0 $pid 2>/dev/null; then
+      kill -9 $pid; echo "  killed $(grep -c 'CI HARNESS CMD t=100 ' "$dir/server.log") (1 = after the save had finished)"
+      echo "KILLED" >> "$dir/kill.txt"
+    else
+      echo "  exited before the kill"
+    fi
+    wait $pid 2>/dev/null
+  else
+    (cd "$srv" && timeout 1800 java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$dir" -Dci.harness.run="$dir/script.txt" \
+       -Dci.harness.ticks="$ticks" "${extra[@]}" -jar server.jar --nogui < /dev/null > "$dir/server.log" 2>&1
+     echo "EXIT $?" >> "$dir/server.log")
+  fi
   python3 -c "
 import json,sys
 j=json.load(open(sys.argv[1]))
-print('$scene $side r$round: mspt avg/p99/max', j.get('msptAvg'), j.get('msptP99'), j.get('msptMax'), 'over 50 ms', j.get('ticksOver50ms'), 'autosaves', [a.get('tick') for a in j.get('autosaves', []) if a.get('stage') == 'RUNNING'], j.get('chunks'), j.get('error',''))
-" "$dir/ci-harness-result.json" 2>/dev/null || echo "$scene $side r$round: no result"
+print('$scene $name: mspt avg/p99/max', j.get('msptAvg'), j.get('msptP99'), j.get('msptMax'), 'over 50 ms', j.get('ticksOver50ms'), 'autosaves', [a.get('tick') for a in j.get('autosaves', []) if a.get('stage') == 'RUNNING'], j.get('chunks'), j.get('error',''))
+" "$dir/ci-harness-result.json" 2>/dev/null || echo "$scene $name: no result"
   echo "  ($(( $(date +%s) - t0 )) s)"
-  grep -q 'CI HARNESS RUN DONE' "$dir/server.log" || { echo "  did not finish:"; tail -n 5 "$dir/server.log"; }
+  [ "$kind" = killed ] || grep -q 'CI HARNESS RUN DONE' "$dir/server.log" || { echo "  did not finish:"; tail -n 5 "$dir/server.log"; }
+  grep -E 'Quicksilver chunks' "$dir/server.log" | sed 's/^.*Quicksilver chunks/  Quicksilver chunks/' | sort -u | head -5
   if [ -f "$dir/rec.jfr" ]; then
     read -r a b < <(python3 -c "import json,sys; j=json.load(open(sys.argv[1])); print(j.get('runStartEpochMs',0), j.get('runEndEpochMs',0))" "$dir/ci-harness-result.json" 2>/dev/null)
     python3 -I ci/server/chunks-jfr.py "$dir/rec.jfr" "$dir/jfr.json" "$ticks" "${a:-0}" "${b:-0}" || echo "  jfr summary failed"
     rm -f "$dir/rec.jfr"
-  else
-    echo "  no JFR recording"
   fi
-  python3 -I ci/server/regiondump.py "$srv/world" "$dir/dump.json" --base "$OUT/base.json" || echo "  region dump failed"
+  [ "$kind" = reload ] || python3 -I ci/server/regiondump.py "$srv/world" "$dir/dump.json" --base "$OUT/base.json" || echo "  region dump failed"
   cp -r "$srv/crash-reports" "$dir/crash-reports" 2>/dev/null
-  rm -rf "$srv/world" "$srv/quicksilver" "$srv/crash-reports"
+  rm -rf "$srv/quicksilver" "$srv/crash-reports"
+  [ "$kind" = killed ] || rm -rf "$srv/world"
 }
 
-while read -r scene script ticks speed; do
+while read -r scene script ticks speed rounds; do
   case "$scene" in ''|'#'*) continue;; esac
-  echo "== scene $scene ($script, $ticks ticks, $speed)"
-  for r in $(seq 1 "$ROUNDS"); do
+  rounds=${rounds:-$ROUNDS}
+  [ "$rounds" -gt "$ROUNDS" ] && rounds=$ROUNDS
+  echo "== scene $scene ($script, $ticks ticks, $speed, $rounds rounds)"
+  for r in $(seq 1 "$rounds"); do
     if [ $((r % 2)) = 1 ]; then first=vanilla; second=quicksilver; else first=quicksilver; second=vanilla; fi
-    one $first $r "$scene" "$script" "$ticks" "$speed"
-    one $second $r "$scene" "$script" "$ticks" "$speed"
+    for side in $first $second; do
+      if [ "$scene" = kill ]; then
+        # the kill check: the complete save, the killed one, the killed world loaded again
+        one $side "$side-complete$r" "$scene" "$script" "$ticks" "$speed" complete
+        one $side "$side-killed$r" "$scene" "$script" "$ticks" "$speed" killed
+        one $side "$side-reload$r" "$scene" "chunks-reload-$SUITE.txt" 20 normal reload
+      else
+        one $side "$side$r" "$scene" "$script" "$ticks" "$speed" run
+      fi
+    done
   done
+  # full runs: Quicksilver once more with chunks verify mode (every shared section checked against a real copy)
+  if [ "${CI_MODE:-}" = full ] && [ "$scene" != kill ]; then
+    one quicksilver quicksilver-verify "$scene" "$script" "$ticks" "$speed" verify
+  fi
 done < "$spec"
 echo "chunk scenes done"

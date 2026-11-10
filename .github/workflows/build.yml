@@ -624,6 +624,7 @@ jobs:
         env:
           SUITE: core
           OUT: /tmp/sout/core-chunks
+          CI_MODE: ${{ needs.mode.outputs.mode }}
         run: bash ci/server/chunks-run.sh
       - uses: actions/upload-artifact@v4
         if: always()
@@ -713,7 +714,7 @@ jobs:
           p2=$?
           cat /tmp/sci/compare/p2.md >> "$GITHUB_STEP_SUMMARY"
           # P2-4: the chunk scenes (ci/server/compare-chunks.py)
-          python3 -I ci/server/compare-chunks.py /tmp/sres /tmp/sci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" python3 -I ci/server/compare-chunks.py /tmp/sres /tmp/sci/compare
           chunks=$?
           cat /tmp/sci/compare/chunks.md >> "$GITHUB_STEP_SUMMARY"
           echo "status=$(( self || cmp || p2 || chunks ))" >> "$GITHUB_OUTPUT"

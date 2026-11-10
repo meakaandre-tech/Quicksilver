@@ -28,8 +28,13 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * chunk a player has been near is: its inhabited time changes).</li>
  * <li>{@code dirty-at T}: every chunk of the window marked changed at the start of tick T (before that tick's
  * commands, so {@code at T save-all} saves all of them).</li>
+ * <li>{@code churn N}: every tick from 1, N blocks of the window set (flag 2: no neighbour updates, no drops), at fixed
+ * positions spread over the window's chunks and three sections of each, alternating stone and glass by tick: sections
+ * written while their chunks' saves are being serialised (P2-4's copy-on-write sections).</li>
+ * <li>{@code save-every K}: {@code save-all} every K ticks from K, after that tick's churn.</li>
  * </ul>
- * Nothing here draws on any random or changes a block; the same calls in the same order in every run.
+ * Nothing here draws on any random; the only blocks it changes are churn's (fixed positions and states); the same calls in
+ * the same order in every run.
  */
 final class CiChunks {
     private CiChunks() {
@@ -39,6 +44,8 @@ final class CiChunks {
     private static int cx, cz, radius = -1, ticksPerChunk = 0, step = 0;
     private static final List<int[]> segments = new ArrayList<>();  // {dx, dz, n}
     private static boolean dirtyOnLeave = false;
+    private static int churn = 0, saveEvery = 0;
+    private static long churned = 0;
     private static final List<Integer> dirtyAt = new ArrayList<>();
     private static String ticketMode = "none";
     private static java.lang.reflect.Method addTicket, removeTicket;
@@ -68,6 +75,14 @@ final class CiChunks {
                     int n = Integer.parseInt(s.substring(2));
                     segments.add(s.charAt(1) == 'x' ? new int[] {sign, 0, n} : new int[] {0, sign, n});
                 }
+                return true;
+            }
+            case "churn" -> {
+                churn = Integer.parseInt(a[1]);
+                return true;
+            }
+            case "save-every" -> {
+                saveEvery = Integer.parseInt(a[1]);
                 return true;
             }
             case "dirty-on-leave" -> {
@@ -185,6 +200,20 @@ final class CiChunks {
             dirtied += n;
             Harness.LOG.info("CI CHUNKS t={} {} chunks marked changed", tick, n);
         }
+        if (churn > 0 && tick > 0) {
+            int side = 2 * radius + 1;
+            net.minecraft.world.level.block.state.BlockState a = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+            net.minecraft.world.level.block.state.BlockState b = net.minecraft.world.level.block.Blocks.GLASS.defaultBlockState();
+            for (int i = 0; i < churn; i++) {
+                int k = (i * 7 + tick) % (side * side);
+                int x = (cx - radius + k % side) * 16 + (i * 3) % 16;
+                int z = (cz - radius + k / side) * 16 + (i * 5) % 16;
+                int y = 100 + (i % 3) * 16;
+                level.setBlock(new net.minecraft.core.BlockPos(x, y, z), ((tick + i) & 1) == 0 ? a : b, 2);
+                churned++;
+            }
+        }
+        if (saveEvery > 0 && tick > 0 && tick % saveEvery == 0) Harness.command(server, "save-all");
         if (ticksPerChunk <= 0 || segments.isEmpty() || tick == 0 || tick % ticksPerChunk != 0) return;
         int[] seg = segment(step++);
         int nx = cx + seg[0], nz = cz + seg[1];
@@ -234,6 +263,7 @@ final class CiChunks {
         o.addProperty("radius", radius);
         o.addProperty("moves", moves);
         o.addProperty("dirtied", dirtied);
+        o.addProperty("churned", churned);
         o.addProperty("notLoadedOnLeave", notLoadedOnLeave);
         o.addProperty("windowNotFullAtEnd", missing);
         o.addProperty("endCentre", cx + "," + cz);

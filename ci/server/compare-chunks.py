@@ -20,12 +20,18 @@ Gates (GATES below; while MEASURING is true, everything is reported and nothing 
 Writes REPORT_DIR/chunks.md and REPORT_DIR/chunks.json; exit 1 on a gated failure.
 """
 import glob
+import re
 import json
 import os
 import statistics
 import sys
 
-MEASURING = True
+MEASURING = False
+# the scenes whose saved files are gated exactly (vanilla's own rounds match there): Quicksilver's saved chunks must be
+# vanilla's. The fly-over's saves follow chunk unload timing (which tick each chunk is saved in: vanilla's own rounds
+# differ in about a thousand chunks' LastUpdate and pending ticks), so its files are reported, not gated. Entity files are
+# reported only (entities move between saves in vanilla's own rounds too)
+EXACT_FILES = ("save", "churn")
 
 
 def load(path):
@@ -78,6 +84,42 @@ def numbers(d):
     }
 
 
+CHUNKS_ON = "Quicksilver chunks:"
+CHUNKS_FALLBACK = "Quicksilver chunks fallback:"
+# a chunk the game could not read or write (vanilla's log lines for it)
+READ_ERRORS = re.compile(r"Couldn't load chunk|Failed to read chunk|Failed to load chunk|is corrupt|Chunk file at .* is in the wrong location|Failed to store chunk|Couldn't save chunk|Recovering corrupted")
+
+
+def text(path):
+    try:
+        with open(path, errors="replace") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def status_check(d, side, where, fails, verify=False):
+    """A run's Chunks module status: fully on (and verify on, for a verify run) with Quicksilver, absent without; no fallback."""
+    log = text(os.path.join(d, "server.log"))
+    st = re.findall(re.escape(CHUNKS_ON) + r" (.*)", log)
+    if side == "quicksilver":
+        if not st:
+            fails.append("%s: no '%s' status line" % (where, CHUNKS_ON))
+        elif any(re.search(r"=(off|fallback)|^off", x) for x in st):
+            fails.append("%s: Chunks module not fully on: %s" % (where, [x for x in st if re.search(r"=(off|fallback)|^off", x)][0][:300]))
+        elif verify and not any("verify=on" in x for x in st):
+            fails.append("%s: verify mode not on" % where)
+    elif st:
+        fails.append("%s: a Chunks status line without Quicksilver" % where)
+    fb = [l for l in log.splitlines() if CHUNKS_FALLBACK in l]
+    if fb:
+        fails.append("%s: %d Chunks fallbacks (first: %s)" % (where, len(fb), fb[0][:400]))
+    err = [l for l in log.splitlines() if READ_ERRORS.search(l)]
+    if err:
+        fails.append("%s: %d chunk read or write errors (first: %s)" % (where, len(err), err[0][:300]))
+    return st[-1] if st else None
+
+
 def autosave_ms(d, n):
     """The tick time of each autosave tick (the game's own), from ticks.json."""
     t = load(os.path.join(d, "ticks.json")) or []
@@ -113,6 +155,68 @@ def store_compare(a, b):
                     "storedDiffSameRaw": stored_diff, "keys": keys, "headerPlaceDiff": place, "headerTimeDiff": stamp,
                     "notInBase": sb.get("notInBase", [])}
     return res
+
+
+def kill_check(sdir, lines, out, fails):
+    """The kill check (chunks-run.sh): each killed save holds, per chunk, either the saved terrain's data or the complete
+    save's (never a broken chunk or a third version), and the killed world loads again; Quicksilver as vanilla."""
+    suite = os.path.basename(sdir)[:-len("-chunks")]
+    kd = os.path.join(sdir, "kill")
+    if not os.path.isdir(kd):
+        return
+    base = load(os.path.join(sdir, "base.json"))
+    lines.append("## %s / kill: a kill -9 mid-save (save-all flush of 625 changed chunks)\n" % suite)
+    lines.append("| run | killed mid-save | chunks: complete save's / saved terrain's / other / unreadable (region) | entities, poi: other / unreadable | reloaded |")
+    lines.append("|---|---|---|---|---|")
+    res = {}
+    for d in sorted(glob.glob(os.path.join(kd, "*-killed*"))):
+        name = os.path.basename(d)
+        side, r = name.split("-killed")
+        where = "%s/kill %s" % (suite, name)
+        complete = load(os.path.join(kd, "%s-complete%s" % (side, r), "dump.json"))
+        killed = load(os.path.join(d, "dump.json"))
+        log = text(os.path.join(d, "server.log"))
+        mid = os.path.exists(os.path.join(d, "kill.txt")) and "CI HARNESS CMD t=100 " not in log
+        status_check(os.path.join(kd, "%s-complete%s" % (side, r)), side, where + " (complete)", fails)
+        rd = os.path.join(kd, "%s-reload%s" % (side, r))
+        reloaded = "CI HARNESS RUN DONE" in text(os.path.join(rd, "server.log"))
+        status_check(rd, side, where + " (reload)", fails)
+        if not reloaded:
+            fails.append("%s: the killed world did not load and run again" % where)
+        if not (complete and killed and base):
+            fails.append("%s: a dump is missing" % where)
+            continue
+        counts, other_stores = {}, []
+        for key, sk in killed["stores"].items():
+            sc = complete["stores"].get(key, {}).get("chunks", {})
+            sb = base["stores"].get(key, {}).get("chunks", {})
+            c = {"complete": 0, "base": 0, "other": [], "unreadable": []}
+            for pos, e in sk["chunks"].items():
+                if "error" in e or "raw" not in e:
+                    c["unreadable"].append(pos)
+                elif pos in sc and e.get("raw") == sc[pos].get("raw"):
+                    c["complete"] += 1
+                elif pos in sb and e.get("raw") == sb[pos].get("raw"):
+                    c["base"] += 1
+                else:
+                    c["other"].append(pos)
+            counts[key] = c
+            if c["unreadable"]:
+                fails.append("%s: %d unreadable chunks in %s (first %s)" % (where, len(c["unreadable"]), key, c["unreadable"][0]))
+            if c["other"] and key.endswith("region"):
+                fails.append("%s: %d chunks in %s hold neither the saved terrain's data nor the complete save's (first %s)" % (
+                    where, len(c["other"]), key, c["other"][0]))
+        reg = next((c for k, c in counts.items() if k.endswith("region")), {"complete": 0, "base": 0, "other": [], "unreadable": []})
+        rest = [(k.split("/")[-1], c) for k, c in sorted(counts.items()) if not k.endswith("region")]
+        lines.append("| %s | %s | %d / %d / %d / %d | %s | %s |" % (
+            name, "yes" if mid else "**no** (finished first)", reg["complete"], reg["base"], len(reg["other"]), len(reg["unreadable"]),
+            "; ".join("%s %d / %d" % (k, len(c["other"]), len(c["unreadable"])) for k, c in rest) or "-",
+            "yes" if reloaded else "**no**"))
+        res[name] = {"mid": mid, "region": {k: (v if isinstance(v, int) else len(v)) for k, v in reg.items()}}
+    lines.append("\nEach chunk of a killed save is either the complete save's or the saved terrain's: a kill loses the chunks"
+                 " not yet written, and breaks none. Entity and POI files are reported only (their data follows entity and"
+                 " POI timing, as in vanilla's own rounds).\n")
+    out["%s/kill" % suite] = res
 
 
 def main(results, report_dir):
@@ -153,6 +257,7 @@ def main(results, report_dir):
                         ", ".join("%d: %s" % (s["tick"], fmt(s["ms"], 1)) for s in n["slow"][:5])))
                     if not n["finished"]:
                         fails.append("%s/%s: %s round %d did not finish" % (suite, scene, side, r))
+                    status_check(rs[(side, r)], side, "%s/%s %s round %d" % (suite, scene, side, r), fails)
             lines.append("")
             # medians and per-round ratios
             summary = {}
@@ -241,6 +346,11 @@ def main(results, report_dir):
                             raw_out = [p for p in c["rawDiff"] if p not in nz["raw"]]
                             stored_out = [p for p in c["storedDiffSameRaw"] if p not in nz["stored"] and p not in nz["raw"]]
                             only_out = [p for p in only if p not in nz["only"]]
+                            if side == "quicksilver" and scene in EXACT_FILES and not key.endswith("entities") and (raw_out or stored_out or only_out):
+                                fails.append("%s/%s: Quicksilver round %d, %s: %d chunks' data differ from vanilla's (outside vanilla's own"
+                                             " noise), %d stored bytes only, %d on one side only; keys %s" % (
+                                                 suite, scene, r, key, len(raw_out), len(stored_out), len(only_out),
+                                                 ", ".join("%s %d" % kv for kv in sorted(c["keys"].items())) or "-"))
                             files.setdefault(side, []).append({"round": r, "store": key, "rawOut": len(raw_out), "storedOut": len(stored_out),
                                                                 "onlyOut": len(only_out), "notInBase": len(c["notInBase"])})
                             lines.append("| %d | %s | %s | %d | %d (%d) | %d (%d) | %d (%d) | %s | %d / %d | %d |" % (
@@ -255,7 +365,25 @@ def main(results, report_dir):
                     "%s: %d data, %d bytes only, %d one side, keys %s" % (k, len(v["raw"]), len(v["stored"]), len(v["only"]),
                                                                            ", ".join("%s %d" % kv for kv in sorted(v["keys"].items())) or "-")
                     for k, v in sorted(noise.items()))))
+            # the full runs' verify run: finished, verify on, no fallback, its saved files as vanilla's
+            vd = os.path.join(scene_dir, "quicksilver-verify")
+            if os.path.isdir(vd):
+                vn = numbers(vd)
+                st = status_check(vd, "quicksilver", "%s/%s verify run" % (suite, scene), fails, verify=True)
+                if not vn["finished"]:
+                    fails.append("%s/%s verify run: did not finish" % (suite, scene))
+                vdump = load(os.path.join(vd, "dump.json"))
+                vdiff = "-"
+                if vdump and ref:
+                    cs = store_compare(ref, vdump)
+                    vdiff = ", ".join("%s: %d data, %d bytes only" % (k.split("/")[-1], len(c["rawDiff"]), len(c["storedDiffSameRaw"])) for k, c in cs.items())
+                lines.append("Verify run (full runs: chunks verify mode, every shared section checked against a real copy): %s; %s; saved files against vanilla round 1: %s\n" % (
+                    "finished" if vn["finished"] else "**did not finish**", (st or "no status line")[:200], vdiff))
+            elif os.environ.get("CI_MODE") == "full" and scene != "kill":
+                fails.append("%s/%s: no verify run in a full run" % (suite, scene))
             out["%s/%s" % (suite, scene)] = {"summary": summary, "files": files}
+    for sdir in suites:
+        kill_check(sdir, lines, out, fails)
     if fails:
         lines.append("## Failures%s\n" % (" (reported: measuring)" if MEASURING else ""))
         lines += ["- " + f for f in fails]
