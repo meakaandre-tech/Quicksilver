@@ -3294,14 +3294,15 @@ their textures are shared already.
 `entity/EntityAtlas`, `mixin/entity/`: model submits with a vanilla entity render type and one plain nearest texture
 go to the same render type bound to a shared 512x512 page, with the texture's slot as the model's `UvMapping` (the
 path vanilla's sheets take). Pages fill lazily; a one-texel ring repeats the edge (clamp) or the opposite edge
-(repeat). Only non-blended types are allowed (entity_solid, the cutout family, armor_cutout_no_cull, entity_eyes):
-merging translucent draws would change their blend order. Anything else, GeckoLib, BlockDisplay, item frames, signs,
-banners and Flywheel's machines included, draws as before. Found on the way: `getDeclaredFields` returns copies, so
+(repeat). Only non-blended types are allowed (entity_solid, the cutout family but entity_cutout_no_cull_z_offset,
+armor_cutout_no_cull, entity_eyes): merging translucent draws would change their blend order. Anything else, GeckoLib,
+BlockDisplay, item frames, signs, banners, heads (since 2026-11-11, below) and Flywheel's machines included, draws as
+before. Found on the way: `getDeclaredFields` returns copies, so
 the textures field was never skipped by `==` and every texture made its own kind (fixed with `equals`; the bench's
 `kindSplits` says why two kinds split).
 
 Feature draws per frame, vanilla (measure) -> Quicksilver, full run 42572488452, every profile: mobs 12 -> 5,
-occlusion 10 -> 3, block_entities 13.1 -> 9.1; SIFTEC factory, factory_flat and hologram 1-3, unchanged (nothing to
+occlusion 10 -> 3, block_entities 13.1 -> 9.1 (heads in the atlas then; see below for the run without); SIFTEC factory, factory_flat and hologram 1-3, unchanged (nothing to
 merge). All draws per frame, old-GPU: mobs 298 -> 17.7, occlusion 161 -> 13.7, block_entities 105 -> 31.1 (terrain
 included). Pictures unchanged within the documented limits. Heap after GC against main's last full run (`c6a34218`):
 -3.4 to +3.2 MB per scene; mobs +1.5 MB in every profile, and the measure runs (modules off) gained the same there.
@@ -3350,10 +3351,13 @@ vanilla's far shot).
   limit (206 on Vulkan; 131 two-phase and 152 in measure-full, every module off), on code unchanged since `03f7c17f`;
   42777819099 (`e960fce8`) passed. The pixels are the ender chest's particles, vanilla's own noise: closed and
   sign_edit were re-collected by the noise rule (310 and 280; `docs/ci-limits.md`). No start hang in these three runs.
-- **Fixed (found 2026-11-10, fixed 2026-11-11):** one pixel on the zombie head's edge differed from vanilla (one texel
+- **Worked around (found 2026-11-10, 2026-11-11):** one pixel on the zombie head's edge differed from vanilla (one texel
   row off, 6/255, full and old-GPU, not Vulkan) and went with the entity atlas off: the atlas's UV remap rounding at a
   texel edge. Andre chose to leave heads out of the atlas: entity_cutout_no_cull_z_offset (vanilla's skull render type)
-  is off the allow-list, so heads draw as in vanilla and lose their merge.
+  is off the allow-list, so heads (placed, worn and held) draw as in vanilla and lose their merge. The rounding itself
+stays for every other atlas texture; no other check shows it, but a one-texel edge difference elsewhere would sit
+inside the scenes' strict limits. The bench's renderTypesNotAllowed now counts per submit (it missed types first seen
+before the bench window).
 - **Decided by Andre (2026-11-11):** quick mode gates direct buffers at the ceiling only (committed baseline x 1.10 +
   8 MB; full runs gate against the same-run measure run); block_entities.closed keeps 310 (collected with Quicksilver's
   particle samples); heap after GC within -3.4 to +3.2 MB of main's run is accepted as run-to-run noise.

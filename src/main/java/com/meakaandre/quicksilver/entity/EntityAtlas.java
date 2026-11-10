@@ -90,6 +90,8 @@ public final class EntityAtlas {
     private static long redirected, submits;
     private static final Map<String, long[]> SKIPPED = new HashMap<>();
     private static final Map<String, long[]> NOT_ALLOWED = new HashMap<>();
+    /** Render types left out by the allow-list, by name: counted per submit (the template is cached on first sight). */
+    private static final Map<RenderType, String> NOT_ALLOWED_NAMES = new IdentityHashMap<>();
     private static final Map<String, long[]> SPLITS = new java.util.TreeMap<>();
     private static long uploads, uploadBytes;
 
@@ -120,7 +122,11 @@ public final class EntityAtlas {
                 t = template(type);
                 BY_TYPE.put(type, t);
             }
-            if (t == NONE) return skip("render type not eligible");
+            if (t == NONE) {
+                String n = NOT_ALLOWED_NAMES.get(type);
+                if (n != null) NOT_ALLOWED.computeIfAbsent(n, k -> new long[1])[0]++;
+                return skip("render type not eligible");
+            }
             if (t.location() == null) return skip("no texture");
             AbstractTexture src = Minecraft.getInstance().getTextureManager().getTexture(t.location());
             Slot s = slot(t, src);
@@ -216,7 +222,7 @@ public final class EntityAtlas {
         String name = (String) fName.get(type);
         RenderSetup setup = (RenderSetup) fState.get(type);
         if (!ALLOWED.contains(name)) {
-            NOT_ALLOWED.computeIfAbsent(name, k -> new long[1])[0]++;
+            NOT_ALLOWED_NAMES.put(type, name);
             return NONE;
         }
         Map<?, ?> textures = (Map<?, ?>) fTextures.get(setup);

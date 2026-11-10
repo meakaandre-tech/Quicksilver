@@ -846,7 +846,7 @@ Limit = max(2 x largest, largest + 0.25, 0.1) rounded up to 0.05; strict = large
 (the measure runs, every module off, in these three runs): closed 152, sign_edit 74. The rule takes the largest sample
 of the scene's noise, Quicksilver's runs included as in every row above: its strict pixels here are the same particles
 (located per pixel), not a Quicksilver difference; block_entities and chest_open keep 270 and 240 (largest 180 and 156). Smallest thing these shots must catch: one head (about 700 pixels), above both new limits. One sign's text (10-27 pixels) is below the noise floor (the measure runs alone reach 152), as it already was at 130. The six other pixels are the five on the spruce sign's post (below) and one on the zombie head's left edge (568, 394), a texel one row off (6/255) on full and old-GPU, not Vulkan: it goes with the entity atlas off (diagnostic run on `diag-p6-atlas-off`), so it is the atlas's UV remap rounding at a texel edge, in every run since the atlas landed: a Quicksilver-only
-difference, fixed on 2026-11-11 by leaving heads out of the atlas (docs/progress.md). The limits were collected with it in
+difference, worked around on 2026-11-11 by leaving heads out of the atlas (docs/progress.md). The limits were collected with it in
 and are not lowered for it (one pixel).
 
 block_entities' samples: vanilla's own noise is the ender chest's particles (a/b 0.0012-0.0277%; the measure runs, Quicksilver
