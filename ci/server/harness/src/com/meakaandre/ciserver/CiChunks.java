@@ -30,8 +30,9 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * commands, so {@code at T save-all} saves all of them).</li>
  * <li>{@code churn N}: every tick from 1, N blocks of the window set (flag 2: no neighbour updates, no drops), at fixed
  * positions spread over the window's chunks and three sections of each (y 8, 24, 40: underground), alternating andesite
- * and diorite by tick (both opaque: after the first set at a position, no light changes, so the saved light doesn't follow
- * the light engine's timing): sections written while their chunks' saves are being serialised (P2-4's copy-on-write
+ * and diorite by tick, and only where the block is stone, deepslate, andesite or diorite (opaque blocks that give no light,
+ * replaced by opaque blocks that give none: no light changes at all, so the saved light doesn't follow the light engine's
+ * timing; a cave's air, water or lava is left alone): sections written while their chunks' saves are being serialised (P2-4's copy-on-write
  * sections).</li>
  * <li>{@code save-every K}: {@code save-all} every K ticks from K, after that tick's churn.</li>
  * </ul>
@@ -47,7 +48,7 @@ final class CiChunks {
     private static final List<int[]> segments = new ArrayList<>();  // {dx, dz, n}
     private static boolean dirtyOnLeave = false;
     private static int churn = 0, saveEvery = 0;
-    private static long churned = 0;
+    private static long churned = 0, skipped = 0;
     private static final List<Integer> dirtyAt = new ArrayList<>();
     private static String ticketMode = "none";
     private static java.lang.reflect.Method addTicket, removeTicket;
@@ -211,7 +212,14 @@ final class CiChunks {
                 int x = (cx - radius + k % side) * 16 + (i * 3) % 16;
                 int z = (cz - radius + k / side) * 16 + (i * 5) % 16;
                 int y = 8 + (i % 3) * 16;
-                level.setBlock(new net.minecraft.core.BlockPos(x, y, z), ((tick + i) & 1) == 0 ? a : b, 2);
+                net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+                net.minecraft.world.level.block.state.BlockState now = level.getBlockState(pos);
+                if (!(now.is(net.minecraft.world.level.block.Blocks.STONE) || now.is(net.minecraft.world.level.block.Blocks.DEEPSLATE)
+                    || now == a || now == b)) {
+                    skipped++;
+                    continue;
+                }
+                level.setBlock(pos, ((tick + i) & 1) == 0 ? a : b, 2);
                 churned++;
             }
         }
@@ -266,6 +274,7 @@ final class CiChunks {
         o.addProperty("moves", moves);
         o.addProperty("dirtied", dirtied);
         o.addProperty("churned", churned);
+        o.addProperty("churnSkipped", skipped);
         o.addProperty("notLoadedOnLeave", notLoadedOnLeave);
         o.addProperty("windowNotFullAtEnd", missing);
         o.addProperty("endCentre", cx + "," + cz);

@@ -27,8 +27,8 @@ public final class CowSections {
     public static final String ID = "cow-sections";
     public static final Chunks.Switch SWITCH = new Chunks.Switch(ID);
 
-    /** The thread copying a full chunk's sections for a save right now (the server thread), or null. */
-    private static volatile Thread sharing;
+    /** The thread whose snapshot is being made now (one at a time: another thread's snapshot copies as vanilla does). */
+    private static final java.util.concurrent.atomic.AtomicReference<Thread> sharing = new java.util.concurrent.atomic.AtomicReference<>();
 
     private CowSections() {
     }
@@ -47,18 +47,18 @@ public final class CowSections {
         Object quicksilver$data();
     }
 
-    /** Around a full chunk's section copy in a save snapshot, on the server thread. */
+    /** Around a full chunk's save snapshot (SerializableChunkDataCowMixin), on the thread making it. */
     public static void begin() {
-        sharing = Thread.currentThread();
+        sharing.compareAndSet(null, Thread.currentThread());
     }
 
     public static void end() {
-        sharing = null;
+        sharing.compareAndSet(Thread.currentThread(), null);
     }
 
     /** Whether a container copy made now (on this thread) shares instead of copying. */
     public static boolean sharing() {
-        return SWITCH.on && sharing == Thread.currentThread();
+        return SWITCH.on && sharing.get() == Thread.currentThread();
     }
 
     /** Verify mode: a shared container of a serialised snapshot against its real copy; a difference falls back. */

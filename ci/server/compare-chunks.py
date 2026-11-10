@@ -157,16 +157,22 @@ def store_compare(a, b):
     return res
 
 
+KILL_TIMING_KEYS = frozenset(("LastUpdate", "block_ticks", "fluid_ticks"))
+
+
 def kill_check(sdir, lines, out, fails):
     """The kill check (chunks-run.sh): each killed save holds, per chunk, either the saved terrain's data or the complete
-    save's (never a broken chunk or a third version), and the killed world loads again; Quicksilver as vanilla."""
+    save's (never a broken chunk or a third version), and the killed world loads again; Quicksilver as vanilla. A chunk that
+    differs from the complete save's only in the keys that follow tick timing (KILL_TIMING_KEYS: the tick it was saved at
+    and its scheduled ticks' delays) is the complete save's chunk written at another tick: vanilla's own killed runs hold
+    some 200 of those (a chunk saved again, or saved before the flush, in the second the killed run goes on ticking)."""
     suite = os.path.basename(sdir)[:-len("-chunks")]
     kd = os.path.join(sdir, "kill")
     if not os.path.isdir(kd):
         return
     base = load(os.path.join(sdir, "base.json"))
     lines.append("## %s / kill: a kill -9 mid-save (save-all flush of 625 changed chunks)\n" % suite)
-    lines.append("| run | killed mid-save | chunks: complete save's / saved terrain's / other / unreadable (region) | entities, poi: other / unreadable | reloaded |")
+    lines.append("| run | killed mid-save | chunks: complete save's / its at another tick / saved terrain's / other / unreadable (region) | entities, poi: other / unreadable | reloaded |")
     lines.append("|---|---|---|---|---|")
     res = {}
     for d in sorted(glob.glob(os.path.join(kd, "*-killed*"))):
@@ -191,7 +197,8 @@ def kill_check(sdir, lines, out, fails):
         for key, sk in killed["stores"].items():
             sc = complete["stores"].get(key, {}).get("chunks", {})
             sb = base["stores"].get(key, {}).get("chunks", {})
-            c = {"complete": 0, "base": 0, "other": [], "unreadable": []}
+            kc, cc = sk.get("changed", {}), complete["stores"].get(key, {}).get("changed", {})
+            c = {"complete": 0, "timing": 0, "base": 0, "other": [], "unreadable": []}
             for pos, e in sk["chunks"].items():
                 if "error" in e or "raw" not in e:
                     c["unreadable"].append(pos)
@@ -199,6 +206,9 @@ def kill_check(sdir, lines, out, fails):
                     c["complete"] += 1
                 elif pos in sb and e.get("raw") == sb[pos].get("raw"):
                     c["base"] += 1
+                elif pos in kc and pos in cc and all(kc[pos].get(x) == cc[pos].get(x)
+                                                     for x in set(kc[pos]) | set(cc[pos]) if x not in KILL_TIMING_KEYS):
+                    c["timing"] += 1
                 else:
                     c["other"].append(pos)
             counts[key] = c
@@ -207,15 +217,16 @@ def kill_check(sdir, lines, out, fails):
             if c["other"] and key.endswith("region"):
                 fails.append("%s: %d chunks in %s hold neither the saved terrain's data nor the complete save's (first %s)" % (
                     where, len(c["other"]), key, c["other"][0]))
-        reg = next((c for k, c in counts.items() if k.endswith("region")), {"complete": 0, "base": 0, "other": [], "unreadable": []})
+        reg = next((c for k, c in counts.items() if k.endswith("region")), {"complete": 0, "timing": 0, "base": 0, "other": [], "unreadable": []})
         rest = [(k.split("/")[-1], c) for k, c in sorted(counts.items()) if not k.endswith("region")]
-        lines.append("| %s | %s | %d / %d / %d / %d | %s | %s |" % (
-            name, "yes" if mid else "**no** (finished first)", reg["complete"], reg["base"], len(reg["other"]), len(reg["unreadable"]),
+        lines.append("| %s | %s | %d / %d / %d / %d / %d | %s | %s |" % (
+            name, "yes" if mid else "**no** (finished first)", reg["complete"], reg["timing"], reg["base"], len(reg["other"]), len(reg["unreadable"]),
             "; ".join("%s %d / %d" % (k, len(c["other"]), len(c["unreadable"])) for k, c in rest) or "-",
             "yes" if reloaded else "**no**"))
         res[name] = {"mid": mid, "region": {k: (v if isinstance(v, int) else len(v)) for k, v in reg.items()}}
-    lines.append("\nEach chunk of a killed save is either the complete save's or the saved terrain's: a kill loses the chunks"
-                 " not yet written, and breaks none. Entity and POI files are reported only (their data follows entity and"
+    lines.append("\nEach chunk of a killed save is either the complete save's (possibly written at another tick: it differs"
+                 " only in %s) or the saved terrain's: a kill loses the chunks not yet written, and breaks none." % ", ".join(sorted(KILL_TIMING_KEYS)) +
+                 " Entity and POI files are reported only (their data follows entity and"
                  " POI timing, as in vanilla's own rounds).\n")
     out["%s/kill" % suite] = res
 

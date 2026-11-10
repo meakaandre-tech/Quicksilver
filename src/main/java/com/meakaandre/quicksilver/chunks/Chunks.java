@@ -46,6 +46,7 @@ public final class Chunks {
                 new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSetUnchecked"},
                 new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$set"},
                 new String[] {"net.minecraft.world.level.chunk.storage.SerializableChunkData", "call:quicksilver$copySection"},
+                new String[] {"net.minecraft.world.level.chunk.storage.SerializableChunkData", "call:quicksilver$copied"},
                 new String[] {"net.minecraft.world.level.chunk.storage.SerializableChunkData", "call:quicksilver$written"})));
 
     private enum State { ON, OFF, FALLBACK }
