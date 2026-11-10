@@ -18,6 +18,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 |---|---|---|
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
+| phase 2, P2-4 (chunk saving and loading) | `p2-4` (not merged: Andre checks it first) | Chunks module: chunks.cow-sections (save snapshots share sections, copy on write); server-thread save time down 8-11%, save-all spike down; saved region files equal to vanilla's; see "Phase 2, P2-4" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-3b (hopper cache) | **shelved** (branch `p2-3b` kept on GitHub, not merged) | exact (border run equal in every run, verify run 9910 answers), but factory MSPT within noise after two attempts; see "Phase 2, P2-3b" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
@@ -2496,6 +2497,63 @@ face shapes and vanilla's identity-keyed caches, the spawner's re-seed (above), 
 (works on Java 25; a later JDK may refuse), the config file rewritten without the user's comments when keys are
 added.
 
+## Phase 2, P2-4: chunk saving and loading (branch `p2-4`, not merged: Andre checks it first)
+
+Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQDDDppdrxu45), P2-4. Files: the Chunks
+module (`src/main/java/com/meakaandre/quicksilver/chunks/`, `mixin/chunks/`, `quicksilver.chunks.mixins.json`,
+`quicksilver.classtweaker`), the chunk scenes (`ci/server/chunks-*`, `CiChunks.java`, `regiondump.py`,
+`compare-chunks.py`, job `server-chunks`), `docs/ci-limits.md` ("P2-4").
+
+### Measured first (vanilla, core)
+
+- Vanilla already serialises, compresses and writes off the server thread (`SerializableChunkData.write` on the
+  background executor, compression and IO on the IO worker). What stays on the server thread is the snapshot,
+  `SerializableChunkData.copyOf`: section copies about 28-50% of it (`PalettedContainer$Data.copy`), block entity NBT
+  about 22%, light lookups about 19%, structure starts about 12%, scheduled ticks the rest.
+- Fly-over at 12 chunks: save about 0.3 ms per tick, load about 0.15-0.2 (reading about 0.06, promotion to full chunk
+  and post-processing the rest); slowest tick 18-40 ms, no tick over 50 ms on the runner; ticket work
+  (`DistanceManager`) about 0.4 ms per tick, larger than either.
+- Save scene: a save-all of 625 changed chunks about 55-70 ms on the server thread; save-all flush 1.8-2.7 s, nearly all
+  waiting for the disk (`sync-chunk-writes`).
+
+### What was built
+
+- **Chunks module** (`chunks=` and `chunks.<id>=` in `quicksilver.properties`; off with C2ME installed and in the
+  measure-only runs), as the Logic module: a mixin plugin records the hooks that land and an optimisation whose hooks
+  didn't falls back to vanilla's code with a "Quicksilver chunks fallback:" line (CI fails on any).
+- **`chunks.cow-sections`**: a full chunk's save snapshot shares its sections' block and biome containers (storage and
+  palette) instead of copying them; both containers are marked shared and the first write to either (`set`,
+  `getAndSet`, `getAndSetUnchecked`, `read`) copies its data first, as vanilla's copy would have. Only `LevelChunk`
+  snapshots, one thread at a time. Verify mode (`-Dquicksilver.debug.verifyChunks`, every full run's verify runs) keeps
+  a real copy beside each share and fails on any difference once the snapshot is serialised. It needs one class
+  tweaker line (`PalettedContainer$Data` accessible) and the game's own unpacking constructor (an invoker).
+
+### Results (quick run 42796271430, `b4d209f`)
+
+| scene | measure | vanilla | Quicksilver | median ratio (range) |
+|---|---|---|---|---|
+| fly-over | server-thread save, ms per tick | 0.306 | 0.312 | 0.918 (0.79-1.28) |
+| fly-over | load, ms per tick | 0.153 | 0.167 | 1.030 (0.99-1.19) |
+| fly-over | p99 / slowest tick (ms) | 8.18 / 18.7 | 7.44 / 20.8 | 0.951 / 1.082 |
+| fly-over | ticks over 50 ms | 0 | 0 | - |
+| churn | server-thread save, ms per tick | 0.860 | 0.758 | 0.886 (0.88-0.90) |
+| save | save-all tick (ms) | 61.5 | 55.5 | 0.826 (0.58-1.23) |
+| save | autosave tick (ms, one per run) | 51.3 | 36.2 | 0.760 (0.31-1.52) |
+| save | save-all flush tick (ms) | 1865 | 1835 | 0.992 |
+
+`PalettedContainer$Data.copy` is gone from the server thread's samples (319 to 0 in the fly-over, 102 to 0 in the save
+scene); churn allocates 1197 to 813 MB in its saves. Saved region files: equal to vanilla's in every save and churn
+round (only headers differ, as between vanilla's own rounds). Kill check: no unreadable chunk and every killed world
+loads again, on both sides alike.
+
+### Not built (choices for Andre)
+
+- **Load side**: nothing safe found that is worth it. Reading is about 0.06 ms per tick on the server thread; parsing
+  structure starts on a worker would hash `Structure` objects off the server thread (identity hashes, P2's rule), and
+  promotion is vanilla's ordered work.
+- **Light and block entity parts of the snapshot**: light lookups are hash lookups vanilla needs; block entity NBT runs
+  mods' code and can't move threads.
+
 ## Phase 2, P2-3b: hopper container cache (shelved, Andre 2026-11-06; branch `p2-3b` kept on GitHub, not merged)
 
 **What it was.** `logic.hopper-cache`: each hopper remembered the container it takes from and gives to, keyed on P2-2's
@@ -3413,7 +3471,9 @@ strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
 **Package 2b (phase 1):** merged as `e8e771c`; main full run 41396095000 green, latest rebuilt. See "Package 2b".
 
-**Now (P2-3b):** shelved (Andre, 2026-11-06): exact, but no measurable factory gain after two attempts; branch `p2-3b`
+**Now (P2-4):** branch `p2-4` built and gated, waiting for Andre (see "Phase 2, P2-4").
+
+**Before (P2-3b):** shelved (Andre, 2026-11-06): exact, but no measurable factory gain after two attempts; branch `p2-3b`
 kept on GitHub, not merged (see "Phase 2, P2-3b"). Next in phase 2: P2-4 (chunk saving and loading), in a new chat.
 
 **Before (P2-3):** merged (`8951f5c`; main green 41781297724, `latest` rebuilt).

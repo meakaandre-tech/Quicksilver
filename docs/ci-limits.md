@@ -1146,3 +1146,40 @@ the optimisation falls back on any difference, which CI fails. The verify run (`
 suite with a scripted run (`compare-p2.py`); its world isn't kept. Only those two runs (neither world is diffed) have it: worldgen, the GameTests, the scripted and random-tick runs and the perf job
 play the code that ships, and their worlds are gated. The heap gate (P2-1) is measured in that run with verify on: the
 checks call vanilla's own lookups as well, so Quicksilver's side does more work there, never less.
+
+### P2-4: chunk scenes (`server-chunks` job), saved files, kill check
+
+`ci/server/chunks-run.sh` (job `server-chunks`, core only): a saved terrain (`chunks-area-core.txt`, overworld chunks
+-34..34, generated once and cached), then each scene of `chunks-core.txt` with vanilla and Quicksilver in alternating
+order per round, JFR on every round, `sync-chunk-writes=true`, `max.bg.threads=1`. Report: `compare/chunks.md`
+(`ci/server/compare-chunks.py`). In full runs each scene also has a Quicksilver verify run
+(`-Dquicksilver.debug.verifyChunks`: every shared section checked against a real copy once its save is serialised).
+
+| scene | what | rounds | gates |
+|---|---|---|---|
+| `flyover` | a 25x25-chunk window (the player-loading ticket, radius 12) moving one chunk every 8 ticks around a 16x16 square over the saved terrain; chunks leaving it marked changed (so they are saved on unload) | 7 | server-thread save ms per tick below vanilla; p99 and slowest tick at most 1.10 of vanilla's; ticks over 50 ms reported |
+| `save` | the 625 chunks around 0,0 marked changed and saved with save-all at ticks 100 and 400, save-all flush at 700; marked changed every 250 ticks from 4000 for the game's autosave | 7 | the save-all tick below vanilla; saved region files equal to vanilla's |
+| `churn` | 96 blocks set per tick in a 17x17-chunk window, save-all every 5 ticks: sections written while their saves are serialised | 3 | server-thread save ms per tick below vanilla; saved region files equal to vanilla's |
+| `kill` | the save scene's first save-all flush, killed with `kill -9` one second in, then loaded again | 2 | below |
+
+Every gate is the median of the per-round ratios (Quicksilver / vanilla of the same round). **Why the fly-over's p99 and
+slowest tick gate regressions only** (Andre, 2026-11-10, "slowest tick + p99"): no fly-over tick reaches 50 ms on the
+runner (both sides 0), its slowest tick is 18-40 ms and one round pair moves by up to +-45% (single ratios 0.88 to 1.45
+in run 42796271430), and what it holds is mostly ticket and chunk-system work (`DistanceManager`), not saving. The limit
+is P2-3's 1.10. The save-all flush tick (about 1.8-2.7 s) is reported: it waits for every write to reach the disk
+(`sync-chunk-writes`), which P2-4 leaves as vanilla's. The game's autosave runs once per save-scene run (its single tick
+moved 0.31 to 1.52 in run 42796271430); it is the same save as save-all (`saveAllChunks(false)`), so save-all is gated.
+
+**Saved files.** Each stored chunk of each store is hashed as stored, decompressed, and per top-level key
+(`ci/server/regiondump.py`); region headers (each chunk's place in its file and its timestamp) are reported apart, since
+they follow write order and the clock. `save` and `churn` are gated exactly: every vanilla round's region data equals
+round 1's there, and Quicksilver's must too. The fly-over's data is reported only (vanilla's own rounds differ in about
+1,100 chunks' `LastUpdate`, `block_ticks` and `fluid_ticks`: which tick each chunk unloads in), and so are entity and POI
+files (entities move between saves in vanilla's own rounds). The churn scene first set stone and glass in open air and
+vanilla's own rounds differed in 5-93 chunks' sections (saved light follows the light engine's timing); it now replaces
+only stone, deepslate, andesite or diorite with andesite or diorite underground, which changes no light.
+
+**Kill check.** Per killed run, each region chunk must be the complete save's (the same scene killed right after its
+save-all flush returned), the complete save's written at another tick (differing only in `LastUpdate`, `block_ticks`,
+`fluid_ticks`: vanilla's own killed runs hold 203-229 of these, run 42785183725), or the saved terrain's; none other and
+none unreadable; and the killed world must load and run again. No chunk read or write error may be logged in any run.
