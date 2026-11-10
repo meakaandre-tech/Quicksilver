@@ -1,6 +1,7 @@
 package com.meakaandre.quicksilver.entity;
 
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -66,7 +67,7 @@ public final class EntityLod {
 
     /** End of an entity's render-state extraction. */
     public static void extracted(Entity e, EntityRenderState s) {
-        if (!enabled || s == null || e == null) return;
+        if (!enabled || s == null || e == null || !RenderSystem.isOnRenderThread()) return; // HELD is the render thread's
         try {
             if (!eligible(e, s)) return;
             double d = distance;
@@ -108,7 +109,9 @@ public final class EntityLod {
     /** A model submit is about to be written: thin it if it is a far mob's. */
     public static void beginModel(Object state) {
         modelPixels = 0;
-        if (!enabled || !(state instanceof LivingEntityRenderState s) || s instanceof net.minecraft.client.renderer.entity.state.AvatarRenderState) return;
+        // the statics below are the render thread's: a model written elsewhere is left whole
+        if (!enabled || !RenderSystem.isOnRenderThread() || !(state instanceof LivingEntityRenderState s)
+            || s instanceof net.minecraft.client.renderer.entity.state.AvatarRenderState) return;
         double d = distance;
         if (s.distanceToCameraSq < d * d) return;
         try {
@@ -130,7 +133,7 @@ public final class EntityLod {
     /** True when {@code cube} would cover less than {@link #SKIP_PIXELS} pixels: leave it out. */
     public static boolean skipCube(ModelPart.Cube cube, PoseStack.Pose pose) {
         float k = modelPixels;
-        if (k <= 0) return false;
+        if (k <= 0 || !RenderSystem.isOnRenderThread()) return false; // a cube written off the render thread is never thinned
         cubesTested++;
         Matrix4f m = pose.pose();
         float sx = (cube.maxX - cube.minX) / 16f, sy = (cube.maxY - cube.minY) / 16f, sz = (cube.maxZ - cube.minZ) / 16f;
@@ -164,6 +167,10 @@ public final class EntityLod {
     }
 
     private static int set(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource src, boolean on) {
+        if (on && Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+            src.sendError(net.minecraft.network.chat.Component.literal("[Quicksilver] Far entity LOD stays off in a measure run."));
+            return 0;
+        }
         if (on && !EntityMixins.lodApplied()) {
             src.sendError(net.minecraft.network.chat.Component.literal("[Quicksilver] Far entity LOD can't turn on: its hooks did not apply to this game."));
             return 0;

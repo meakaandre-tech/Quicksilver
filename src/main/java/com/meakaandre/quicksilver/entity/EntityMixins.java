@@ -18,11 +18,11 @@ public final class EntityMixins implements IMixinConfigPlugin {
     static final String HANDLER = "quicksilver$entityAtlas";
     private static volatile boolean applied;
 
-    /** Far entity LOD's hooks: target class, handler. */
-    static final java.util.Map<String, String> LOD = java.util.Map.of(
-        "net.minecraft.client.renderer.entity.EntityRenderer", "quicksilver$lodExtracted",
-        "net.minecraft.client.renderer.feature.ModelFeatureRenderer", "quicksilver$lodBegin",
-        "net.minecraft.client.model.geom.ModelPart$Cube", "quicksilver$lodCube");
+    /** Far entity LOD's hooks: target class, handlers (every one must apply: an end without its begin would thin later cubes). */
+    static final java.util.Map<String, java.util.List<String>> LOD = java.util.Map.of(
+        "net.minecraft.client.renderer.entity.EntityRenderer", java.util.List.of("quicksilver$lodExtracted"),
+        "net.minecraft.client.renderer.feature.ModelFeatureRenderer", java.util.List.of("quicksilver$lodBegin", "quicksilver$lodEnd"),
+        "net.minecraft.client.model.geom.ModelPart$Cube", java.util.List.of("quicksilver$lodCube"));
     private static final Set<String> LOD_APPLIED = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     static boolean lodApplied() {
@@ -33,7 +33,10 @@ public final class EntityMixins implements IMixinConfigPlugin {
                 return false;
             }
         }
-        return LOD_APPLIED.containsAll(LOD.keySet());
+        for (var e : LOD.entrySet()) {
+            for (String h : e.getValue()) if (!LOD_APPLIED.contains(e.getKey() + "#" + h)) return false;
+        }
+        return true;
     }
 
     static boolean applied() {
@@ -47,13 +50,15 @@ public final class EntityMixins implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-        String handler = TARGET.equals(targetClassName) ? HANDLER : LOD.get(targetClassName);
-        if (handler == null) return;
+        java.util.List<String> handlers = TARGET.equals(targetClassName) ? java.util.List.of(HANDLER) : LOD.get(targetClassName);
+        if (handlers == null) return;
         for (MethodNode m : targetClass.methods) {
             for (AbstractInsnNode insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
-                if (insn instanceof MethodInsnNode call && call.owner.equals(targetClass.name) && call.name.endsWith(handler)) {
-                    if (handler == HANDLER) applied = true;
-                    else LOD_APPLIED.add(targetClassName);
+                if (!(insn instanceof MethodInsnNode call) || !call.owner.equals(targetClass.name)) continue;
+                for (String handler : handlers) {
+                    if (!call.name.endsWith(handler)) continue;
+                    if (TARGET.equals(targetClassName)) applied = true;
+                    else LOD_APPLIED.add(targetClassName + "#" + handler);
                 }
             }
         }

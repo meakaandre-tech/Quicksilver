@@ -167,6 +167,13 @@ def lod_check(name, scenes, runs, rep, sd, failures, lines):
             for prof, (b, v) in PAIRS.items():
                 if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
                     continue
+                # the shot only tests LOD if LOD really ran: the switch back off logs what it did while on
+                t = logs(runs[b])
+                did = [(int(a), int(h)) for a, h in re.findall(r"Quicksilver entity LOD: off \(since the last switch: far states (\d+), held (\d+)", t)]
+                if "Quicksilver entity LOD failed" in t:
+                    failures.append(f"{name}/{shot_id}: far entity LOD failed and turned itself off in {prof} (see client log)")
+                if not any(a > 0 and h > 0 for a, h in did):
+                    failures.append(f"{name}/{shot_id}: far entity LOD held no far states in {prof} (switch-off lines: {did or 'none'}); the LOD shot tested nothing")
                 got = os.path.join(runs[b], "shots", shot_id + ".png")
                 if not os.path.exists(got):
                     failures.append(f"{name}/{shot_id}: no {prof} LOD screenshot")
@@ -552,6 +559,33 @@ def main():
                     failures.append(f"{name}/{r}: the Memory module was not fully on: {[x for x in mem if re.search(r'=(off|fallback)|^off', x)][0][:200]}")
             if os.path.isdir(d) and r.startswith("measure") and "Quicksilver memory: off, quicksilver.ci.measureOnly is set" not in t:
                 failures.append(f"{name}/{r}: the Memory module did not stay off for measuring (no measure-only line in the client log)")
+            # package 6: the entity atlas on in every Quicksilver run with no fallback (else its draw saving could vanish
+            # with pictures still vanilla's), off in the measure runs; far entity LOD's hooks applied, and LOD off in
+            # every bench (it is opt-in)
+            if os.path.isdir(d) and (r.startswith("quicksilver") or r.startswith("measure")):
+                benches = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(d, "bench", "*.json")))]
+                if r.startswith("quicksilver"):
+                    if "Quicksilver entity atlas: on (" not in t:
+                        failures.append(f"{name}/{r}: the entity atlas did not turn on (no 'Quicksilver entity atlas: on' line in the client log)")
+                    for bad in ("Quicksilver entity atlas: turned off", "Quicksilver entity atlas: off,"):
+                        if bad in t:
+                            failures.append(f"{name}/{r}: the entity atlas turned off ('{bad}' in the client log)")
+                    for bj in benches:
+                        ea, el = bj.get("entityAtlas") or {}, bj.get("entityLod") or {}
+                        # "starting": no model submitted yet in the session (the atlas starts on the first one)
+                        if ea.get("state") not in ("on", "starting") or ea.get("fallbacks", 0):
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: entity atlas {ea.get('state')} with {ea.get('fallbacks')} fallbacks in the bench (want on, 0)")
+                        if el.get("hooks") is not True:
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: far entity LOD's hooks did not all apply (bench entityLod.hooks)")
+                        if el.get("enabled"):
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: far entity LOD was on during the bench (it is off by default)")
+                else:
+                    if "Quicksilver entity atlas: on (" in t:
+                        failures.append(f"{name}/{r}: the entity atlas turned on in a measure run")
+                    for bj in benches:
+                        ea, el = bj.get("entityAtlas") or {}, bj.get("entityLod") or {}
+                        if ea.get("state") not in ("off", "starting") or el.get("enabled"):
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: entity atlas {ea.get('state')} / LOD enabled {el.get('enabled')} in a measure run (want off, off)")
             if os.path.isdir(d) and "quicksilver_ci_pin" not in t:
                 failures.append(f"{name}/{r}: CI's pin mod (ci/pin-mod: lightmap flicker, texture animation, feature batch order, no crosshair outline, no particles in the Sift, the particle and animation areas, banner sway) is not among the loaded mods")
             # the animation scenes test animation only if the pin really ran its fixed number of texture ticks there

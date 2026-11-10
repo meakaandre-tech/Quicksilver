@@ -109,6 +109,8 @@ public final class EntityAtlas {
         }
         try {
             if (uv instanceof Slot) return false; // the atlas's own submit, made by the hook
+            // first: everything below touches the atlas's maps, which only the render thread may change
+            if (!RenderSystem.isOnRenderThread()) return false;
             submits++;
             if (type == null) return skip("no render type");
             if (uv != null) return skip("already mapped");
@@ -120,7 +122,6 @@ public final class EntityAtlas {
             }
             if (t == NONE) return skip("render type not eligible");
             if (t.location() == null) return skip("no texture");
-            if (!RenderSystem.isOnRenderThread()) return skip("not render thread");
             AbstractTexture src = Minecraft.getInstance().getTextureManager().getTexture(t.location());
             Slot s = slot(t, src);
             if (s == null) return false;
@@ -378,8 +379,16 @@ public final class EntityAtlas {
             return skipSlot("resource not readable");
         }
         int sw = w + 2, sh = h + 2;
-        Page page = PAGES.isEmpty() ? null : PAGES.get(PAGES.size() - 1);
-        int[] at = page == null ? null : page.place(sw, sh);
+        // pages fill in order; after a reload empties them, the first pages are used again before any new one is made
+        Page page = null;
+        int[] at = null;
+        for (Page p : PAGES) {
+            at = p.place(sw, sh);
+            if (at != null) {
+                page = p;
+                break;
+            }
+        }
         if (at == null) {
             page = new Page(PAGES.size());
             Minecraft.getInstance().getTextureManager().register(page.id, page);
