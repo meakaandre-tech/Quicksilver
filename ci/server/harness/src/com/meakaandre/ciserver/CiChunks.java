@@ -30,7 +30,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * commands, so {@code at T save-all} saves all of them).</li>
  * <li>{@code churn N}: every tick from 1, N blocks of the window set (flag 2: no neighbour updates, no drops), at fixed
  * positions spread over the window's chunks and three sections of each (y 8, 24, 40: underground), alternating andesite
- * 18 opaque full blocks in turn (andesite, diorite, granite, ... and ten terracottas: more than a 16-entry palette holds,
+ * 18 opaque full blocks in turn (andesite, diorite, granite, bricks, polished, mossy and deepslate stones: more than a 16-entry palette holds,
  * so sections' palettes grow), and only where the block is stone, deepslate or one of those (opaque blocks that give no
  * light, replaced by opaque blocks that give none: no light changes at all, so the saved light doesn't follow the light engine's
  * timing; a cave's air, water or lava is left alone): sections written while their chunks' saves are being serialised (P2-4's copy-on-write
@@ -40,7 +40,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * Nothing here draws on any random; the only blocks it changes are churn's (fixed positions and states); the same calls in
  * the same order in every run.
  */
-final class CiChunks {
+public final class CiChunks {
     private CiChunks() {
     }
 
@@ -63,26 +63,34 @@ final class CiChunks {
     /** From the serialising thread: one chunk tag written for saving (recorded from the run's tick 0 to its end). */
     public static void written(ChunkPos pos, net.minecraft.nbt.CompoundTag tag) {
         if (!recording || tag == null) return;
-        long l = pos.toLong();
-        writes.computeIfAbsent((int) l + "," + (int) (l >>> 32), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(tag.hashCode());
+        writes.computeIfAbsent(String.valueOf(pos), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(tag.hashCode());
     }
 
     private static List<net.minecraft.world.level.block.state.BlockState> churnStates;
 
-    /** Churn's blocks: 18 opaque full blocks that give no light (more than a 16-entry palette holds, so sections' palettes grow). */
+    /** Churn's blocks: 18 opaque full stone blocks that give no light (more than a 16-entry palette holds, so sections' palettes grow). */
     private static List<net.minecraft.world.level.block.state.BlockState> churnBlocks() {
         if (churnStates == null) {
             List<net.minecraft.world.level.block.state.BlockState> l = new ArrayList<>();
             for (net.minecraft.world.level.block.Block b : new net.minecraft.world.level.block.Block[] {
-                net.minecraft.world.level.block.Blocks.ANDESITE, net.minecraft.world.level.block.Blocks.DIORITE,
-                net.minecraft.world.level.block.Blocks.GRANITE, net.minecraft.world.level.block.Blocks.COBBLESTONE,
-                net.minecraft.world.level.block.Blocks.STONE_BRICKS, net.minecraft.world.level.block.Blocks.BRICKS,
-                net.minecraft.world.level.block.Blocks.TUFF, net.minecraft.world.level.block.Blocks.CALCITE,
-                net.minecraft.world.level.block.Blocks.WHITE_TERRACOTTA, net.minecraft.world.level.block.Blocks.ORANGE_TERRACOTTA,
-                net.minecraft.world.level.block.Blocks.MAGENTA_TERRACOTTA, net.minecraft.world.level.block.Blocks.LIGHT_BLUE_TERRACOTTA,
-                net.minecraft.world.level.block.Blocks.YELLOW_TERRACOTTA, net.minecraft.world.level.block.Blocks.LIME_TERRACOTTA,
-                net.minecraft.world.level.block.Blocks.PINK_TERRACOTTA, net.minecraft.world.level.block.Blocks.GRAY_TERRACOTTA,
-                net.minecraft.world.level.block.Blocks.LIGHT_GRAY_TERRACOTTA, net.minecraft.world.level.block.Blocks.CYAN_TERRACOTTA}) {
+                net.minecraft.world.level.block.Blocks.ANDESITE,
+                net.minecraft.world.level.block.Blocks.DIORITE,
+                net.minecraft.world.level.block.Blocks.GRANITE,
+                net.minecraft.world.level.block.Blocks.COBBLESTONE,
+                net.minecraft.world.level.block.Blocks.STONE_BRICKS,
+                net.minecraft.world.level.block.Blocks.BRICKS,
+                net.minecraft.world.level.block.Blocks.TUFF,
+                net.minecraft.world.level.block.Blocks.CALCITE,
+                net.minecraft.world.level.block.Blocks.POLISHED_ANDESITE,
+                net.minecraft.world.level.block.Blocks.POLISHED_DIORITE,
+                net.minecraft.world.level.block.Blocks.POLISHED_GRANITE,
+                net.minecraft.world.level.block.Blocks.MOSSY_COBBLESTONE,
+                net.minecraft.world.level.block.Blocks.MOSSY_STONE_BRICKS,
+                net.minecraft.world.level.block.Blocks.CRACKED_STONE_BRICKS,
+                net.minecraft.world.level.block.Blocks.CHISELED_STONE_BRICKS,
+                net.minecraft.world.level.block.Blocks.SMOOTH_STONE,
+                net.minecraft.world.level.block.Blocks.COBBLED_DEEPSLATE,
+                net.minecraft.world.level.block.Blocks.POLISHED_DEEPSLATE}) {
                 l.add(b.defaultBlockState());
             }
             churnStates = l;
