@@ -3338,12 +3338,14 @@ vanilla's far shot).
 - The build dumps the game's shaders (`.github/dump-shaders`) with the bytecode list, for reading only.
 - Full run 42755201376 (`03f7c17f`, review fixes) failed without a check finding a difference: four client jobs
   (core vanilla-a, siftec vanilla-vk, siftec quicksilver-vk, siftec measure-full; three of them load no Quicksilver)
-  stopped between listing their mods and the first game session (Xvfb, the graphics probes, the server's `op` line)
-  and hit the 90-minute timeout, so the game never started and every check reading those runs failed for missing
-  data. The one count over its limit, `core/old-gpu-2p/translucent_move` direct buffers 8.24 MB (baseline 3.73), is
-  the open direct-buffer bug (package 5 got it on the same scene): the JVM's pool stepped from 4.24 to 8.24 between
-  occlusion_corner and translucent_move, flat inside each scene, and kept that size for the session. Not re-collected;
-  the next full run is on a new commit.
+  stopped right after listing the server's mods and hit the 90-minute timeout, so the game never started and every
+  check reading those runs failed for missing data. Next in `ci/client-run.sh` are the server start (its wait is
+  bounded at 10 minutes and prints "server did not start", which none did) and `apt-get update` / `install`, whose
+  output goes to /dev/null and which has no timeout: the likely stall. Four different GitHub-hosted runners, all
+  started 05:03-05:32 UTC; no client job in the runs checked back to 2026-11-06 stalled there (a diag run's job that
+  timed out had started the game). Not repeated yet, so no early timeout added. The one count over its limit,
+  `core/old-gpu-2p/translucent_move` direct buffers 8.24 MB (baseline 3.73), was the direct-buffer step; vanilla takes
+  it too, and it is now gated against the same-run measure run (below and `docs/ci-limits.md`).
 
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 
@@ -3548,7 +3550,10 @@ renderer, above). As asked:
   re-collect their numbers, and restore the full strict check where the minimap shows (factory_flat, hologram:
   `ciStrictMask`, `ciGatedCounts` in `scenes/siftec.json`; `docs/ci-limits.md`, "Pack lock").
 
-- **Direct-buffer jump, Quicksilver only (found 2026-10-29).** Run
+- **Direct-buffer jump (found 2026-10-29): closed in package 6 (Andre, 2026-11-10).** Vanilla's measure runs take the
+  same 2 and 4 MB steps at the same scenes, and direct buffers are now gated against the same-run measure run plus one
+  4 MB pool step instead of a fixed baseline (`docs/ci-limits.md`, "Direct buffers against vanilla in the same run").
+  The original report: run
   [40803126672](https://github.com/meakaandre-tech/Quicksilver/actions/runs/40803126672), attempt 1, SIFTEC
   `quicksilver-full`: direct buffers went from about 8 MB to 13.8–13.9 MB in the map, hologram and hud scenes
   (create_ct 13.99), against an 8.24 MB baseline. The step of about +8 MB began at the map scene and stayed for the

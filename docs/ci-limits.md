@@ -551,8 +551,9 @@ with a game tick draw about 26 more, so the median flips between two values; the
 runs). **Memory**: heap used after a GC at the end of the bench, and java.nio direct buffers.
 
 **Baseline = the highest value across the clean runs listed.** CI fails when a count goes over **baseline x 1.10
-plus a step allowance**: 2 draw calls, 1 upload, 16 KiB, 16 MB heap, 4 MB direct (direct buffers grow in 2 MB steps
-and land on either side between runs). Against these committed baselines the fly-through is gated on memory only (its draw calls are gated against vanilla in the same run since package 3, see "Against vanilla in the same run"): its uploads and draw calls depend on
+plus a step allowance**: 2 draw calls, 1 upload, 16 KiB, 16 MB heap. Direct buffers are no longer gated against these
+baselines (package 6): they are gated against vanilla in the same run, see "Direct buffers against vanilla in the same
+run"; the committed values stay as a record. Against these committed baselines the fly-through is gated on memory only (its draw calls are gated against vanilla in the same run since package 3, see "Against vanilla in the same run"): its uploads and draw calls depend on
 how fast CI's server generates the new terrain. The Vulkan count baselines come from two runs; the core spawn scene's limit and baselines from one run (its camera moved to a fixed height in the last package-0 run).
 
 | suite-profile | scene | draw calls/frame (avg) | uploads/frame (median) | bytes/frame (median) | heap after GC MB | direct MB | runs |
@@ -850,7 +851,30 @@ profile and in no vanilla run on either API, and go with Quicksilver's terrain s
 block renderer each switched off left them). Earlier samples (the copper chest oxidising on a random tick: 0.63% in two
 of five runs, before `4947305b` waxed it) are not counted. Baselines (`ci/baselines/core-*.json`) are the highest of
 the same runs (`ci/make-baselines.py`'s rule); old-GPU's direct buffers keep the 8.24 MB of the two-phase run in attempt
-2, the open direct-buffer bug (4.24-5.99 MB in the others), as the last re-collection of SIFTEC's baselines kept theirs.
+2 (4.24-5.99 MB in the others), as the last re-collection of SIFTEC's baselines kept theirs; since the same-run gate
+below, a record only.
+
+### Direct buffers against vanilla in the same run (Andre, 2026-11-10; the open direct-buffer bug closed)
+
+The step that failed P2-0, package 5 and package 6 (`core/old-gpu-2p/translucent_move` 8.24 MB against 3.73 in run
+42755201376) is the JVM's direct pool, and vanilla takes it too. Evidence: every full run whose logs are still on a
+`ci-logs-*` branch (20 runs: main `c6a34218`, p2-0 to p2-3, packages 2b, 4, 4b, 4c, 5, 6, 7, 8 and the CI branches),
+each Quicksilver run's direct-buffer MB at the end of each scene against its same-run measure run (vanilla drawing,
+Quicksilver's modules off; the two-phase run against measure-old):
+
+- Vanilla's measure runs step in the same sizes as Quicksilver's: 2 MB steps 33 times (Quicksilver 37), 4 MB steps 29
+  times (Quicksilver 37), at the same scenes: SIFTEC `mam` (vanilla 27, Quicksilver 33), `map` (5, 7), and core
+  `translucent_move` (vanilla once, p2-3 `8a3774a5` measure-full 4.24 to 8.24; Quicksilver 3). Vanilla's highest
+  value in a run reached 8.24 in 14 runs, 10.06 in one.
+- In run 42755201376 measure-old stepped from 3.99 to 5.99 one scene earlier (occlusion_corner) than the two-phase run
+  stepped from 4.24 to 8.24 (translucent_move); 8.24 is 2.25 over vanilla's 5.99 there.
+- Quicksilver minus vanilla, 1,161 scene pairs: within ±0.5 MB 757, 0.5-2.5 MB over 204, more than 0.5 under 187, more
+  than 2.5 over 13; never more than 4.0 (the 13 are a 4 MB step taken one scene before vanilla's).
+
+**Gate** (`ci/compare.py`, `DIRECT_POOL_STEP_MB`): in every scene, Quicksilver's direct-buffer MB at most the same-run
+measure run's plus 4.0 MB (one pool step), like the draw calls against vanilla. Full mode only; quick mode has no
+measure run, so there direct buffers are reported, not gated. P2-0's Quicksilver-only jump (run 40803126672 attempt 1,
+about +8 MB from the map scene, the measure run without it) would still fail it.
 
 ### Far entity LOD (`ci/lod-limits.json`, `ci/references/`)
 

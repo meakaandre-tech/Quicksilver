@@ -297,15 +297,20 @@ BENCH_ONLY = ("bench-plain", "bench-sodium")
 BENCH_ONLY_SCENES = ("spawn", "flythrough", "water_glass", "nether")
 
 
-DIRECT_JUMP_MB = 4.0  # a rise this large in one step is reported (phase 1's gate allows 10% + 4 MB on the end value)
+DIRECT_JUMP_MB = 4.0  # a rise this large in one step is marked in the report's direct-buffer table
+# package 6 (Andre, 2026-11-10): direct-buffer MB is gated against vanilla measured in the same run (MEASURE), not a
+# committed baseline: at most vanilla's end-of-scene value plus one step of the JVM's direct pool. Vanilla's measure
+# runs take the same 2 and 4 MB steps at the same scenes (docs/ci-limits.md, "Direct buffers against vanilla"); in 20
+# full runs (1,161 scene pairs) Quicksilver was never more than 4.0 MB over. Quick mode has no measure run: reported.
+DIRECT_POOL_STEP_MB = 4.0
 
 
 def direct_buffers(res, lines):
-    """Reported, not gated (Andre, 2026-10-29: open bug, a Quicksilver-only +8 MB step in SIFTEC full from the map
-    scene on, run 40803126672 attempt 1): every run's direct-buffer MB per scene, in run order, at the start of
-    measuring, its peak (with the tick) and at the end, and each rise of DIRECT_JUMP_MB or more marked with where it
-    happened: inside a scene (start to end) or between scenes (the previous scene's end to this one's start)."""
-    lines.append("## Direct buffers per scene (reported; open bug, see docs/progress.md)\n")
+    """Every run's direct-buffer MB per scene, in run order (vanilla's measure runs too), at the start of measuring,
+    its peak (with the tick) and at the end, and each rise of DIRECT_JUMP_MB or more marked with where it happened:
+    inside a scene (start to end) or between scenes (the previous scene's end to this one's start). The gate is the
+    same-run one in the counts (DIRECT_POOL_STEP_MB)."""
+    lines.append("## Direct buffers per scene (gated against the same-run measure run, see the counts)\n")
     lines.append("| run | scene | start MB | peak MB (tick) | end MB | rise |\n|---|---|---|---|---|---|")
     jumps = []
     for d in sorted(glob.glob(os.path.join(res, "*-*"))):
@@ -1100,7 +1105,10 @@ def main():
                     cell = f"{v}"
                     if k == "drawCallsPerFrame" and sid in median_gated:
                         cell += f" median (avg {c['drawCallsPerFrameAvg']})"
-                    if base is None:
+                    if k == "directBuffersMB":
+                        # package 6: gated against the same-run measure run below, not the committed baseline
+                        cell += " (reported in quick mode)" if QUICK else " (against vanilla, below)"
+                    elif base is None:
                         cell += " (no baseline)"
                     elif k not in gated:
                         cell += " (reported, not gated)"
@@ -1158,6 +1166,24 @@ def main():
                                             f"{(' + ' + str(allowance[name + '/' + prof + '/' + sid])) if sid in translucent and name + '/' + prof + '/' + sid in allowance else '' if sid in translucent else ' x 1.10 + 2'}; fps {c.get('fps')} against vanilla's {vc.get('fps')})")
                     lines.append(f"| {sid} | {c['drawCallsPerFrameAvg']} / {c['drawCallsPerFrameMedian']} ({c.get('fps')}) | {vc['drawCallsPerFrameAvg']} / {vc['drawCallsPerFrameMedian']} ({vc.get('fps')}) | "
                                  f"{' and '.join(l for l, _ in stats)}{(', at most vanilla + ' + str(allowance[name + '/' + prof + '/' + sid])) if sid in translucent and name + '/' + prof + '/' + sid in allowance else ', at most vanilla' if sid in translucent else ', x 1.10 + 2'} |")
+                lines.append("")
+                lines.append(f"Direct buffers against vanilla measured in the same run ({MEASURE[prof]}), {name} {prof} (MB at the end of"
+                             f" each scene; at most vanilla's + {DIRECT_POOL_STEP_MB}, one step of the JVM's direct pool):\n")
+                lines.append("| scene | Quicksilver | vanilla | limit |")
+                lines.append("|---|---|---|---|")
+                for sc in scenes:
+                    sid = sc["id"]
+                    c, vc = cur.get(sid), van.get(sid)
+                    if sc.get("skip") or c is None or b in set(sc.get("ciSkipRuns", [])):
+                        continue
+                    v, vv = c.get("directBuffersMB"), (vc or {}).get("directBuffersMB")
+                    if v is None or vv is None:
+                        failures.append(f"{name}/{prof}/{sid}: direct buffers missing (Quicksilver {v}, vanilla {vv} in {MEASURE[prof]})")
+                        continue
+                    lim = round(vv + DIRECT_POOL_STEP_MB, 2)
+                    if round(v, 2) > lim:
+                        failures.append(f"{name}/{prof}/{sid}: {v} MB of direct buffers, more than vanilla's {vv} + {DIRECT_POOL_STEP_MB} in the same run ({MEASURE[prof]})")
+                    lines.append(f"| {sid} | {v} | {vv} | {lim} |")
                 lines.append("")
                 lines.append(f"Terrain GPU memory, {name} {prof} (MB; reserved in the Quicksilver run must not be more than vanilla's):\n")
                 lines.append("| scene | Quicksilver run reserved / used | of which Quicksilver's arenas | of which vanilla's heaps | vanilla (measure run) reserved / used |")
