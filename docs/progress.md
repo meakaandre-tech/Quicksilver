@@ -16,6 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
+| package 6 (entities and block entities) | `package-6` | not merged: Andre checks it first; entity texture atlas (feature draws mobs 12 -> 5, block_entities 13.1 -> 9.1), far entity LOD opt-in, baking dropped (can't match vanilla exactly); see "Package 6" below |
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-4 (chunk saving and loading) | `p2-4` (not merged: Andre checks it first) | Chunks module: chunks.cow-sections (save snapshots share sections, copy on write); server-thread save time down 8-11%, save-all spike down; saved region files equal to vanilla's; see "Phase 2, P2-4" below |
@@ -3277,6 +3278,64 @@ Sections drawn per frame (solid/cutout; without culling -> drawn):
 
 - Try `occlusion=two-phase` on Intel and compare fps and the bench's `waitMsPerFrame` against auto (still camera);
   on Vulkan, check the log line "waiting for the GPU within a frame ..." (a real driver may allow the wait).
+
+## Package 6: entities and block entities (branch `package-6`, not merged: Andre checks it first)
+
+### Measure first
+
+FeatureStats (bench `features`) counts every draw of 26.3's feature pass by phase, feature and render type, and the
+distinct states per phase run (the fewest draws any reordering could reach). Vanilla already merges submits per
+render type, so the draws left are one per (render type, texture): mobs 12, occlusion 10, block_entities 13.1
+(measure runs). Block entities mostly arrive "already mapped" on vanilla's sheets (chest, sign, shulker, pot), so
+their textures are shared already.
+
+### Entity texture atlas (Andre, 2026-11-06: "Shared texture atlas")
+
+`entity/EntityAtlas`, `mixin/entity/`: model submits with a vanilla entity render type and one plain nearest texture
+go to the same render type bound to a shared 512x512 page, with the texture's slot as the model's `UvMapping` (the
+path vanilla's sheets take). Pages fill lazily; a one-texel ring repeats the edge (clamp) or the opposite edge
+(repeat). Only non-blended types are allowed (entity_solid, the cutout family, armor_cutout_no_cull, entity_eyes):
+merging translucent draws would change their blend order. Anything else, GeckoLib, BlockDisplay, item frames, signs,
+banners and Flywheel's machines included, draws as before. Found on the way: `getDeclaredFields` returns copies, so
+the textures field was never skipped by `==` and every texture made its own kind (fixed with `equals`; the bench's
+`kindSplits` says why two kinds split).
+
+Feature draws per frame, vanilla (measure) -> Quicksilver, full run 42572488452, every profile: mobs 12 -> 5,
+occlusion 10 -> 3, block_entities 13.1 -> 9.1; SIFTEC factory, factory_flat and hologram 1-3, unchanged (nothing to
+merge). All draws per frame, old-GPU: mobs 298 -> 17.7, occlusion 161 -> 13.7, block_entities 105 -> 31.1 (terrain
+included). Pictures unchanged within the documented limits. Heap after GC against main's last full run (`c6a34218`):
+-3.4 to +3.2 MB per scene; mobs +1.5 MB in every profile, and the measure runs (modules off) gained the same there.
+
+### Baking still block entities: dropped (Andre, 2026-11-10)
+
+26.3 already draws sign boards, sign posts and beds as terrain (only sign text is a block entity). For chests,
+skulls, pots and shulker boxes, terrain's fragment stage can't match vanilla: it samples with `sampleNearest` (a
+`textureGrad` that smooths texel edges) or RGSS on the mipmapped block atlas, where entities take one nearest sample
+of an unmipmapped sheet. A separate pass with the entity shader would be exact but saves no draws (block entities on
+one sheet already draw together). The 9.1 feature draws left in block_entities are already near the 8.1 distinct
+states. Sign text and banners stay on their renderers (Andre, 2026-11-06).
+
+### Far entity LOD (opt-in, off by default)
+
+`entity/EntityLod`: beyond 32 blocks (`/quicksilver lod distance N`), mobs and item entities refresh their animation
+floats at most every 50 ms (one tick) while position, body turn, death, size and shadow stay live; far mobs' cubes whose
+bounding sphere covers under one pixel at its nearest depth are not written. Players are left alone. `/quicksilver lod
+on|off`; off by default and in measure runs; it only turns on when all three hooks applied. In CI's far shot (the
+crowd at 53-67 blocks) about half the far states were held and no cube was under a pixel: vanilla stops drawing small
+mobs not far beyond. The LOD-on shot equals its stored reference (`ci/references/core/mobs.far_lod.png`, identical to
+vanilla's far shot).
+
+### CI
+
+- `core/block_entities`: chests of every kind, shulker boxes, standing, wall and hanging signs with text, heads, pots,
+  a bell, beds, standing and wall banners. The pin mod holds the banners at a swayed pose (the banner sway check); extra
+  shots open four lids, edit two signs, close the lids again. The copper chest is waxed (it oxidised on a random tick).
+- `core/mobs.far` (LOD off, against vanilla) and `core/mobs.far_lod` (LOD on, against its reference;
+  `ci/lod-limits.json`, missing references go to the report's `new-references/`).
+- Block outline: the existing `core/outline` scene.
+- The sign-post pixels in block_entities are the 16-byte vertex's rounding (package 3): diagnostic runs switched each
+  module off and only Quicksilver's terrain removed them. Limits and baselines: `docs/ci-limits.md`, "Package 6".
+- The build dumps the game's shaders (`.github/dump-shaders`) with the bytecode list, for reading only.
 
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 
