@@ -842,7 +842,11 @@ config: animation never ran, the scenes showed frame 0 in every run alike).
 | core/block_entities.closed | the same, then full runs 42773014543, 42777299349, 42777819099 (package 6) | a/b at most 0.0101; Quicksilver at most 0.0264; strict at most 206 (Quicksilver Vulkan, 42773014543; 83 before); measure-full 152 | 0.3 | 310 (130 before) |
 
 Limit = max(2 x largest, largest + 0.25, 0.1) rounded up to 0.05; strict = largest x 1.5 rounded up to 10, at least 10.
-**Re-collected in package 6 (2026-11-10, the noise rule above):** `block_entities.closed` failed its strict limit of 130 in two of three full runs on unchanged code (`8bc3d7eb`: Vulkan 206; `9e270a3d`: two-phase 131 and measure-full, every module off, 152). Every strict pixel of those shots but six is in the ender chest's particle area (x 600-900, y 370-545 of 1280x720), in Quicksilver's, the measure runs' and vanilla old-GPU/Vulkan's alike; the particles land differently each run. sign_edit (185 of 220 in `9e270a3d`) is the same particles and was re-collected with it; block_entities and chest_open keep 270 and 240 (largest 180 and 156). Smallest thing these shots must catch: one head (about 700 pixels), above both new limits. One sign's text (10-27 pixels) is below the noise floor (the measure runs alone reach 152), as it already was at 130. The six other pixels are the five on the spruce sign's post (below) and one on the zombie head's left edge (568, 394), a texel one row off (6/255) on full and old-GPU, not Vulkan: it goes with the entity atlas off (diagnostic run on `diag-p6-atlas-off`), so it is the atlas's UV remap rounding at a texel edge, in every run since the atlas landed (open for Andre's decision).
+**Re-collected in package 6 (2026-11-10, the noise rule above):** `block_entities.closed` failed its strict limit of 130 in two of three full runs on unchanged code (`8bc3d7eb`: Vulkan 206; `9e270a3d`: two-phase 131 and measure-full, every module off, 152). Every strict pixel of those shots but six is in the ender chest's particle area (x 600-900, y 370-545 of 1280x720), in Quicksilver's, the measure runs' and vanilla old-GPU/Vulkan's alike; the particles land differently each run. sign_edit (185 of 220 in `9e270a3d`) is the same particles and was re-collected with it. Vanilla's own largest
+(the measure runs, every module off, in these three runs): closed 152, sign_edit 74. The rule takes the largest sample
+of the scene's noise, Quicksilver's runs included as in every row above: its strict pixels here are the same particles
+(located per pixel), not a Quicksilver difference; block_entities and chest_open keep 270 and 240 (largest 180 and 156). Smallest thing these shots must catch: one head (about 700 pixels), above both new limits. One sign's text (10-27 pixels) is below the noise floor (the measure runs alone reach 152), as it already was at 130. The six other pixels are the five on the spruce sign's post (below) and one on the zombie head's left edge (568, 394), a texel one row off (6/255) on full and old-GPU, not Vulkan: it goes with the entity atlas off (diagnostic run on `diag-p6-atlas-off`), so it is the atlas's UV remap rounding at a texel edge, in every run since the atlas landed: a Quicksilver-only
+difference, an open bug (docs/progress.md).
 
 block_entities' samples: vanilla's own noise is the ender chest's particles (a/b 0.0012-0.0277%; the measure runs, Quicksilver
 loaded with every module off, 5-110 strict pixels, all in the ender chest's area), the same area as nearly all of
@@ -875,7 +879,9 @@ measure-old). A step is the rise from one scene's end value to the next scene's,
 - Quicksilver minus vanilla, 1,596 scene pairs: 7 more than 4.0 MB over, by 0.19-0.25 MB, all in SIFTEC from MapMod's
   map scene on (map, hologram, hud, create_ct; brimstone-vk in `dcc639b1`, brimstone-full in `be01dda7`): Quicksilver at
   10.06-10.12 where that run's measure run was at 5.81-5.93, the same 10.04-10.06 vanilla reached at map in other runs.
-  The map and hud scenes are out of CI since (MapMod dropped); in the scenes CI runs now, never more than 4.0 over.
+  The pool reached 10 MB at map and stayed there for the scenes after it; hologram and create_ct are still in CI, but
+  since MapMod's map and hud scenes were dropped no run has reached that step, and no scene pair in those runs is more
+  than 4.0 over.
 - Peaks (each scene's highest value) against vanilla's peak + 4: none over in the 1,596 pairs. The ceiling below: none
   over, Quicksilver's runs or vanilla's.
 

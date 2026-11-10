@@ -312,8 +312,11 @@ def direct_buffers(res, lines):
     """Every run's direct-buffer MB per scene, in run order (vanilla's measure runs too), at the start of measuring,
     its peak (with the tick) and at the end, and each rise of DIRECT_JUMP_MB or more marked with where it happened:
     inside a scene (start to end) or between scenes (the previous scene's end to this one's start). The gate is the
-    same-run one in the counts (DIRECT_POOL_STEP_MB)."""
-    lines.append("## Direct buffers per scene (gated against the same-run measure run, see the counts)\n")
+    same-run one in the counts (DIRECT_POOL_STEP_MB); quick mode has no measure run and gates the ceiling only."""
+    if QUICK:
+        lines.append("## Direct buffers per scene (quick mode: gated at the ceiling, committed baseline x 1.10 + 8 MB, see the counts)\n")
+    else:
+        lines.append("## Direct buffers per scene (gated against the same-run measure run and the ceiling, see the counts)\n")
     lines.append("| run | scene | start MB | peak MB (tick) | end MB | rise |\n|---|---|---|---|---|---|")
     jumps = []
     for d in sorted(glob.glob(os.path.join(res, "*-*"))):
@@ -1114,8 +1117,10 @@ def main():
                     elif k == "directBuffersMB" and not QUICK:
                         # package 6: gated against the same-run measure run below, not the committed baseline
                         cell += " (against vanilla, below)"
-                    elif base is None:
+                    elif base is None or (k == "directBuffersMB" and (sid not in base or base[sid].get(k) is None)):
                         cell += " (no baseline)"
+                        if k == "directBuffersMB":
+                            failures.append(f"{name}/{prof}/{sid}: no committed direct-buffer baseline, so no ceiling to gate it against")
                     elif k not in gated:
                         cell += " (reported, not gated)"
                     elif sid in base:
@@ -1123,7 +1128,7 @@ def main():
                         cell += f" (base {bv})"
                         # package 6: quick mode has no measure run, so direct buffers get the full mode's ceiling (two pool steps)
                         slack = DIRECT_CEILING_MB if k == "directBuffersMB" else SLACK[k]
-                        if v > bv * RISE + slack:
+                        if (round(v, 2) > round(bv * RISE + slack, 2)) if k == "directBuffersMB" else (v > bv * RISE + slack):
                             failures.append(f"{name}/{prof}/{sid}: {k}{' (median)' if k == 'drawCallsPerFrame' and sid in median_gated else ''} rose from {bv} to {v} (over 10%)")
                     cells.append(cell)
                 # package 2b (Andre, 2026-11-02): draw calls at most main's + 3 (the depth pyramid's draw and the late
@@ -1200,7 +1205,9 @@ def main():
                         if round(pk, 2) > plim:
                             failures.append(f"{name}/{prof}/{sid}: direct-buffer peak {pk} MB, more than vanilla's peak {vpk} + {DIRECT_POOL_STEP_MB} in the same run ({MEASURE[prof]})")
                     ceil = None
-                    if base is not None and sid in base and base[sid].get("directBuffersMB") is not None:
+                    if base is None or sid not in base or base[sid].get("directBuffersMB") is None:
+                        failures.append(f"{name}/{prof}/{sid}: no committed direct-buffer baseline, so no ceiling to gate it against")
+                    else:
                         ceil = round(base[sid]["directBuffersMB"] * RISE + DIRECT_CEILING_MB, 2)
                         for who, x in (("Quicksilver", v), (f"vanilla ({MEASURE[prof]})", vv)):
                             if round(x, 2) > ceil:

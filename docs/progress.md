@@ -3350,8 +3350,10 @@ vanilla's far shot).
   limit (206 on Vulkan; 131 two-phase and 152 in measure-full, every module off), on code unchanged since `03f7c17f`;
   42777819099 (`e960fce8`) passed. The pixels are the ender chest's particles, vanilla's own noise: closed and
   sign_edit were re-collected by the noise rule (310 and 280; `docs/ci-limits.md`). No start hang in these three runs.
-- Open for Andre: one pixel on the zombie head's edge differs from vanilla (one texel row off, 6/255, full and old-GPU)
-  and goes with the entity atlas off: the atlas's UV remap rounding at a texel edge, in every run since the atlas.
+- **Open bug (found 2026-11-10):** one pixel on the zombie head's edge differs from vanilla (one texel row off, 6/255,
+  full and old-GPU, not Vulkan) and goes with the entity atlas off: the atlas's UV remap rounding at a texel edge, in
+  every run since the atlas. Fixing it exactly needs the fragment to pick the texel from the local UV, which vanilla's
+  entity shader doesn't; leaving heads out of the atlas would lose their merge. Andre decides.
 
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 
