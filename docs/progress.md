@@ -3552,7 +3552,9 @@ renderer, above). As asked:
 
 - **Direct-buffer jump (found 2026-10-29): closed in package 6 (Andre, 2026-11-10).** Vanilla's measure runs take the
   same 2 and 4 MB steps at the same scenes, and direct buffers are now gated against the same-run measure run plus one
-  4 MB pool step instead of a fixed baseline (`docs/ci-limits.md`, "Direct buffers against vanilla in the same run").
+  4 MB pool step (end and peak), under a ceiling of the committed baseline x 1.10 + 8 MB, instead of a fixed baseline
+  (`docs/ci-limits.md`, "Direct buffers against vanilla in the same run"). P2-0's +8 MB one-off below stays unexplained
+  (higher than any vanilla value; its scene is out of CI).
   The original report: run
   [40803126672](https://github.com/meakaandre-tech/Quicksilver/actions/runs/40803126672), attempt 1, SIFTEC
   `quicksilver-full`: direct buffers went from about 8 MB to 13.8–13.9 MB in the map, hologram and hud scenes
