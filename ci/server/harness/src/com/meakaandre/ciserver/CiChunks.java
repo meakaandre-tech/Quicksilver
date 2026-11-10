@@ -57,13 +57,15 @@ public final class CiChunks {
     private static long moves = 0, dirtied = 0, notLoadedOnLeave = 0;
 
     /** Every chunk tag serialised for saving during the run (ChunkWriteMixin): per chunk, its tags' hashes in order. */
-    private static final java.util.Map<String, List<Integer>> writes = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, List<long[]>> writes = new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile boolean recording = false;
 
-    /** From the serialising thread: one chunk tag written for saving (recorded from the run's tick 0 to its end). */
+    /** From the serialising thread: one chunk tag written for saving (recorded from the run's tick 0 to its end), with the
+     *  game tick its snapshot was taken in (its LastUpdate, set by vanilla on the server thread when it snapshots). */
     public static void written(ChunkPos pos, net.minecraft.nbt.CompoundTag tag) {
         if (!recording || tag == null) return;
-        writes.computeIfAbsent(String.valueOf(pos), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(tag.hashCode());
+        long[] e = {tag.getLongOr("LastUpdate", -1L), tag.hashCode()};
+        writes.computeIfAbsent(String.valueOf(pos), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(e);
     }
 
     private static List<net.minecraft.world.level.block.state.BlockState> churnStates;
@@ -326,7 +328,12 @@ public final class CiChunks {
         for (var e : new java.util.TreeMap<>(writes).entrySet()) {
             JsonArray a = new JsonArray();
             synchronized (e.getValue()) {
-                for (int h : e.getValue()) a.add(h);
+                for (long[] h : e.getValue()) {
+                    JsonArray x = new JsonArray();
+                    x.add(h[0]);
+                    x.add(h[1]);
+                    a.add(x);
+                }
             }
             n += a.size();
             w.add(e.getKey(), a);

@@ -1159,7 +1159,7 @@ order per round, JFR on every round, `sync-chunk-writes=true`, `max.bg.threads=1
 |---|---|---|---|
 | `flyover` | a 25x25-chunk window (the player-loading ticket, radius 12) moving one chunk every 8 ticks around a 16x16 square over the saved terrain; chunks leaving it marked changed (so they are saved on unload) | 7 | server-thread save ms per tick below vanilla; p99 and slowest tick at most 1.10 of vanilla's; ticks over 50 ms reported |
 | `save` | the 625 chunks around 0,0 marked changed and saved with save-all at ticks 100 and 400, save-all flush at 700; marked changed every 250 ticks from 4000 for the game's autosave | 7 | the save-all tick below vanilla; saved region files equal to vanilla's |
-| `churn` | 96 blocks set per tick in a 17x17-chunk window (18 kinds: palettes grow), save-all every 5 ticks: sections written while their saves are serialised | 3 | server-thread save ms per tick below vanilla; MSPT at most 1.10 of vanilla's; saved region files and every save's content equal to vanilla's |
+| `churn` | 96 blocks set per tick in a 17x17-chunk window (18 kinds: palettes grow), save-all every 5 ticks: sections written while their saves are serialised | 3 | server-thread save ms per tick below vanilla; MSPT at most 1.10 of vanilla's; saved region files, and every save's content at its tick, equal to vanilla's |
 | `kill` | the save scene's first save-all flush, killed with `kill -9` one second in, then loaded again | 2 | below |
 
 Every gate is the median of the per-round ratios (Quicksilver / vanilla of the same round). **Why the fly-over's p99 and
@@ -1179,11 +1179,16 @@ files (entities move between saves in vanilla's own rounds; POI files are gated 
 vanilla's own rounds differed in 5-93 chunks' sections (saved light follows the light engine's timing); it now replaces
 only stone, deepslate, andesite or diorite with andesite or diorite underground, which changes no light.
 
-**Every save's content.** The harness (`ChunkWriteMixin`, CI only) records the hash of every chunk tag serialised for
-saving, in order per chunk, in every run. The files left at the end are rewritten by the last save, so they can't show a
-snapshot that was changed while it was being serialised; this record does. In `save` and `churn` (and their verify
-runs), each chunk's sequence must be one of vanilla's rounds' (compared up to the shorter one: the run's last saves may
-still be serialising when the record is taken); elsewhere it is reported. A run without the record fails.
+**Every save's content.** The harness (`ChunkWriteMixin`, CI only) records every chunk tag serialised for saving, in
+every run: its hash and the game tick its snapshot was taken in (its `LastUpdate`, set by vanilla on the server thread).
+The files left at the end are rewritten by the last save, so they can't show a snapshot that was changed while it was
+being serialised; this record does. Which ticks a chunk is saved in follows the clock (vanilla's eager saves keep a 10 s
+cooldown per chunk and a time budget per tick), so whole sequences differ between vanilla's own rounds: in full run
+42806399893, two of the save scene's seven vanilla rounds held some 140 chunks whose sequence was none of the other
+rounds'. What a chunk holds at a given tick doesn't follow the clock. So in `save` and `churn` (and their verify runs),
+each save must be the tag vanilla's rounds saved for that chunk at that tick, wherever one did; a (chunk, tick) where
+vanilla's rounds saved different tags is its noise and counted, not compared; a run with no save compared fails, as
+does a run without the record. Elsewhere it is reported.
 
 **Saved files, how a chunk passes.** A Quicksilver chunk must hold data (and, for the same data, stored bytes) that one
 of vanilla's rounds saved for that chunk: being on a chunk where vanilla's rounds differ is not enough. A missing dump

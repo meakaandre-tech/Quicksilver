@@ -219,27 +219,43 @@ def outside_vanilla(vals, dump):
 
 
 def write_sequences(d):
-    """CiChunks' record of every chunk tag serialised for saving in a run: per chunk, the hashes in order (None if absent)."""
+    """CiChunks' record of every chunk tag serialised for saving in a run: per chunk, [game tick of its snapshot, hash]
+    pairs in order (None if absent)."""
     r = load(os.path.join(d, "ci-harness-result.json")) or {}
     return r.get("chunkWrites")
 
 
+def tick_hashes(seqs):
+    """Vanilla's rounds' saves keyed by (chunk, game tick of the snapshot): the set of tag hashes saved there."""
+    out = {}
+    for seq in seqs:
+        for pos, writes in seq.items():
+            for t, h in writes:
+                out.setdefault((pos, t), set()).add(h)
+    return out
+
+
 def compare_writes(vseqs, qseq):
-    """Chunks whose sequence of saved tags isn't one of vanilla's rounds' (compared up to the shorter of the two: the
-    run's last saves may still be serialising when the record is taken)."""
-    bad = []
-    for pos in sorted(set(qseq) | set().union(*[set(v) for v in vseqs])):
-        q = qseq.get(pos, [])
-        ok = False
-        for v in vseqs:
-            a = v.get(pos, [])
-            k = min(len(a), len(q))
-            if a[:k] == q[:k] and abs(len(a) - len(q)) <= 1:
-                ok = True
-                break
-        if not ok:
-            bad.append(pos)
-    return bad
+    """A round's saves against vanilla's rounds' saves of the same chunk at the same game tick. Which ticks a chunk is
+    saved in follows the clock (vanilla's eager saves have a 10 s cooldown per chunk and a time budget per tick), so the
+    sequences differ between vanilla's own rounds; what a chunk holds at a given tick doesn't. Returns (compared, noisy:
+    at a (chunk, tick) where vanilla's rounds saved different tags, unmatched: no vanilla round saved that chunk at that
+    tick, bad: chunks with a save no vanilla round saved there)."""
+    v = tick_hashes(vseqs)
+    compared = noisy = unmatched = 0
+    bad = set()
+    for pos, writes in qseq.items():
+        for t, h in writes:
+            hs = v.get((pos, t))
+            if hs is None:
+                unmatched += 1
+            elif len(hs) > 1:
+                noisy += 1
+            else:
+                compared += 1
+                if h not in hs:
+                    bad.add(pos)
+    return compared, noisy, unmatched, sorted(bad)
 
 
 def kill_check(sdir, lines, out, fails):
@@ -452,14 +468,18 @@ def main(results, report_dir):
                         fails.append("%s/%s: %s round %d has no record of its chunk saves (ChunkWriteMixin)" % (suite, scene, side, r))
                         continue
                     others = [seqs[("vanilla", x)] for x in n_rounds if seqs.get(("vanilla", x)) is not None and (side, x) != ("vanilla", r)]
-                    bad = compare_writes(others, q) if others else []
-                    wrows.append("| %d | %s | %d | %d | %s |" % (r, side, len(q), sum(len(v) for v in q.values()), "%d%s" % (len(bad), (" (first %s)" % bad[0]) if bad else "")))
-                    if side == "quicksilver" and scene in EXACT_FILES and bad:
-                        fails.append("%s/%s: Quicksilver round %d: %d chunks' saves (the tags serialised, in order) are none of vanilla's rounds' (first %s)" % (
-                            suite, scene, r, len(bad), bad[0]))
+                    cmp, noisy, unm, bad = compare_writes(others, q) if others else (0, 0, 0, [])
+                    wrows.append("| %d | %s | %d | %d | %d | %d | %d | %s |" % (r, side, len(q), sum(len(v) for v in q.values()), cmp, noisy, unm,
+                                                                         "%d%s" % (len(bad), (" (first %s)" % bad[0]) if bad else "")))
+                    if side == "quicksilver" and scene in EXACT_FILES:
+                        if bad:
+                            fails.append("%s/%s: Quicksilver round %d: %d chunks have a save that no vanilla round saved for that chunk at that tick (first %s)" % (
+                                suite, scene, r, len(bad), bad[0]))
+                        if not cmp:
+                            fails.append("%s/%s: Quicksilver round %d: no save compared with vanilla's" % (suite, scene, r))
             if wrows:
-                lines.append("Every save's content (each chunk tag serialised for saving, in order; a round against the other vanilla rounds):\n")
-                lines.append("| round | side | chunks saved | saves | chunks whose saves are none of the vanilla rounds' |\n|---|---|---|---|---|")
+                lines.append("Every save's content (each chunk tag serialised for saving, against the other vanilla rounds' saves of that chunk at the same game tick):\n")
+                lines.append("| round | side | chunks saved | saves | compared | at a tick vanilla's rounds differ | no vanilla save at that tick | chunks with a save none of vanilla's |\n|---|---|---|---|---|---|---|---|")
                 lines.extend(wrows)
                 lines.append("")
             if ref:
@@ -530,9 +550,11 @@ def main(results, report_dir):
                                 fails.append("%s/%s verify run, %s: %d chunks' data, %d stored bytes, %d one side, none of vanilla's rounds'" % (suite, scene, k, len(a), len(b), len(c)))
                     vs = write_sequences(vd)
                     if vs is not None and vseqs and scene in EXACT_FILES:
-                        bad = compare_writes(vseqs, vs)
+                        cmp, _, _, bad = compare_writes(vseqs, vs)
                         if bad:
-                            fails.append("%s/%s verify run: %d chunks' saves are none of vanilla's rounds' (first %s)" % (suite, scene, len(bad), bad[0]))
+                            fails.append("%s/%s verify run: %d chunks have a save that no vanilla round saved for that chunk at that tick (first %s)" % (suite, scene, len(bad), bad[0]))
+                        if not cmp:
+                            fails.append("%s/%s verify run: no save compared with vanilla's" % (suite, scene))
                 elif scene in EXACT_FILES:
                     fails.append("%s/%s verify run: no saved-file dump" % (suite, scene))
                 lines.append("Verify run (full runs: chunks verify mode, every shared section checked against a real copy): %s; %s; saved files against vanilla round 1: %s\n" % (
