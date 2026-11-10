@@ -65,12 +65,12 @@ public final class EntityAtlas {
      * Vanilla's entity and block-entity render types that sample one plain texture through the model's UVs and do not
      * blend (plus entity_eyes, whose additive blend gives the same result in any order). Merging textures into one draw
      * interleaves their submits; a blended type would then blend in a different order than vanilla's per-texture groups,
-     * so the translucent ones stay as they are.
+     * so the translucent ones stay as they are. Heads (skulls, render type entity_cutout_no_cull_z_offset) stay out
+     * (Andre, 2026-11-11): the remapped UV put one edge pixel of the zombie head a texel row off on GL.
      */
     static final Set<String> ALLOWED = Set.of(
         "entity_solid", "entity_solid_z_offset_forward", "entity_cutout", "entity_cutout_cull", "entity_cutout_z_offset",
-        "entity_cutout_no_cull", "entity_cutout_no_cull_z_offset", "entity_smooth_cutout", "entity_no_outline",
-        "armor_cutout_no_cull", "entity_eyes");
+        "entity_cutout_no_cull", "entity_smooth_cutout", "entity_no_outline", "armor_cutout_no_cull", "entity_eyes");
 
     private static State state = State.STARTING;
     private static String reason = "not started";

@@ -3350,10 +3350,13 @@ vanilla's far shot).
   limit (206 on Vulkan; 131 two-phase and 152 in measure-full, every module off), on code unchanged since `03f7c17f`;
   42777819099 (`e960fce8`) passed. The pixels are the ender chest's particles, vanilla's own noise: closed and
   sign_edit were re-collected by the noise rule (310 and 280; `docs/ci-limits.md`). No start hang in these three runs.
-- **Open bug (found 2026-11-10):** one pixel on the zombie head's edge differs from vanilla (one texel row off, 6/255,
-  full and old-GPU, not Vulkan) and goes with the entity atlas off: the atlas's UV remap rounding at a texel edge, in
-  every run since the atlas. Fixing it exactly needs the fragment to pick the texel from the local UV, which vanilla's
-  entity shader doesn't; leaving heads out of the atlas would lose their merge. Andre decides.
+- **Fixed (found 2026-11-10, fixed 2026-11-11):** one pixel on the zombie head's edge differed from vanilla (one texel
+  row off, 6/255, full and old-GPU, not Vulkan) and went with the entity atlas off: the atlas's UV remap rounding at a
+  texel edge. Andre chose to leave heads out of the atlas: entity_cutout_no_cull_z_offset (vanilla's skull render type)
+  is off the allow-list, so heads draw as in vanilla and lose their merge.
+- **Decided by Andre (2026-11-11):** quick mode gates direct buffers at the ceiling only (committed baseline x 1.10 +
+  8 MB; full runs gate against the same-run measure run); block_entities.closed keeps 310 (collected with Quicksilver's
+  particle samples); heap after GC within -3.4 to +3.2 MB of main's run is accepted as run-to-run noise.
 
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 
