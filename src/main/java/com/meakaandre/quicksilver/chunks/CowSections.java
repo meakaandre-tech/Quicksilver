@@ -49,8 +49,17 @@ public final class CowSections {
 
     /** Around a full chunk's save snapshot (SerializableChunkDataCowMixin), on the thread making it. */
     public static void begin() {
+        if (!ready) {
+            // share only once every hook of this optimisation is known to have landed (a write hook missing would
+            // leave a shared section unprotected); the classes are loaded by now, the check is map lookups
+            Chunks.checkHooks();
+            ready = SWITCH.on && Chunks.allChecked(ID);
+            if (!ready) return;
+        }
         sharing.compareAndSet(null, Thread.currentThread());
     }
+
+    private static volatile boolean ready = false;
 
     public static void end() {
         sharing.compareAndSet(Thread.currentThread(), null);

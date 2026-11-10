@@ -42,9 +42,10 @@ public final class Chunks {
             + " it is written before the save is done (copy on write)",
             List.of("PalettedContainerCowMixin", "PalettedContainerInvoker", "SerializableChunkDataCowMixin"),
             List.<String[]>of(new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$share"},
-                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSet"},
-                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$getAndSetUnchecked"},
-                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$set"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$cowGetAndSet"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$cowGetAndSetUnchecked"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$cowSet"},
+                new String[] {"net.minecraft.world.level.chunk.PalettedContainer", "call:quicksilver$cowRead"},
                 new String[] {"net.minecraft.world.level.chunk.storage.SerializableChunkData", "call:quicksilver$copySection"},
                 new String[] {"net.minecraft.world.level.chunk.storage.SerializableChunkData", "call:quicksilver$copied"},
                 new String[] {"net.minecraft.world.level.chunk.storage.SerializableChunkData", "call:quicksilver$written"})));
@@ -129,6 +130,7 @@ public final class Chunks {
         LOG.info("Quicksilver chunks: {}", moduleOff != null ? "off, " + moduleOff : status());
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STARTED.register(server -> report());
         net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents.END_SERVER_TICK.register(server -> {
+            CowSections.end();  // a snapshot that threw before its end hook shares nothing past its tick
             if (!hooksDone && server.getTickCount() % 100 == 0) {
                 checkHooks();
                 hooksDone = allChecked();
@@ -169,6 +171,15 @@ public final class Chunks {
                 if (!ok) fallback(s, "hook " + h[1] + " did not land in " + h[0], null);
             }
         }
+    }
+
+    /** Whether every hook of one optimisation has been checked (and it is still on: a failed check falls it back). */
+    static boolean allChecked(String id) {
+        for (Opt o : ALL) {
+            if (!o.id().equals(id)) continue;
+            for (String[] h : o.hooks()) if (!CHECKED.contains(o.id() + "#" + h[0] + "#" + h[1])) return false;
+        }
+        return true;
     }
 
     static boolean allChecked() {

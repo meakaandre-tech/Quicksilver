@@ -81,25 +81,25 @@ public abstract class PalettedContainerCowMixin<T> implements CowSections.Shared
 
     // each setter's first int argument passed through unchanged: no callback object per write
     @ModifyVariable(method = "getAndSet", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private int quicksilver$getAndSet(int first) {
+    private int quicksilver$cowGetAndSet(int first) {
         quicksilver$unshare();
         return first;
     }
 
     @ModifyVariable(method = "getAndSetUnchecked", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private int quicksilver$getAndSetUnchecked(int first) {
+    private int quicksilver$cowGetAndSetUnchecked(int first) {
         quicksilver$unshare();
         return first;
     }
 
     @ModifyVariable(method = "set", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private int quicksilver$set(int first) {
+    private int quicksilver$cowSet(int first) {
         quicksilver$unshare();
         return first;
     }
 
     @Inject(method = "read", at = @At("HEAD"))
-    private void quicksilver$read(CallbackInfo ci) {
+    private void quicksilver$cowRead(CallbackInfo ci) {
         quicksilver$unshare();
     }
 }

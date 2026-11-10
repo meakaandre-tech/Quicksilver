@@ -2546,6 +2546,29 @@ scene); churn allocates 1197 to 813 MB in its saves. Saved region files: equal t
 round (only headers differ, as between vanilla's own rounds). Kill check: no unreadable chunk and every killed world
 loads again, on both sides alike.
 
+### Review (fresh agent, of `0b7bf18`; `scratchpad/review-p2-4.md` in the session)
+
+No bug found in copy on write itself (every write path unshares first; the old data is never touched after the copy).
+Fixed:
+1. The churn's files couldn't show a broken snapshot (the last save rewrites every chunk): every save's content is now
+   recorded and compared with vanilla's, in order per chunk (`ChunkWriteMixin`).
+2. The write hooks had the Logic module's handler names on the same class, so the hook check couldn't tell them apart:
+   renamed (`quicksilver$cow...`), and `read` added to the checked hooks.
+3. Sharing didn't wait for the hook check: it now starts only once every hook of cow-sections is checked.
+4. A snapshot that throws left the flag set: cleared at the end of every tick too; shares only on the server thread.
+5. A Quicksilver chunk on a chunk where vanilla's rounds differ passed whatever it held: it must now hold one of
+   vanilla's rounds' values.
+6. A missing dump skipped the exactness check: it fails.
+7. A kill that landed after the save finished passed: each side needs one mid-save kill. Quicksilver's complete saves
+   are compared with vanilla's.
+8. Copy on write moves the copy to the first write after a save: the churn's MSPT gates regressions (at most 1.10).
+9. The verify run's saved files and saves are gated in `save` and `churn`.
+10. Churn now grows palettes (18 block kinds). Not covered: writes into an all-air section (they change light, which
+    the saved files then follow).
+Not changed: another mod writing section storage without the game's setters would bypass copy on write (only C2ME turns
+the module off; a known limit); the cancellable inject on `PalettedContainer.copy` allocates a callback per copy (copies
+outside saves are rare).
+
 ### Not built (choices for Andre)
 
 - **Load side**: nothing safe found that is worth it. Reading is about 0.06 ms per tick on the server thread; parsing

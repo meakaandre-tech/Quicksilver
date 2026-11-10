@@ -33,11 +33,12 @@ public abstract class SerializableChunkDataCowMixin {
      * The snapshot of a full chunk shares its sections' containers (from here to {@link #quicksilver$copied}: the only
      * container copies in it are its sections'). An {@code @Inject} pair, not a {@code @WrapOperation} on the section copy:
      * MixinExtras applies those after the config plugin's check, so the hook check can't see them. If the copy throws,
-     * the next snapshot's start resets the flag (and sharing is copy on write wherever it happens).
+     * the next snapshot's start or the end of the tick resets the flag. Only on the server thread (vanilla's snapshots
+     * are made there; the only thread writing sections).
      */
     @Inject(method = "copyOf", at = @At("HEAD"))
     private static void quicksilver$copySection(ServerLevel level, ChunkAccess chunk, CallbackInfoReturnable<SerializableChunkData> cir) {
-        if (CowSections.SWITCH.on && chunk instanceof LevelChunk) CowSections.begin();
+        if (CowSections.SWITCH.on && chunk instanceof LevelChunk && level.getServer().isSameThread()) CowSections.begin();
         else CowSections.end();
     }
 

@@ -30,8 +30,9 @@ import net.minecraft.world.level.chunk.LevelChunk;
  * commands, so {@code at T save-all} saves all of them).</li>
  * <li>{@code churn N}: every tick from 1, N blocks of the window set (flag 2: no neighbour updates, no drops), at fixed
  * positions spread over the window's chunks and three sections of each (y 8, 24, 40: underground), alternating andesite
- * and diorite by tick, and only where the block is stone, deepslate, andesite or diorite (opaque blocks that give no light,
- * replaced by opaque blocks that give none: no light changes at all, so the saved light doesn't follow the light engine's
+ * 18 opaque full blocks in turn (andesite, diorite, granite, ... and ten terracottas: more than a 16-entry palette holds,
+ * so sections' palettes grow), and only where the block is stone, deepslate or one of those (opaque blocks that give no
+ * light, replaced by opaque blocks that give none: no light changes at all, so the saved light doesn't follow the light engine's
  * timing; a cave's air, water or lava is left alone): sections written while their chunks' saves are being serialised (P2-4's copy-on-write
  * sections).</li>
  * <li>{@code save-every K}: {@code save-all} every K ticks from K, after that tick's churn.</li>
@@ -54,6 +55,40 @@ final class CiChunks {
     private static java.lang.reflect.Method addTicket, removeTicket;
     private static Object ticketType;
     private static long moves = 0, dirtied = 0, notLoadedOnLeave = 0;
+
+    /** Every chunk tag serialised for saving during the run (ChunkWriteMixin): per chunk, its tags' hashes in order. */
+    private static final java.util.Map<String, List<Integer>> writes = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile boolean recording = false;
+
+    /** From the serialising thread: one chunk tag written for saving (recorded from the run's tick 0 to its end). */
+    public static void written(ChunkPos pos, net.minecraft.nbt.CompoundTag tag) {
+        if (!recording || tag == null) return;
+        long l = pos.toLong();
+        writes.computeIfAbsent((int) l + "," + (int) (l >>> 32), k -> java.util.Collections.synchronizedList(new ArrayList<>())).add(tag.hashCode());
+    }
+
+    private static List<net.minecraft.world.level.block.state.BlockState> churnStates;
+
+    /** Churn's blocks: 18 opaque full blocks that give no light (more than a 16-entry palette holds, so sections' palettes grow). */
+    private static List<net.minecraft.world.level.block.state.BlockState> churnBlocks() {
+        if (churnStates == null) {
+            List<net.minecraft.world.level.block.state.BlockState> l = new ArrayList<>();
+            for (net.minecraft.world.level.block.Block b : new net.minecraft.world.level.block.Block[] {
+                net.minecraft.world.level.block.Blocks.ANDESITE, net.minecraft.world.level.block.Blocks.DIORITE,
+                net.minecraft.world.level.block.Blocks.GRANITE, net.minecraft.world.level.block.Blocks.COBBLESTONE,
+                net.minecraft.world.level.block.Blocks.STONE_BRICKS, net.minecraft.world.level.block.Blocks.BRICKS,
+                net.minecraft.world.level.block.Blocks.TUFF, net.minecraft.world.level.block.Blocks.CALCITE,
+                net.minecraft.world.level.block.Blocks.WHITE_TERRACOTTA, net.minecraft.world.level.block.Blocks.ORANGE_TERRACOTTA,
+                net.minecraft.world.level.block.Blocks.MAGENTA_TERRACOTTA, net.minecraft.world.level.block.Blocks.LIGHT_BLUE_TERRACOTTA,
+                net.minecraft.world.level.block.Blocks.YELLOW_TERRACOTTA, net.minecraft.world.level.block.Blocks.LIME_TERRACOTTA,
+                net.minecraft.world.level.block.Blocks.PINK_TERRACOTTA, net.minecraft.world.level.block.Blocks.GRAY_TERRACOTTA,
+                net.minecraft.world.level.block.Blocks.LIGHT_GRAY_TERRACOTTA, net.minecraft.world.level.block.Blocks.CYAN_TERRACOTTA}) {
+                l.add(b.defaultBlockState());
+            }
+            churnStates = l;
+        }
+        return churnStates;
+    }
 
     static boolean active() {
         return radius >= 0;
@@ -188,6 +223,7 @@ final class CiChunks {
     /** At the start of run tick {@code tick}, before its commands. */
     static void startTick(MinecraftServer server, int tick) {
         if (!active()) return;
+        if (tick == 0) recording = true;
         ServerLevel level = server.getLevel(dim);
         if (dirtyAt.contains(tick)) {
             int n = 0;
@@ -205,8 +241,6 @@ final class CiChunks {
         }
         if (churn > 0 && tick > 0) {
             int side = 2 * radius + 1;
-            net.minecraft.world.level.block.state.BlockState a = net.minecraft.world.level.block.Blocks.ANDESITE.defaultBlockState();
-            net.minecraft.world.level.block.state.BlockState b = net.minecraft.world.level.block.Blocks.DIORITE.defaultBlockState();
             for (int i = 0; i < churn; i++) {
                 int k = (i * 7 + tick) % (side * side);
                 int x = (cx - radius + k % side) * 16 + (i * 3) % 16;
@@ -215,11 +249,11 @@ final class CiChunks {
                 net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
                 net.minecraft.world.level.block.state.BlockState now = level.getBlockState(pos);
                 if (!(now.is(net.minecraft.world.level.block.Blocks.STONE) || now.is(net.minecraft.world.level.block.Blocks.DEEPSLATE)
-                    || now == a || now == b)) {
+                    || churnBlocks().contains(now))) {
                     skipped++;
                     continue;
                 }
-                level.setBlock(pos, ((tick + i) & 1) == 0 ? a : b, 2);
+                level.setBlock(pos, churnBlocks().get((tick + i) % churnBlocks().size()), 2);
                 churned++;
             }
         }
@@ -278,6 +312,19 @@ final class CiChunks {
         o.addProperty("notLoadedOnLeave", notLoadedOnLeave);
         o.addProperty("windowNotFullAtEnd", missing);
         o.addProperty("endCentre", cx + "," + cz);
+        recording = false;
+        JsonObject w = new JsonObject();
+        int n = 0;
+        for (var e : new java.util.TreeMap<>(writes).entrySet()) {
+            JsonArray a = new JsonArray();
+            synchronized (e.getValue()) {
+                for (int h : e.getValue()) a.add(h);
+            }
+            n += a.size();
+            w.add(e.getKey(), a);
+        }
+        o.addProperty("writesRecorded", n);
+        result.add("chunkWrites", w);
         result.add("chunks", o);
         Harness.LOG.info("CI CHUNKS result={}", o);
     }

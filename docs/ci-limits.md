@@ -1159,7 +1159,7 @@ order per round, JFR on every round, `sync-chunk-writes=true`, `max.bg.threads=1
 |---|---|---|---|
 | `flyover` | a 25x25-chunk window (the player-loading ticket, radius 12) moving one chunk every 8 ticks around a 16x16 square over the saved terrain; chunks leaving it marked changed (so they are saved on unload) | 7 | server-thread save ms per tick below vanilla; p99 and slowest tick at most 1.10 of vanilla's; ticks over 50 ms reported |
 | `save` | the 625 chunks around 0,0 marked changed and saved with save-all at ticks 100 and 400, save-all flush at 700; marked changed every 250 ticks from 4000 for the game's autosave | 7 | the save-all tick below vanilla; saved region files equal to vanilla's |
-| `churn` | 96 blocks set per tick in a 17x17-chunk window, save-all every 5 ticks: sections written while their saves are serialised | 3 | server-thread save ms per tick below vanilla; saved region files equal to vanilla's |
+| `churn` | 96 blocks set per tick in a 17x17-chunk window (18 kinds: palettes grow), save-all every 5 ticks: sections written while their saves are serialised | 3 | server-thread save ms per tick below vanilla; MSPT at most 1.10 of vanilla's; saved region files and every save's content equal to vanilla's |
 | `kill` | the save scene's first save-all flush, killed with `kill -9` one second in, then loaded again | 2 | below |
 
 Every gate is the median of the per-round ratios (Quicksilver / vanilla of the same round). **Why the fly-over's p99 and
@@ -1175,11 +1175,21 @@ moved 0.31 to 1.52 in run 42796271430); it is the same save as save-all (`saveAl
 they follow write order and the clock. `save` and `churn` are gated exactly: every vanilla round's region data equals
 round 1's there, and Quicksilver's must too. The fly-over's data is reported only (vanilla's own rounds differ in about
 1,100 chunks' `LastUpdate`, `block_ticks` and `fluid_ticks`: which tick each chunk unloads in), and so are entity and POI
-files (entities move between saves in vanilla's own rounds). The churn scene first set stone and glass in open air and
+files (entities move between saves in vanilla's own rounds; POI files are gated with the region files). The churn scene first set stone and glass in open air and
 vanilla's own rounds differed in 5-93 chunks' sections (saved light follows the light engine's timing); it now replaces
 only stone, deepslate, andesite or diorite with andesite or diorite underground, which changes no light.
+
+**Every save's content.** The harness (`ChunkWriteMixin`, CI only) records the hash of every chunk tag serialised for
+saving, in order per chunk, in every run. The files left at the end are rewritten by the last save, so they can't show a
+snapshot that was changed while it was being serialised; this record does. In `save` and `churn` (and their verify
+runs), each chunk's sequence must be one of vanilla's rounds' (compared up to the shorter one: the run's last saves may
+still be serialising when the record is taken); elsewhere it is reported. A run without the record fails.
+
+**Saved files, how a chunk passes.** A Quicksilver chunk must hold data (and, for the same data, stored bytes) that one
+of vanilla's rounds saved for that chunk: being on a chunk where vanilla's rounds differ is not enough. A missing dump
+fails.
 
 **Kill check.** Per killed run, each region chunk must be the complete save's (the same scene killed right after its
 save-all flush returned), the complete save's written at another tick (differing only in `LastUpdate`, `block_ticks`,
 `fluid_ticks`: vanilla's own killed runs hold 203-229 of these, run 42785183725), or the saved terrain's; none other and
-none unreadable; and the killed world must load and run again. No chunk read or write error may be logged in any run.
+none unreadable; and the killed world must load and run again. Each side needs at least one kill that landed mid-save, and Quicksilver's complete saves must hold what vanilla's complete saves hold (region). No chunk read or write error may be logged in any run.

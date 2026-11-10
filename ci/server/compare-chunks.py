@@ -44,6 +44,9 @@ GATES = {
     ("save", "saveAllMs"): ("faster", 1.0),
     ("flyover", "msptP99"): ("no-regression", 1.10),
     ("flyover", "msptMax"): ("no-regression", 1.10),
+    # copy on write moves a section's copy to its first write after a save: the churn's tick (writes every tick, a
+    # save every 5) must not get slower for it
+    ("churn", "msptAvg"): ("no-regression", 1.10),
 }
 
 
@@ -187,6 +190,58 @@ def store_compare(a, b):
 KILL_TIMING_KEYS = frozenset(("LastUpdate", "block_ticks", "fluid_ticks"))
 
 
+def vanilla_values(dumps):
+    """Per store and chunk, every raw and stored hash vanilla's rounds saved (a Quicksilver chunk must be one of them)."""
+    raw, stored, present = {}, {}, {}
+    for d in dumps:
+        for key, st in d["stores"].items():
+            for pos, e in st.get("chunks", {}).items():
+                raw.setdefault(key, {}).setdefault(pos, set()).add(e.get("raw"))
+                stored.setdefault(key, {}).setdefault(pos, set()).add(e.get("stored"))
+                present.setdefault(key, {}).setdefault(pos, 0)
+                present[key][pos] += 1
+    return raw, stored, present, len(dumps)
+
+
+def outside_vanilla(vals, dump):
+    """Per store of a Quicksilver dump: its chunks whose data no vanilla round saved, whose bytes no vanilla round stored
+    (same data), and the chunks present on one side only (in no vanilla round, or in every vanilla round but not here)."""
+    raw, stored, present, n = vals
+    out = {}
+    for key in sorted(set(raw) | set(dump["stores"])):
+        cq = dump["stores"].get(key, {}).get("chunks", {})
+        rk, sk, pk = raw.get(key, {}), stored.get(key, {}), present.get(key, {})
+        r_out = sorted(p for p, e in cq.items() if p in rk and e.get("raw") not in rk[p])
+        s_out = sorted(p for p, e in cq.items() if p in rk and e.get("raw") in rk[p] and e.get("stored") not in sk[p])
+        o_out = sorted([p for p in cq if p not in rk] + [p for p, c in pk.items() if c == n and p not in cq])
+        out[key] = (r_out, s_out, o_out)
+    return out
+
+
+def write_sequences(d):
+    """CiChunks' record of every chunk tag serialised for saving in a run: per chunk, the hashes in order (None if absent)."""
+    r = load(os.path.join(d, "ci-harness-result.json")) or {}
+    return r.get("chunkWrites")
+
+
+def compare_writes(vseqs, qseq):
+    """Chunks whose sequence of saved tags isn't one of vanilla's rounds' (compared up to the shorter of the two: the
+    run's last saves may still be serialising when the record is taken)."""
+    bad = []
+    for pos in sorted(set(qseq) | set().union(*[set(v) for v in vseqs])):
+        q = qseq.get(pos, [])
+        ok = False
+        for v in vseqs:
+            a = v.get(pos, [])
+            k = min(len(a), len(q))
+            if a[:k] == q[:k] and abs(len(a) - len(q)) <= 1:
+                ok = True
+                break
+        if not ok:
+            bad.append(pos)
+    return bad
+
+
 def kill_check(sdir, lines, out, fails):
     """The kill check (chunks-run.sh): each killed save holds, per chunk, either the saved terrain's data or the complete
     save's (never a broken chunk or a third version), and the killed world loads again; Quicksilver as vanilla. A chunk that
@@ -251,6 +306,25 @@ def kill_check(sdir, lines, out, fails):
             "; ".join("%s %d / %d" % (k, len(c["other"]), len(c["unreadable"])) for k, c in rest) or "-",
             "yes" if reloaded else "**no**"))
         res[name] = {"mid": mid, "region": {k: (v if isinstance(v, int) else len(v)) for k, v in reg.items()}}
+    # every side needs a kill that landed mid-save (one that landed after the save finished tests nothing)
+    for side in ("vanilla", "quicksilver"):
+        runs = [v for k, v in res.items() if k.startswith(side + "-")]
+        if runs and not any(v["mid"] for v in runs):
+            fails.append("%s/kill: no %s kill landed mid-save (each finished first): the check tested nothing" % (suite, side))
+    # Quicksilver's complete saves against vanilla's (the same scene up to its save-all flush)
+    vc = [load(os.path.join(d, "dump.json")) for d in sorted(glob.glob(os.path.join(kd, "vanilla-complete*")))]
+    vc = [d for d in vc if d]
+    for d in sorted(glob.glob(os.path.join(kd, "quicksilver-complete*"))):
+        q = load(os.path.join(d, "dump.json"))
+        if not q or not vc:
+            fails.append("%s/kill %s: a complete save's dump is missing" % (suite, os.path.basename(d)))
+            continue
+        for key, (a, b, c) in outside_vanilla(vanilla_values(vc), q).items():
+            if key.endswith("region") and (a or b or c):
+                fails.append("%s/kill %s, %s: %d chunks' data, %d stored bytes, %d one side, none of vanilla's complete saves'" % (
+                    suite, os.path.basename(d), key, len(a), len(b), len(c)))
+        lines.append("%s against vanilla's complete saves: %s\n" % (os.path.basename(d), "; ".join(
+            "%s %d / %d / %d" % (k.split("/")[-1], len(a), len(b), len(c)) for k, (a, b, c) in outside_vanilla(vanilla_values(vc), q).items())))
     lines.append("\nEach chunk of a killed save is either the complete save's (possibly written at another tick: it differs"
                  " only in %s) or the saved terrain's: a kill loses the chunks not yet written, and breaks none." % ", ".join(sorted(KILL_TIMING_KEYS)) +
                  " Entity and POI files are reported only (their data follows entity and"
@@ -363,6 +437,31 @@ def main(results, report_dir):
             dumps = {k: load(os.path.join(v, "dump.json")) for k, v in rs.items()}
             ref = dumps.get(("vanilla", 1))
             files = {}
+            missing = [k for k in sorted(rs) if not dumps.get(k)]
+            if missing or not ref:
+                fails.append("%s/%s: saved-file dumps missing (%s)" % (suite, scene, ", ".join("%s %d" % k for k in missing) or "vanilla 1"))
+            vvals = vanilla_values([dumps[("vanilla", r)] for r in n_rounds if dumps.get(("vanilla", r))])
+            # every save's content, in order per chunk (CiChunks): Quicksilver's must be one of vanilla's rounds'
+            seqs = {k: write_sequences(v) for k, v in rs.items()}
+            vseqs = [seqs[("vanilla", r)] for r in n_rounds if seqs.get(("vanilla", r)) is not None]
+            wrows = []
+            for r in n_rounds:
+                for side in ("vanilla", "quicksilver"):
+                    q = seqs.get((side, r))
+                    if q is None:
+                        fails.append("%s/%s: %s round %d has no record of its chunk saves (ChunkWriteMixin)" % (suite, scene, side, r))
+                        continue
+                    others = [seqs[("vanilla", x)] for x in n_rounds if seqs.get(("vanilla", x)) is not None and (side, x) != ("vanilla", r)]
+                    bad = compare_writes(others, q) if others else []
+                    wrows.append("| %d | %s | %d | %d | %s |" % (r, side, len(q), sum(len(v) for v in q.values()), "%d%s" % (len(bad), (" (first %s)" % bad[0]) if bad else "")))
+                    if side == "quicksilver" and scene in EXACT_FILES and bad:
+                        fails.append("%s/%s: Quicksilver round %d: %d chunks' saves (the tags serialised, in order) are none of vanilla's rounds' (first %s)" % (
+                            suite, scene, r, len(bad), bad[0]))
+            if wrows:
+                lines.append("Every save's content (each chunk tag serialised for saving, in order; a round against the other vanilla rounds):\n")
+                lines.append("| round | side | chunks saved | saves | chunks whose saves are none of the vanilla rounds' |\n|---|---|---|---|---|")
+                lines.extend(wrows)
+                lines.append("")
             if ref:
                 noise = {}
                 for r in n_rounds:
@@ -382,12 +481,18 @@ def main(results, report_dir):
                     for side in ("vanilla", "quicksilver"):
                         if (side, r) == ("vanilla", 1) or not dumps.get((side, r)):
                             continue
+                        qout = outside_vanilla(vvals, dumps[(side, r)]) if side == "quicksilver" else {}
                         for key, c in store_compare(ref, dumps[(side, r)]).items():
                             nz = noise.get(key, {"raw": set(), "stored": set(), "only": set()})
                             only = c["onlyVanilla"] + c["onlyQuicksilver"]
-                            raw_out = [p for p in c["rawDiff"] if p not in nz["raw"]]
-                            stored_out = [p for p in c["storedDiffSameRaw"] if p not in nz["stored"] and p not in nz["raw"]]
-                            only_out = [p for p in only if p not in nz["only"]]
+                            if side == "quicksilver":
+                                # a Quicksilver chunk must hold what some vanilla round saved there (not just sit on a
+                                # chunk where vanilla's rounds differ)
+                                raw_out, stored_out, only_out = qout.get(key, ([], [], []))
+                            else:
+                                raw_out = [p for p in c["rawDiff"] if p not in nz["raw"]]
+                                stored_out = [p for p in c["storedDiffSameRaw"] if p not in nz["stored"] and p not in nz["raw"]]
+                                only_out = [p for p in only if p not in nz["only"]]
                             if side == "quicksilver" and scene in EXACT_FILES and not key.endswith("entities") and (raw_out or stored_out or only_out):
                                 fails.append("%s/%s: Quicksilver round %d, %s: %d chunks' data differ from vanilla's (outside vanilla's own"
                                              " noise), %d stored bytes only, %d on one side only; keys %s" % (
@@ -417,8 +522,19 @@ def main(results, report_dir):
                 vdump = load(os.path.join(vd, "dump.json"))
                 vdiff = "-"
                 if vdump and ref:
-                    cs = store_compare(ref, vdump)
-                    vdiff = ", ".join("%s: %d data, %d bytes only" % (k.split("/")[-1], len(c["rawDiff"]), len(c["storedDiffSameRaw"])) for k, c in cs.items())
+                    vo = outside_vanilla(vvals, vdump)
+                    vdiff = ", ".join("%s: %d data, %d bytes only, %d one side (outside vanilla's rounds)" % (k.split("/")[-1], len(a), len(b), len(c)) for k, (a, b, c) in vo.items())
+                    if scene in EXACT_FILES:
+                        for k, (a, b, c) in vo.items():
+                            if not k.endswith("entities") and (a or b or c):
+                                fails.append("%s/%s verify run, %s: %d chunks' data, %d stored bytes, %d one side, none of vanilla's rounds'" % (suite, scene, k, len(a), len(b), len(c)))
+                    vs = write_sequences(vd)
+                    if vs is not None and vseqs and scene in EXACT_FILES:
+                        bad = compare_writes(vseqs, vs)
+                        if bad:
+                            fails.append("%s/%s verify run: %d chunks' saves are none of vanilla's rounds' (first %s)" % (suite, scene, len(bad), bad[0]))
+                elif scene in EXACT_FILES:
+                    fails.append("%s/%s verify run: no saved-file dump" % (suite, scene))
                 lines.append("Verify run (full runs: chunks verify mode, every shared section checked against a real copy): %s; %s; saved files against vanilla round 1: %s\n" % (
                     "finished" if vn["finished"] else "**did not finish**", (st or "no status line")[:200], vdiff))
             elif os.environ.get("CI_MODE") == "full" and scene != "kill":
