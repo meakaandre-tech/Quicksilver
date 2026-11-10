@@ -3346,6 +3346,12 @@ vanilla's far shot).
   timed out had started the game). Not repeated yet, so no early timeout added. The one count over its limit,
   `core/old-gpu-2p/translucent_move` direct buffers 8.24 MB (baseline 3.73), was the direct-buffer step; vanilla takes
   it too, and it is now gated against the same-run measure run (below and `docs/ci-limits.md`).
+- Full runs 42773014543 (`8bc3d7eb`) and 42777299349 (`9e270a3d`) failed only `core/block_entities.closed`'s strict
+  limit (206 on Vulkan; 131 two-phase and 152 in measure-full, every module off), on code unchanged since `03f7c17f`;
+  42777819099 (`e960fce8`) passed. The pixels are the ender chest's particles, vanilla's own noise: closed and
+  sign_edit were re-collected by the noise rule (310 and 280; `docs/ci-limits.md`). No start hang in these three runs.
+- Open for Andre: one pixel on the zombie head's edge differs from vanilla (one texel row off, 6/255, full and old-GPU)
+  and goes with the entity atlas off: the atlas's UV remap rounding at a texel edge, in every run since the atlas.
 
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 

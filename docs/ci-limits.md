@@ -65,6 +65,7 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | siftec/factory_flat (package 4) | a wrongly flat-lit Create or SIFTEC part | as factory: a machine ~4,800; one ladder strip ~320 | 40 | yes |
 | siftec/create_ct (package 4) | a wrong connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
 | siftec/kinetics (package 5) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,500; one shaft block (~60 px by 7): ~200; the shaft piece showing between the two cogwheels ~80; the train's carriage ~5,000 | 30 (the carriage's rectangle masked out: 8/255 check only, 2,304 px) | yes, but the carriage: whole carriage yes, one part of it **no** |
+| core/block_entities (+ chest_open, sign_edit, closed; package 6) | a block entity missing, merged into the wrong texture or drawn out of order | one head ~700; one chest ~10,000; one sign's text 10-27 | 240 to 310 (closed 130 and sign_edit 220 before the 2026-11-10 re-collection) | head and larger yes; one sign's text **no** (below the ender chest particles' own noise, measure runs up to 152) |
 | siftec/kinetics_instancing (package 5) | as kinetics, with Flywheel's instancing backend and still-camera occlusion | as kinetics | 30 (as kinetics) | as kinetics |
 
 The **no** rows are limits already set (by the rule and Andre's earlier decisions) that are larger than the smallest
@@ -837,10 +838,12 @@ config: animation never ran, the scenes showed frame 0 in every run alike).
 | core/mobs.far (the crowd at 53-67 blocks, LOD off) | 42550160930 attempts 1-3 (quick, `4947305b`); 42754284510 (full, `7e3f4801`: full, old-GPU, Vulkan, two-phase) | all 0.0; strict all 0 | 0.25 | 10 |
 | core/block_entities | 42550160930 attempts 1-3 (quick), 42572488452 (full); all after `4947305b` | a/b 0.0012-0.0262; Quicksilver at most 0.0259; strict at most 180 | 0.3 | 270 |
 | core/block_entities.chest_open | the same | a/b at most 0.0277; Quicksilver at most 0.0272; strict at most 156 | 0.3 | 240 |
-| core/block_entities.sign_edit | the same | a/b at most 0.0173; Quicksilver at most 0.0243; strict at most 145 | 0.3 | 220 |
-| core/block_entities.closed | the same | a/b at most 0.0101; Quicksilver at most 0.0142; strict at most 83 | 0.3 | 130 |
+| core/block_entities.sign_edit | the same, then full runs 42773014543, 42777299349, 42777819099 (package 6) | a/b at most 0.0173; Quicksilver at most 0.0243; strict at most 185 (Quicksilver full, 42777299349; 145 before) | 0.3 | 280 (220 before) |
+| core/block_entities.closed | the same, then full runs 42773014543, 42777299349, 42777819099 (package 6) | a/b at most 0.0101; Quicksilver at most 0.0264; strict at most 206 (Quicksilver Vulkan, 42773014543; 83 before); measure-full 152 | 0.3 | 310 (130 before) |
 
 Limit = max(2 x largest, largest + 0.25, 0.1) rounded up to 0.05; strict = largest x 1.5 rounded up to 10, at least 10.
+**Re-collected in package 6 (2026-11-10, the noise rule above):** `block_entities.closed` failed its strict limit of 130 in two of three full runs on unchanged code (`8bc3d7eb`: Vulkan 206; `9e270a3d`: two-phase 131 and measure-full, every module off, 152). Every strict pixel of those shots but six is in the ender chest's particle area (x 600-900, y 370-545 of 1280x720), in Quicksilver's, the measure runs' and vanilla old-GPU/Vulkan's alike; the particles land differently each run. sign_edit (185 of 220 in `9e270a3d`) is the same particles and was re-collected with it; block_entities and chest_open keep 270 and 240 (largest 180 and 156). Smallest thing these shots must catch: one head (about 700 pixels), above both new limits. One sign's text (10-27 pixels) is below the noise floor (the measure runs alone reach 152), as it already was at 130. The six other pixels are the five on the spruce sign's post (below) and one on the zombie head's left edge (568, 394), a texel one row off (6/255) on full and old-GPU, not Vulkan: it goes with the entity atlas off (diagnostic run on `diag-p6-atlas-off`), so it is the atlas's UV remap rounding at a texel edge, in every run since the atlas landed (open for Andre's decision).
+
 block_entities' samples: vanilla's own noise is the ender chest's particles (a/b 0.0012-0.0277%; the measure runs, Quicksilver
 loaded with every module off, 5-110 strict pixels, all in the ender chest's area), the same area as nearly all of
 Quicksilver's strict pixels. The rest is the 16-byte vertex's rounding (package 3, Andre's decision): five pixels, one
