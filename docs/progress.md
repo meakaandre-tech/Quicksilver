@@ -2583,7 +2583,8 @@ Fixed:
     the saved files then follow).
 Another mod writing section storage without the game's setters would bypass copy on write: fixed after the review
 (Andre, 2026-11-11): with WorldEdit, FastAsyncWorldEdit or Axiom installed, or a mixin of any mod but Quicksilver in
-`LevelChunkSection`, `PalettedContainer` or its `Data`, cow-sections is off for the session (one line naming it).
+`LevelChunkSection`, `PalettedContainer` or its `Data`, cow-sections is off for the session (one line naming it); Fabric API's own `LevelChunkSection` mixin is kept (it only redirects the air check behind the block counts in
+`setBlockState`, read from its bytecode in run 42938103283: `CowSections.KEPT`).
 Not changed: the cancellable inject on `PalettedContainer.copy` allocates a callback per copy (copies
 outside saves are rare).
 

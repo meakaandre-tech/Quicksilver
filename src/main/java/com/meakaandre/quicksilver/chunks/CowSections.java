@@ -106,6 +106,26 @@ public final class CowSections {
     };
 
     /**
+     * Other mods' mixin members that are known not to write sections' storage (mixin class, then the end of the merged
+     * member's name; anything else that mixin adds is still caught). Each needs a reason:
+     * <ul>
+     * <li>Fabric API (fabric-block-api-v1 3.1.0) LevelChunkSectionMixin.modifyAirCheck: a {@code @Redirect} of
+     * {@code BlockState.isAir()} inside {@code LevelChunkSection.setBlockState} to "is AIR, CAVE_AIR or VOID_AIR".
+     * It only changes which states count towards the section's block counts; the write itself is still vanilla's
+     * {@code states.getAndSet} call, which cow-sections unshares first. Read from the jar's bytecode in CI
+     * (run 42938103283, 2026-11-11).</li>
+     * </ul>
+     */
+    static final String[][] KEPT = {
+        {"net.fabricmc.fabric.mixin.block.LevelChunkSectionMixin", "$modifyAirCheck"},
+    };
+
+    static boolean kept(String mixin, String member) {
+        for (String[] k : KEPT) if (k[0].equals(mixin) && member.endsWith(k[1])) return true;
+        return false;
+    }
+
+    /**
      * Main thread, at start-up: every mixin merged into the guarded classes (read from the {@code @MixinMerged} marks
      * Mixin leaves on the members it adds, as logic.hopper-cache does). One from a mod other than Quicksilver could write a
      * shared container's storage without unsharing it, so then cow-sections stays off for the session (one line naming
@@ -127,7 +147,7 @@ public final class CowSections {
                         ((java.lang.reflect.AnnotatedElement) m).getAnnotation(org.spongepowered.asm.mixin.transformer.meta.MixinMerged.class);
                     if (a == null) continue;
                     all.add(a.mixin());
-                    if (a.mixin().startsWith("com.meakaandre.quicksilver.")) continue;
+                    if (a.mixin().startsWith("com.meakaandre.quicksilver.") || kept(a.mixin(), m.getName())) continue;
                     foreign.add("mixin " + a.mixin() + " (" + m.getName() + ")");
                 }
             }
