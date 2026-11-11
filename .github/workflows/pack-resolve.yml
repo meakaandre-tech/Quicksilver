@@ -1,0 +1,27 @@
+# The test pack's "pick a version" step (docs/ci-limits.md, "Pack lock"): when ci/pack-resolve.txt changes on a branch,
+# ci/pack-resolve.py resolves each mod's newest Fabric build on Modrinth and commits ci/pack-resolved.txt (sources and
+# lock lines, licences, downloads) to that branch. Copying lines from it into ci/pack-sources.txt and ci/pack-lock.txt is
+# the deliberate commit.
+name: pack-resolve
+on:
+  push:
+    branches-ignore: ["main", "ci-logs", "ci-logs-*"]
+    paths: ["ci/pack-resolve.txt", "ci/pack-resolve.py"]
+permissions:
+  contents: write
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve
+        run: python3 -I ci/pack-resolve.py ci/pack-resolved.txt | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add ci/pack-resolved.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Pack: ci/pack-resolved.txt from pack-resolve run ${GITHUB_RUN_ID}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
