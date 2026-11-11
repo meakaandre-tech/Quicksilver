@@ -92,6 +92,8 @@ public final class EntityAtlas {
     private static final Map<String, long[]> NOT_ALLOWED = new HashMap<>();
     /** Render types left out by the allow-list, by name: counted per submit (the template is cached on first sight). */
     private static final Map<RenderType, String> NOT_ALLOWED_NAMES = new IdentityHashMap<>();
+    /** Redirected submits by render type and texture, since the game started (not cleared by the bench window). */
+    private static final Map<String, long[]> REDIRECTED_BY = new HashMap<>();
     private static final Map<String, long[]> SPLITS = new java.util.TreeMap<>();
     private static long uploads, uploadBytes;
 
@@ -134,6 +136,7 @@ public final class EntityAtlas {
             outType = t.forPage(s.page);
             outUv = s;
             redirected++;
+            REDIRECTED_BY.computeIfAbsent(t.kind().name + " " + t.location(), k -> new long[1])[0]++;
             return true;
         } catch (Throwable e) {
             fail("redirect", e);
@@ -513,6 +516,9 @@ public final class EntityAtlas {
         o.addProperty("redirectedPerFrame", per(redirected, frames));
         o.add("skippedPerFrame", top(SKIPPED, frames));
         o.add("renderTypesNotAllowed", top(NOT_ALLOWED, frames));
+        JsonObject by = new JsonObject();
+        REDIRECTED_BY.forEach((k, v) -> by.addProperty(k, v[0]));
+        o.add("redirectedSinceStart", by);
         return o;
     }
 
