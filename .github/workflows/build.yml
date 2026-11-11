@@ -143,6 +143,7 @@ jobs:
             for j in $mcjars; do unzip -Z1 "$j" | grep '\.class$' ; done | sed 's/\.class$//' | sort -u | sed 's#/#.#g' | grep -E -f .github/dump-bytecode > /tmp/dumps/bytecode-classes.txt || true
             (xargs -a /tmp/dumps/bytecode-classes.txt -n 300 javap -p -s -c -constants -cp "$cp" 2>/dev/null || true) | gzip -9 > /tmp/dumps/bytecode.txt.gz
           fi
+          for j in $fabricjars; do unzip -Z1 "$j" | grep -q 'net/fabricmc/fabric/mixin/block/LevelChunkSectionMixin.class' && javap -p -v -c -cp "$j" net.fabricmc.fabric.mixin.block.LevelChunkSectionMixin >> build.log 2>&1; done
           cp build.log /tmp/ci/build.log 2>/dev/null
           sed -i "s#${GITHUB_WORKSPACE}/##g" /tmp/ci/build.log
           ls -l build/libs > /tmp/ci/jars.txt 2>&1
