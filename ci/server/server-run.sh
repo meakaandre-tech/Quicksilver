@@ -110,12 +110,12 @@ elif [ -f "ci/server/scripted-run-$SUITE.txt" ]; then
 fi
 
 # 3a. the verify run (P2-3; full mode, quicksilver runs only): the scripted run again with verify mode, every Logic
-# shortcut checked against vanilla's own answer as it is used (a difference falls back, which CI fails). Its world isn't
+# shortcut (and, P2-4, every shared section of a chunk save) checked against vanilla's own answer as it is used (a difference falls back, which CI fails). Its world isn't
 # kept: the scripted run above, without verify, is the one diffed
 if [ "${CI_MODE:-}" = full ] && [ "$RUN" = quicksilver ] && [ -f "ci/server/scripted-run-$SUITE.txt" ] && [ -f server-base.tar ]; then
   (cd "$srv" && tar xf "$root/server-base.tar" && mv base world)
   props world normal
-  serve verify 1800 -Dci.harness.run="$root/ci/server/scripted-run-$SUITE.txt" -Dquicksilver.debug.verifyLogic=true
+  serve verify 1800 -Dci.harness.run="$root/ci/server/scripted-run-$SUITE.txt" -Dquicksilver.debug.verifyLogic=true -Dquicksilver.debug.verifyChunks=true
   grep -q 'CI HARNESS RUN DONE' "$OUT/verify-server.log" || echo "verify run: did not finish"
   rm -rf "$srv/world" "$srv/quicksilver"
 fi

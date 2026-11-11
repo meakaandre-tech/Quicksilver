@@ -1,0 +1,7 @@
+# P2-4: the chunk scenes (ci/server/chunks-run.sh): scene, script (ci/server/), ticks, speed (normal | sprint), rounds
+# (each round: vanilla and Quicksilver, alternating which goes first). The kill scene is played as chunks-run.sh's
+# kill check (a complete save and a killed one per side, then the killed world loaded again).
+flyover chunks-flyover-core.txt 1200 normal 7
+save    chunks-save-core.txt    7000 sprint 7
+churn   chunks-churn-core.txt   600  sprint 3
+kill    chunks-kill-core.txt    200  sprint 2

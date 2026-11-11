@@ -51,6 +51,8 @@ GATED_SCENES = {("core", "mobs"): ("faster", 1.0), ("core", "random"): ("no-regr
                 ("siftec", "factory"): ("no-regression", 1.10)}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"
+CHUNKS_ON = "Quicksilver chunks:"
+CHUNKS_FALLBACK = "Quicksilver chunks fallback:"
 # SIFTEC's suites report only while the workflow's mode job says so (CI_SIFTEC_REPORT_ONLY, ci/siftec_status.py)
 REPORT_ONLY_SUITES = ("siftec",) if os.environ.get("CI_SIFTEC_REPORT_ONLY") == "true" else ()
 PLAIN_ROUNDS = (1, 2, 3, 4, 5, 6, 7)
@@ -107,20 +109,26 @@ def worlddiff(a, b, out):
     return load(out)
 
 
-def logic_status(log, quicksilver, where, fails):
-    """The Logic module's status line(s) in one server log: fully on in a Quicksilver run, absent in a vanilla one."""
-    st = re.findall(re.escape(LOGIC_ON) + r" (.*)", log)
+def module_status(log, quicksilver, where, fails, name, on, fallback):
+    """A module's status line(s) in one server log: fully on in a Quicksilver run, absent in a vanilla one; no fallback."""
+    st = re.findall(re.escape(on) + r" (.*)", log)
     if quicksilver:
         if not st:
-            fails.append("%s: no '%s' status line" % (where, LOGIC_ON))
+            fails.append("%s: no '%s' status line" % (where, on))
         elif any(re.search(r"=(off|fallback)|^off", x) for x in st):
-            fails.append("%s: Logic module not fully on: %s" % (where, [x for x in st if re.search(r"=(off|fallback)|^off", x)][0][:300]))
+            fails.append("%s: %s module not fully on: %s" % (where, name, [x for x in st if re.search(r"=(off|fallback)|^off", x)][0][:300]))
     elif st:
-        fails.append("%s: a Logic status line in a run without Quicksilver" % where)
-    fb = [l for l in log.splitlines() if LOGIC_FALLBACK in l]
+        fails.append("%s: a %s status line in a run without Quicksilver" % (where, name))
+    fb = [l for l in log.splitlines() if fallback in l]
     if fb:
-        fails.append("%s: %d Logic fallbacks (first: %s)" % (where, len(fb), fb[0][:300]))
+        fails.append("%s: %d %s fallbacks (first: %s)" % (where, len(fb), name, fb[0][:300]))
     return st[-1] if st else None
+
+
+def logic_status(log, quicksilver, where, fails):
+    """The Logic module's status (P2-2) and the Chunks module's (P2-4) in one server log; returns the Logic line."""
+    module_status(log, quicksilver, where, fails, "Chunks", CHUNKS_ON, CHUNKS_FALLBACK)
+    return module_status(log, quicksilver, where, fails, "Logic", LOGIC_ON, LOGIC_FALLBACK)
 
 
 def fmt(v):
@@ -328,13 +336,15 @@ def server(res, rep):
     # no identity hash in the Logic module (P2-1's rule)
     src = os.path.join(ROOT, "src", "main", "java", "com", "meakaandre", "quicksilver")
     bad = re.compile(r"identityHashCode|IdentityHashMap|getClass\(\)\.hashCode\(\)|Reference2|ReferenceOpen|Identity")
-    files = glob.glob(os.path.join(src, "logic", "**", "*.java"), recursive=True) + glob.glob(os.path.join(src, "mixin", "logic", "**", "*.java"), recursive=True)
+    files = []
+    for mod in ("logic", "chunks"):  # P2-4: the Chunks module too
+        files += glob.glob(os.path.join(src, mod, "**", "*.java"), recursive=True) + glob.glob(os.path.join(src, "mixin", mod, "**", "*.java"), recursive=True)
     if not files:
         fails.append("no Logic module sources found")
     for f in sorted(files):
         for i, l in enumerate(text(f).splitlines(), 1):
             if bad.search(l) and not l.strip().startswith(("*", "//", "/*")):
-                fails.append("identity hash in the Logic module: %s:%d: %s" % (os.path.basename(f), i, l.strip()[:120]))
+                fails.append("identity hash in the Logic or Chunks module: %s:%d: %s" % (os.path.basename(f), i, l.strip()[:120]))
 
     finish(rep, "p2.md", lines, fails, owed, summary)
     return 1 if fails else 0

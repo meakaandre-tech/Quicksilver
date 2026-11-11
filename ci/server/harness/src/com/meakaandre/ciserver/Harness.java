@@ -106,6 +106,7 @@ public final class Harness implements ModInitializer {
         result.addProperty("startupMs", startedAt - jvm);
         result.addProperty("worldLoadMs", startedAt - startingAt);
         result.addProperty("quicksilverLoaded", quicksilver());
+        signatures();
         String gen = System.getProperty("ci.harness.gen");
         String run = System.getProperty("ci.harness.run");
         try {
@@ -129,6 +130,43 @@ public final class Harness implements ModInitializer {
             result.addProperty("error", String.valueOf(e));
             write();
             server.halt(false);
+        }
+    }
+
+    /**
+     * P2-4 research (CI only): {@code -Dci.harness.signatures=pkg.Class#m1|m2,pkg.Other#m3|*record}: logs the parameter
+     * and return types of the named methods of those classes ({@code *record}: a record's component types), one
+     * {@code CI SIG} line each: the shapes a mixin targets, nothing of their code.
+     */
+    private static void signatures() {
+        String spec = System.getProperty("ci.harness.signatures");
+        if (spec == null) return;
+        for (String part : spec.split(",")) {
+            String[] cm = part.split("#", 2);
+            try {
+                Class<?> c = Class.forName(cm[0]);
+                java.util.Set<String> names = new java.util.HashSet<>(Arrays.asList(cm.length > 1 ? cm[1].split("\\|") : new String[0]));
+                if (names.contains("*record") && c.isRecord()) {
+                    StringBuilder b = new StringBuilder();
+                    for (java.lang.reflect.RecordComponent r : c.getRecordComponents()) b.append(r.getGenericType().getTypeName()).append(' ').append(r.getName()).append("; ");
+                    LOG.info("CI SIG {} record: {}", c.getSimpleName(), b);
+                }
+                for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
+                    if (!names.contains(m.getName())) continue;
+                    StringBuilder b = new StringBuilder();
+                    for (Class<?> t : m.getParameterTypes()) b.append(b.length() == 0 ? "" : ", ").append(t.getName());
+                    LOG.info("CI SIG {}.{}({}) -> {} [{}]", c.getSimpleName(), m.getName(), b, m.getReturnType().getName(),
+                        java.lang.reflect.Modifier.toString(m.getModifiers()));
+                }
+                for (java.lang.reflect.Constructor<?> k : c.getDeclaredConstructors()) {
+                    if (!names.contains("<init>")) break;
+                    StringBuilder b = new StringBuilder();
+                    for (Class<?> t : k.getParameterTypes()) b.append(b.length() == 0 ? "" : ", ").append(t.getName());
+                    LOG.info("CI SIG {}.<init>({}) [{}]", c.getSimpleName(), b, java.lang.reflect.Modifier.toString(k.getModifiers()));
+                }
+            } catch (Throwable t) {
+                LOG.info("CI SIG {}: {}", cm[0], t.toString());
+            }
         }
     }
 
@@ -337,7 +375,10 @@ public final class Harness implements ModInitializer {
                     String[] a = line.split("\\s+");
                     spawns.add(new Spawn(Integer.parseInt(a[1]), Integer.parseInt(a[2])));
                 }
-                default -> throw new IllegalArgumentException("unknown script line: " + line);
+                default -> {
+                    // P2-4: the chunk scenes' window (CiChunks)
+                    if (!CiChunks.line(line)) throw new IllegalArgumentException("unknown script line: " + line);
+                }
             }
         }
         if (Integer.getInteger("ci.harness.ticks") != null) ticks = Integer.getInteger("ci.harness.ticks");
@@ -353,6 +394,7 @@ public final class Harness implements ModInitializer {
                 }
             }
         }
+        CiChunks.prepare(server);
         result.addProperty("mode", HEAP ? "heap" : "run");
         result.addProperty("ticks", ticks);
         stage = Stage.LOADING;
@@ -362,6 +404,7 @@ public final class Harness implements ModInitializer {
     private static boolean loaded(MinecraftServer server) {
         // the network check: a client must have joined before tick 0 and stays through the run
         if (Boolean.getBoolean("ci.harness.waitPlayer") && server.getPlayerCount() == 0) return false;
+        if (!CiChunks.loaded(server)) return false;
         for (Area a : areas) {
             ServerLevel level = server.getLevel(a.dim());
             // the area itself entity-ticking with its entities loaded; the ring around it block-ticking (chunks next
@@ -470,7 +513,7 @@ public final class Harness implements ModInitializer {
     private static int commandErrors = 0;
 
     /** Runs one command and logs its result; a command that fails (throws) is counted (gated by CI). */
-    private static void command(MinecraftServer server, String cmd) {
+    static void command(MinecraftServer server, String cmd) {
         String c = cmd.startsWith("/") ? cmd.substring(1) : cmd;
         try {
             int r = server.getCommands().getDispatcher().execute(c, server.createCommandSourceStack().withSuppressedOutput());
@@ -490,6 +533,7 @@ public final class Harness implements ModInitializer {
         gameTime = server.overworld().getGameTime();
         if (stage != Stage.RUNNING) return;
         if (HEAP && tick == 0) command(server, "tick sprint " + ticks);
+        CiChunks.startTick(server, tick);
         for (At a : timed) {
             if (a.tick() != tick || (a.quicksilverOnly() && !quicksilver())) continue;
             if (a.command().startsWith("ci-train ")) {
@@ -594,6 +638,8 @@ public final class Harness implements ModInitializer {
                 tickNanos = new long[ticks];
                 tick = 0;
                 stage = Stage.RUNNING;
+                // P2-4: the run's wall-clock window, for the chunk scenes' recordings (ci/server/chunks-jfr.py)
+                result.addProperty("runStartEpochMs", System.currentTimeMillis());
                 server.tickRateManager().setFrozen(false);
                 LOG.info("CI HARNESS RUN START after {} loading and {} light ticks: {} ticks", waited, settleWaited, ticks);
             }
@@ -607,6 +653,7 @@ public final class Harness implements ModInitializer {
                 if (tick >= ticks) {
                     server.tickRateManager().setFrozen(true);
                     stage = Stage.DONE;
+                    result.addProperty("runEndEpochMs", System.currentTimeMillis());
                     long[] s = tickNanos.clone();
                     Arrays.sort(s);
                     long sum = 0;
@@ -620,6 +667,8 @@ public final class Harness implements ModInitializer {
                     result.addProperty("msptP99", round(s[Math.min(s.length - 1, (int) Math.ceil(s.length * 0.99) - 1)] / 1e6));
                     result.addProperty("msptMax", round(s[s.length - 1] / 1e6));
                     result.addProperty("ticksOver50ms", over);
+                    if (CiChunks.active()) slowTicks(tickNanos);
+                    CiChunks.result(server, result);
                     heap("heapEndMB");
                     removeSpawnPlayer(server);
                     markUnsaved(server);
@@ -898,6 +947,45 @@ public final class Harness implements ModInitializer {
             LOG.error("CI HARNESS histogram failed", e);
             result.addProperty("error", "histogram: " + e);
         }
+    }
+
+    /**
+     * P2-4, the chunk scenes: the 20 slowest ticks with their run tick (spikes: saves, loads), and every tick's time to
+     * ticks.json in the output directory.
+     */
+    private static void slowTicks(long[] nanos) {
+        Integer[] idx = new Integer[nanos.length];
+        for (int i = 0; i < idx.length; i++) idx[i] = i;
+        Arrays.sort(idx, (a, b) -> Long.compare(nanos[b], nanos[a]));
+        JsonArray slow = new JsonArray();
+        for (int i = 0; i < Math.min(20, idx.length); i++) {
+            JsonObject o = new JsonObject();
+            o.addProperty("tick", idx[i]);
+            o.addProperty("ms", round(nanos[idx[i]] / 1e6));
+            slow.add(o);
+        }
+        result.add("slowTicks", slow);
+        JsonArray all = new JsonArray();
+        for (long v : nanos) all.add(round(v / 1e6));
+        try {
+            Path dir = Path.of(System.getProperty("ci.harness.out", "."));
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("ticks.json"), all.toString(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            LOG.warn("CI HARNESS ticks.json not written", e);
+        }
+    }
+
+    /** P2-4: the game's own autosave started (harness mixin AutosaveMixin), at this run tick: logged and recorded. */
+    public static void autosave(String what) {
+        JsonArray a = result.has("autosaves") ? result.getAsJsonArray("autosaves") : new JsonArray();
+        JsonObject o = new JsonObject();
+        o.addProperty("stage", stage.toString());
+        o.addProperty("tick", tick);
+        o.addProperty("what", what);
+        a.add(o);
+        result.add("autosaves", a);
+        LOG.info("CI HARNESS AUTOSAVE {} {}", what, where());
     }
 
     // ------------------------------------------------------------------ output

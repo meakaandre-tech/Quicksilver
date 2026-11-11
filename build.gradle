@@ -19,6 +19,11 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
+// P2-4: the class tweaker (an access widener) for the Chunks module's mixins
+loom {
+    accessWidenerPath = file("src/main/resources/quicksilver.classtweaker")
+}
+
 processResources {
     def version = project.version
     inputs.property "version", version
