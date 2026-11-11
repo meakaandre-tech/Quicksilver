@@ -71,7 +71,6 @@ PHASES = [
     ("  Create kinetics", r"@pkg:com.zurrtum.create.content.kinetics."),
     ("  Create logistics (funnels, chutes, depots, crates)", r"@pkg:com.zurrtum.create.content.logistics."),
     ("  Create contraptions and trains", r"@pkg:com.zurrtum.create.content.contraptions.|com.zurrtum.create.content.trains."),
-    ("SIFTEC", r"@pkg:com.meakaandre.siftec."),
 ]
 
 FRAME = re.compile(r"^\s+([\w$.]+)\(")

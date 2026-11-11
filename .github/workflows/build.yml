@@ -25,10 +25,9 @@ jobs:
       matrix: ${{ steps.m.outputs.matrix }}
       server_suites: ${{ steps.m.outputs.server_suites }}
       logs: ${{ steps.m.outputs.logs }}
-      siftec_report_only: ${{ steps.m.outputs.siftec_report_only }}
-      siftec_commit: ${{ steps.m.outputs.siftec_commit }}
+      pack_report_only: ${{ steps.m.outputs.pack_report_only }}
       quick_vulkan: ${{ steps.m.outputs.quick_vulkan }}
-      quick_siftec: ${{ steps.m.outputs.quick_siftec }}
+      quick_pack: ${{ steps.m.outputs.quick_pack }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,8 +44,8 @@ jobs:
           case "$MESSAGE" in *"[full]"*) mode=full;; esac
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core","siftec"],"run":["vanilla-a","vanilla-b","vanilla-old","vanilla-vk","quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk"],"include":[{"suite":"core","run":"bench-plain"},{"suite":"core","run":"bench-sodium"},{"suite":"core","run":"sp-quicksilver"}]}'
-            server_suites='["core","siftec","terralith"]'
+            matrix='{"suite":["core","pack"],"run":["vanilla-a","vanilla-b","vanilla-old","vanilla-vk","quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk"],"include":[{"suite":"core","run":"bench-plain"},{"suite":"core","run":"bench-sodium"},{"suite":"core","run":"sp-quicksilver"}]}'
+            server_suites='["core","pack","terralith"]'
           else
             matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old","quicksilver-2p-old"]}'
             # package 2b: a commit with [vulkan] in its message adds the Vulkan pair (vanilla-vk, quicksilver-vk) to a
@@ -55,18 +54,19 @@ jobs:
               matrix='{"suite":["core"],"run":["vanilla-a","vanilla-b","quicksilver-old","quicksilver-2p-old","vanilla-vk","quicksilver-vk"]}'
               echo "quick_vulkan=1" >> "$GITHUB_OUTPUT";;
             esac
-            # package 5: [siftec] also adds SIFTEC's client suite (the same runs as core's in this quick run, plus
+            # package 5: [pack] also adds the test pack's client suite (the same runs as core's in this quick run, plus
             # vanilla-old: Flywheel's backend follows the GPU profile, so old-GPU runs are compared with vanilla's old-GPU
-            # run), and with it the siftec-world job, to work on Create and Flywheel without the whole full matrix
-            case "$MESSAGE" in *"[siftec]"*)
-              matrix=$(echo "$matrix" | sed 's/"suite":\["core"\]/"suite":["core","siftec"]/; s/"run":\["vanilla-a","vanilla-b",/"run":["vanilla-a","vanilla-b","vanilla-old",/')
-              echo "quick_siftec=1" >> "$GITHUB_OUTPUT";;
+            # run), and with it the pack-world job, to work on Create and Flywheel without the whole full matrix
+            # (was [siftec] until the test pack replaced SIFTEC's suite, 2026-11-12)
+            case "$MESSAGE" in *"[pack]"*)
+              matrix=$(echo "$matrix" | sed 's/"suite":\["core"\]/"suite":["core","pack"]/; s/"run":\["vanilla-a","vanilla-b",/"run":["vanilla-a","vanilla-b","vanilla-old",/')
+              echo "quick_pack=1" >> "$GITHUB_OUTPUT";;
             esac
-            # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); SIFTEC and Terralith in full mode.
-            # A commit with [siftec] in its message adds SIFTEC's server suite to a quick run (to work on it without
-            # the whole client matrix); [terralith] adds Terralith's the same way (P2-1)
+            # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); the test pack and Terralith in full
+            # mode. A commit with [pack] in its message adds the test pack's server suite to a quick run (to work on it
+            # without the whole client matrix); [terralith] adds Terralith's the same way (P2-1)
             suites='"core"'
-            case "$MESSAGE" in *"[siftec]"*) suites="$suites,\"siftec\"";; esac
+            case "$MESSAGE" in *"[pack]"*) suites="$suites,\"pack\"";; esac
             case "$MESSAGE" in *"[terralith]"*) suites="$suites,\"terralith\"";; esac
             server_suites="[$suites]"
           fi
@@ -74,11 +74,9 @@ jobs:
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "logs=ci-logs-$(echo "$GITHUB_REF_NAME" | tr '/' '-')" >> "$GITHUB_OUTPUT"
-          # SIFTEC's suites (client and server) gate like core and Terralith (false) since the pack snapshot (93e7a3e,
-          # 2026-11-01). Set to true to make them report only, failing nothing (as from 2026-10-31 until then).
-          echo "siftec_report_only=false" >> "$GITHUB_OUTPUT"
-          # the SIFTEC commit whose .github (smoke-commands.txt) goes with the pack-snapshot's SIFTEC build
-          echo "siftec_commit=$(sed -n 's/^siftec_commit=//p' ci/pack-snapshot.txt)" >> "$GITHUB_OUTPUT"
+          # the test pack's suites (client and server) gate like core and Terralith (false). Set to true to make them
+          # report only, failing nothing (ci/pack_status.py; SIFTEC's suite reported only this way 2026-10-31 to 11-01)
+          echo "pack_report_only=false" >> "$GITHUB_OUTPUT"
           echo "CI mode: $mode" >> "$GITHUB_STEP_SUMMARY"
 
   build:
@@ -221,22 +219,16 @@ jobs:
             /tmp/ci/build.log
           if-no-files-found: ignore
 
-  siftec-world:
-    # SIFTEC's server and CI world, built once per SIFTEC build and smoke-file change and shared by the SIFTEC runs
-    # (full mode, and quick runs with [siftec])
+  pack-world:
+    # the popular-mods test pack's server and CI world (ci/pack-world.sh; replaced SIFTEC's, 2026-11-12), built once per
+    # change of the pack or the script and shared by the pack runs (full mode, and quick runs with [pack])
     needs: [mode]
-    if: needs.mode.outputs.mode == 'full' || needs.mode.outputs.quick_siftec == '1'
-    continue-on-error: ${{ needs.mode.outputs.siftec_report_only == 'true' }}
+    if: needs.mode.outputs.mode == 'full' || needs.mode.outputs.quick_pack == '1'
+    continue-on-error: ${{ needs.mode.outputs.pack_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: meakaandre-tech/SIFTEC
-          ref: ${{ needs.mode.outputs.siftec_commit }}
-          path: siftec
-          sparse-checkout: .github
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -244,41 +236,39 @@ jobs:
       - name: Cache key
         id: key
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # the pack is fixed by the lock and the snapshot (no moving release to look at any more)
-          files=$(cat siftec/.github/smoke-commands.txt ci/siftec-world.sh ci/pack-fetch.sh ci/pack-sources.txt ci/pack-lock.txt ci/pack-snapshot.txt gradle.properties | sha256sum | cut -c1-16)
-          echo "key=siftec-world-$files" >> "$GITHUB_OUTPUT"
+          # the pack is fixed by the lock and the snapshot
+          files=$(cat ci/pack-world.sh ci/pack-fetch.sh ci/pack-sources.txt ci/pack-lock.txt ci/pack-snapshot.txt gradle.properties | sha256sum | cut -c1-16)
+          echo "key=pack-world-$files" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         id: cache
         with:
-          path: siftec-server
+          path: pack-server
           key: ${{ steps.key.outputs.key }}
-      - name: Build SIFTEC's server and CI world
+      - name: Build the test pack's server and CI world
         if: steps.cache.outputs.cache-hit != 'true'
         shell: bash
-        run: bash ci/siftec-world.sh
+        run: bash ci/pack-world.sh
       - name: Pack lock
         # every downloaded jar against ci/pack-lock.txt: a changed pack fails here, before any client run
         shell: bash
         # into the world job's log as well, so the comparison's report can name a changed or missing jar
         run: |
           mkdir -p /tmp/out
-          bash ci/pack-check.sh siftec-server/mods siftec complete 2>&1 | tee -a /tmp/out/siftec-world.txt
+          bash ci/pack-check.sh pack-server/mods pack complete 2>&1 | tee -a /tmp/out/pack-world.txt
           exit "${PIPESTATUS[0]}"
       - name: Pack the server
         shell: bash
-        run: tar cf siftec-server.tar siftec-server && ls -l siftec-server.tar
+        run: tar cf pack-server.tar pack-server && ls -l pack-server.tar
       - uses: actions/upload-artifact@v4
         with:
-          name: siftec-server
-          path: siftec-server.tar
+          name: pack-server
+          path: pack-server.tar
           retention-days: 3
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: siftec-world-logs
+          name: pack-world-logs
           path: /tmp/out
 
   core-world:
@@ -322,14 +312,14 @@ jobs:
           path: /tmp/out
 
   client:
-    needs: [mode, build, siftec-world, core-world]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.core-world.result == 'success' && (needs.siftec-world.result == 'success' || needs.siftec-world.result == 'skipped' || needs.mode.outputs.siftec_report_only == 'true') }}
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
+    needs: [mode, build, pack-world, core-world]
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.core-world.result == 'success' && (needs.pack-world.result == 'success' || needs.pack-world.result == 'skipped' || needs.mode.outputs.pack_report_only == 'true') }}
+    continue-on-error: ${{ matrix.suite == 'pack' && needs.mode.outputs.pack_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      # the mode job's matrix: suites core and siftec with every run (measure-*: Quicksilver loaded with every module
+      # the mode job's matrix: suites core and pack with every run (measure-*: Quicksilver loaded with every module
       # off, so its bench measures vanilla's own draw calls and terrain GPU memory in the same run, package 3's
       # at-or-under-vanilla gates), or in quick mode core with vanilla-a, vanilla-b and quicksilver-old
       matrix: ${{ fromJSON(needs.mode.outputs.matrix) }}
@@ -349,9 +339,9 @@ jobs:
           name: ci-pin-jar
           path: ci-pin
       - uses: actions/download-artifact@v4
-        if: matrix.suite == 'siftec'
+        if: matrix.suite == 'pack'
         with:
-          name: siftec-server
+          name: pack-server
       - uses: actions/download-artifact@v4
         if: matrix.suite == 'core'
         with:
@@ -367,7 +357,7 @@ jobs:
           BENCH_SCENES: "spawn flythrough water_glass nether"
         run: |
           chmod +x gradlew
-          if [ -f siftec-server.tar ]; then tar xf siftec-server.tar; fi
+          if [ -f pack-server.tar ]; then tar xf pack-server.tar; fi
           if [ -f core-server.tar ]; then tar xf core-server.tar; fi
           bash ci/client-run.sh
       - uses: actions/upload-artifact@v4
@@ -398,19 +388,19 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
-          name: siftec-world-logs
-          path: /tmp/ci/siftec-world
+          name: pack-world-logs
+          path: /tmp/ci/pack-world
       - name: Compare pictures and counts
         id: compare
         shell: bash
         run: |
           set +e
           python3 -m pip install --quiet --break-system-packages pillow numpy
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_QUICK_VULKAN="${{ needs.mode.outputs.quick_vulkan }}" CI_QUICK_SIFTEC="${{ needs.mode.outputs.quick_siftec }}" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_QUICK_VULKAN="${{ needs.mode.outputs.quick_vulkan }}" CI_QUICK_PACK="${{ needs.mode.outputs.quick_pack }}" CI_PACK_REPORT_ONLY="${{ needs.mode.outputs.pack_report_only }}" python3 ci/compare.py /tmp/res /tmp/ci/compare
           st=$?
           cat /tmp/ci/compare/report.md >> "$GITHUB_STEP_SUMMARY"
           # P2-2: the Logic module in the client runs (ci/server/compare-p2.py)
-          CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-p2.py client /tmp/res /tmp/ci/compare
+          CI_PACK_REPORT_ONLY="${{ needs.mode.outputs.pack_report_only }}" python3 -I ci/server/compare-p2.py client /tmp/res /tmp/ci/compare
           p2=$?
           cat /tmp/ci/compare/p2-client.md >> "$GITHUB_STEP_SUMMARY"
           echo "status=$(( st || p2 ))" >> "$GITHUB_OUTPUT"
@@ -439,24 +429,17 @@ jobs:
   server-base:
     # the world every scripted run of a suite starts from (vanilla, generated once per run of this workflow)
     needs: [mode, build]
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
+    continue-on-error: ${{ matrix.suite == 'pack' && needs.mode.outputs.pack_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        # every suite: core's and SIFTEC's scripted runs start from it, and every suite's heap run (P2-1); in quick
+        # every suite: core's and the test pack's scripted runs start from it, and every suite's heap run (P2-1); in quick
         # mode core only
         suite: ${{ fromJSON(needs.mode.outputs.server_suites) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        if: matrix.suite == 'siftec'
-        with:
-          repository: meakaandre-tech/SIFTEC
-          ref: ${{ needs.mode.outputs.siftec_commit }}
-          path: siftec
-          sparse-checkout: .github
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -487,27 +470,20 @@ jobs:
   server:
     needs: [mode, build, server-base]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
+    continue-on-error: ${{ matrix.suite == 'pack' && needs.mode.outputs.pack_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        # core: worldgen, GameTests, scripted-run world diff; siftec: SIFTEC's pack, its worldgen and self-tests;
-        # terralith: Terralith's worldgen. Quick mode: core only (the mode job's server_suites)
+        # core: worldgen, GameTests, scripted-run world diff; pack: the popular-mods test pack, its worldgen and a
+        # scripted run with Create's train and contraptions; terralith: Terralith's worldgen. Quick mode: core only (the mode job's server_suites)
         suite: ${{ fromJSON(needs.mode.outputs.server_suites) }}
         # three vanilla runs: what vanilla does differently between its own runs is its noise (the standing rule's
         # three samples), and Quicksilver is gated wherever all three agree
         run: [vanilla-a, vanilla-b, vanilla-c, quicksilver]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        if: matrix.suite == 'siftec'
-        with:
-          repository: meakaandre-tech/SIFTEC
-          ref: ${{ needs.mode.outputs.siftec_commit }}
-          path: siftec
-          sparse-checkout: .github
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -546,8 +522,8 @@ jobs:
     # goes; compared and gated in server-compare (ci/server/compare-p2.py)
     needs: [mode, build, server-base]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
-    # SIFTEC report-only (the mode job's siftec_report_only): a SIFTEC failure fails nothing
-    continue-on-error: ${{ matrix.suite == 'siftec' && needs.mode.outputs.siftec_report_only == 'true' }}
+    # pack report-only (the mode job's pack_report_only): a pack failure fails nothing
+    continue-on-error: ${{ matrix.suite == 'pack' && needs.mode.outputs.pack_report_only == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -556,13 +532,6 @@ jobs:
         suite: ${{ fromJSON(needs.mode.outputs.server_suites) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        if: matrix.suite == 'siftec'
-        with:
-          repository: meakaandre-tech/SIFTEC
-          ref: ${{ needs.mode.outputs.siftec_commit }}
-          path: siftec
-          sparse-checkout: .github
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -705,12 +674,12 @@ jobs:
           python3 -I ci/server/test_worlddiff.py > /tmp/sci/compare/worlddiff-selftest.txt 2>&1
           self=$?
           extra=$(echo '${{ needs.mode.outputs.server_suites }}' | python3 -c "import json,sys; print(','.join(json.load(sys.stdin)))")
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-server.py /tmp/sres /tmp/sci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_PACK_REPORT_ONLY="${{ needs.mode.outputs.pack_report_only }}" python3 -I ci/server/compare-server.py /tmp/sres /tmp/sci/compare
           cmp=$?
           cat /tmp/sci/compare/report.md >> "$GITHUB_STEP_SUMMARY"
           tail -1 /tmp/sci/compare/worlddiff-selftest.txt >> "$GITHUB_STEP_SUMMARY"
           # P2-2: the perf job (same-runner MSPT, gated) and the Logic module (ci/server/compare-p2.py)
-          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_SIFTEC_REPORT_ONLY="${{ needs.mode.outputs.siftec_report_only }}" python3 -I ci/server/compare-p2.py server /tmp/sres /tmp/sci/compare
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_SUITES="$extra" CI_PACK_REPORT_ONLY="${{ needs.mode.outputs.pack_report_only }}" python3 -I ci/server/compare-p2.py server /tmp/sres /tmp/sci/compare
           p2=$?
           cat /tmp/sci/compare/p2.md >> "$GITHUB_STEP_SUMMARY"
           # P2-4: the chunk scenes (ci/server/compare-chunks.py)

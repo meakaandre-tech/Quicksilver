@@ -1,7 +1,7 @@
 #!/bin/bash
 # usage: pack-check.sh DIR SET [complete] [REPORT]
 # Checks the jars CI downloaded into DIR against ci/pack-lock.txt (lines "<sha256>  <SET>/<jar name>"; sets: core,
-# siftec, sodium). Any jar that differs from its locked hash, or isn't in the lock, fails with "pack changed: <jar>";
+# pack, terralith, sodium). Any jar that differs from its locked hash, or isn't in the lock, fails with "pack changed: <jar>";
 # with "complete", so does a locked jar of SET that is missing from DIR. Quicksilver's own jars, CI's pin mod and the server harness (built
 # in CI) are not checked. Every jar's hash is also written to REPORT (default: stdout) for the record.
 # A jar locked as "*" is accepted at any hash (none is now: MapMod was, 2026-10-30 to 2026-11-01).

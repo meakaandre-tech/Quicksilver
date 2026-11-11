@@ -10,7 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 
 /**
- * CI only (P2-2): checks on Create contraptions in SIFTEC's scripted run, at fixed ticks in every run alike.
+ * CI only (P2-2): checks on Create contraptions in the test pack's scripted run (SIFTEC's until 2026-11-12), at fixed ticks in every run alike.
  *
  * <p>Script line {@code at T ci-contraption check NAME EXPECT X1 Y1 Z1 X2 Y2 Z2}: counts the contraption entities
  * (entity types whose id contains "contraption") touching the box one block wider than X1..Z2, and the blocks that

@@ -1,5 +1,5 @@
-# The SIFTEC suite's scripted run (as scripted-run-core.txt), with SIFTEC's pack loaded: Create's machines as moving
-# contraptions, which lean hardest on entity and block-entity logic. Compared with vanilla's run by the world diff.
+# The test pack's scripted run (as scripted-run-core.txt; SIFTEC's suite's until 2026-11-12), with the popular-mods
+# test pack loaded: Create's machines as moving contraptions, which lean hardest on entity and block-entity logic. Compared with vanilla's run by the world diff.
 area minecraft:overworld -4 -4 3 3
 
 cmd time set 1000
@@ -9,6 +9,9 @@ cmd gamerule spawn_mobs false
 # vanilla's own runs differed in hundreds of blocks with them on; random-tick behaviour gets its own tests later
 cmd gamerule random_tick_speed 0
 
+# the test pack's base world is Terralith's terrain, which can stand above y 200 here: the space above the floor is
+# cleared first (24 layers, under fill's 32768-block limit)
+cmd fill 0 200 0 31 223 31 minecraft:air
 cmd fill 0 199 0 31 199 31 minecraft:stone
 
 # a mechanical bearing turning a small frame of planks (a rotating contraption); its creative motor is placed at tick
@@ -31,8 +34,8 @@ cmd setblock 7 202 2 create:creative_motor[facing=east]
 cmd setblock 8 202 1 create:creative_motor[facing=south]
 
 # a hopper chain and a furnace, with the pack loaded (the furnace is placed at tick 1, below: with SIFTEC's pack it
-# ticks through SIFTEC's hooks while the game is frozen, so one placed in the setup started cooking at a different
-# moment in each run; P2-1)
+# ticked through SIFTEC's hooks while the game was frozen, so one placed in the setup started cooking at a different
+# moment in each run; P2-1. Kept on tick 1 with the test pack)
 cmd setblock 2 201 8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64}]}
 cmd fill 2 200 8 6 200 8 minecraft:hopper[facing=east]
 cmd setblock 7 200 8 minecraft:chest

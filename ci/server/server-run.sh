@@ -1,7 +1,7 @@
 #!/bin/bash
-# One server-suite run (phase 2, P2-0): SUITE (core | siftec | terralith) x RUN (base | vanilla-a | vanilla-b | quicksilver).
-# siftec: SIFTEC's pack (ci/server/siftec-mods.sh): worldgen (its overworld, the nether, the Sift), its self-tests and a scripted
-# run with Create's contraptions.
+# One server-suite run (phase 2, P2-0): SUITE (core | pack | terralith) x RUN (base | vanilla-a | vanilla-b | quicksilver).
+# pack: the popular-mods test pack (ci/server/pack-mods.sh; replaced SIFTEC's pack 2026-11-12): worldgen (its overworld
+# with Terralith, the nether) and a scripted run with Create's train and contraptions.
 # terralith: Terralith from Modrinth: worldgen only.
 # Every run loads the CI-only server harness (ci/server/harness, its jar in ci-server-harness/) and runs Java with
 # -Dmax.bg.threads=1, so chunk generation happens on one worker in the order the server asks for it (Andre's decision
@@ -33,7 +33,7 @@ bash ci/server/fetch-server.sh "$srv" || { echo "could not fetch the server"; ex
 cp ci-server-harness/ci-server-harness.jar "$srv/mods/" || { echo "ci-server-harness.jar missing"; exit 1; }
 mc=$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
 case "$SUITE" in
-  siftec) bash ci/server/siftec-mods.sh "$srv/mods" || { echo "could not assemble SIFTEC's pack"; exit 1; };;
+  pack) bash ci/server/pack-mods.sh "$srv/mods" || { echo "could not assemble the test pack"; exit 1; };;
   terralith)
     # Terralith and the mod it requires (Lithostitched), pinned in ci/pack-sources.txt and locked
     PACK_CHECK=partial bash ci/pack-fetch.sh terralith "$srv/mods" || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; };;
@@ -81,9 +81,8 @@ grep -q 'CI HARNESS GEN DONE' "$OUT/gen-server.log" || echo "worldgen: generatio
 keep_world "$srv/gen" "$OUT/gen/world"
 rm -rf "$srv/gen"
 
-# 2. GameTests (Fabric's headless GameTest server: runs every test, then stops). Core only: the GameTest server
-# can't load SIFTEC's pack (its registries fail on Create: New Age's recipes there), so Create is covered by the
-# SIFTEC suite's scripted run instead.
+# 2. GameTests (Fabric's headless GameTest server: runs every test, then stops). Core only: Create is covered by the
+# test pack's scripted run (the GameTest server couldn't load SIFTEC's pack, whose suite that was until 2026-11-12).
 if [ "$SUITE" = core ]; then
   props gametest peaceful
   # Fabric's GameTest module (not in Fabric API's release jar; see build.yml) for this phase only
@@ -94,7 +93,7 @@ if [ "$SUITE" = core ]; then
   rm -rf "$srv/gametest"
 fi
 
-# 3. scripted run on the suite's base world (core and siftec; ci/server/scripted-run-<suite>.txt)
+# 3. scripted run on the suite's base world (core and pack; ci/server/scripted-run-<suite>.txt)
 if [ -f "ci/server/scripted-run-$SUITE.txt" ] && [ -f server-base.tar ]; then
   (cd "$srv" && tar xf "$root/server-base.tar" && mv base world)
   props world normal
@@ -145,33 +144,4 @@ if [ -f "$heap_script" ] && [ -f server-base.tar ]; then
   rm -rf "$srv/world" "$srv/quicksilver"
 fi
 
-# 4. SIFTEC's self-tests, on a fresh world, as SIFTEC's own CI runs them (its .github/smoke-commands.txt)
-if [ "$SUITE" = siftec ]; then
-  props selftest peaceful
-  printf 'gamemode=creative\n' >> "$srv/server.properties"
-  waitfor() { # seconds pattern file
-    for i in $(seq 1 "$1"); do grep -q "$2" "$3" && return 0; sleep 1; done; echo "waited $1 s for: $2"; }
-  rm -f "$srv/in.fifo"; mkfifo "$srv/in.fifo"
-  (cd "$srv" && timeout 3600 java -Xmx3G -jar server.jar --nogui < in.fifo > "$OUT/selftest-server.log" 2>&1
-   echo "EXIT $?" >> "$OUT/selftest-server.log") &
-  exec 3> "$srv/in.fifo"
-  for i in $(seq 1 120); do grep -q -e 'Done (' -e '^EXIT' "$OUT/selftest-server.log" && break; sleep 5; done
-  if grep -q 'Done (' "$OUT/selftest-server.log"; then
-    while read -r line; do
-      case "$line" in
-        "#sleep "*) sleep "${line#\#sleep }";;
-        "#wait "*) w=${line#\#wait }; waitfor "${w%% *}" "${w#* }" "$OUT/selftest-server.log";;
-        "#"*|"") ;;
-        *) echo "$line" >&3; sleep 0.3;;
-      esac
-    done < siftec/.github/smoke-commands.txt
-    sleep 10
-    echo "stop" >&3
-    for i in $(seq 1 90); do grep -q '^EXIT' "$OUT/selftest-server.log" && break; sleep 2; done
-  else
-    echo "SIFTEC server did not start"
-  fi
-  exec 3>&-
-  grep -E 'SELFTEST .*(done|result|OK): [0-9]+ passed' "$OUT/selftest-server.log" | grep -v 'System chat' | sed 's/.*SELFTEST/SELFTEST/' | head -60
-fi
 ls -R "$OUT" | head -60

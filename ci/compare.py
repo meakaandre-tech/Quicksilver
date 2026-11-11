@@ -66,7 +66,7 @@ OCCLUSION_MODE = {"quicksilver-full": "two-phase", "quicksilver-vk": "two-phase"
 VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk")
 SUITES = None  # every suite
 # scenes allowed to opt out of the strict gate ("ciNoStrict"), each by a decision recorded in docs/ci-limits.md
-NO_STRICT_ALLOWED = set()  # siftec/map was the only one; strict-gated since package 7
+NO_STRICT_ALLOWED = set()  # siftec/map was the only one; strict-gated since package 7 (SIFTEC's suite gone 2026-11-12)
 RUNS = ["vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk", "quicksilver-full", "quicksilver-old", "quicksilver-vk",
         "quicksilver-2p-old", "measure-full", "measure-old", "measure-vk"]
 # per profile, the run that measures vanilla's own counts (Quicksilver loaded, every module off; package 3)
@@ -87,11 +87,11 @@ if QUICK:
         PAIRS["vulkan"] = ("quicksilver-vk", "vanilla-vk")
         RUNS += ["vanilla-vk", "quicksilver-vk"]
         VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-vk")
-    if os.environ.get("CI_QUICK_SIFTEC") == "1":
-        # package 5: [siftec] in the commit message adds SIFTEC's client suite, with the same runs as core's plus
+    if os.environ.get("CI_QUICK_PACK") == "1":
+        # package 5: [pack] in the commit message adds the test pack's client suite (SIFTEC's until 2026-11-12), with the same runs as core's plus
         # vanilla-old: Flywheel picks its backend from the GPU profile (old GPUs end up with a different one than GL 4.5),
         # so the old-GPU runs are compared with vanilla's old-GPU run, as in full mode, in both suites
-        SUITES = {"core", "siftec"}
+        SUITES = {"core", "pack"}
         PAIRS["old-gpu"] = ("quicksilver-old", "vanilla-old")
         PAIRS["old-gpu-2p"] = ("quicksilver-2p-old", "vanilla-old")
         RUNS += ["vanilla-old"]
@@ -389,24 +389,24 @@ def run_profile(r):
 
 
 def flywheel(res, failures, lines):
-    """Package 5: Flywheel with Quicksilver, in SIFTEC's client runs (Create Fly installed). Every run, vanilla's and
+    """Package 5: Flywheel with Quicksilver, in the test pack's client runs (Create Fly installed; SIFTEC's until 2026-11-12). Every run, vanilla's and
     Quicksilver's, logs Flywheel's own backend choice (CI's pin mod); it must be the profile's (FLW_EXPECT) and the same
     in Quicksilver's run as in vanilla's. Quicksilver's bench reports the same backend, Flywheel's three hooks on
     vanilla's classes in place (the block-entity step, light updates, the draw before the terrain) and Create Fly
     present. Create's animation clock pin must have reached Create's code, and the kinetics scene's /qsci steps must
     have run (on the server). Pictures and counts of the Create scenes are gated with every other scene."""
-    if SUITES is not None and "siftec" not in SUITES:
+    if SUITES is not None and "pack" not in SUITES:
         return
     rows = []
     for r in RUNS:
-        d = os.path.join(res, f"siftec-{r}")
+        d = os.path.join(res, f"pack-{r}")
         if not os.path.isdir(d):
             continue
         t = logs(d)
         want = FLW_EXPECT[run_profile(r)]
         # the backend each session ended up with (the last line of its log: a backend that fails falls back once)
         got = []
-        sessions = session_options(json.load(open("src/main/resources/quicksilver/scenes/siftec.json")))
+        sessions = session_options(json.load(open("src/main/resources/quicksilver/scenes/pack.json")))
         for f in sorted(glob.glob(os.path.join(d, "client-*.log"))):
             m_n = re.fullmatch(r"client-(\d+)\.log", os.path.basename(f))
             if not m_n:
@@ -414,25 +414,25 @@ def flywheel(res, failures, lines):
             b = FLW_BACKEND.findall(open(f, errors="replace").read())
             n = int(m_n.group(1))
             if not b:
-                # every SIFTEC session has Create Fly and a level, so every one logs Flywheel's backend
-                failures.append(f"siftec/{r}/client-{n}: no Flywheel backend line from CI's pin mod in this session")
+                # every pack session has Create Fly and a level, so every one logs Flywheel's backend
+                failures.append(f"pack/{r}/client-{n}: no Flywheel backend line from CI's pin mod in this session")
                 continue
             got.append(b[-1])
             forced = n <= len(sessions) and "flywheel.backend=" in sessions[n - 1]
             w = FLW_FORCED["kinetics_instancing"][run_profile(r)] if forced else want
             if b[-1] != w:
-                failures.append(f"siftec/{r}/client-{n}: Flywheel's backend ended as {b[-1]}, expected {w} on this profile"
+                failures.append(f"pack/{r}/client-{n}: Flywheel's backend ended as {b[-1]}, expected {w} on this profile"
                                 + (" (session with the backend forced)" if forced else ""))
         if not got:
-            failures.append(f"siftec/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
+            failures.append(f"pack/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
         if "Quicksilver CI pin: Create's animation clock pinned in AnimationTickHolder" not in t:
-            failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned in AnimationTickHolder' line)")
+            failures.append(f"pack/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned in AnimationTickHolder' line)")
         if want != "flywheel:off" and "Quicksilver CI pin: Create's animation clock pinned in Flywheel's frame time" not in t:
-            failures.append(f"siftec/{r}: Flywheel's frame time pin never ran though Flywheel draws on this profile")
+            failures.append(f"pack/{r}: Flywheel's frame time pin never ran though Flywheel draws on this profile")
         srv = open(os.path.join(d, "server.log"), errors="replace").read() if os.path.exists(os.path.join(d, "server.log")) else ""
         for step in QSCI_STEPS:
             if f"Quicksilver CI create: {step} done" not in srv:
-                failures.append(f"siftec/{r}: the kinetics scene's step '/qsci {step}' did not run (see server.log)")
+                failures.append(f"pack/{r}: the kinetics scene's step '/qsci {step}' did not run (see server.log)")
         bench = {}
         if r.startswith(("quicksilver", "measure")):
             for f in sorted(glob.glob(os.path.join(d, "bench", "*.json"))):
@@ -440,21 +440,21 @@ def flywheel(res, failures, lines):
                 fw = j.get("flywheel")
                 if r.startswith("quicksilver"):
                     if not fw or fw.get("createFly") in (None, "absent"):
-                        failures.append(f"siftec/{r}/{j['scene']}: the bench has no Flywheel block with Create Fly present")
+                        failures.append(f"pack/{r}/{j['scene']}: the bench has no Flywheel block with Create Fly present")
                         continue
                     w = FLW_FORCED.get(j["scene"], {}).get(run_profile(r), want)
                     if fw.get("backend") != w:
-                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {w}")
+                        failures.append(f"pack/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {w}")
                     hooks = fw.get("hooks") or {}
                     missing = [k for k in ("blockEntityStep", "lightUpdate", "beforeSolid") if not hooks.get(k)]
                     if missing:
-                        failures.append(f"siftec/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
+                        failures.append(f"pack/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
                     bench[j["scene"]] = fw
                     # Quicksilver's own hook in Flywheel (the still-camera stamp hangs on it): where Flywheel draws, the
                     # Create scenes' benches must have seen its visuals and counted the frames it drew before the terrain
-                    if w != "flywheel:off" and j["scene"] in ("kinetics", "kinetics_instancing") and not (
+                    if w != "flywheel:off" and j["scene"] in ("kinetics", "kinetics_instancing", "kinetics_flat") and not (
                             (fw.get("visuals") or 0) > 0 and (fw.get("framesDrawingBeforeTerrain") or 0) > 0):
-                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver saw no Flywheel visual drawn before the terrain"
+                        failures.append(f"pack/{r}/{j['scene']}: Quicksilver saw no Flywheel visual drawn before the terrain"
                                         f" (visuals {fw.get('visuals')}, frames {fw.get('framesDrawingBeforeTerrain')}): its hook in Flywheel did not run")
         kin = bench.get("kinetics") or {}
         rows.append(f"| {r} | {', '.join(got) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
@@ -655,18 +655,11 @@ def main():
                             failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order never read vanilla's meshing task")
                         if "Quicksilver mesher: fluid self-test:" not in t:
                             failures.append(f"{name}/{r}: the mesher's fluid self-test did not run (see client log)")
-                        # package 5 (Andre, 2026-11-04): with The Sift installed, only its own fluids go through vanilla's
-                        # fluid renderer (its mixin changes it); water and lava stay Quicksilver's, checked per section
-                        # against vanilla's compiler (the mesher check below)
-                        if name == "siftec":
-                            if "Quicksilver mesher: the fluids of the_sift go through vanilla's fluid renderer" not in t:
-                                failures.append(f"{name}/{r}: the mesher did not send The Sift's fluids (only) through vanilla's fluid renderer (see client log)")
-                            if "Quicksilver mesher: every fluid goes through vanilla's fluid renderer" in t:
-                                failures.append(f"{name}/{r}: the mesher sent every fluid through vanilla's fluid renderer (a fluid mixin whose mod it could not find)")
-                            if "Quicksilver's fluid mesher draws the_sift:" in t:
-                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher drew one of The Sift's fluids")
-                            if "Quicksilver's fluid mesher draws minecraft:water" not in t:
-                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher never drew water (see client log)")
+                        # package 5 (Andre, 2026-11-04): with The Sift installed (SIFTEC's suite, until 2026-11-12), only its
+                        # own fluids went through vanilla's fluid renderer; the test pack has no fluid mixin, so every
+                        # fluid is Quicksilver's, checked per section against vanilla's compiler (the mesher check below)
+                        if name == "pack" and "Quicksilver mesher: every fluid goes through vanilla's fluid renderer" in t:
+                            failures.append(f"{name}/{r}: the mesher sent every fluid through vanilla's fluid renderer (a fluid mixin whose mod it could not find)")
                         nwarn = len(re.findall(r"Quicksilver mesher check:", t))
                         if nwarn:
                             failures.append(f"{name}/{r}: mesher check: {nwarn} sections where Quicksilver's mesh differed from vanilla's compiler's (see client log)")
@@ -1208,12 +1201,12 @@ def main():
     single_player(res, failures, lines)
     direct_buffers(res, lines)
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import siftec_status
-    failures, siftec_soft, siftec_lines = siftec_status.split(failures, res, os.path.join(os.path.dirname(os.path.abspath(rep)), "siftec-world", "siftec-world.txt"))
-    lines[0:0] = siftec_lines
+    import pack_status
+    failures, pack_soft, pack_lines = pack_status.split(failures, res, os.path.join(os.path.dirname(os.path.abspath(rep)), "pack-world", "pack-world.txt"))
+    lines[0:0] = pack_lines
     lines.insert(0, "# Quicksilver CI comparison\n\n" + ("**FAILED**\n\n" + "\n".join(f"- {f}" for f in failures) if failures else "**passed**") + "\n")
     open(os.path.join(rep, "report.md"), "w").write("\n".join(lines) + "\n")
-    json.dump({"failures": failures, "siftecReportOnly": siftec_soft, "suites": data}, open(os.path.join(rep, "report.json"), "w"), indent=2)
+    json.dump({"failures": failures, "packReportOnly": pack_soft, "suites": data}, open(os.path.join(rep, "report.json"), "w"), indent=2)
     print("\n".join(lines))
     sys.exit(1 if failures else 0)
 

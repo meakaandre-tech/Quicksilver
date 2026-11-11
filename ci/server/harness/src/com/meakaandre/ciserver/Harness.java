@@ -225,17 +225,8 @@ public final class Harness implements ModInitializer {
         // the light engine works on its own thread: the server stops (and saves) only once it has nothing left to
         // do, so saved light doesn't depend on how far it had got
         server.tickRateManager().setFrozen(true);
-        // SIFTEC places its ore nodes and collectibles after generation, from server ticks: a chunk is queued as it
-        // loads, its cells are worked out on SIFTEC's own thread, up to 8 chunks a tick get their pieces, and a chunk
-        // that waited for its cell is tried again 10 ticks later. Generated chunks have no ticket once the first tick
-        // has passed and unload a few at a time within each tick's time budget, and a queued chunk that is no longer
-        // loaded is skipped (its pieces wait for its next load), so which pieces made it into the saved world depended
-        // on thread and tick timing. Here, with every generated chunk still loaded and before any tick, each gets its
-        // pieces from SIFTEC's own placement, in a fixed order; SIFTEC's queued tries then find them placed.
-        result.addProperty("postGenPiecesPlaced", SIFTEC.placeNow(server, genAreas));
         stage = Stage.GEN_SETTLE;
-        LOG.info("CI HARNESS GEN: generated, waiting for the light engine and post-generation placement ({})",
-            SIFTEC.present() ? "SIFTEC's queue" : "no such mod");
+        LOG.info("CI HARNESS GEN: generated, waiting for the light engine");
     }
 
     /** The chunks of the generated areas that are not loaded now (reported: they unload once the first tick has passed). */
@@ -248,92 +239,6 @@ public final class Harness implements ModInitializer {
             }
         }
         return n;
-    }
-
-    /**
-     * SIFTEC's post-generation work still to do (CI only, read by reflection; SIFTEC isn't on the harness's class path):
-     * chunks in its node placer's queue and waiting list, and node and collectible cells being worked out on its
-     * thread. A field that is gone fails the run rather than letting the save go early.
-     */
-    static final class SIFTEC {
-        private static final boolean PRESENT = FabricLoader.getInstance().isModLoaded("siftec");
-        private static java.lang.reflect.Field queue, waiting, nodeCells, collectCells;
-
-        static boolean present() {
-            return PRESENT;
-        }
-
-        /**
-         * Places SIFTEC's pieces in every chunk of the areas (rows of z then x), with its own calls: the node map's
-         * start point first (SIFTEC sets it at its first tick), then each chunk's nodes and collectible. Passes repeat
-         * until one places nothing: a cave or Nether node's height is chosen by the chunk holding its middle, and its
-         * other chunks place their pieces once it is known. Returns the chunks that placed anything.
-         */
-        static int placeNow(MinecraftServer server, List<Area> areas) {
-            if (!PRESENT) return 0;
-            try {
-                Class<?> map = Class.forName("com.meakaandre.siftec.node.NodeMap");
-                java.lang.reflect.Method settle = map.getMethod("settle", ServerLevel.class);
-                java.lang.reflect.Method nodes = Class.forName("com.meakaandre.siftec.node.NodePlacer")
-                    .getMethod("placeChunk", ServerLevel.class, int.class, int.class);
-                java.lang.reflect.Method collect = Class.forName("com.meakaandre.siftec.collect.Collectibles")
-                    .getMethod("placeChunk", ServerLevel.class, int.class, int.class);
-                settle.invoke(null, server.overworld());
-                int total = 0;
-                for (Area a : areas) {
-                    ServerLevel level = server.getLevel(a.dim());
-                    for (int pass = 1; pass <= 4; pass++) {
-                        int placed = 0;
-                        for (int cz = a.z1(); cz <= a.z2(); cz++) {
-                            for (int cx = a.x1(); cx <= a.x2(); cx++) {
-                                if (level.getChunkSource().getChunkNow(cx, cz) == null) {
-                                    throw new IllegalStateException("generated chunk " + cx + "," + cz + " of " + a.dim().identifier() + " not loaded");
-                                }
-                                boolean any = (Boolean) nodes.invoke(null, level, cx, cz);
-                                any |= (Boolean) collect.invoke(null, level, cx, cz);
-                                if (any) placed++;
-                            }
-                        }
-                        LOG.info("CI HARNESS GEN: SIFTEC pieces in {} pass {}: {} chunks", a.dim().identifier(), pass, placed);
-                        total += placed;
-                        if (placed == 0) break;
-                    }
-                }
-                return total;
-            } catch (ReflectiveOperationException | ClassCastException e) {
-                throw new IllegalStateException("SIFTEC's placement changed (" + e + "): the harness can't place its pieces", e);
-            }
-        }
-
-        static int pending() {
-            if (!PRESENT) return 0;
-            try {
-                if (queue == null) {
-                    Class<?> placer = Class.forName("com.meakaandre.siftec.node.NodePlacer");
-                    queue = field(placer, "QUEUE");
-                    waiting = field(placer, "WAITING");
-                    nodeCells = field(Class.forName("com.meakaandre.siftec.node.NodeWorker"), "PENDING");
-                    collectCells = field(Class.forName("com.meakaandre.siftec.collect.Collectibles"), "PENDING");
-                }
-                java.util.Collection<?> q = (java.util.Collection<?>) queue.get(null);
-                int n;
-                synchronized (q) {
-                    n = q.size();
-                }
-                n += ((java.util.Collection<?>) waiting.get(null)).size();
-                n += ((java.util.Collection<?>) nodeCells.get(null)).size();
-                n += ((java.util.Collection<?>) collectCells.get(null)).size();
-                return n;
-            } catch (ReflectiveOperationException | ClassCastException e) {
-                throw new IllegalStateException("SIFTEC's node placer changed (" + e + "): the harness can't tell when it is done", e);
-            }
-        }
-
-        private static java.lang.reflect.Field field(Class<?> c, String name) throws NoSuchFieldException {
-            java.lang.reflect.Field f = c.getDeclaredField(name);
-            f.setAccessible(true);
-            return f;
-        }
     }
 
     /** True once no level's light engine has had work for 20 ticks in a row (counted by the caller's ticks). */
@@ -566,33 +471,22 @@ public final class Harness implements ModInitializer {
             case GEN_SETTLE -> {
                 settleWaited++;
                 boolean light = lightSettled(server);
-                int pending;
-                try {
-                    pending = SIFTEC.pending();
-                } catch (IllegalStateException e) {
-                    result.addProperty("error", e.getMessage());
-                    LOG.error("CI HARNESS GEN: {}", e.getMessage());
-                    stage = Stage.DONE;
-                    write();
-                    server.halt(false);
-                    return;
-                }
+                // (SIFTEC's post-generation queue was waited for here too, with SIFTEC's suite, until 2026-11-12)
+                int pending = 0;
                 int unloaded = genUnloaded(server);
                 // where the harness used to stop (light quiet for 20 ticks): what was still to do then, for the record
                 if (light && !oldStopSeen) {
                     oldStopSeen = true;
                     result.addProperty("atOldStopTick", settleWaited);
-                    result.addProperty("atOldStopPostGenPending", pending);
                     result.addProperty("atOldStopGenChunksUnloaded", unloaded);
                     LOG.info("CI HARNESS GEN: light settled after {} ticks; post-generation work still pending {}, generated chunks"
                         + " not loaded {}", settleWaited, pending, unloaded);
                 }
                 donePending = pending == 0 ? donePending + 1 : 0;
                 if (settleWaited % 100 == 0) LOG.info("CI HARNESS GEN: still settling after {} ticks (post-generation pending {})", settleWaited, pending);
-                // light quiet and nothing pending for 40 ticks in a row (twice SIFTEC's 10-tick requeue)
+                // light quiet for 40 ticks in a row (twice SIFTEC's 10-tick requeue, kept since its suite went)
                 if (!(light && donePending >= 40) && settleWaited < 6000) return;
                 result.addProperty("lightSettleTicks", settleWaited);
-                result.addProperty("postGenPendingAtSave", pending);
                 result.addProperty("genChunksUnloadedAtSave", unloaded);
                 if (settleWaited >= 6000) result.addProperty("error", "light engine or post-generation placement still busy after 6000 ticks"
                     + " (pending " + pending + ", unloaded " + unloaded + ")");
@@ -623,7 +517,7 @@ public final class Harness implements ModInitializer {
             case SETTLE -> {
                 // the setup's blocks change light: tick 0 waits (still frozen) until the light engine is done, and
                 // always at least SETTLE_TICKS, so mods that tick through their own hooks even while the game is
-                // frozen (Create's kinetics, SIFTEC's machines) get the same head start in every run
+                // frozen (Create's kinetics) get the same head start in every run
                 settleWaited++;
                 boolean settled = lightSettled(server);
                 if ((!settled || settleWaited < SETTLE_TICKS) && settleWaited < 6000) return;

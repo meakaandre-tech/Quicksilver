@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * CI only (package 7). A focused text box's cursor blinks with the wall clock since the box was focused, so whichever
- * moment a screenshot catches decides whether the chat line's cursor shows (the SIFTEC hud scene has the chat open).
+ * moment a screenshot catches decides whether the chat line's cursor shows (SIFTEC's hud scene had the chat open).
  * Each frame the box counts as focused just now, so the cursor always shows, in every CI client run, vanilla and
  * Quicksilver alike.
  */

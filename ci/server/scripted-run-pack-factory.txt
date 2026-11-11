@@ -1,6 +1,6 @@
-# The SIFTEC suite's factory scene (phase 2, P2-3): Create machines as SIFTEC's factories use them, with SIFTEC's pack
-# loaded: mechanical presses over depots and millstones fed and emptied by hoppers, funnels and chutes, kinetic lines on
-# creative motors, and vanilla hoppers, furnaces and chests beside them. Same format as scripted-run-siftec.txt; played
+# The test pack's factory scene (phase 2, P2-3; SIFTEC's suite's until 2026-11-12): Create machines as a Create
+# factory uses them, with the popular-mods test pack loaded: mechanical presses over depots and millstones fed and emptied by hoppers, funnels and chutes, kinetic lines on
+# creative motors, and vanilla hoppers, furnaces and chests beside them. Same format as scripted-run-pack.txt; played
 # by the perf job for MSPT, its saved worlds compared with vanilla's. The creative motors start at tick 1 (Create ticks
 # kinetics through its own hooks while the game waits frozen before tick 0; P2-1).
 area minecraft:overworld -4 -4 3 3
@@ -10,6 +10,13 @@ cmd weather clear 100000
 cmd gamerule spawn_mobs false
 cmd gamerule random_tick_speed 0
 
+# the test pack's base world is Terralith's terrain, which can stand above y 200 here: the space round the factory
+# is cleared first (5 layers per fill, under its 32768-block limit)
+cmd fill -44 197 -44 23 201 39 minecraft:air
+cmd fill -44 202 -44 23 206 39 minecraft:air
+cmd fill -44 207 -44 23 211 39 minecraft:air
+cmd fill -44 212 -44 23 216 39 minecraft:air
+cmd fill -44 217 -44 23 221 39 minecraft:air
 cmd fill -44 199 -44 23 199 39 minecraft:stone
 
 # 4 lines of 8 mechanical presses on a shaft (axis x), each over a depot fed by a hopper from a chest of iron ingots,

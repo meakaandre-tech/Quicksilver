@@ -1,7 +1,7 @@
 #!/bin/bash
 # The server suite's perf job (phase 2, P2-2): MSPT of vanilla and Quicksilver measured on ONE runner, so the two are
 # compared in the same run on the same machine (CI's runners differ from each other by more than Quicksilver's savings).
-# SUITE (core | siftec | ...): the scenes in ci/server/perf-<SUITE>.txt (none: nothing to do), each a scripted run on
+# SUITE (core | pack | ...): the scenes in ci/server/perf-<SUITE>.txt (none: nothing to do), each a scripted run on
 # the suite's base world (server-base.tar), played sprinting (`tick sprint`) for its number of ticks, with the
 # script's qs-at lines left out (Quicksilver's bench would cost its side time vanilla's doesn't pay).
 #
@@ -29,7 +29,7 @@ rm -rf "$srv"
 bash ci/server/fetch-server.sh "$srv" || { echo "could not fetch the server"; exit 1; }
 cp ci-server-harness/ci-server-harness.jar "$srv/mods/" || { echo "ci-server-harness.jar missing"; exit 1; }
 case "$SUITE" in
-  siftec) bash ci/server/siftec-mods.sh "$srv/mods" || { echo "could not assemble SIFTEC's pack"; exit 1; };;
+  pack) bash ci/server/pack-mods.sh "$srv/mods" || { echo "could not assemble the test pack"; exit 1; };;
   terralith) PACK_CHECK=partial bash ci/pack-fetch.sh terralith "$srv/mods" || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; };;
 esac
 [ -f dist/quicksilver.jar ] || { echo "dist/quicksilver.jar missing"; exit 1; }

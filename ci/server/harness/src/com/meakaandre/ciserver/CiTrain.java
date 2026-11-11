@@ -16,11 +16,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
- * CI only (phase 2, P2-0): a Create train in SIFTEC's scripted run, set up at fixed ticks in every run alike. Create
+ * CI only (phase 2, P2-0): a Create train in the test pack's scripted run (SIFTEC's until 2026-11-12), set up at fixed ticks in every run alike. Create
  * has no commands for assembling a train or giving it a schedule, so this does those two steps by reflection (the
  * harness is compiled without Create); everything else is placed with ordinary commands.
  *
- * <p>Script lines (ci/server/scripted-run-siftec.txt): {@code at T ci-train stations AX AY AZ BX BY BZ} names the two
+ * <p>Script lines (ci/server/scripted-run-pack.txt): {@code at T ci-train stations AX AY AZ BX BY BZ} names the two
  * stations "CI A" and "CI B"; {@code at T ci-train build} puts station A in assembly mode and builds a one-bogey
  * carriage behind it (a bogey, three casings, a blaze burner and two controls facing it, so the blaze is a conductor
  * both ways), with Super Glue over it; {@code at T ci-train assemble} assembles it; {@code at T ci-train schedule} gives the train a cycling schedule A to B and back

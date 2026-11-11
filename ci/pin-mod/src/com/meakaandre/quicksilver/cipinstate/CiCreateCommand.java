@@ -19,7 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CI only (package 5): the two steps of the SIFTEC kinetics scene that Create has no command for, done by reflection
+ * CI only (package 5): the two steps of the kinetics scene (the test pack's; SIFTEC's suite's until 2026-11-12) that Create has no command for, done by reflection
  * (the pin mod is compiled without Create), in every client run alike. Never registered without Create.
  * <ul>
  * <li>{@code /qsci belt X1 Y1 Z1 X2 Y2 Z2}: a belt between two shafts already placed there (Create's belt connector).</li>

@@ -7,11 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CI only (package 5): Create's animation clock held still in the SIFTEC scenes that show Create machines (the factory
- * row and the kinetics scene), in every client run, vanilla and Quicksilver alike. Create turns shafts, cogs, belts,
+ * CI only (package 5): Create's animation clock held still in the scenes that show Create machines (the kinetics
+ * platform: kinetics, kinetics_instancing and kinetics_flat of the test pack, SIFTEC's suite's until 2026-11-12, when
+ * SIFTEC's factory row went with it), in every client run, vanilla and Quicksilver alike. Create turns shafts, cogs, belts,
  * fans and mixers by its own animation clock (on the CPU, for vanilla's block-entity renderers) and by Flywheel's frame
  * time (on the GPU, for Flywheel's instances); both start from when the client joined, so a shot taken a few ticks
- * later showed a striped part in another phase in about one run in four (315 pixels in the factory). While the player
+ * later showed a striped part in another phase in about one run in four (315 pixels in SIFTEC's factory). While the player
  * is in one of these areas both clocks read {@link #TICKS} ticks plus {@link #PARTIAL}, so every run draws the same
  * phase. Outside them nothing changes. Also logs Flywheel's backend (its own choice), in every run.
  */
@@ -30,10 +31,9 @@ public final class CreatePins {
     private CreatePins() {
     }
 
-    /** Create pin areas: the SIFTEC factory row (scenes factory, factory_flat) and the kinetics scene. */
+    /** The Create pin area: the kinetics platform (the test pack's kinetics scenes). */
     static boolean area(Level level, double x, double y, double z) {
         if (level == null || level.dimension() != Level.OVERWORLD) return false;
-        if (x >= 1170 && x <= 1300 && z >= 950 && z <= 1050) return true;
         return x >= 2136 && x <= 2186 && z >= -2020 && z <= -1976 && y >= 225 && y <= 265;
     }
 

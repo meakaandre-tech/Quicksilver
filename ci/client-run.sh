@@ -1,11 +1,11 @@
 #!/bin/bash
-# One CI client run: SUITE (core | siftec) x RUN (vanilla-a | vanilla-b | vanilla-old | vanilla-vk | quicksilver-full |
+# One CI client run: SUITE (core | pack) x RUN (vanilla-a | vanilla-b | vanilla-old | vanilla-vk | quicksilver-full |
 # quicksilver-old | quicksilver-vk | quicksilver-2p-old | measure-full | measure-old | measure-vk). measure runs load Quicksilver with every module
 # off (quicksilver.ci.measureOnly): vanilla draws everything and Quicksilver's bench measures it, in the same profile as the
 # Quicksilver run of the same name (package 3).
 #
-# Starts the suite's server (core: a plain Fabric server with Fabric API, seed 12345, fresh world; siftec: SIFTEC's
-# server and CI world from the siftec-world job), then one dev client per render distance the suite's scenes use,
+# Starts the suite's server (core: the core world from the core-world job; pack: the popular-mods test pack's server
+# and CI world from the pack-world job), then one dev client per render distance the suite's scenes use,
 # drives the scenes (ci/drive.py), and leaves everything in $OUT. Quicksilver runs put the built jar in the client's and
 # the server's mods; vanilla runs have no Quicksilver anywhere (the dev classpath's own copy is emptied out first).
 # old runs hide multi-draw indirect and buffer storage and force GL down to vanilla's minimum (3.3); the Quicksilver old
@@ -64,8 +64,8 @@ elif [ $qs = 1 ]; then
 fi
 
 # ---- server
-if [ "$SUITE" = siftec ]; then
-  cp -r siftec-server server
+if [ "$SUITE" = pack ]; then
+  cp -r pack-server server
 elif [ -d core-server ]; then
   # the core world, generated once per CI run by ci/core-world.sh, so every run loads the same chunks
   cp -r core-server server
@@ -104,10 +104,10 @@ print("measure run: contains_renderer taken out of the jar's fabric.mod.json (In
 PY
 fi
 # the pack lock (ci/pack-lock.txt): this run's server jars, as checked in the world jobs (the hashes go to the logs)
-if [ "$SUITE" = siftec ]; then pset=siftec; else pset=core; fi
+if [ "$SUITE" = pack ]; then pset=pack; else pset=core; fi
 bash ci/pack-check.sh server/mods $pset complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
 cd server
-# SIFTEC's own settings, plus a view distance that covers the 12-chunk fly-through and no console echo in chat
+# the CI world's settings, plus a view distance that covers the 12-chunk fly-through and no console echo in chat
 printf 'level-seed=12345\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
 ls -l mods
 rm -f in.fifo; mkfifo in.fifo
@@ -183,11 +183,16 @@ for g in $groups; do
   # selected tab) was caught in a different phase in every run; at speed 0 it is still drawn, but holds still
   # menuBackgroundBlurriness 0 (package 7): the menu blur behind screens such as Create's Ponder index came out
   # differently on Vulkan than on OpenGL (433,000 pixels apart), which left the strict check blind on 63% of that screen
-  # chatHeightFocused 0.25 (package 7): the open chat shows its last 6 lines only, so the SIFTEC hud scene's chat shows
+  # chatHeightFocused 0.25 (package 7): the open chat shows its last 6 lines only, so a hud scene's chat shows
   # its own lines and not the bench messages earlier scenes leave in Quicksilver runs
   # glDebugVerbosity 1 (the game's default, set explicitly): the GPU's high-severity debug messages, errors among them,
   # go to the log in every run alike; ci/compare.py compares their counts between Quicksilver and vanilla
-  printf 'pauseOnLostFocus:false\nglDebugVerbosity:1\nonboardAccessibility:false\ntutorialStep:none\nnarrator:0\nrenderDistance:%s\nguiScale:2\nmaxFps:30\nsoundCategory_master:0.0\nrenderClouds:"false"\nglintSpeed:0.0\nmenuBackgroundBlurriness:0\nchatHeightFocused:0.25\nkey_key.use:22\n' "$rd" > run/options.txt
+  # the test pack (2026-11-12): Continuity's two built-in packs (Default Connected Textures, Glass Pane Culling Fix) on
+  # in every pack session, vanilla's runs and Quicksilver's alike (Continuity ships them off); core's options.txt has no
+  # resourcePacks line, as before
+  : > run/options.txt
+  [ "$SUITE" = pack ] && printf 'resourcePacks:["vanilla","fabric","continuity:default","continuity:glass_pane_culling_fix"]\n' > run/options.txt
+  printf 'pauseOnLostFocus:false\nglDebugVerbosity:1\nonboardAccessibility:false\ntutorialStep:none\nnarrator:0\nrenderDistance:%s\nguiScale:2\nmaxFps:30\nsoundCategory_master:0.0\nrenderClouds:"false"\nglintSpeed:0.0\nmenuBackgroundBlurriness:0\nchatHeightFocused:0.25\nkey_key.use:22\n' "$rd" >> run/options.txt
   # package 4: "quicksilverConfig" entries (quicksilver.<key>=<value>) go to Quicksilver's config file, the rest to options.txt
   # package 5: "flywheelConfig" entries (flywheel.<key>=<value>) go to Flywheel's client config (Create Fly's
   # run/config/flywheel-client.json), e.g. its backend forced to instancing; the file is removed for every other session
@@ -206,8 +211,8 @@ for g in $groups; do
   : > "$OUT/joined-$n.txt"
   before=$(grep -c 'joined the game' server/server.log)
   # --username (package 7): the dev launcher otherwise names the player Player<random digits>, and the offline UUID
-  # made from the name picks the default skin, so the first-person arm and SIFTEC's company name ("<player>'s
-  # Company" on the HUB and MAM screens) differed between runs; one fixed name in every run
+  # made from the name picks the default skin, so the first-person arm (and SIFTEC's company name, while SIFTEC's suite
+  # ran) differed between runs; one fixed name in every run
   (env -u CI JAVA_TOOL_OPTIONS="${client_jvm# }" timeout 2400 ./gradlew runClient --no-daemon -Dorg.gradle.console=plain -x compileJava -x processResources -x classes \
      --args="--quickPlayMultiplayer localhost --width 1280 --height 720 --username QuicksilverCI $extra_args" > "$OUT/client-gradle-$n.log" 2>&1; echo "EXIT $?" >> "$OUT/client-gradle-$n.log") &
   for i in $(seq 1 150); do
