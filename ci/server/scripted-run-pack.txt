@@ -9,9 +9,7 @@ cmd gamerule spawn_mobs false
 # vanilla's own runs differed in hundreds of blocks with them on; random-tick behaviour gets its own tests later
 cmd gamerule random_tick_speed 0
 
-# the test pack's base world is Terralith's terrain, which can stand above y 200 here: the space above the floor is
-# cleared first (24 layers, under fill's 32768-block limit)
-cmd fill 0 200 0 31 223 31 minecraft:air
+# (the test pack's base world, Terralith's terrain, is below y 199 here: nothing to clear, run 43106805198)
 cmd fill 0 199 0 31 199 31 minecraft:stone
 
 # a mechanical bearing turning a small frame of planks (a rotating contraption); its creative motor is placed at tick

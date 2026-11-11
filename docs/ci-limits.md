@@ -5,7 +5,8 @@ package 0 merges; from then on a limit is never raised and a baseline only goes 
 
 ## Profiles
 
-Every scene runs in each suite (core: plain world, Fabric API and Quicksilver only; SIFTEC: SIFTEC's pack and server)
+Every scene runs in each suite (core: plain world, Fabric API and Quicksilver only; pack: the popular-mods test pack
+and its server, which replaced SIFTEC's suite on 2026-11-12; the SIFTEC rows below are its history)
 as: vanilla twice (`vanilla-a`, `vanilla-b`), vanilla old-GPU, vanilla Vulkan, and Quicksilver in the same three GPU
 profiles. **full**: Mesa llvmpipe OpenGL 4.5, every extension. **old-GPU**: multi-draw indirect and buffer storage
 hidden, GL forced to 3.3 (vanilla's minimum); the Quicksilver run also sets `quicksilver.debug.forceIntelMdiIssue`, which
@@ -20,7 +21,7 @@ minutes). Quicksilver's old-GPU run is compared with vanilla-a (vanilla's GL 3.3
 than vanilla a and b: on run 40233004611, 0 to 82 pixels over 8/255 per shot against 0 to 1,295 for a/b), and the
 strict check counts the pixels where vanilla a and b agree. Every limit and baseline is the full mode's. Quick mode
 leaves out the measure runs (so the same-run draw-call gate, the terrain GPU memory gate and the measure runs'
-pictures), the full and Vulkan profiles and the SIFTEC suite; the report says so at the top. **Full mode** (every
+pictures), the full and Vulkan profiles and the test pack's suite (`[pack]` adds it); the report says so at the top. **Full mode** (every
 suite and run, every gate) runs on main, on a commit with `[full]` in its message (every pre-merge check) and on a
 manual run (workflow_dispatch). A package merges only on a green full run. Each branch publishes its logs to its
 own `ci-logs-<branch>` branch (`/` becomes `-`; main's are on `ci-logs-main`; the old `ci-logs` branch is no
@@ -73,42 +74,61 @@ the map a strict gate (see "GUI scenes, the block outline and Ponder" below).
 
 ## Pack lock (`ci/pack-lock.txt`, `ci/pack-check.sh`; Andre, 2026-10-30)
 
-Every jar CI downloads is listed with its sha256 (`<sha256>  <set>/<jar>`; sets `core`: Fabric API, `siftec`: SIFTEC's
-server mods, i.e. SIFTEC, its self-test, MapMod, Create Fly, Create: New Age, Create Diesel Generators, Traveler's
-Backpack, Fabric API and the pack mods from SIFTEC's `.github/smoke-pack-mods`, `sodium`: the bench-sodium run).
-`ci/pack-check.sh` runs in the core and SIFTEC world jobs (before any client run), on each client run's server folder,
-on the bench-sodium run's Sodium and in the server scripts; a jar that differs or isn't listed fails the run with
-"pack changed: <jar>" (and a listed jar missing from a complete set). Each client run writes the hashes it saw to
-`pack-sha256.txt` in its logs. Both world caches are keyed on the lock.
+Every jar CI downloads is listed with its sha256 (`<sha256>  <set>/<jar>`; sets `core`: Fabric API, `pack`: the
+popular-mods test pack, `terralith`: the server suite's Terralith, `sodium`: the bench-sodium run). `ci/pack-check.sh`
+runs in the core and pack world jobs (before any client run), on each client run's server folder, on the bench-sodium
+run's Sodium and in the server scripts; a jar that differs or isn't listed fails the run with "pack changed: <jar>"
+(and a listed jar missing from a complete set). Each client run writes the hashes it saw to `pack-sha256.txt` in its
+logs. Both world caches are keyed on the lock.
 
-Why: SIFTEC's jars come from `latest`-style release tags that are rebuilt on every build. MapMod's changed between
-main's run 40827558273 and package 4c's full runs (a round minimap, about 97 more GUI draws per frame in vanilla's runs
-as much as Quicksilver's, and a noisier map scene), and the gates failed with no change in Quicksilver.
+Why (2026-10-30): SIFTEC's jars came from `latest`-style release tags rebuilt on every build; MapMod's changed between
+two runs and the gates failed with no change in Quicksilver.
 
-**Where the jars come from (Andre, 2026-11-01): `ci/pack-sources.txt`, fetched by `ci/pack-fetch.sh`.** Andre's own
-builds (SIFTEC, its self-test mod, MapMod, Create Fly, Create: New Age, Create Diesel Generators, CreateGunMod,
-NukaTeamGunLib) come only from this repo's `pack-snapshot` release: exact copies, so their daily builds can't change a
-run. `ci/pack-snapshot.txt` records each copy's hash and origin (repo, tag, the tag's commit) and the SIFTEC commit whose
-`.github/smoke-commands.txt` CI checks out with it. Third-party jars (Farmer's Delight, GeckoLib, The Sift, Traveler's
-Backpack, Forge Config API Port, Terralith, Lithostitched, Sodium) come from Modrinth at pinned versions; Fabric API at
-gradle.properties' version. Every one is in the lock, MapMod included again (the first snapshot, 2026-11-01: the set
-whose SIFTEC starts with MapMod's latest, run 41196986066).
+**The test pack (Andre, 2026-11-12; replaces SIFTEC's pack, scrapped that day).** Picked for being widely used on
+Fabric 26.3 and for exercising Quicksilver: Create Fly with its bundled Flywheel (Andre's build, from this repo's
+`pack-snapshot` release, since Create has no 26.3 release), JEI (with MezzConfig), Xaero's Minimap, Untitled Duck Mod
+(GeckoLib entities; with Architectury) and GeckoLib, Terralith (with Lithostitched), Continuity, Mod Menu (with Text
+Placeholder API), Jade, Farmer's Delight Refabricated and Traveler's Backpack (with Forge Config API Port). EMI had no
+26.3 build. Versions, licences and download counts at the time: `ci/pack-resolved.txt`.
 
-**MapMod, while it is being finished (Andre, 2026-10-30):** the map and hud scenes are skipped (`skip` in
-`scenes/siftec.json`); factory_flat and hologram, where its minimap shows, leave the minimap's screen area out of the
-strict check (`ciStrictMask`, 1056-1280 x 0-240) and gate draw calls against vanilla in the same run only
-(`ciGatedCounts` without draw calls). Its compass strip shows in most SIFTEC scenes and stays fully checked. When MapMod
-is finished: the map and hud scenes come back with their numbers re-collected, and the strict check covers the minimap
-again.
+| mod | version | licence | Modrinth downloads (2026-11-12) |
+|---|---|---|---|
+| Create Fly (Flywheel bundled) | pack-snapshot copy of pack-26.3-latest (`d86a1fb`) | MIT | - |
+| JEI | 31.14.0.72 | MIT | 85.4M |
+| MezzConfig | 0.7.1 (beta: no release build for 26.3) | MIT | 3.0M |
+| Xaero's Minimap | fabric-26.3-26.6.2 | All Rights Reserved (downloaded from Modrinth in CI, never re-hosted) | 120.3M |
+| Untitled Duck Mod | 1.8.0+fabric | MIT | 2.1M |
+| Architectury API | 22.0.5+fabric | LGPL-3.0 | 108.3M |
+| GeckoLib | 5.5.7 | MIT | 77.0M |
+| Terralith | 2.6.5+26.3 | Stardust Labs licence | 24.8M |
+| Lithostitched | 2.0.6-fabric-26.3 | MIT | 25.6M |
+| Continuity | 3.0.1+26.3 | LGPL-3.0 | 79.8M |
+| Mod Menu | 21.0.0 | MIT | 160.4M |
+| Text Placeholder API | 3.2.0+26.3 | LGPL-3.0 | 74.9M |
+| Jade | 26.3.5+fabric | CC-BY-NC-SA-4.0 | 73.8M |
+| Farmer's Delight Refabricated | 26.3-3.6.30 | MIT | 17.0M |
+| Traveler's Backpack | 26.3-11.4.3 | LGPL-3.0 | 21.8M |
+| Forge Config API Port | 26.3.1 | MPL-2.0 | 71.4M |
 
-**Updating the pack** (the deliberate step): run the `update-pack-snapshot` workflow (Actions, manual, on a branch). It
-runs `ci/update-pack-snapshot.sh`: downloads the current builds of Andre's jars, copies them into `pack-snapshot`,
-reads them back, and commits the new hashes (`ci/pack-lock.txt`) and origins (`ci/pack-snapshot.txt`) to that branch.
-Its `expect` input copies only the set already recorded and changes nothing. Then re-collect the numbers the changed jars
-affect, as below. A third-party jar is updated by hand: its pinned source in `ci/pack-sources.txt` and its hash.
+**Where the jars come from: `ci/pack-sources.txt`, fetched by `ci/pack-fetch.sh`.** Andre's own builds (now Create Fly
+only) come only from this repo's `pack-snapshot` release: exact copies, so their daily builds can't change a run.
+`ci/pack-snapshot.txt` records each copy's hash and origin (repo, tag, the tag's commit). SIFTEC's other jars stay in
+the release only for main's frozen SIFTEC suite until the test pack merges; CI on the test pack never reads them.
+Third-party jars come from Modrinth at pinned file URLs; Fabric API at gradle.properties' version.
 
-Updating the lock is a deliberate commit: it names the changed jars and re-collects the numbers they affect (baselines
-and limits, by the rules above, from at least 3 clean runs on the new jars, with vanilla's numbers as the reason).
+**Updating the pack** (the deliberate step): Create Fly by the `update-pack-snapshot` workflow (Actions, manual, on a
+branch: `ci/update-pack-snapshot.sh` copies the current build into `pack-snapshot`, reads it back and commits the new
+hash and origin). A third-party mod by editing `ci/pack-resolve.txt` on a branch: the `pack-resolve` workflow
+(`ci/pack-resolve.py`) commits `ci/pack-resolved.txt` with each mod's newest Fabric 26.3 build (release channel first),
+its pinned URL and sha256, licence, downloads and required dependencies; copying lines from it into
+`ci/pack-sources.txt` and `ci/pack-lock.txt` is the deliberate commit. Either way, re-collect the numbers the changed
+jars affect (baselines and limits, by the rules above, from at least 3 clean runs on the new jars, with vanilla's
+numbers as the reason).
+
+**SIFTEC's pack (2026-10-30 to 2026-11-12, history):** SIFTEC, its self-test, MapMod, Create Fly, Create: New Age,
+Create Diesel Generators, CreateGunMod, NukaTeamGunLib from `pack-snapshot`; Farmer's Delight, GeckoLib, The Sift,
+Traveler's Backpack and Forge Config API Port from Modrinth. While MapMod was being finished its map and hud scenes were
+skipped and factory_flat and hologram masked its minimap (`ciStrictMask` 1056-1280 x 0-240).
 
 ## Package 4c: like-for-like timing (Andre, 2026-10-30 and 31)
 

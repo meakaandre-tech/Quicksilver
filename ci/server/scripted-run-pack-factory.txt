@@ -10,13 +10,7 @@ cmd weather clear 100000
 cmd gamerule spawn_mobs false
 cmd gamerule random_tick_speed 0
 
-# the test pack's base world is Terralith's terrain, which can stand above y 200 here: the space round the factory
-# is cleared first (5 layers per fill, under its 32768-block limit)
-cmd fill -44 197 -44 23 201 39 minecraft:air
-cmd fill -44 202 -44 23 206 39 minecraft:air
-cmd fill -44 207 -44 23 211 39 minecraft:air
-cmd fill -44 212 -44 23 216 39 minecraft:air
-cmd fill -44 217 -44 23 221 39 minecraft:air
+# (the test pack's base world, Terralith's terrain, is below y 197 here: nothing to clear, run 43106805198)
 cmd fill -44 199 -44 23 199 39 minecraft:stone
 
 # 4 lines of 8 mechanical presses on a shaft (axis x), each over a depot fed by a hopper from a chest of iron ingots,

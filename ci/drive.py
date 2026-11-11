@@ -151,7 +151,12 @@ def main():
         if screen:
             # park the mouse where no screen draws a tooltip, the same in every run
             xdo("mousemove", "1", "1")
-            time.sleep(5)
+            time.sleep(2)
+            # and again (the test pack's jei scene, 2026-11-12): the game re-centres the cursor when a screen takes a
+            # moment to open, so a first move can land before it; the inventory's player model follows the mouse and the
+            # slot under it lights up
+            xdo("mousemove", "1", "1")
+            time.sleep(3)
         # keys a scene needs pressed after its setup (package 3: the Build Gun's next-tab key, which picks a building
         # so its hologram shows); the same in every run
         for k in sc.get("ciKeys", []):

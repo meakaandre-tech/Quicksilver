@@ -187,11 +187,12 @@ for g in $groups; do
   # its own lines and not the bench messages earlier scenes leave in Quicksilver runs
   # glDebugVerbosity 1 (the game's default, set explicitly): the GPU's high-severity debug messages, errors among them,
   # go to the log in every run alike; ci/compare.py compares their counts between Quicksilver and vanilla
-  # the test pack (2026-11-12): Continuity's two built-in packs (Default Connected Textures, Glass Pane Culling Fix) on
-  # in every pack session, vanilla's runs and Quicksilver's alike (Continuity ships them off); core's options.txt has no
-  # resourcePacks line, as before
+  # the test pack (2026-11-12): Continuity's Default Connected Textures pack on in every pack session, vanilla's runs
+  # and Quicksilver's alike (Continuity ships it off); core's options.txt has no resourcePacks line, as before. Not its
+  # Glass Pane Culling Fix pack: it replaces vanilla's glass pane post model, and with a vanilla model replaced
+  # Quicksilver's visibility module defers to vanilla (run 43106805198), so the scenes would no longer test it
   : > run/options.txt
-  [ "$SUITE" = pack ] && printf 'resourcePacks:["vanilla","fabric","continuity:default","continuity:glass_pane_culling_fix"]\n' > run/options.txt
+  [ "$SUITE" = pack ] && printf 'resourcePacks:["vanilla","fabric","continuity:default"]\n' > run/options.txt
   printf 'pauseOnLostFocus:false\nglDebugVerbosity:1\nonboardAccessibility:false\ntutorialStep:none\nnarrator:0\nrenderDistance:%s\nguiScale:2\nmaxFps:30\nsoundCategory_master:0.0\nrenderClouds:"false"\nglintSpeed:0.0\nmenuBackgroundBlurriness:0\nchatHeightFocused:0.25\nkey_key.use:22\n' "$rd" >> run/options.txt
   # package 4: "quicksilverConfig" entries (quicksilver.<key>=<value>) go to Quicksilver's config file, the rest to options.txt
   # package 5: "flywheelConfig" entries (flywheel.<key>=<value>) go to Flywheel's client config (Create Fly's
