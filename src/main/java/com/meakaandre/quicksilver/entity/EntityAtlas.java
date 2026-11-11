@@ -65,12 +65,12 @@ public final class EntityAtlas {
      * Vanilla's entity and block-entity render types that sample one plain texture through the model's UVs and do not
      * blend (plus entity_eyes, whose additive blend gives the same result in any order). Merging textures into one draw
      * interleaves their submits; a blended type would then blend in a different order than vanilla's per-texture groups,
-     * so the translucent ones stay as they are. Heads (skulls, render type entity_cutout_no_cull_z_offset) stay out
+     * so the translucent ones stay as they are. Heads (skulls, render type entity_cutout_z_offset) stay out
      * (Andre, 2026-11-11): the remapped UV put one edge pixel of the zombie head a texel row off on GL.
      */
     static final Set<String> ALLOWED = Set.of(
-        "entity_solid", "entity_solid_z_offset_forward", "entity_cutout", "entity_cutout_cull", "entity_cutout_z_offset",
-        "entity_cutout_no_cull", "entity_smooth_cutout", "entity_no_outline", "armor_cutout_no_cull", "entity_eyes");
+        "entity_solid", "entity_solid_z_offset_forward", "entity_cutout", "entity_cutout_cull", "entity_cutout_no_cull",
+        "entity_cutout_no_cull_z_offset", "entity_smooth_cutout", "entity_no_outline", "armor_cutout_no_cull", "entity_eyes");
 
     private static State state = State.STARTING;
     private static String reason = "not started";
@@ -92,8 +92,6 @@ public final class EntityAtlas {
     private static final Map<String, long[]> NOT_ALLOWED = new HashMap<>();
     /** Render types left out by the allow-list, by name: counted per submit (the template is cached on first sight). */
     private static final Map<RenderType, String> NOT_ALLOWED_NAMES = new IdentityHashMap<>();
-    /** Redirected submits by render type and texture, since the game started (not cleared by the bench window). */
-    private static final Map<String, long[]> REDIRECTED_BY = new HashMap<>();
     private static final Map<String, long[]> SPLITS = new java.util.TreeMap<>();
     private static long uploads, uploadBytes;
 
@@ -136,7 +134,6 @@ public final class EntityAtlas {
             outType = t.forPage(s.page);
             outUv = s;
             redirected++;
-            REDIRECTED_BY.computeIfAbsent(t.kind().name + " " + t.location(), k -> new long[1])[0]++;
             return true;
         } catch (Throwable e) {
             fail("redirect", e);
@@ -516,9 +513,6 @@ public final class EntityAtlas {
         o.addProperty("redirectedPerFrame", per(redirected, frames));
         o.add("skippedPerFrame", top(SKIPPED, frames));
         o.add("renderTypesNotAllowed", top(NOT_ALLOWED, frames));
-        JsonObject by = new JsonObject();
-        REDIRECTED_BY.forEach((k, v) -> by.addProperty(k, v[0]));
-        o.add("redirectedSinceStart", by);
         return o;
     }
 

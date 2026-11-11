@@ -3294,7 +3294,7 @@ their textures are shared already.
 `entity/EntityAtlas`, `mixin/entity/`: model submits with a vanilla entity render type and one plain nearest texture
 go to the same render type bound to a shared 512x512 page, with the texture's slot as the model's `UvMapping` (the
 path vanilla's sheets take). Pages fill lazily; a one-texel ring repeats the edge (clamp) or the opposite edge
-(repeat). Only non-blended types are allowed (entity_solid, the cutout family but entity_cutout_no_cull_z_offset,
+(repeat). Only non-blended types are allowed (entity_solid, the cutout family but entity_cutout_z_offset,
 armor_cutout_no_cull, entity_eyes): merging translucent draws would change their blend order. Anything else, GeckoLib,
 BlockDisplay, item frames, signs, banners, heads (since 2026-11-11, below) and Flywheel's machines included, draws as
 before. Found on the way: `getDeclaredFields` returns copies, so
@@ -3353,11 +3353,13 @@ vanilla's far shot).
   sign_edit were re-collected by the noise rule (310 and 280; `docs/ci-limits.md`). No start hang in these three runs.
 - **Worked around (found 2026-11-10, 2026-11-11):** one pixel on the zombie head's edge differed from vanilla (one texel
   row off, 6/255, full and old-GPU, not Vulkan) and went with the entity atlas off: the atlas's UV remap rounding at a
-  texel edge. Andre chose to leave heads out of the atlas: entity_cutout_no_cull_z_offset (vanilla's skull render type)
-  is off the allow-list, so heads (placed, worn and held) draw as in vanilla and lose their merge. The rounding itself
-stays for every other atlas texture; no other check shows it, but a one-texel edge difference elsewhere would sit
-inside the scenes' strict limits. The bench's renderTypesNotAllowed now counts per submit (it missed types first seen
-before the bench window).
+  texel edge. Andre chose to leave heads out of the atlas: entity_cutout_z_offset, the skull render type, is off the
+  allow-list (in CI's scenes only heads draw with it: zombie, creeper, skeleton, wither skeleton and piglin, from a
+  bench listing of the atlas's redirects in quick run 42945865508), so heads draw as in vanilla and lose their merge.
+  A first try left out entity_cutout_no_cull_z_offset, which nothing in CI draws with, and changed nothing. The
+  rounding itself stays for every other atlas texture; no other check shows it, but a one-texel edge difference
+  elsewhere would sit inside the scenes' strict limits. The bench's renderTypesNotAllowed now counts per submit (it
+  missed types first seen before the bench window).
 - **Decided by Andre (2026-11-11):** quick mode gates direct buffers at the ceiling only (committed baseline x 1.10 +
   8 MB; full runs gate against the same-run measure run); block_entities.closed keeps 310 (collected with Quicksilver's
   particle samples); heap after GC within -3.4 to +3.2 MB of main's run is accepted as run-to-run noise.
