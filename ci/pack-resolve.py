@@ -70,6 +70,24 @@ def main():
                 except Exception as e:  # noqa
                     deps.append(str(d.get("project_id")))
         lic = (p.get("license") or {}).get("id")
+        # for writing scenes: the mod ids in the jar, and the entity and block names its English lang file defines
+        try:
+            import io, zipfile
+            z = zipfile.ZipFile(io.BytesIO(data))
+            mods = []
+            for n in z.namelist():
+                if n == "fabric.mod.json":
+                    mods.append(json.loads(z.read(n)).get("id"))
+            ents = []
+            for n in z.namelist():
+                if n.endswith("lang/en_us.json"):
+                    try:
+                        ents += [k for k in json.loads(z.read(n)) if k.startswith("entity.")][:40]
+                    except Exception:  # noqa
+                        pass
+            info.append(f"#   jar mod id {mods}; entities {ents[:40]}")
+        except Exception as e:  # noqa
+            info.append(f"#   jar not readable: {e}")
         src.append(f"{setname}/{name}  {f['url']}")
         lock.append(f"{sha}  {setname}/{name}")
         info.append(f"# {setname}/{name}: {p['title']} ({slug}) {v['version_number']} [{v['version_type']}], "
