@@ -2545,9 +2545,12 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
 - **Continuity's Glass Pane Culling Fix pack** replaces vanilla's glass pane post model; with a vanilla model replaced,
   Quicksilver's visibility module defers to vanilla (its designed fallback). Only Continuity's Default Connected
   Textures pack is on in the pack sessions. For Andre: a player with that pack on loses the visibility module.
-- **Item entities at 56,2,41 (pack server suite), Quicksilver only:** two of the twelve item entities under the
-  scripted area ended in another place in about one Quicksilver run in nine (the scripted run of 43106805198, perf
-  factory round 2 of 43127438207), never in vanilla's runs. Treated as a bug; the item trace is in to name it.
+- **Item entities at 56,2,41 (pack server suite): vanilla's noise, not Quicksilver's.** An item ended in another
+  place in the Quicksilver run of 43106805198 and perf factory round 2 of 43127438207 while vanilla's runs agreed. The
+  harness's item trace (run 43136722450) named it: a moss carpet in the cave below pops off at tick 0 and its item's
+  velocity comes from a random draw that differs between vanilla's own runs too (vanilla b against a there); the item
+  then settles up to 2 blocks away. The scripted run and the factory scene take the cave's moss carpets out before tick
+  0. The item trace stays (CI ITEMS lines, `-Dci.harness.itemTrace`).
 - Terralith's ground is below the scripted runs' platforms, so their air fills did nothing (removed). Untitled Duck
   Mod picks a duck's look at random on spawn (its summon data didn't pin it): the scene shows geese.
 
@@ -3478,9 +3481,6 @@ renderer, above). As asked:
 
 ## Open bugs
 
-- **Item entities at 56,2,41, test pack server suite, Quicksilver only (found 2026-11-12):** two item entities
-  ended in another place in about one Quicksilver run in nine, never in vanilla's (see "Test pack", "Found on the
-  way"). The harness's item trace (CI ITEMS lines in the pack's run and perf logs) is in to name the cause.
 - **Phase 1 track (Andre, 2026-11-04):** 2b's draw-call gate on `core/old-gpu-2p/flythrough` sits 0.3 above main's own
   reading (limit old-GPU's 67.41 + 3 = 70.41; main 70.13, package 2b's branch 69.17, P2-3's runs 70.54 and 69.96);
   re-collect it by the noise rule from 3 clean runs.
