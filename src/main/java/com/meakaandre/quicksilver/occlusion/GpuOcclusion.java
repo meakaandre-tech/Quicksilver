@@ -61,6 +61,9 @@ public final class GpuOcclusion {
     static final boolean VERIFY = Boolean.getBoolean("quicksilver.debug.verifyOcclusion");
     /** How long the two-phase path waits for the GPU at most before drawing every candidate untested. */
     static final long WAIT_TIMEOUT_MS = 250;
+    /** Timed-out waits in a row after which two-phase gives way to still camera (see where they are counted). */
+    static final int MAX_TIMEOUTS_IN_A_ROW = 3;
+    private static int timeoutsInARow;
 
     static Mode configured;
     static String state = "starting", reason = "";
@@ -472,7 +475,16 @@ public final class GpuOcclusion {
                     OcclusionStats.waited(waited[0]);
                     if (l0 == null) {
                         OcclusionStats.timeouts++;
+                        // the calibration found the wait completing, but it stopped doing so (lavapipe, Vulkan: 590 waits
+                        // timed out in one of the test pack's sessions, run fc717d5): after a few in a row, the still-camera
+                        // path, as where the calibration finds no wait (every timed-out frame drew every candidate)
+                        if (++timeoutsInARow >= MAX_TIMEOUTS_IN_A_ROW && midFrameWait) {
+                            midFrameWait = false;
+                            QuicksilverClient.LOG.warn("Quicksilver occlusion: waiting for the GPU within a frame timed out {} times in a row on {}; still camera from now on",
+                                timeoutsInARow, RenderSystem.getDevice().getDeviceInfo().backendName());
+                        }
                     } else {
+                        timeoutsInARow = 0;
                         DepthPyramid p = new DepthPyramid(w, h, l0, mm, cx, cy, cz, fy, z01, rev);
                         latest = p;
                         latestStamp = stamp;

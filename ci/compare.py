@@ -757,7 +757,11 @@ def main():
                                 if oc.get("checkPixelsSinceStart", 0) != 0 or oc.get("checkTimeoutsSinceStart", 0) != 0 or oc.get("checkSkipped", 0) != 0 or oc.get("checkSkippedSinceStart", 0) != 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: pop-in: occlusion check since start-up found {oc.get('checkPixelsSinceStart')} visible pixels of culled sections"
                                                     f" ({oc.get('checkTimeoutsSinceStart')} timeouts, {oc.get('checkSkipped')} frames skipped)")
-                                if oc.get("timeouts", 0) != 0 or oc.get("untestedFrames", 0) != 0:
+                                # the test pack (2026-11-13): on Vulkan the wait within a frame may stop completing after the
+                                # calibration found it working; after 3 timeouts in a row Quicksilver takes still camera, as when
+                                # the calibration finds none (GpuOcclusion.MAX_TIMEOUTS_IN_A_ROW). Those 3 are accepted there only
+                                vk_switched = r in VULKAN_WAIT_OPTIONAL and oc.get("midFrameWait") is False and oc.get("timeouts", 0) <= 3
+                                if (oc.get("timeouts", 0) != 0 and not vk_switched) or oc.get("untestedFrames", 0) != 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion: {oc.get('timeouts')} waits timed out, {oc.get('untestedFrames')} frames drew deferred sections untested")
                                 # still camera culls only while the camera stands still: a moving scene asks two-phase runs only
                                 moving = bool(scene_def.get("velocity")) or bool(scene_def.get("yawRate"))
