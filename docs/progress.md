@@ -3434,7 +3434,10 @@ renderer, above). As asked:
   fallback line, on a bench whose order is not on, and on a run whose order never picked a visible section.
 - **core/old-gpu translucent_move direct buffers** on `package-5` (runs 41596247834, 41605550531): 8.24 MB against
   the limit 8.10, one new direct buffer of 4 MB at that scene; the measure run of the same profile got the same new
-  buffer at 2 MB. Package 5 changes nothing in the core suite; the open direct-buffer bug below.
+  buffer at 2 MB. Package 5 changes nothing in the core suite; the open direct-buffer bug below. Seen again on
+  `p2-4-save-gate` (run 43140888049, attempt 1, 2026-11-12): the same 8.24 MB against 8.10, +4.00 MB between scenes
+  (occlusion_corner 4.24, translucent_move 8.24, then flat at 8.24); measure-old 5.99 there. That branch changes only
+  the server save script and docs. Only that client job re-run, by Andre's choice (2026-11-13).
 
 - **factory_flat meshing gap, package 4c (Andre, 2026-11-01): reported, not gated.** Like-for-like median,
   Quicksilver / vanilla's compiler (ms, same sections, same thread, 564-576 pairs):
