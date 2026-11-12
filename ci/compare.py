@@ -425,6 +425,9 @@ def flywheel(res, failures, lines):
                                 + (" (session with the backend forced)" if forced else ""))
         if not got:
             failures.append(f"pack/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
+        # the test pack (2026-11-13): GeckoLib's clock pin must have reached GeckoLib's code (the geckolib scene)
+        if "Quicksilver CI pin: Create's animation clock pinned in GeckoLib AnimationProcessor" not in t:
+            failures.append(f"pack/{r}: GeckoLib's animation clock pin never reached GeckoLib's code (no 'pinned in GeckoLib AnimationProcessor' line)")
         if "Quicksilver CI pin: Create's animation clock pinned in AnimationTickHolder" not in t:
             failures.append(f"pack/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned in AnimationTickHolder' line)")
         if want != "flywheel:off" and "Quicksilver CI pin: Create's animation clock pinned in Flywheel's frame time" not in t:

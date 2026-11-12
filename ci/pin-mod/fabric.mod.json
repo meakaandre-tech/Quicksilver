@@ -3,12 +3,13 @@
   "id": "quicksilver_ci_pin",
   "version": "1",
   "name": "Quicksilver CI: pins",
-  "description": "CI only, loaded in every client run (vanilla and Quicksilver alike): holds noise that isn't Quicksilver's still (the lightmap's block-light flicker, texture animation, banner sway, the order of feature batches such as Create's outliner faces and edges) leaves out the crosshair's block outline (it moves by a pixel row between frames on GL 3.3) except round the core outline scene's one block (package 7), holds a focused text box's cursor on (package 7), and in the core suite's particle and animation areas makes particles the same in every run and lets animation run a fixed number of ticks (package 8), holds chickens' wings at rest, and logs a connection's failing exception in full (the test pack), so screenshots don't depend on the run or the moment they are taken. Package 5: holds Create's animation clock and Flywheel's frame time in the Create scenes' areas, logs Flywheel's backend, and has a /qsci command for the kinetics scene's belt and train (Create has no command for either).",
+  "description": "CI only, loaded in every client run (vanilla and Quicksilver alike): holds noise that isn't Quicksilver's still (the lightmap's block-light flicker, texture animation, banner sway, the order of feature batches such as Create's outliner faces and edges) leaves out the crosshair's block outline (it moves by a pixel row between frames on GL 3.3) except round the core outline scene's one block (package 7), holds a focused text box's cursor on (package 7), and in the core suite's particle and animation areas makes particles the same in every run and lets animation run a fixed number of ticks (package 8), holds chickens' wings at rest, and logs a connection's failing exception in full (the test pack), so screenshots don't depend on the run or the moment they are taken. The test pack: holds GeckoLib's animation clock in the geckolib scene's area. Package 5: holds Create's animation clock and Flywheel's frame time in the Create scenes' areas, logs Flywheel's backend, and has a /qsci command for the kinetics scene's belt and train (Create has no command for either).",
   "license": "LGPL-3.0-only",
   "environment": "*",
   "mixins": [
     "quicksilver_ci_pin.mixins.json",
-    "quicksilver_ci_pin.create.mixins.json"
+    "quicksilver_ci_pin.create.mixins.json",
+    "quicksilver_ci_pin.geckolib.mixins.json"
   ],
   "depends": {
     "fabricloader": "*",

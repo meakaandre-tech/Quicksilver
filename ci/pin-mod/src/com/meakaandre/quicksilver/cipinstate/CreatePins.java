@@ -24,6 +24,8 @@ public final class CreatePins {
 
     /** Whether the player is in a Create pin area (client thread). */
     public static volatile boolean pinned;
+    /** Whether the player is in the geckolib scene's area (the test pack; cipingecko.GeckoLibClockMixin). */
+    public static volatile boolean geckoPinned;
     private static final java.util.Set<String> LOGGED = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static String backend = "";
     private static int tick;
@@ -41,6 +43,12 @@ public final class CreatePins {
     public static void clientTick(Minecraft mc) {
         LocalPlayer p = mc.player;
         boolean now = p != null && area(mc.level, p.getX(), p.getY(), p.getZ());
+        boolean gecko = p != null && mc.level != null && mc.level.dimension() == Level.OVERWORLD
+            && p.getX() >= 1940 && p.getX() <= 1980 && p.getZ() >= -2015 && p.getZ() <= -1975 && p.getY() >= 225 && p.getY() <= 265;
+        if (gecko != geckoPinned) {
+            geckoPinned = gecko;
+            LOG.info("Quicksilver CI pin: GeckoLib's animation clock {}", gecko ? "held at " + TICKS + " ticks + " + PARTIAL : "running");
+        }
         if (now != pinned) {
             pinned = now;
             LOG.info("Quicksilver CI pin: Create's animation clock {}", now ? "held at " + TICKS + " ticks + " + PARTIAL : "running");
