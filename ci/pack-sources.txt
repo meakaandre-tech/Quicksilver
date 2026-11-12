@@ -6,17 +6,20 @@
 #   https://...   a third-party jar at a pinned version (a Modrinth version's own file URL)
 #   modrinth:PROJECT@VERSION   a third-party jar by its exact Modrinth version number (the project's primary file)
 # the popular-mods test pack (Andre's picks, 2026-11-12; replaced SIFTEC's pack): Create Fly from the snapshot, the
-# rest at the versions ci/pack-resolve.py chose (ci/pack-resolved.txt has licences and download counts)
+# rest at the versions ci/pack-resolve.py chose (ci/pack-resolved.txt has licences and download counts). packclient:
+# the client's only (JEI and MezzConfig): with JEI on the server too, Fabric API's recipe sync sent a custom ingredient
+# the client could not decode and dropped it in about half the client sessions, vanilla's and Quicksilver's alike (run
+# 43118801686: CustomIngredientStreamCodec, "No value present"); JEI shows its item list without the server's recipes
 pack/create-fly-26.3.jar  snapshot  from https://github.com/meakaandre-tech/Create-Fly/releases/download/pack-26.3-latest/create-fly-26.3.jar
 pack/fabric-api.jar  provided
-pack/jei-26.3-fabric-31.14.0.72.jar  https://cdn.modrinth.com/data/u6dRKJwZ/versions/Zebwcvua/jei-26.3-fabric-31.14.0.72.jar
+packclient/jei-26.3-fabric-31.14.0.72.jar  https://cdn.modrinth.com/data/u6dRKJwZ/versions/Zebwcvua/jei-26.3-fabric-31.14.0.72.jar
 pack/xaerominimap-fabric-26.3-26.6.2.jar  https://cdn.modrinth.com/data/1bokaNcj/versions/MfxfgXaO/xaerominimap-fabric-26.3-26.6.2.jar
 pack/continuity-3.0.1+26.3.jar  https://cdn.modrinth.com/data/1IjD5062/versions/Jt2sCWTQ/continuity-3.0.1%2B26.3.jar
 pack/modmenu-21.0.0.jar  https://cdn.modrinth.com/data/mOgUt4GM/versions/kyy7dbrZ/modmenu-21.0.0.jar
 pack/Jade-mc26.3-Fabric-26.3.5.jar  https://cdn.modrinth.com/data/nvQzSEkH/versions/71CTWqdE/Jade-mc26.3-Fabric-26.3.5.jar
 pack/untitledduckmod-fabric-26.3-1.8.0.jar  https://cdn.modrinth.com/data/ojFjz7JF/versions/R3vpHCeV/untitledduckmod-fabric-26.3-1.8.0.jar
 pack/architectury-fabric-22.0.5.jar  https://cdn.modrinth.com/data/lhGA9TYQ/versions/1pMaB6So/architectury-fabric-22.0.5.jar
-pack/mezz_config-26.3-fabric-0.7.1.jar  https://cdn.modrinth.com/data/7tEfOcA7/versions/26GXFp06/mezz_config-26.3-fabric-0.7.1.jar
+packclient/mezz_config-26.3-fabric-0.7.1.jar  https://cdn.modrinth.com/data/7tEfOcA7/versions/26GXFp06/mezz_config-26.3-fabric-0.7.1.jar
 pack/placeholder-api-3.2.0+26.3.jar  https://cdn.modrinth.com/data/eXts2L7r/versions/lXytLqWj/placeholder-api-3.2.0%2B26.3.jar
 pack/geckolib-fabric-26.3-5.5.7.jar  https://cdn.modrinth.com/data/8BmcQJ2H/versions/kSxHvs99/geckolib-fabric-26.3-5.5.7.jar
 pack/FarmersDelight-26.3-3.6.30+refabricated.jar  https://cdn.modrinth.com/data/7vxePowz/versions/dRScyUeE/FarmersDelight-26.3-3.6.30%2Brefabricated.jar

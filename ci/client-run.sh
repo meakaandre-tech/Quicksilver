@@ -127,6 +127,12 @@ lvp=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json 2>/dev/null | head -1)
 case "$RUN" in *-vk) [ -n "$lvp" ] && export VK_DRIVER_FILES="$lvp" VK_ICD_FILENAMES="$lvp";; esac
 mkdir -p run/mods
 for j in server/mods/*.jar; do case "$j" in *fabric-api*) ;; *) cp "$j" run/mods/;; esac; done
+# the test pack's client-only jars (ci/pack-sources.txt, set packclient: JEI without its server half, so the server
+# sends no recipe sync), fetched and checked against the lock like the server's
+if [ "$SUITE" = pack ]; then
+  PACK_REPORT="$OUT/pack-sha256.txt" bash ci/pack-fetch.sh packclient /tmp/packclient || { echo "could not fetch the pack's client jars, or they changed (see above)"; exit 1; }
+  cp /tmp/packclient/*.jar run/mods/
+fi
 if [ $benchonly = 1 ]; then
   [ -f dist/quicksilver-bench.jar ] || { echo "dist/quicksilver-bench.jar missing"; exit 1; }
   cp dist/quicksilver-bench.jar run/mods/

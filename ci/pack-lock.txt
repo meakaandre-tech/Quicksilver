@@ -1,7 +1,7 @@
 # The jars CI downloads, by sha256 ("<sha256>  <set>/<jar name>"): ci/pack-check.sh fails a run early with
 # "pack changed: <jar>" when a download differs. Sets: core (Fabric API), pack (the popular-mods test pack, 2026-11-12:
 # Create Fly from this repo's pack-snapshot release, the third-party mods pinned on Modrinth; it replaced the siftec
-# set), terralith (the server suite's Terralith, Lithostitched and Fabric API), sodium (the bench-sodium run). Updating
+# set; packclient: its client-only jars), terralith (the server suite's Terralith, Lithostitched and Fabric API), sodium (the bench-sodium run). Updating
 # a hash is a deliberate commit that re-collects the numbers the jar affects (docs/ci-limits.md, "Pack lock"): Create
 # Fly by ci/update-pack-snapshot.sh, the others by ci/pack-resolve.py (ci/pack-resolve.txt).
 86f16178a3cecc887a85a4cfe9a79d92fa7341d8f39b5951a4d6ad800ab657a6  core/fabric-api.jar
@@ -11,14 +11,14 @@
 87a5bb39f7e6e41106e77f122f82fc93f9d3bc0b6ebcb746b314172a446a287a  sodium/sodium.jar
 fe089016dc1c850e7119037d8ae49e4d30afb553d90f9acf97cc694b8711b01f  pack/create-fly-26.3.jar
 86f16178a3cecc887a85a4cfe9a79d92fa7341d8f39b5951a4d6ad800ab657a6  pack/fabric-api.jar
-79d222604dd70517d2bd4c7e9cc3687ea5e777e0e249f4e9de6f0965bb0856fc  pack/jei-26.3-fabric-31.14.0.72.jar
+79d222604dd70517d2bd4c7e9cc3687ea5e777e0e249f4e9de6f0965bb0856fc  packclient/jei-26.3-fabric-31.14.0.72.jar
 418f8b1481cfa133d366c2224ecddec79cc466152754febcb1b386137e2d5f71  pack/xaerominimap-fabric-26.3-26.6.2.jar
 429fb0946118e86cce8ace8b57d07e1971088fb3f8115439bb0f2f12df14f511  pack/continuity-3.0.1+26.3.jar
 837812c6c98d66141db7b5dcae668f27fb78d557e8f4c0c89912985fc26a5e6f  pack/modmenu-21.0.0.jar
 4899d6c60afa2af859b3a7e0824d0ef6b404f26458f831e3d877faa36be9af1c  pack/Jade-mc26.3-Fabric-26.3.5.jar
 1fd25df6215c1b3aae33af5638b7aa08bc47294f268162d08aa274d5a6e9d939  pack/untitledduckmod-fabric-26.3-1.8.0.jar
 c6a60979f75fdf07a97971711b42529bc84cd7e4c873625d2ce0faf34278ecda  pack/architectury-fabric-22.0.5.jar
-d28b3671c2f845522b8a91c9109e95ed6d6bf4682f17299a5872cec05a5cd873  pack/mezz_config-26.3-fabric-0.7.1.jar
+d28b3671c2f845522b8a91c9109e95ed6d6bf4682f17299a5872cec05a5cd873  packclient/mezz_config-26.3-fabric-0.7.1.jar
 d9a5351b42a8d79cfc2e7f2a471472f9e4dff3b13874c8d420dbb93600b91a85  pack/placeholder-api-3.2.0+26.3.jar
 0e397991dae6e1aee9a342f80b740fe4fef6d161dc8abe694c6a555317163f82  pack/geckolib-fabric-26.3-5.5.7.jar
 930dcbc51aa2435d4345955aee7b2bbb5bc43c94c8d0859da703c645e9587269  pack/FarmersDelight-26.3-3.6.30+refabricated.jar
