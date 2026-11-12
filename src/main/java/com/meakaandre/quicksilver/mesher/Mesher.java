@@ -150,6 +150,8 @@ public final class Mesher {
             }
             long t0 = System.nanoTime();
             SectionCompiler.Results results;
+            // this mesher's sprite reads are scoped as vanilla's are, so the animation module may start on them too
+            Animation.compileHookSeen = true;
             Animation.notAUseEnter();
             try {
                 results = worker.compile(compiler, ao, colors, (BlockStateModelSet) parts[0], ((ThreadLocal<FluidRenderer>) parts[1]).get(), section, region,

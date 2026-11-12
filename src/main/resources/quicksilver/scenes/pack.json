@@ -71,6 +71,7 @@
    "renderDistance": 8,
    "settleSeconds": 8,
    "setup": [
+    "execute in minecraft:overworld run setblock 2280 229 -1997 minecraft:stone",
     "execute in minecraft:overworld run tp @a 2280.5 230 -1996.5 0 -90",
     "#wait 5",
     "gamemode survival @a",
@@ -80,7 +81,6 @@
     "item replace entity @a inventory.0 with minecraft:oak_log 32",
     "item replace entity @a inventory.1 with create:andesite_alloy 16",
     "setblock 2280 236 -1997 minecraft:stone",
-    "setblock 2280 229 -1997 minecraft:stone",
     "execute in minecraft:overworld run tp @a 2280.5 230 -1996.5 0 -90"
    ],
    "screen": {
@@ -99,7 +99,7 @@
      352
     ]
    ],
-   "ciStrictMaskNote": "The inventory's player model (its box, 514-616 x 206-352): its pose follows the player's age (arm sway), which differs between vanilla's own runs (run 43127438207: vanilla a and b differ there by up to ~1,100 pixels); the 8/255 check covers it. The player stands on a stone block (in survival it fell, so the model's pose followed the fall), and the hotbar holds plain items."
+   "ciStrictMaskNote": "The inventory's player model (its box, 514-616 x 206-352): its pose follows the player's age (arm sway), which differs between vanilla's own runs (run 43127438207: vanilla a and b differ there by up to ~1,100 pixels); the 8/255 check covers it. The player stands on a stone block, placed before survival is switched on (without it the player fell to the ground and died, run 43136851909, and every later scene ran on the death screen), and the hotbar holds plain items."
   },
   {
    "id": "ponder",

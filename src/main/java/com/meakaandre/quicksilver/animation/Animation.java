@@ -78,7 +78,13 @@ public final class Animation {
     private static volatile boolean catchUpAllPending;
     private static boolean drawing;
     private static int framesWaiting;
-    /** Set once the section compile scope hook (a MixinExtras wrapper, applied after the plugin's check) has run. */
+    /**
+     * Set once a section has been meshed inside a not-a-use scope: vanilla's compile through its scope hook (a MixinExtras
+     * wrapper, applied after the plugin's check), or Quicksilver's own mesher, which opens the same scope itself. (Only
+     * the first counted until 2026-11-12: where Quicksilver's mesher took every section, vanilla's compile never ran, and
+     * the module turned itself off after 600 frames; the test pack's single-scene sessions, run 43136851909. A section
+     * that goes to vanilla's compiler later without the wrapper only costs redraws, never a wrong picture.)
+     */
     public static volatile boolean compileHookSeen;
 
     /** Per thread: inside vanilla's section meshing (or another scope whose UV reads are not uses), how deep. */
@@ -636,7 +642,7 @@ public final class Animation {
         }
         if (!compileHookSeen && ++framesWaiting < 600) return;
         String why = compileHookSeen ? AnimationMixins.loadTargetsAndCheck()
-            : "hooks that did not apply: SectionCompiler#quicksilver$compileScope (did not run in 600 frames)";
+            : "no section meshed in 600 frames (neither vanilla's compiler through SectionCompiler#quicksilver$compileScope nor Quicksilver's mesher)";
         if (why == null && !TerrainMixins.applied("net.minecraft.client.renderer.chunk.SectionRenderDispatcher$RenderSection", "quicksilver$take")) {
             why = "hooks that did not apply: RenderSection#quicksilver$take (where meshes are read)";
         }
