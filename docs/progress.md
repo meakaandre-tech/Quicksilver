@@ -3302,7 +3302,7 @@ the textures field was never skipped by `==` and every texture made its own kind
 `kindSplits` says why two kinds split).
 
 Feature draws per frame, vanilla (measure) -> Quicksilver, full run 42572488452, every profile: mobs 12 -> 5,
-occlusion 10 -> 3, block_entities 13.1 -> 9.1 (heads in the atlas then; see below for the run without); SIFTEC factory, factory_flat and hologram 1-3, unchanged (nothing to
+occlusion 10 -> 3, block_entities 13.1 -> 9.1 with heads in the atlas, 13.1 -> 13.1 without them (full run 42951127093: the merged draws there were the heads); SIFTEC factory, factory_flat and hologram 1-3, unchanged (nothing to
 merge). All draws per frame, old-GPU: mobs 298 -> 17.7, occlusion 161 -> 13.7, block_entities 105 -> 31.1 (terrain
 included). Pictures unchanged within the documented limits. Heap after GC against main's last full run (`c6a34218`):
 -3.4 to +3.2 MB per scene; mobs +1.5 MB in every profile, and the measure runs (modules off) gained the same there.
@@ -3359,7 +3359,11 @@ vanilla's far shot).
   A first try left out entity_cutout_no_cull_z_offset, which nothing in CI draws with, and changed nothing. The
   rounding itself stays for every other atlas texture; no other check shows it, but a one-texel edge difference
   elsewhere would sit inside the scenes' strict limits. The bench's renderTypesNotAllowed now counts per submit (it
-  missed types first seen before the bench window).
+  missed types first seen before the bench window). Full run 42951127093 (`31e6c38e`): (568, 394) is gone in every
+  profile's block_entities and block_entities.closed shots; only the five spruce sign-post pixels remain. The cost:
+  four more draws per frame in block_entities (full 31.11 -> 35.11, Vulkan 30.24 -> 34.15, old-GPU two-player 32.11 ->
+  36.11; vanilla 136 / 144), one over the main + 3 gate. Andre accepted the +4 (2026-11-12), so block_entities'
+  draw-call baselines were re-collected from that run (the scene is new in this package; the other counts keep theirs).
 - **Decided by Andre (2026-11-11):** quick mode gates direct buffers at the ceiling only (committed baseline x 1.10 +
   8 MB; full runs gate against the same-run measure run); block_entities.closed keeps 310 (collected with Quicksilver's
   particle samples); heap after GC within -3.4 to +3.2 MB of main's run is accepted as run-to-run noise.
