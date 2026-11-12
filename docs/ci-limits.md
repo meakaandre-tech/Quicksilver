@@ -1158,7 +1158,7 @@ order per round, JFR on every round, `sync-chunk-writes=true`, `max.bg.threads=1
 | scene | what | rounds | gates |
 |---|---|---|---|
 | `flyover` | a 25x25-chunk window (the player-loading ticket, radius 12) moving one chunk every 8 ticks around a 16x16 square over the saved terrain; chunks leaving it marked changed (so they are saved on unload) | 7 | server-thread save ms per tick below vanilla; p99 and slowest tick at most 1.10 of vanilla's; ticks over 50 ms reported |
-| `save` | the 625 chunks around 0,0 marked changed and saved with save-all at ticks 100 and 400, save-all flush at 700; marked changed every 250 ticks from 4000 for the game's autosave | 7 | the save-all tick below vanilla; saved region files equal to vanilla's |
+| `save` | the 625 chunks around 0,0 marked changed and saved with save-all at ticks 100 and 400, save-all flush at 700, then save-all every 300 ticks from 1000 to 3700 (12 plain a round); marked changed every 250 ticks from 4000 for the game's autosave | 7 | the save-all tick below vanilla; saved region files equal to vanilla's |
 | `churn` | 96 blocks set per tick in a 17x17-chunk window (18 kinds: palettes grow), save-all every 5 ticks: sections written while their saves are serialised | 3 | server-thread save ms per tick below vanilla; MSPT at most 1.10 of vanilla's; saved region files, and every save's content at its tick, equal to vanilla's |
 | `kill` | the save scene's first save-all flush, killed with `kill -9` one second in, then loaded again | 2 | below |
 
@@ -1169,6 +1169,10 @@ in run 42796271430), and what it holds is mostly ticket and chunk-system work (`
 is P2-3's 1.10. The save-all flush tick (about 1.8-2.7 s) is reported: it waits for every write to reach the disk
 (`sync-chunk-writes`), which P2-4 leaves as vanilla's. The game's autosave runs once per save-scene run (its single tick
 moved 0.31 to 1.52 in run 42796271430); it is the same save as save-all (`saveAllChunks(false)`), so save-all is gated.
+**Why 12 save-alls a round** (Andre, 2026-11-12, "more samples"): with 2 a round the same code measured 0.877 (run
+42823617151) and 1.014 (main's run 42948503477): vanilla's own section copies moved from 204 to 122 profile samples
+between the runs while Quicksilver's stayed at 155-171, and one vanilla round's mean save-all tick differs from
+another's by up to +-15%, against a gain of about 5-10%. The limit stays 1.00.
 
 **Saved files.** Each stored chunk of each store is hashed as stored, decompressed, and per top-level key
 (`ci/server/regiondump.py`); region headers (each chunk's place in its file and its timestamp) are reported apart, since
