@@ -76,10 +76,11 @@
     "gamemode survival @a",
     "clear @a",
     "item replace entity @a hotbar.0 with minecraft:diamond_pickaxe",
-    "item replace entity @a hotbar.1 with create:wrench",
+    "item replace entity @a hotbar.1 with create:shaft 8",
     "item replace entity @a inventory.0 with minecraft:oak_log 32",
     "item replace entity @a inventory.1 with create:andesite_alloy 16",
     "setblock 2280 236 -1997 minecraft:stone",
+    "setblock 2280 229 -1997 minecraft:stone",
     "execute in minecraft:overworld run tp @a 2280.5 230 -1996.5 0 -90"
    ],
    "screen": {
@@ -89,7 +90,16 @@
    },
    "requiresMod": "jei",
    "requiresNote": "JEI's overlay: without it this is the plain inventory.",
-   "ciNote": "Survival (peaceful, so nothing hurts), a few fixed items in fixed slots; JEI's item list on its first page. The mouse is parked in the top-left corner, where no tooltip shows. Looking up at one stone block, so Quicksilver has terrain to draw here too."
+   "ciNote": "Survival (peaceful, so nothing hurts), a few fixed items in fixed slots; JEI's item list on its first page. The mouse is parked in the top-left corner, where no tooltip shows. Looking up at one stone block, so Quicksilver has terrain to draw here too.",
+   "ciStrictMask": [
+    [
+     514,
+     206,
+     616,
+     352
+    ]
+   ],
+   "ciStrictMaskNote": "The inventory's player model (its box, 514-616 x 206-352): its pose follows the player's age (arm sway), which differs between vanilla's own runs (run 43127438207: vanilla a and b differ there by up to ~1,100 pixels); the 8/255 check covers it. The player stands on a stone block (in survival it fell, so the model's pose followed the fall), and the hotbar holds plain items."
   },
   {
    "id": "ponder",
