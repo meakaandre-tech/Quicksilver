@@ -216,6 +216,7 @@
     "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2151 241 -2000 create:shaft[axis=x]",
     "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2152 241 -2000 create:gearbox[axis=y]",
     "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2152 241 -2001 create:encased_fan[facing=north]",
+    "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2152 241 -2002 minecraft:smooth_stone",
     "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run fill 2152 241 -1999 2152 241 -1998 create:shaft[axis=z]",
     "execute in minecraft:overworld unless block 2140 236 -2018 minecraft:bedrock run setblock 2156 241 -1998 create:shaft[axis=z]",
     "#wait 2",
@@ -253,7 +254,7 @@
    "ciBackendStrict": true,
    "requiresMod": "create",
    "requiresNote": "Create's machines (Create Fly in the test pack). The belt and the train are made with /qsci, CI's pin mod's command (Create has no command for either); without it the scene shows the shafts where the belt would be and the station without a train.",
-   "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile), vanilla's block-entity and entity renderers where it is off (old GPU: instancing's shaders don't compile on GL 3.3 and Flywheel falls back, as in vanilla's run; Vulkan: Flywheel needs OpenGL). The GUI is hidden (the geckolib scene's F1, earlier in this session)."
+   "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile), vanilla's block-entity and entity renderers where it is off (old GPU: instancing's shaders don't compile on GL 3.3 and Flywheel falls back, as in vanilla's run; Vulkan: Flywheel needs OpenGL). The GUI is hidden (the geckolib scene's F1, earlier in this session). A smooth stone block stands right in front of the encased fan (the test pack, 2026-11-13): the fan still turns, but its air current has no length, so it makes none of the drifting particles that landed in another place over the track in every run (vanilla's against vanilla's: up to 60 strict pixels, run 1582f6d)."
   },
   {
    "id": "kinetics_instancing",
