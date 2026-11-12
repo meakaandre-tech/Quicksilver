@@ -542,6 +542,7 @@ public final class Harness implements ModInitializer {
                 tickNanos[tick] = dt;
                 CiTrain.tick(server, tick);
                 spawn(server);
+                Trace.items(server, tick);
                 if (!reports.isEmpty() && (tick <= 3 || tick == 10 || tick == 20 || tick % 100 == 0 || tick == ticks - 1)) report(server);
                 tick++;
                 if (tick >= ticks) {

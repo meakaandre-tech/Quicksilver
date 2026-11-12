@@ -99,7 +99,10 @@ if [ -f "ci/server/scripted-run-$SUITE.txt" ] && [ -f server-base.tar ]; then
   props world normal
   # (to see why something varies: -Dci.harness.trace=x1,y1,z1,x2,y2,z2;... logs every scheduled tick in those boxes and
   # every chunk's post-processing, CI TRACE lines; ci/server/harness/.../Trace.java)
-  serve run 1800 -Dci.harness.run="$root/ci/server/scripted-run-$SUITE.txt"
+  # the test pack (2026-11-12): item entities round 56,2,41 logged (CI ITEMS lines; Trace.items), the diagnosis of an
+  # item difference seen in about one Quicksilver run in nine
+  itemtrace=""; [ "$SUITE" = pack ] && itemtrace="-Dci.harness.itemTrace=40,-20,25,72,30,57"
+  serve run 1800 -Dci.harness.run="$root/ci/server/scripted-run-$SUITE.txt" $itemtrace
   grep -q 'CI HARNESS RUN DONE' "$OUT/run-server.log" || echo "scripted run: did not finish"
   keep_world "$srv/world" "$OUT/run/world"
   mkdir -p "$OUT/bench" && cp "$srv"/quicksilver/bench/*.json "$OUT/bench/" 2>/dev/null

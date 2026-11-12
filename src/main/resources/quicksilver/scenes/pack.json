@@ -37,7 +37,7 @@
    "ciNote": "The pack suite's first scene and the only one with the HUD on: the next scene presses F1 (vanilla's hide-GUI key), which stays in effect for the rest of the session, so the minimap's tiles (which differ with what it has scanned) show nowhere else. Its terrain is the saved world's (pack-world.sh generates every scene area), and the platform is rebuilt the same way in every run."
   },
   {
-   "id": "ducks",
+   "id": "geckolib",
    "title": "GeckoLib entities: six of Untitled Duck Mod's geese on grass, AI off, each facing its own way (test pack)",
    "renderDistance": 8,
    "settleSeconds": 20,
@@ -60,7 +60,7 @@
    ],
    "requiresMod": "untitledduckmod",
    "requiresNote": "The ducks are a GeckoLib mod's entities (Untitled Duck Mod, with GeckoLib).",
-   "ciNote": "GeckoLib draws its baked models through the entity path (design doc, GeckoLib models: unchanged). The game is frozen (/tick freeze) before the ducks are summoned, so they never tick: their age, and with it GeckoLib's animation time, is the same in every run (the suite's preamble unfreezes it for the next scene). AI off and silent besides. F1 here hides the GUI for the rest of the session (minimap tiles out of every later scene). Geese, not ducks: a duck's look (species and sex) is picked at random when it spawns, and its summon data didn't pin it (runs 43106805198, 43118886083); geese have one look.",
+   "ciNote": "GeckoLib draws its baked models through the entity path (design doc, GeckoLib models: unchanged). The game is frozen (/tick freeze) before the geese are summoned, so they never tick: their age, and with it GeckoLib's animation time, is the same in every run (the suite's preamble unfreezes it for the next scene). AI off and silent besides. F1 here hides the GUI for the rest of the session (minimap tiles out of every later scene). Geese, not ducks: a duck's look (species and sex) is picked at random when it spawns, and its summon data didn't pin it (runs 43106805198, 43118886083); geese have one look.",
    "ciKeys": [
     "F1"
    ]
@@ -154,7 +154,7 @@
    ],
    "requiresMod": "continuity",
    "requiresNote": "Continuity's built-in Default Connected Textures and Glass Pane Culling Fix packs (enabled in every pack session's options.txt by ci/client-run.sh).",
-   "ciNote": "Continuity draws its connected textures through the Fabric Renderer API (its own baked models' emitBlockQuads), so these blocks go through Quicksilver's renderer in Quicksilver's runs and Indigo in vanilla's, like Create's connected textures (create_ct). The GUI is hidden (the ducks scene's F1)."
+   "ciNote": "Continuity draws its connected textures through the Fabric Renderer API (its own baked models' emitBlockQuads), so these blocks go through Quicksilver's renderer in Quicksilver's runs and Indigo in vanilla's, like Create's connected textures (create_ct). The GUI is hidden (the geckolib scene's F1)."
   },
   {
    "id": "create_ct",
@@ -183,7 +183,7 @@
    ],
    "requiresMod": "create",
    "requiresNote": "Create's casings and framed glass: without Create the scene would show only stone, so it is skipped.",
-   "ciNote": "The design doc's done-when names Create's connected textures: Create draws them through the Fabric Renderer API, so these blocks are tessellated by Quicksilver's renderer in Quicksilver's runs and by Indigo in the vanilla runs. CT blocks in view: create:andesite_casing (a 5x4 wall plus a 3-block return at its west end), create:brass_casing (a 5x4 wall and a 3x3 floor patch in front), create:copper_casing (a 5x4 wall with minecraft:stone set in at its centre left), create:framed_glass (a 5x4 wall); each wall ends against minecraft:stone or minecraft:glass, which do not connect. The GUI is hidden (the ducks scene's F1, earlier in this session)."
+   "ciNote": "The design doc's done-when names Create's connected textures: Create draws them through the Fabric Renderer API, so these blocks are tessellated by Quicksilver's renderer in Quicksilver's runs and by Indigo in the vanilla runs. CT blocks in view: create:andesite_casing (a 5x4 wall plus a 3-block return at its west end), create:brass_casing (a 5x4 wall and a 3x3 floor patch in front), create:copper_casing (a 5x4 wall with minecraft:stone set in at its centre left), create:framed_glass (a 5x4 wall); each wall ends against minecraft:stone or minecraft:glass, which do not connect. The GUI is hidden (the geckolib scene's F1, earlier in this session)."
   },
   {
    "id": "kinetics",
@@ -243,7 +243,7 @@
    "ciBackendStrict": true,
    "requiresMod": "create",
    "requiresNote": "Create's machines (Create Fly in the test pack). The belt and the train are made with /qsci, CI's pin mod's command (Create has no command for either); without it the scene shows the shafts where the belt would be and the station without a train.",
-   "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile), vanilla's block-entity and entity renderers where it is off (old GPU: instancing's shaders don't compile on GL 3.3 and Flywheel falls back, as in vanilla's run; Vulkan: Flywheel needs OpenGL). The GUI is hidden (the ducks scene's F1, earlier in this session)."
+   "ciNote": "Built once per session (marker: bedrock at 2140 236 -2018; a bench's setup again only moves the camera). Create's animation clock and Flywheel's frame time are held in this area by CI's pin mod, vanilla and Quicksilver alike, so shafts, cogs, the fan, the mixer and the belt are at the same phase in every run; the clockwork bearing's hand stops at the hour (time held at 6000). What draws them: Flywheel's instances where its backend is on (indirect on the full profile), vanilla's block-entity and entity renderers where it is off (old GPU: instancing's shaders don't compile on GL 3.3 and Flywheel falls back, as in vanilla's run; Vulkan: Flywheel needs OpenGL). The GUI is hidden (the geckolib scene's F1, earlier in this session)."
   },
   {
    "id": "kinetics_instancing",

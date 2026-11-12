@@ -57,6 +57,9 @@ one() {
   grep -v '^qs-at ' "ci/server/$script" > "$dir/script.txt"
   printf '\nat 0 tick sprint %s\n' "$ticks" >> "$dir/script.txt"
   local extra=()
+  # the test pack (2026-11-12): item entities round 56,2,41 logged in the scenes whose worlds are compared, both sides
+  # alike (CI ITEMS lines; server-run.sh)
+  case "$SUITE:$keep" in pack:world|pack:world-report) extra+=("-Dci.harness.itemTrace=40,-20,25,72,30,57");; esac
   if [ "$jfr" = 1 ]; then
     extra+=("-XX:StartFlightRecording=filename=$dir/rec.jfr,dumponexit=true,settings=profile,jdk.ExecutionSample#period=1ms")
   fi
