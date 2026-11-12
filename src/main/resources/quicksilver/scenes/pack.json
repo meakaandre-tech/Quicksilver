@@ -38,7 +38,7 @@
   },
   {
    "id": "geckolib",
-   "title": "GeckoLib entities: six of Untitled Duck Mod's geese on grass, AI off, each facing its own way (test pack)",
+   "title": "GeckoLib entities: six of Untitled Duck Mod's geese (three looks) on grass, all facing the camera, AI off (test pack)",
    "renderDistance": 8,
    "settleSeconds": 20,
    "setup": [
@@ -51,16 +51,16 @@
     "tick freeze",
     "kill @e[type=untitledduckmod:goose]",
     "summon untitledduckmod:goose 1956.5 240 -1995.5 {Variant:0b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:goose 1959.5 240 -1996.5 {Variant:1b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[45f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:goose 1962.5 240 -1995.5 {Variant:2b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[90f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:goose 1965.5 240 -1996.5 {Variant:0b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:goose 1958.0 240 -1999.5 {Variant:1b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[270f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:goose 1963.0 240 -1999.5 {Variant:2b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[135f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1959.5 240 -1996.5 {Variant:1b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1962.5 240 -1995.5 {Variant:2b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1965.5 240 -1996.5 {Variant:0b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1958.0 240 -1999.5 {Variant:1b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1963.0 240 -1999.5 {Variant:2b,LeftHanded:0b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
     "execute in minecraft:overworld run tp @a 1960.5 242 -1986.5 180 25"
    ],
    "requiresMod": "untitledduckmod",
    "requiresNote": "The ducks are a GeckoLib mod's entities (Untitled Duck Mod, with GeckoLib).",
-   "ciNote": "GeckoLib draws its baked models through the entity path (design doc, GeckoLib models: unchanged). The game is frozen (/tick freeze) before the geese are summoned, so they never tick: their age, and with it GeckoLib's animation time, is the same in every run (the suite's preamble unfreezes it for the next scene). AI off and silent besides. F1 here hides the GUI for the rest of the session (minimap tiles out of every later scene). Each goose's look is given in its summon data (Variant 0 to 2; LeftHanded off): Untitled Duck Mod otherwise picks it at random (runs 43106805198 to 43149509101; the key read from a goose's NBT, run 10f065f's tellraw).",
+   "ciNote": "GeckoLib draws its baked models through the entity path (design doc, GeckoLib models: unchanged). The game is frozen (/tick freeze) before the geese are summoned, so they never tick: their age, and with it GeckoLib's animation time, is the same in every run (the suite's preamble unfreezes it for the next scene). AI off and silent besides. F1 here hides the GUI for the rest of the session (minimap tiles out of every later scene). Each goose's look is given in its summon data (Variant 0 to 2; LeftHanded off): Untitled Duck Mod otherwise picks it at random (runs 43106805198 to 43149509101; the key read from a goose's NBT, run 10f065f's tellraw). All six face yaw 0: a summoned mob's body turns to its facing over a few ticks, and with the game frozen it stopped part of the way, at a different point in each run (vanilla's against vanilla's, run fc717d5); at yaw 0 there is nothing to turn. GeckoLib's animation clock is held by CI's pin mod in this area (cipingecko).",
    "ciKeys": [
     "F1"
    ]
