@@ -25,11 +25,13 @@ jobs:
         run: |
           url=$(grep '^pack/untitledduckmod' ci/pack-sources.txt | awk '{print $2}')
           bash ci/pack-inspect.sh "$url" '[Gg]oose|[Ww]aterfowl|[Aa]nim' ci/pack-inspect.txt
+          gurl=$(grep '^pack/geckolib' ci/pack-sources.txt | awk '{print $2}')
+          bash ci/pack-inspect.sh "$gurl" 'animation/AnimationController$|animatable/manager/AnimatableManager$|util/RenderUtil$|animatable/GeoEntity$|animatable/GeoAnimatable$|renderer/base/GeoRenderer$|renderer/GeoEntityRenderer$|AnimationProcessor$|animation/state/AnimationTest$' ci/pack-inspect-geckolib.txt
       - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add ci/pack-resolved.txt ci/pack-inspect.txt
+          git add ci/pack-resolved.txt ci/pack-inspect.txt ci/pack-inspect-geckolib.txt
           git diff --cached --quiet && exit 0
           git commit -m "Pack: ci/pack-resolved.txt from pack-resolve run ${GITHUB_RUN_ID}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

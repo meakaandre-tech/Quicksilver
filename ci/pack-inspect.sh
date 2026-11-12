@@ -10,6 +10,6 @@ curl -fsSL -o "$d/m.jar" "$1"
   unzip -Z1 "$d/m.jar" | grep '\.class$' | sed 's/\.class$//' | sort
   for c in $(unzip -Z1 "$d/m.jar" | grep '\.class$' | sed 's/\.class$//' | grep -E "$2"); do
     echo; echo "## $c"
-    javap -c -p -cp "$d/m.jar" "$c" 2>&1 | grep -E '^  [a-z].*\(|^  public|^  private|^  protected|^  static|[Aa]nim|[Rr]andom|tickCount|getTick|Tick|RawAnimation|thenLoop|thenPlay|controller|Controller|nextInt|nextFloat|nextDouble|ldc' | head -400
+    javap -c -p -cp "$d/m.jar" "$c" 2>&1 | grep -E '^  [a-z].*\(|^  public|^  private|^  protected|^  static|[Aa]nim|[Rr]andom|tickCount|getTick|Tick|RawAnimation|thenLoop|thenPlay|controller|Controller|nextInt|nextFloat|nextDouble|ldc|[Tt]ime|[Pp]artial|Frozen|frozen' | head -500
   done
 } > "$3"
