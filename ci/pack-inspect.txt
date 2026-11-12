@@ -175,20 +175,28 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
         24: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
         31: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
         36: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        46: putfield      #48                 // Field nextCleanTime:I
   public boolean canUse();
+         1: getfield      #48                 // Field nextCleanTime:I
          8: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        18: invokevirtual #51                 // Method net/untitledduckmod/common/entity/GooseEntity.getNoActionTime:()I
         30: invokevirtual #55                 // Method net/untitledduckmod/common/entity/GooseEntity.getAnimation:()B
         42: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
         47: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
   public void start();
+         3: putfield      #59                 // Field cleanTime:I
         11: invokevirtual #62                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
         19: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
         29: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
         34: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        44: putfield      #48                 // Field nextCleanTime:I
   public void stop();
          5: invokevirtual #62                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
   public boolean canContinueToUse();
+         1: getfield      #59                 // Field cleanTime:I
   public void tick();
+         2: getfield      #59                 // Field cleanTime:I
+         7: putfield      #59                 // Field cleanTime:I
 
 ## net/untitledduckmod/common/entity/GooseEntity$GooseEscapeDangerGoal
   private final net.untitledduckmod.common.entity.GooseEntity goose;
@@ -248,6 +256,7 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
         79: ldc2_w        #67                 // double 12.0d
   public void start();
         13: putfield      #96                 // Field animationTime:I
+        19: putfield      #99                 // Field delayTime:I
         44: ldc2_w        #110                // double 1.2d
   public void stop();
          5: invokevirtual #116                // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
@@ -256,6 +265,10 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
         21: ldc2_w        #145                // double 144.0d
         29: getfield      #96                 // Field animationTime:I
   public void tick();
+        32: getfield      #99                 // Field delayTime:I
+        40: getfield      #99                 // Field delayTime:I
+        45: putfield      #99                 // Field delayTime:I
+        49: getfield      #99                 // Field delayTime:I
         71: invokevirtual #116                // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
         97: getfield      #96                 // Field animationTime:I
        102: putfield      #96                 // Field animationTime:I
@@ -288,10 +301,22 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
   private net.minecraft.world.phys.Vec3 awayPos;
   private boolean done;
   public net.untitledduckmod.common.entity.GooseEntity$SpearUseGoal$SpearUseState();
+         6: putfield      #7                  // Field engageTime:I
+        11: putfield      #13                 // Field fleeingTime:I
   public boolean notEngagedYet();
+         1: getfield      #7                  // Field engageTime:I
   public void startEngagement(int);
+         2: putfield      #7                  // Field engageTime:I
   public boolean tickAndCheckEngagement();
+         1: getfield      #7                  // Field engageTime:I
+         9: getfield      #7                  // Field engageTime:I
+        14: putfield      #7                  // Field engageTime:I
+        18: getfield      #7                  // Field engageTime:I
   public boolean tickAndCheckFleeing();
+         1: getfield      #13                 // Field fleeingTime:I
+         9: getfield      #13                 // Field fleeingTime:I
+        14: putfield      #13                 // Field fleeingTime:I
+        18: getfield      #13                 // Field fleeingTime:I
 
 ## net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal
   static final int MIN_REPOSITION_DISTANCE;
@@ -319,6 +344,8 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
        106: ldc           #173                // float 30.0f
        108: ldc           #173                // float 30.0f
        238: invokestatic  #228                // Method net/minecraft/world/entity/ai/util/LandRandomPos.getPosAway:(Lnet/minecraft/world/entity/PathfinderMob;DDILnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;
+       249: putfield      #238                // Field net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal$SpearUseState.fleeingTime:I
+       338: getfield      #238                // Field net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal$SpearUseState.fleeingTime:I
        445: invokestatic  #228                // Method net/minecraft/world/entity/ai/util/LandRandomPos.getPosAway:(Lnet/minecraft/world/entity/PathfinderMob;DDILnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;
   static {};
          2: invokestatic  #109                // Method reducedTickDelay:(I)I
@@ -326,19 +353,23 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
 ## net/untitledduckmod/common/entity/GooseEntity$StealItemGoal
   private static final double SPEED;
   private final net.untitledduckmod.common.entity.GooseEntity goose;
+  int nextStealTime;
   private net.minecraft.world.item.ItemStack playerHandStack;
   public net.untitledduckmod.common.entity.GooseEntity$StealItemGoal(net.untitledduckmod.common.entity.GooseEntity);
         24: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
         28: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
         34: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        44: putfield      #48                 // Field nextStealTime:I
   public boolean canUse();
         39: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        43: getfield      #48                 // Field nextStealTime:I
         55: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
         60: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
         99: ldc2_w        #81                 // double 10.0d
        121: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
        128: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
        134: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+       144: putfield      #48                 // Field nextStealTime:I
   public boolean canContinueToUse();
   public void start();
         11: ldc2_w        #114                // double 1.3d
@@ -346,6 +377,7 @@ net/untitledduckmod/mixin/fabric/SwimSpeedMixin
          5: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
         12: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
         18: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        28: putfield      #48                 // Field nextStealTime:I
   public void tick();
         87: ldc2_w        #114                // double 1.3d
 
@@ -432,6 +464,7 @@ public class net.untitledduckmod.common.entity.GooseEntity extends net.untitledd
   protected boolean isTamable(net.minecraft.world.entity.player.Player, net.minecraft.world.item.ItemStack);
   public void stopBeingAngry();
         16: ldc2_w        #437                // long -1l
+        19: invokevirtual #439                // Method setPersistentAngerEndTime:(J)V
   public net.minecraft.world.item.ItemStack equipItemIfPossible(net.minecraft.server.level.ServerLevel, net.minecraft.world.item.ItemStack);
   protected void pickUpItem(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.item.ItemEntity);
   private boolean isWeapon(net.minecraft.world.item.ItemStack);
@@ -505,6 +538,7 @@ public class net.untitledduckmod.common.entity.GooseEntity extends net.untitledd
   public void startPersistentAngerTimer();
          5: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
          8: invokevirtual #743                // Method net/minecraft/util/valueproviders/UniformInt.sample:(Lnet/minecraft/util/RandomSource;)I
+        12: invokevirtual #439                // Method setPersistentAngerEndTime:(J)V
   public void handle(com.geckolib.animation.state.KeyFrameEvent<net.untitledduckmod.common.entity.GooseEntity, com.geckolib.cache.animation.keyframeevent.ParticleKeyframeData>);
         26: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
         29: invokeinterface #751,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
@@ -628,6 +662,7 @@ public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends 
         25: putfield      #22                 // Field heldFoodTick:I
         30: putfield      #25                 // Field randomForceEatTick:I
         50: invokevirtual #39                 // Method getRandomLayTime:()I
+        53: putfield      #43                 // Field eggLayTime:I
   public net.minecraft.world.entity.SpawnGroupData finalizeSpawn(net.minecraft.world.level.ServerLevelAccessor, net.minecraft.world.DifficultyInstance, net.minecraft.world.entity.EntitySpawnReason, net.minecraft.world.entity.SpawnGroupData);
          1: invokevirtual #81                 // Method getRandomBabyScale:()F
          7: invokevirtual #85                 // Method getRandomVariant:()B
@@ -639,6 +674,7 @@ public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends 
          2: invokespecial #132                // Method net/minecraft/world/entity/TamableAnimal.addAdditionalSaveData:(Lnet/minecraft/world/level/storage/ValueOutput;)V
          6: ldc           #136                // String Variant
         18: ldc           #147                // String EggLayTime
+        21: getfield      #43                 // Field eggLayTime:I
         30: ldc           #153                // String HeldFoodTick
         33: getfield      #22                 // Field heldFoodTick:I
         42: ldc           #155                // String RandomForceEatTick
@@ -653,6 +689,7 @@ public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends 
         26: invokevirtual #81                 // Method getRandomBabyScale:()F
         39: ldc           #147                // String EggLayTime
         42: invokevirtual #39                 // Method getRandomLayTime:()I
+        50: putfield      #43                 // Field eggLayTime:I
         55: ldc           #153                // String HeldFoodTick
         63: putfield      #22                 // Field heldFoodTick:I
         68: ldc           #155                // String RandomForceEatTick
@@ -698,6 +735,8 @@ public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends 
          1: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
          8: invokeinterface #340,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
   public int getRandomLayTime();
+         3: invokeinterface #344,  1          // InterfaceMethod net/untitledduckmod/common/platform/service/IUntitledConfig.minEggLayTime:()I
+        12: invokeinterface #347,  1          // InterfaceMethod net/untitledduckmod/common/platform/service/IUntitledConfig.maxEggLayTime:()I
         19: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
         23: invokeinterface #340,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
   public byte getAnimation();
@@ -722,12 +761,15 @@ public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends 
   public abstract boolean dropEggItem(net.minecraft.server.level.ServerLevel);
   public void aiStep();
          1: invokespecial #435                // Method net/minecraft/world/entity/TamableAnimal.aiStep:()V
+        37: getfield      #43                 // Field eggLayTime:I
+        43: putfield      #43                 // Field eggLayTime:I
         64: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
         67: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
         73: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
         76: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
         82: ldc_w         #391                // float 0.2f
        100: invokevirtual #39                 // Method getRandomLayTime:()I
+       103: putfield      #43                 // Field eggLayTime:I
        134: ldc_w         #478                // float -1.0f
        140: ldc_w         #479                // float 4.0f
        143: ldc_w         #480                // float 0.3f
@@ -756,6 +798,7 @@ public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends 
          7: ldc2_w        #652                // double 0.1d
         13: ldc2_w        #654                // double 0.2d
   public int getEggLayTime();
+         1: getfield      #43                 // Field eggLayTime:I
   public int getHeldFoodTick();
          1: getfield      #22                 // Field heldFoodTick:I
   public int getRandomForceEatTick();
