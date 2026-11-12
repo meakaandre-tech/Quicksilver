@@ -56,7 +56,7 @@
     "summon untitledduckmod:goose 1965.5 240 -1996.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f],Tags:[\"qs_ci\"]}",
     "summon untitledduckmod:goose 1958.0 240 -1999.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[270f,0f],Tags:[\"qs_ci\"]}",
     "summon untitledduckmod:goose 1963.0 240 -1999.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[135f,0f],Tags:[\"qs_ci\"]}",
-    "data get entity @e[type=untitledduckmod:goose,limit=1,sort=nearest] ",
+    "tellraw @a {\"text\":\"QSCI goose nbt: \",\"extra\":[{\"nbt\":\"{}\",\"entity\":\"@e[type=untitledduckmod:goose,limit=1]\"}]}",
     "execute in minecraft:overworld run tp @a 1960.5 242 -1986.5 180 25"
    ],
    "requiresMod": "untitledduckmod",
@@ -72,8 +72,8 @@
    "renderDistance": 8,
    "settleSeconds": 8,
    "setup": [
-    "execute in minecraft:overworld run setblock 2280 229 -1997 minecraft:stone",
-    "execute in minecraft:overworld run tp @a 2280.5 230 -1996.5 0 -90",
+    "execute in minecraft:overworld run setblock 2280 239 -1997 minecraft:stone",
+    "execute in minecraft:overworld run tp @a 2280.5 240 -1996.5 0 -90",
     "#wait 5",
     "gamemode survival @a",
     "clear @a",
@@ -81,8 +81,8 @@
     "item replace entity @a hotbar.1 with create:shaft 8",
     "item replace entity @a inventory.0 with minecraft:oak_log 32",
     "item replace entity @a inventory.1 with create:andesite_alloy 16",
-    "setblock 2280 236 -1997 minecraft:stone",
-    "execute in minecraft:overworld run tp @a 2280.5 230 -1996.5 0 -90"
+    "setblock 2280 260 -1997 minecraft:stone",
+    "execute in minecraft:overworld run tp @a 2280.5 240 -1996.5 0 -90"
    ],
    "screen": {
     "expect": "InventoryScreen",
@@ -91,7 +91,7 @@
    },
    "requiresMod": "jei",
    "requiresNote": "JEI's overlay: without it this is the plain inventory.",
-   "ciNote": "Survival (peaceful, so nothing hurts), a few fixed items in fixed slots; JEI's item list on its first page. The mouse is parked in the top-left corner, where no tooltip shows. Looking up at one stone block, so Quicksilver has terrain to draw here too.",
+   "ciNote": "Survival (peaceful, so nothing hurts), a few fixed items in fixed slots; JEI's item list on its first page. The mouse is parked in the top-left corner, where no tooltip shows. Standing on one stone block and looking up at another, each in a section other than the camera's (so Quicksilver draws terrain here too, and leaves out the faces that point away: in the camera's own section it can't).",
    "ciStrictMask": [
     [
      514,
