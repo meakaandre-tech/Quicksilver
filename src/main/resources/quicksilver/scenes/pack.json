@@ -38,7 +38,7 @@
   },
   {
    "id": "ducks",
-   "title": "GeckoLib entities: six of Untitled Duck Mod's ducks on grass, AI off, each facing its own way (test pack)",
+   "title": "GeckoLib entities: six of Untitled Duck Mod's geese on grass, AI off, each facing its own way (test pack)",
    "renderDistance": 8,
    "settleSeconds": 20,
    "setup": [
@@ -49,18 +49,18 @@
     "tp @e[type=!minecraft:player,x=1945,y=230,z=-2012,dx=30,dy=22,dz=34] 1960.5 -200 -1995.5",
     "fill 1945 239 -2012 1975 239 -1978 minecraft:grass_block",
     "tick freeze",
-    "kill @e[type=untitledduckmod:duck]",
-    "summon untitledduckmod:duck 1956.5 240 -1995.5 {variant:0,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:duck 1959.5 240 -1996.5 {variant:1,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[45f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:duck 1962.5 240 -1995.5 {variant:2,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[90f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:duck 1965.5 240 -1996.5 {variant:0,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:duck 1958.0 240 -1999.5 {variant:1,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[270f,0f],Tags:[\"qs_ci\"]}",
-    "summon untitledduckmod:duck 1963.0 240 -1999.5 {variant:2,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[135f,0f],Tags:[\"qs_ci\"]}",
+    "kill @e[type=untitledduckmod:goose]",
+    "summon untitledduckmod:goose 1956.5 240 -1995.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[0f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1959.5 240 -1996.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[45f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1962.5 240 -1995.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[90f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1965.5 240 -1996.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1958.0 240 -1999.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[270f,0f],Tags:[\"qs_ci\"]}",
+    "summon untitledduckmod:goose 1963.0 240 -1999.5 {NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[135f,0f],Tags:[\"qs_ci\"]}",
     "execute in minecraft:overworld run tp @a 1960.5 242 -1986.5 180 25"
    ],
    "requiresMod": "untitledduckmod",
    "requiresNote": "The ducks are a GeckoLib mod's entities (Untitled Duck Mod, with GeckoLib).",
-   "ciNote": "GeckoLib draws its baked models through the entity path (design doc, GeckoLib models: unchanged). The game is frozen (/tick freeze) before the ducks are summoned, so they never tick: their age, and with it GeckoLib's animation time, is the same in every run (the suite's preamble unfreezes it for the next scene). AI off and silent besides. F1 here hides the GUI for the rest of the session (minimap tiles out of every later scene). Each duck's variant is given in its summon data (\"variant\", 0 to 2): Untitled Duck Mod otherwise picks one at random (run 43106805198).",
+   "ciNote": "GeckoLib draws its baked models through the entity path (design doc, GeckoLib models: unchanged). The game is frozen (/tick freeze) before the ducks are summoned, so they never tick: their age, and with it GeckoLib's animation time, is the same in every run (the suite's preamble unfreezes it for the next scene). AI off and silent besides. F1 here hides the GUI for the rest of the session (minimap tiles out of every later scene). Geese, not ducks: a duck's look (species and sex) is picked at random when it spawns, and its summon data didn't pin it (runs 43106805198, 43118886083); geese have one look.",
    "ciKeys": [
     "F1"
    ]
