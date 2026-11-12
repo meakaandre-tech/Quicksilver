@@ -1,0 +1,839 @@
+# classes in untitledduckmod-fabric-26.3-1.8.0.jar
+net/untitledduckmod/DuckMod
+net/untitledduckmod/client/fabric/DuckModFabricClientSetup
+net/untitledduckmod/client/model/DuckModel
+net/untitledduckmod/client/model/GooseModel
+net/untitledduckmod/client/model/ModelIdentifiers
+net/untitledduckmod/client/model/WaterfowlModel
+net/untitledduckmod/client/renderer/entity/DuckRenderer
+net/untitledduckmod/client/renderer/entity/GooseRenderer
+net/untitledduckmod/client/renderer/entity/WaterfowlRenderer
+net/untitledduckmod/client/renderer/entity/WaterfowlRenderer$1
+net/untitledduckmod/client/renderer/entity/WaterfowlRenderer$2
+net/untitledduckmod/client/screen/MouthScreen
+net/untitledduckmod/common/CommonSetup
+net/untitledduckmod/common/config/fabric/DuckModMenu
+net/untitledduckmod/common/config/fabric/TinyConfig
+net/untitledduckmod/common/config/fabric/TinyConfig$1
+net/untitledduckmod/common/config/fabric/TinyConfig$ButtonEntry
+net/untitledduckmod/common/config/fabric/TinyConfig$Client
+net/untitledduckmod/common/config/fabric/TinyConfig$Comment
+net/untitledduckmod/common/config/fabric/TinyConfig$Condition
+net/untitledduckmod/common/config/fabric/TinyConfig$Conditions
+net/untitledduckmod/common/config/fabric/TinyConfig$Entry
+net/untitledduckmod/common/config/fabric/TinyConfig$EntryInfo
+net/untitledduckmod/common/config/fabric/TinyConfig$Hidden
+net/untitledduckmod/common/config/fabric/TinyConfig$MidnightConfigListWidget
+net/untitledduckmod/common/config/fabric/TinyConfig$MidnightConfigScreen
+net/untitledduckmod/common/config/fabric/TinyConfig$MidnightSliderWidget
+net/untitledduckmod/common/config/fabric/TinyConfig$NonEntryExclusionStrategy
+net/untitledduckmod/common/config/fabric/TinyConfig$Server
+net/untitledduckmod/common/effect/IntimidationStatusEffect
+net/untitledduckmod/common/entity/CustomSpawnGroup
+net/untitledduckmod/common/entity/DuckEntity
+net/untitledduckmod/common/entity/DuckEntity$CleanGoal
+net/untitledduckmod/common/entity/DuckEntity$DiveGoal
+net/untitledduckmod/common/entity/DuckEntity$JukeboxEventListener
+net/untitledduckmod/common/entity/DuckEntity$VibrationUser
+net/untitledduckmod/common/entity/GooseEntity
+net/untitledduckmod/common/entity/GooseEntity$CleanGoal
+net/untitledduckmod/common/entity/GooseEntity$GooseEscapeDangerGoal
+net/untitledduckmod/common/entity/GooseEntity$GooseMeleeAttackGoal
+net/untitledduckmod/common/entity/GooseEntity$GooseRevengeGoal
+net/untitledduckmod/common/entity/GooseEntity$IntimidateMobsGoal
+net/untitledduckmod/common/entity/GooseEntity$PickupFoodGoal
+net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal
+net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal$SpearUseState
+net/untitledduckmod/common/entity/GooseEntity$StealItemGoal
+net/untitledduckmod/common/entity/MouthHoldable
+net/untitledduckmod/common/entity/WaterfowlEggEntity
+net/untitledduckmod/common/entity/WaterfowlEntity
+net/untitledduckmod/common/entity/ai/goal/common/EatGoal
+net/untitledduckmod/common/entity/ai/goal/common/SwimGoal
+net/untitledduckmod/common/entity/ai/goal/common/WFollowOwnerGoal
+net/untitledduckmod/common/entity/ai/navigation/WaterfowlPathNavigation
+net/untitledduckmod/common/entity/inv/ListenableSimpleContainer
+net/untitledduckmod/common/entity/inv/ListenableSimpleContainer$Listener
+net/untitledduckmod/common/helper/MouthGuiHelper
+net/untitledduckmod/common/helper/NbtHelper
+net/untitledduckmod/common/helper/fabric/FabricMouthGuiHelper
+net/untitledduckmod/common/helper/fabric/FabricMouthGuiHelper$1
+net/untitledduckmod/common/init/ModEntityTypes
+net/untitledduckmod/common/init/ModGameEventTags
+net/untitledduckmod/common/init/ModItems
+net/untitledduckmod/common/init/ModLootTables
+net/untitledduckmod/common/init/ModMenus
+net/untitledduckmod/common/init/ModPotions
+net/untitledduckmod/common/init/ModSoundEvents
+net/untitledduckmod/common/init/ModStatusEffects
+net/untitledduckmod/common/init/ModTags
+net/untitledduckmod/common/init/ModTags$BiomeTags
+net/untitledduckmod/common/init/ModTags$BlockTags
+net/untitledduckmod/common/init/ModTags$ItemTags
+net/untitledduckmod/common/init/fabric/FabricMenus
+net/untitledduckmod/common/init/fabric/FabricPotions
+net/untitledduckmod/common/item/DuckSackItem
+net/untitledduckmod/common/item/WaterfowlEggItem
+net/untitledduckmod/common/packet/MouthData
+net/untitledduckmod/common/platform/FabricRegistryHelper
+net/untitledduckmod/common/platform/FabricUntitledConfig
+net/untitledduckmod/common/platform/Services
+net/untitledduckmod/common/platform/service/IRegistryHelper
+net/untitledduckmod/common/platform/service/IUntitledConfig
+net/untitledduckmod/common/screen/ExtendedFactory
+net/untitledduckmod/common/screen/MouthMenu
+net/untitledduckmod/common/screen/MouthMenu$1
+net/untitledduckmod/compat/jade/JadePlugin
+net/untitledduckmod/compat/jade/provider/LayEggProvider
+net/untitledduckmod/compat/jade/provider/LayEggProvider$Client
+net/untitledduckmod/compat/jade/provider/NextEatProvider
+net/untitledduckmod/compat/jade/provider/NextEatProvider$Client
+net/untitledduckmod/fabric/DuckModFabric
+net/untitledduckmod/mixin/IllagerIntimidationMixin
+net/untitledduckmod/mixin/SpawnGroupMixin
+net/untitledduckmod/mixin/fabric/SwimSpeedMixin
+
+## net/untitledduckmod/client/model/GooseModel
+  public net.untitledduckmod.client.model.GooseModel();
+         1: ldc           #1                  // String goose
+  public net.minecraft.resources.Identifier getTextureResource(com.geckolib.renderer.base.GeoRenderState);
+        98: ldc           #52                 // String ping
+       114: ldc           #58                 // String sus
+       130: ldc           #60                 // String untitled
+       181: getstatic     #71                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.VARIANT_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+       184: invokeinterface #77,  2           // InterfaceMethod com/geckolib/renderer/base/GeoRenderState.hasGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;)Z
+       193: getstatic     #71                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.VARIANT_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+       196: invokeinterface #83,  2           // InterfaceMethod com/geckolib/renderer/base/GeoRenderState.getGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;)Ljava/lang/Object;
+
+## net/untitledduckmod/client/model/WaterfowlModel
+  public net.untitledduckmod.client.model.WaterfowlModel(net.minecraft.resources.Identifier);
+  public void addAdditionalStateData(net.untitledduckmod.common.entity.WaterfowlEntity, java.lang.Object, com.geckolib.renderer.base.GeoRenderState);
+         1: getstatic     #7                  // Field net/untitledduckmod/common/entity/WaterfowlEntity.BABY_SCALE_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        11: invokeinterface #23,  3           // InterfaceMethod com/geckolib/renderer/base/GeoRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+        17: getstatic     #29                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.VARIANT_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        27: invokeinterface #23,  3           // InterfaceMethod com/geckolib/renderer/base/GeoRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+        33: getstatic     #41                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.LOOKING_AROUND_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        43: invokeinterface #23,  3           // InterfaceMethod com/geckolib/renderer/base/GeoRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+  public void addAdditionalStateData(com.geckolib.animatable.GeoAnimatable, java.lang.Object, com.geckolib.renderer.base.GeoRenderState);
+
+## net/untitledduckmod/client/renderer/entity/GooseRenderer
+  public net.untitledduckmod.client.renderer.entity.GooseRenderer(net.minecraft.client.renderer.entity.EntityRendererProvider$Context);
+
+## net/untitledduckmod/client/renderer/entity/WaterfowlRenderer$1
+  net.untitledduckmod.client.renderer.entity.WaterfowlRenderer$1(net.untitledduckmod.client.renderer.entity.WaterfowlRenderer, net.minecraft.client.renderer.entity.EntityRendererProvider$Context, com.geckolib.renderer.base.GeoRenderer, java.lang.String, java.lang.String);
+  protected com.geckolib.renderer.layer.builtin.BlockAndItemGeoLayer$RenderData renderDataForHand(java.lang.String, net.minecraft.world.entity.HumanoidArm, T, R);
+       104: getstatic     #68                 // Field MAINHAND_SHIELD:Lcom/geckolib/constant/dataticket/DataTicket;
+       110: getstatic     #74                 // Field OFFHAND_SHIELD:Lcom/geckolib/constant/dataticket/DataTicket;
+       117: invokevirtual #83                 // Method net/minecraft/client/renderer/entity/state/LivingEntityRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+  protected void submitItemStackRender(com.mojang.blaze3d.vertex.PoseStack, com.geckolib.cache.model.GeoBone, net.minecraft.client.renderer.item.ItemStackRenderState, net.minecraft.world.item.ItemDisplayContext, R, net.minecraft.client.renderer.SubmitNodeCollector, int);
+        27: ldc           #127                // float 90.0f
+        33: ldc           #132                // float -0.1f
+        44: ldc           #140                // float 45.0f
+        67: ldc           #127                // float 90.0f
+        73: ldc           #144                // float 0.16f
+        75: ldc           #145                // float 0.03f
+        85: ldc           #140                // float 45.0f
+        91: ldc           #146                // float 0.7f
+        93: ldc           #146                // float 0.7f
+        95: ldc           #146                // float 0.7f
+  protected void submitItemStackRender(com.mojang.blaze3d.vertex.PoseStack, com.geckolib.cache.model.GeoBone, net.minecraft.client.renderer.item.ItemStackRenderState, net.minecraft.world.item.ItemDisplayContext, com.geckolib.renderer.base.GeoRenderState, net.minecraft.client.renderer.SubmitNodeCollector, int);
+  protected com.geckolib.renderer.layer.builtin.BlockAndItemGeoLayer$RenderData renderDataForHand(java.lang.String, net.minecraft.world.entity.HumanoidArm, net.minecraft.world.entity.LivingEntity, com.geckolib.renderer.base.GeoRenderState);
+
+## net/untitledduckmod/client/renderer/entity/WaterfowlRenderer$2
+  static final int[] $SwitchMap$net$minecraft$world$entity$EquipmentSlot;
+  static {};
+
+## net/untitledduckmod/client/renderer/entity/WaterfowlRenderer
+  private static final float ADULT_SHADOW_RADIUS;
+  public net.untitledduckmod.client.renderer.entity.WaterfowlRenderer(net.untitledduckmod.client.model.WaterfowlModel<T>, net.minecraft.client.renderer.entity.EntityRendererProvider$Context);
+         7: ldc           #9                  // float 0.3f
+        20: ldc           #16                 // String beak
+        22: ldc           #16                 // String beak
+  protected float getShadowRadius(R);
+  public void addRenderData(T, java.lang.Void, R, float);
+         1: getstatic     #34                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.VARIANT_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        11: invokevirtual #50                 // Method net/minecraft/client/renderer/entity/state/LivingEntityRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+        15: getstatic     #54                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.BABY_SCALE_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        25: invokevirtual #50                 // Method net/minecraft/client/renderer/entity/state/LivingEntityRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+        29: getstatic     #66                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.LOOKING_AROUND_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        39: invokevirtual #50                 // Method net/minecraft/client/renderer/entity/state/LivingEntityRenderState.addGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)V
+  public void scaleModelForRender(com.geckolib.renderer.base.RenderPassInfo<R>, float, float);
+  public void adjustModelBonesForRender(com.geckolib.renderer.base.RenderPassInfo<R>, com.geckolib.renderer.base.BoneSnapshots);
+        15: getstatic     #66                 // Field net/untitledduckmod/common/entity/WaterfowlEntity.LOOKING_AROUND_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        22: invokevirtual #96                 // Method net/minecraft/client/renderer/entity/state/LivingEntityRenderState.getOrDefaultGeckolibData:(Lcom/geckolib/constant/dataticket/DataTicket;Ljava/lang/Object;)Ljava/lang/Object;
+        40: ldc           #103                // String head
+        42: invokestatic  #105                // Method com/geckolib/constant/DefaultAnimations.hardcodedHeadRotation:(Lcom/geckolib/renderer/base/RenderPassInfo;Lcom/geckolib/renderer/base/BoneSnapshots;Ljava/lang/String;)V
+  public void addRenderData(com.geckolib.animatable.GeoAnimatable, java.lang.Object, com.geckolib.renderer.base.GeoRenderState, float);
+  protected float getShadowRadius(net.minecraft.client.renderer.entity.state.EntityRenderState);
+
+## net/untitledduckmod/common/entity/GooseEntity$CleanGoal
+  private static final int ANIMATION_LENGTH;
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  private int cleanTime;
+  private int nextCleanTime;
+  public net.untitledduckmod.common.entity.GooseEntity$CleanGoal(net.untitledduckmod.common.entity.GooseEntity);
+        24: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        31: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        36: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public boolean canUse();
+         8: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        30: invokevirtual #55                 // Method net/untitledduckmod/common/entity/GooseEntity.getAnimation:()B
+        42: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        47: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public void start();
+        11: invokevirtual #62                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+        19: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        29: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        34: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public void stop();
+         5: invokevirtual #62                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+  public boolean canContinueToUse();
+  public void tick();
+
+## net/untitledduckmod/common/entity/GooseEntity$GooseEscapeDangerGoal
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  public net.untitledduckmod.common.entity.GooseEntity$GooseEscapeDangerGoal(net.untitledduckmod.common.entity.GooseEntity, double);
+  public boolean canUse();
+  protected boolean findRandomPosition();
+        37: invokestatic  #45                 // Method net/minecraft/world/entity/ai/util/LandRandomPos.getPosAway:(Lnet/minecraft/world/entity/PathfinderMob;IILnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;
+        72: invokespecial #72                 // Method net/minecraft/world/entity/ai/goal/PanicGoal.findRandomPosition:()Z
+  public void start();
+  public void stop();
+
+## net/untitledduckmod/common/entity/GooseEntity$GooseMeleeAttackGoal
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  private static final int ANIMATION_LEN;
+  private static final int ANIMATION_ATTACK;
+  private int animationTimer;
+  public net.untitledduckmod.common.entity.GooseEntity$GooseMeleeAttackGoal(net.untitledduckmod.common.entity.GooseEntity, double, boolean);
+        10: putfield      #9                  // Field animationTimer:I
+  public boolean canUse();
+  protected void checkAndPerformAttack(net.minecraft.world.entity.LivingEntity);
+         9: getfield      #9                  // Field animationTimer:I
+        20: invokevirtual #46                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+        26: putfield      #9                  // Field animationTimer:I
+        44: ldc           #64                 // float 0.8f
+        46: ldc           #65                 // float 1.2f
+        52: getfield      #9                  // Field animationTimer:I
+        60: getfield      #9                  // Field animationTimer:I
+        65: putfield      #9                  // Field animationTimer:I
+        69: getfield      #9                  // Field animationTimer:I
+        93: getfield      #9                  // Field animationTimer:I
+       104: invokevirtual #46                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+  public void stop();
+         9: invokevirtual #46                 // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+        14: putfield      #9                  // Field animationTimer:I
+
+## net/untitledduckmod/common/entity/GooseEntity$GooseRevengeGoal
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  public net.untitledduckmod.common.entity.GooseEntity$GooseRevengeGoal(net.untitledduckmod.common.entity.GooseEntity);
+  public boolean canContinueToUse();
+
+## net/untitledduckmod/common/entity/GooseEntity$IntimidateMobsGoal
+  private static final int STARTING_DELAY;
+  private static final int ANIMATION_LENGTH;
+  private static final double INTIMIDATE_DISTANCE;
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  private int animationTime;
+  private int delayTime;
+  private int cooldown;
+  protected net.minecraft.world.entity.Entity targetEntity;
+  private net.minecraft.world.phys.Vec3 originalLocation;
+  public net.untitledduckmod.common.entity.GooseEntity$IntimidateMobsGoal(net.untitledduckmod.common.entity.GooseEntity);
+  public boolean canUse();
+        20: getfield      #36                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        36: ldc           #45                 // class net/minecraft/world/entity/monster/illager/AbstractIllager
+        73: ldc2_w        #67                 // double 12.0d
+        76: ldc2_w        #69                 // double 3.0d
+        79: ldc2_w        #67                 // double 12.0d
+  public void start();
+        13: putfield      #96                 // Field animationTime:I
+        44: ldc2_w        #110                // double 1.2d
+  public void stop();
+         5: invokevirtual #116                // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+        36: ldc2_w        #110                // double 1.2d
+  public boolean canContinueToUse();
+        21: ldc2_w        #145                // double 144.0d
+        29: getfield      #96                 // Field animationTime:I
+  public void tick();
+        71: invokevirtual #116                // Method net/untitledduckmod/common/entity/GooseEntity.setAnimation:(B)V
+        97: getfield      #96                 // Field animationTime:I
+       102: putfield      #96                 // Field animationTime:I
+
+## net/untitledduckmod/common/entity/GooseEntity$PickupFoodGoal
+  public static final double SPEED;
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  private static final java.util.function.Predicate<net.minecraft.world.entity.item.ItemEntity> PICKABLE_DROP_FILTER;
+  public net.untitledduckmod.common.entity.GooseEntity$PickupFoodGoal(net.untitledduckmod.common.entity.GooseEntity);
+  public boolean canUse();
+        44: invokevirtual #53                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        49: invokeinterface #57,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        66: ldc           #67                 // class net/minecraft/world/entity/item/ItemEntity
+        75: ldc2_w        #73                 // double 8.0d
+        78: ldc2_w        #73                 // double 8.0d
+        81: ldc2_w        #73                 // double 8.0d
+  public void tick();
+  public void start();
+         7: ldc           #67                 // class net/minecraft/world/entity/item/ItemEntity
+        16: ldc2_w        #73                 // double 8.0d
+        19: ldc2_w        #73                 // double 8.0d
+        22: ldc2_w        #73                 // double 8.0d
+        60: ldc2_w        #107                // double 1.3d
+  private static boolean lambda$static$0(net.minecraft.world.entity.item.ItemEntity);
+  static {};
+
+## net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal$SpearUseState
+  private int engageTime;
+  private int fleeingTime;
+  private net.minecraft.world.phys.Vec3 awayPos;
+  private boolean done;
+  public net.untitledduckmod.common.entity.GooseEntity$SpearUseGoal$SpearUseState();
+  public boolean notEngagedYet();
+  public void startEngagement(int);
+  public boolean tickAndCheckEngagement();
+  public boolean tickAndCheckFleeing();
+
+## net/untitledduckmod/common/entity/GooseEntity$SpearUseGoal
+  static final int MIN_REPOSITION_DISTANCE;
+  static final int MAX_REPOSITION_DISTANCE;
+  static final int MIN_COOLDOWN_DISTANCE;
+  static final int MAX_COOLDOWN_DISTANCE;
+  private static final double MAX_FLEEING_TIME;
+  private final net.untitledduckmod.common.entity.GooseEntity mob;
+  private net.untitledduckmod.common.entity.GooseEntity$SpearUseGoal$SpearUseState state;
+  private final double speedModifierWhenCharging;
+  private final double speedModifierWhenRepositioning;
+  private final float approachDistanceSq;
+  private final float targetInRangeRadiusSq;
+  public net.untitledduckmod.common.entity.GooseEntity$SpearUseGoal(net.untitledduckmod.common.entity.GooseEntity, double, double, float, float);
+  public boolean canUse();
+  private boolean ableToAttack();
+  private int getKineticWeaponUseDuration();
+        42: invokestatic  #109                // Method reducedTickDelay:(I)I
+  public boolean canContinueToUse();
+  public void start();
+  public void stop();
+  public void tick();
+        91: ldc           #173                // float 30.0f
+        93: ldc           #173                // float 30.0f
+       106: ldc           #173                // float 30.0f
+       108: ldc           #173                // float 30.0f
+       238: invokestatic  #228                // Method net/minecraft/world/entity/ai/util/LandRandomPos.getPosAway:(Lnet/minecraft/world/entity/PathfinderMob;DDILnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;
+       445: invokestatic  #228                // Method net/minecraft/world/entity/ai/util/LandRandomPos.getPosAway:(Lnet/minecraft/world/entity/PathfinderMob;DDILnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;
+  static {};
+         2: invokestatic  #109                // Method reducedTickDelay:(I)I
+
+## net/untitledduckmod/common/entity/GooseEntity$StealItemGoal
+  private static final double SPEED;
+  private final net.untitledduckmod.common.entity.GooseEntity goose;
+  private net.minecraft.world.item.ItemStack playerHandStack;
+  public net.untitledduckmod.common.entity.GooseEntity$StealItemGoal(net.untitledduckmod.common.entity.GooseEntity);
+        24: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        28: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        34: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public boolean canUse();
+        39: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        55: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        60: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        99: ldc2_w        #81                 // double 10.0d
+       121: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+       128: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+       134: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public boolean canContinueToUse();
+  public void start();
+        11: ldc2_w        #114                // double 1.3d
+  public void stop();
+         5: getfield      #32                 // Field net/untitledduckmod/common/entity/GooseEntity.tickCount:I
+        12: invokevirtual #38                 // Method net/untitledduckmod/common/entity/GooseEntity.getRandom:()Lnet/minecraft/util/RandomSource;
+        18: invokeinterface #42,  2           // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public void tick();
+        87: ldc2_w        #114                // double 1.3d
+
+## net/untitledduckmod/common/entity/GooseEntity
+public class net.untitledduckmod.common.entity.GooseEntity extends net.untitledduckmod.common.entity.WaterfowlEntity implements net.minecraft.world.entity.NeutralMob, com.geckolib.animation.AnimationController$KeyframeEventHandler<net.untitledduckmod.common.entity.GooseEntity, com.geckolib.cache.animation.keyframeevent.ParticleKeyframeData> {
+  private static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Long> ANGER_TIME;
+  private static final net.minecraft.util.valueproviders.UniformInt ANGER_TIME_RANGE;
+  private net.minecraft.world.entity.EntityReference<net.minecraft.world.entity.LivingEntity> persistentAngerTarget;
+  public static final byte ANIMATION_BITE;
+  public static final int ANIMATION_BITE_LEN;
+  public static final byte ANIMATION_INTIMIDATE;
+  private static final com.geckolib.animation.RawAnimation INTIMIDATE_ANIM;
+  private static final com.geckolib.animation.RawAnimation HONK_ANIM;
+  private static final com.geckolib.animation.RawAnimation BITE_ANIM;
+  private static final com.geckolib.animation.RawAnimation CHARGE_ANIM;
+  private final com.geckolib.animatable.instance.AnimatableInstanceCache cache;
+  private int animationTimer;
+  public net.untitledduckmod.common.entity.GooseEntity(net.minecraft.world.entity.EntityType<? extends net.untitledduckmod.common.entity.WaterfowlEntity>, net.minecraft.world.level.Level);
+         8: invokestatic  #7                  // Method com/geckolib/util/GeckoLibUtil.createInstanceCache:(Lcom/geckolib/animatable/GeoAnimatable;)Lcom/geckolib/animatable/instance/AnimatableInstanceCache;
+        11: putfield      #13                 // Field cache:Lcom/geckolib/animatable/instance/AnimatableInstanceCache;
+        16: putfield      #19                 // Field animationTimer:I
+  public static boolean checkGooseSpawnRules(net.minecraft.world.entity.EntityType<net.untitledduckmod.common.entity.GooseEntity>, net.minecraft.world.level.ServerLevelAccessor, net.minecraft.world.entity.EntitySpawnReason, net.minecraft.core.BlockPos, net.minecraft.util.RandomSource);
+  public static net.minecraft.world.entity.ai.attributes.AttributeSupplier$Builder getDefaultAttributes();
+         0: invokestatic  #63                 // Method net/untitledduckmod/common/entity/WaterfowlEntity.createAnimalAttributes:()Lnet/minecraft/world/entity/ai/attributes/AttributeSupplier$Builder;
+         6: ldc2_w        #73                 // double 7.0d
+        15: ldc2_w        #84                 // double 0.2d
+        24: ldc2_w        #89                 // double 2.0d
+  public void setTame(boolean, boolean);
+        19: ldc2_w        #107                // double 2.5d
+  protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData$Builder);
+  public void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput);
+  public void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+  public void handleEntityEvent(byte);
+        15: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
+        18: invokeinterface #156,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextGaussian:()D
+        23: ldc2_w        #162                // double 0.02d
+        29: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
+        32: invokeinterface #156,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextGaussian:()D
+        37: ldc2_w        #162                // double 0.02d
+        44: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
+        47: invokeinterface #156,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextGaussian:()D
+        52: ldc2_w        #162                // double 0.02d
+        67: invokevirtual #170                // Method getRandomX:(D)D
+        71: invokevirtual #174                // Method getRandomY:()D
+        74: ldc2_w        #177                // double 0.5d
+        80: invokevirtual #179                // Method getRandomZ:(D)D
+  public boolean isEdibleFood(net.minecraft.world.item.ItemStack);
+  public static net.minecraft.world.item.crafting.Ingredient getFoodIngredient();
+  public static net.minecraft.world.item.crafting.Ingredient getBreedingIngredient();
+  public static net.minecraft.world.item.crafting.Ingredient getTamingIngredient();
+  public int getMouthHolderType();
+  protected void registerGoals();
+        26: ldc2_w        #89                 // double 2.0d
+        62: invokespecial #262                // Method net/minecraft/world/entity/ai/goal/BreedGoal."<init>":(Lnet/minecraft/world/entity/animal/Animal;D)V
+        78: invokespecial #267                // Method net/minecraft/world/entity/ai/goal/SitWhenOrderedToGoal."<init>":(Lnet/minecraft/world/entity/TamableAnimal;)V
+       142: ldc2_w        #89                 // double 2.0d
+       145: ldc2_w        #89                 // double 2.0d
+       148: ldc_w         #281                // float 10.0f
+       169: ldc2_w        #287                // double 1.5d
+       226: ldc2_w        #312                // double 1.1d
+       229: invokespecial #314                // Method net/minecraft/world/entity/ai/goal/FollowParentGoal."<init>":(Lnet/minecraft/world/entity/animal/Animal;D)V
+       246: ldc2_w        #317                // double 1.6d
+       249: ldc_w         #281                // float 10.0f
+       287: ldc_w         #327                // class net/minecraft/world/entity/player/Player
+       290: ldc_w         #329                // float 6.0f
+       305: new           #333                // class net/minecraft/world/entity/ai/goal/RandomStrollGoal
+       311: invokespecial #335                // Method net/minecraft/world/entity/ai/goal/RandomStrollGoal."<init>":(Lnet/minecraft/world/entity/PathfinderMob;D)V
+       323: new           #338                // class net/minecraft/world/entity/ai/goal/RandomLookAroundGoal
+       328: invokespecial #340                // Method net/minecraft/world/entity/ai/goal/RandomLookAroundGoal."<init>":(Lnet/minecraft/world/entity/Mob;)V
+       344: invokespecial #348                // Method net/minecraft/world/entity/ai/goal/target/OwnerHurtByTargetGoal."<init>":(Lnet/minecraft/world/entity/TamableAnimal;)V
+       360: invokespecial #351                // Method net/minecraft/world/entity/ai/goal/target/OwnerHurtTargetGoal."<init>":(Lnet/minecraft/world/entity/TamableAnimal;)V
+  public boolean isFood(net.minecraft.world.item.ItemStack);
+  public void aiStep();
+        15: getfield      #19                 // Field animationTimer:I
+        23: getfield      #19                 // Field animationTimer:I
+        28: putfield      #19                 // Field animationTimer:I
+        32: getfield      #19                 // Field animationTimer:I
+        40: invokevirtual #374                // Method setAnimation:(B)V
+  protected void handlePanicAnimation();
+        44: invokevirtual #374                // Method setAnimation:(B)V
+        78: invokevirtual #374                // Method setAnimation:(B)V
+  protected boolean tryTaming(net.minecraft.world.entity.player.Player, net.minecraft.world.item.ItemStack);
+  protected boolean isTamableItem(net.minecraft.world.item.ItemStack);
+  protected boolean isTamable(net.minecraft.world.entity.player.Player, net.minecraft.world.item.ItemStack);
+  public void stopBeingAngry();
+        16: ldc2_w        #437                // long -1l
+  public net.minecraft.world.item.ItemStack equipItemIfPossible(net.minecraft.server.level.ServerLevel, net.minecraft.world.item.ItemStack);
+  protected void pickUpItem(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.item.ItemEntity);
+  private boolean isWeapon(net.minecraft.world.item.ItemStack);
+  public boolean canHoldItem(net.minecraft.world.item.ItemStack);
+  public boolean canPickUpLoot();
+  public net.untitledduckmod.common.entity.GooseEntity getBreedOffspring(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.AgeableMob);
+        32: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
+        35: invokeinterface #543,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextBoolean:()Z
+        65: invokevirtual #553                // Method getRandomBabyScale:()F
+  public void registerControllers(com.geckolib.animatable.manager.AnimatableManager$ControllerRegistrar);
+         0: new           #568                // class com/geckolib/animation/AnimationController
+         4: ldc_w         #570                // String controller
+         9: invokedynamic #572,  0            // InvokeDynamic #0:handle:(Lnet/untitledduckmod/common/entity/GooseEntity;)Lcom/geckolib/animation/AnimationController$AnimationStateHandler;
+        14: invokespecial #576                // Method com/geckolib/animation/AnimationController."<init>":(Ljava/lang/String;ILcom/geckolib/animation/AnimationController$AnimationStateHandler;)V
+        20: invokevirtual #579                // Method com/geckolib/animation/AnimationController.setParticleKeyframeHandler:(Lcom/geckolib/animation/AnimationController$KeyframeEventHandler;)Lcom/geckolib/animation/AnimationController;
+        26: invokevirtual #583                // Method com/geckolib/animatable/manager/AnimatableManager$ControllerRegistrar.add:(Lcom/geckolib/animation/AnimationController;)Lcom/geckolib/animatable/manager/AnimatableManager$ControllerRegistrar;
+  protected net.minecraft.sounds.SoundEvent getLayEggSound();
+  public net.minecraft.world.item.Item getEggItem();
+  public boolean dropEggItem(net.minecraft.server.level.ServerLevel);
+  private <P extends com.geckolib.animatable.GeoAnimatable> com.geckolib.animation.object.PlayState predicate(com.geckolib.animation.state.AnimationTest<P>);
+         1: invokevirtual #609                // Method com/geckolib/animation/state/AnimationTest.isMoving:()Z
+        11: invokevirtual #617                // Method com/geckolib/animation/state/AnimationTest.controller:()Lcom/geckolib/animation/AnimationController;
+        25: getstatic     #623                // Field FLY_ANIM:Lcom/geckolib/animation/RawAnimation;
+        28: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+        31: getstatic     #630                // Field com/geckolib/animation/object/PlayState.CONTINUE:Lcom/geckolib/animation/object/PlayState;
+        44: getstatic     #639                // Field SIT_ANIM:Lcom/geckolib/animation/RawAnimation;
+        47: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+        50: getstatic     #630                // Field com/geckolib/animation/object/PlayState.CONTINUE:Lcom/geckolib/animation/object/PlayState;
+        55: invokevirtual #642                // Method getAnimation:()B
+       102: getstatic     #645                // Field BITE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       105: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       111: putfield      #19                 // Field animationTimer:I
+       119: getstatic     #648                // Field INTIMIDATE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       122: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       130: getstatic     #651                // Field EAT_ANIM:Lcom/geckolib/animation/RawAnimation;
+       133: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       145: getstatic     #654                // Field SWIM_ANIM:Lcom/geckolib/animation/RawAnimation;
+       151: getstatic     #657                // Field CLEAN_ANIM:Lcom/geckolib/animation/RawAnimation;
+       154: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       162: getstatic     #660                // Field HONK_ANIM:Lcom/geckolib/animation/RawAnimation;
+       165: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       173: getstatic     #663                // Field PANIC_ANIM:Lcom/geckolib/animation/RawAnimation;
+       176: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       192: getstatic     #654                // Field SWIM_ANIM:Lcom/geckolib/animation/RawAnimation;
+       198: getstatic     #666                // Field SWIM_IDLE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       201: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       216: getstatic     #672                // Field CHARGE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       219: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       222: getstatic     #630                // Field com/geckolib/animation/object/PlayState.CONTINUE:Lcom/geckolib/animation/object/PlayState;
+       232: getstatic     #675                // Field WALK_ANIM:Lcom/geckolib/animation/RawAnimation;
+       238: getstatic     #678                // Field IDLE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       241: invokevirtual #627                // Method com/geckolib/animation/AnimationController.setAnimation:(Lcom/geckolib/animation/RawAnimation;)V
+       244: getstatic     #630                // Field com/geckolib/animation/object/PlayState.CONTINUE:Lcom/geckolib/animation/object/PlayState;
+  public com.geckolib.animatable.instance.AnimatableInstanceCache getAnimatableInstanceCache();
+         1: getfield      #13                 // Field cache:Lcom/geckolib/animatable/instance/AnimatableInstanceCache;
+  public void playAmbientSound();
+        19: ldc_w         #684                // float 0.3f
+        49: ldc_w         #695                // float 0.6f
+  public net.minecraft.world.entity.item.ItemEntity spawnAtLocation(net.minecraft.server.level.ServerLevel, net.minecraft.world.item.ItemStack, float);
+  protected void playHurtSound(net.minecraft.world.damagesource.DamageSource);
+        19: ldc_w         #684                // float 0.3f
+        26: ldc_w         #706                // float 0.25f
+        46: ldc_w         #707                // float 0.7f
+  protected net.minecraft.sounds.SoundEvent getDeathSound();
+  protected void playStepSound(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState);
+        12: ldc_w         #717                // float 0.15f
+  public long getPersistentAngerEndTime();
+  public void setPersistentAngerEndTime(long);
+  public net.minecraft.world.entity.EntityReference<net.minecraft.world.entity.LivingEntity> getPersistentAngerTarget();
+  public void setPersistentAngerTarget(net.minecraft.world.entity.EntityReference<net.minecraft.world.entity.LivingEntity>);
+  public void startPersistentAngerTimer();
+         5: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
+         8: invokevirtual #743                // Method net/minecraft/util/valueproviders/UniformInt.sample:(Lnet/minecraft/util/RandomSource;)I
+  public void handle(com.geckolib.animation.state.KeyFrameEvent<net.untitledduckmod.common.entity.GooseEntity, com.geckolib.cache.animation.keyframeevent.ParticleKeyframeData>);
+        26: getfield      #152                // Field random:Lnet/minecraft/util/RandomSource;
+        29: invokeinterface #751,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        35: ldc2_w        #177                // double 0.5d
+        39: ldc2_w        #754                // double 0.1d
+        43: invokestatic  #756                // Method java/lang/Math.random:()D
+        46: ldc2_w        #754                // double 0.1d
+        50: ldc2_w        #754                // double 0.1d
+        67: ldc_w         #766                // float 0.017453292f
+        83: ldc_w         #766                // float 0.017453292f
+       115: ldc2_w        #89                 // double 2.0d
+       124: ldc2_w        #84                 // double 0.2d
+       137: ldc2_w        #89                 // double 2.0d
+       190: ldc2_w        #816                // double 0.05d
+  public boolean wantsToPickupItem();
+  public boolean isHungry();
+  public boolean tamedFollowOwner();
+  public float sanitizeScale(float);
+         3: invokeinterface #838,  1          // InterfaceMethod net/untitledduckmod/common/platform/service/IUntitledConfig.gooseBabyRandomSize:()Z
+        28: ldc_w         #844                // float 0.8f
+        32: ldc_w         #845                // float 0.5f
+  public net.minecraft.world.entity.AgeableMob getBreedOffspring(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.AgeableMob);
+  static {};
+         0: ldc           #14                 // class net/untitledduckmod/common/entity/GooseEntity
+        21: invokestatic  #867                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+        24: ldc_w         #873                // String intimidate
+        27: invokevirtual #875                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+        30: putstatic     #648                // Field INTIMIDATE_ANIM:Lcom/geckolib/animation/RawAnimation;
+        33: invokestatic  #867                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+        36: ldc_w         #879                // String honk
+        39: invokevirtual #875                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+        42: putstatic     #660                // Field HONK_ANIM:Lcom/geckolib/animation/RawAnimation;
+        45: invokestatic  #867                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+        48: ldc_w         #881                // String bite
+        51: invokevirtual #875                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+        54: putstatic     #645                // Field BITE_ANIM:Lcom/geckolib/animation/RawAnimation;
+        57: invokestatic  #867                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+        60: ldc_w         #883                // String charge
+        63: invokevirtual #875                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+        66: putstatic     #672                // Field CHARGE_ANIM:Lcom/geckolib/animation/RawAnimation;
+
+## net/untitledduckmod/common/entity/WaterfowlEggEntity
+  private final net.minecraft.world.entity.EntityType<? extends net.untitledduckmod.common.entity.WaterfowlEntity> mobEntityType;
+  private static final net.minecraft.world.entity.EntityDimensions EMPTY_DIMENSIONS;
+  public net.untitledduckmod.common.entity.WaterfowlEggEntity(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile>, net.minecraft.world.level.Level);
+  public net.untitledduckmod.common.entity.WaterfowlEggEntity(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile>, net.minecraft.world.level.Level, net.minecraft.world.item.ItemStack, double, double, double);
+  public net.untitledduckmod.common.entity.WaterfowlEggEntity(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile>, net.minecraft.world.level.Level, net.minecraft.world.entity.LivingEntity, net.minecraft.world.item.ItemStack, net.minecraft.world.entity.EntityType<? extends net.untitledduckmod.common.entity.WaterfowlEntity>);
+  public net.untitledduckmod.common.entity.WaterfowlEggEntity(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile>, net.minecraft.world.level.Level, net.minecraft.world.item.ItemStack, double, double, double, net.minecraft.world.entity.EntityType<? extends net.untitledduckmod.common.entity.WaterfowlEntity>);
+  public void handleEntityEvent(byte);
+        47: getfield      #61                 // Field random:Lnet/minecraft/util/RandomSource;
+        50: invokeinterface #65,  1           // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        56: ldc2_w        #71                 // double 0.5d
+        60: ldc2_w        #73                 // double 0.08d
+        65: getfield      #61                 // Field random:Lnet/minecraft/util/RandomSource;
+        68: invokeinterface #65,  1           // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        74: ldc2_w        #71                 // double 0.5d
+        78: ldc2_w        #73                 // double 0.08d
+        83: getfield      #61                 // Field random:Lnet/minecraft/util/RandomSource;
+        86: invokeinterface #65,  1           // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        92: ldc2_w        #71                 // double 0.5d
+        96: ldc2_w        #73                 // double 0.08d
+  protected void onHitEntity(net.minecraft.world.phys.EntityHitResult);
+  protected void onHit(net.minecraft.world.phys.HitResult);
+        18: getfield      #61                 // Field random:Lnet/minecraft/util/RandomSource;
+        23: invokeinterface #120,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        34: getfield      #61                 // Field random:Lnet/minecraft/util/RandomSource;
+        39: invokeinterface #120,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+       118: invokevirtual #149                // Method net/minecraft/world/level/Level.getRandom:()Lnet/minecraft/util/RandomSource;
+       122: invokeinterface #120,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  protected net.minecraft.world.item.Item getDefaultItem();
+  static {};
+
+## net/untitledduckmod/common/entity/WaterfowlEntity
+public abstract class net.untitledduckmod.common.entity.WaterfowlEntity extends net.minecraft.world.entity.TamableAnimal implements com.geckolib.animatable.GeoAnimatable,net.untitledduckmod.common.entity.MouthHoldable {
+  protected net.minecraft.util.ProblemReporter errorReporter;
+  public static final org.slf4j.Logger LOGGER;
+  public static final float BABY_MIN_SCALE;
+  public static final float BABY_MAX_SCALE;
+  public static final java.lang.String EGG_LAY_TIME_TAG;
+  public static final java.lang.String HELD_FOOD_TICK_TAG;
+  public static final java.lang.String RANDOM_FORCE_EAT_TICK_TAG;
+  public static final java.lang.String MOUTH_ITEM_TAG;
+  public static final java.lang.String VARIANT_TAG;
+  public static final java.lang.String BABY_SCALE_TAG;
+  public static final float SWIM_SPEED_MULTIPLIER;
+  public static final com.geckolib.constant.dataticket.DataTicket<java.lang.Boolean> LOOKING_AROUND_TICKET;
+  public static final com.geckolib.constant.dataticket.DataTicket<java.lang.Byte> VARIANT_TICKET;
+  public static final com.geckolib.constant.dataticket.DataTicket<java.lang.Float> BABY_SCALE_TICKET;
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Byte> VARIANT;
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Float> BABY_SCALE;
+  protected static final net.minecraft.network.syncher.EntityDataAccessor<java.lang.Byte> ANIMATION;
+  public static final byte ANIMATION_IDLE;
+  public static final byte ANIMATION_CLEAN;
+  public static final byte ANIMATION_DANCE;
+  public static final byte ANIMATION_PANIC;
+  public static final byte ANIMATION_EAT;
+  protected static final com.geckolib.animation.RawAnimation WALK_ANIM;
+  protected static final com.geckolib.animation.RawAnimation IDLE_ANIM;
+  protected static final com.geckolib.animation.RawAnimation SWIM_ANIM;
+  protected static final com.geckolib.animation.RawAnimation SWIM_IDLE_ANIM;
+  protected static final com.geckolib.animation.RawAnimation PANIC_ANIM;
+  protected static final com.geckolib.animation.RawAnimation FLY_ANIM;
+  protected static final com.geckolib.animation.RawAnimation CLEAN_ANIM;
+  protected static final com.geckolib.animation.RawAnimation EAT_ANIM;
+  protected static final com.geckolib.animation.RawAnimation SIT_ANIM;
+  public final net.untitledduckmod.common.entity.inv.ListenableSimpleContainer mouthInventory;
+  protected int maxVariant;
+  protected int eggLayTime;
+  private int heldFoodTick;
+  private int randomForceEatTick;
+  public float flap;
+  public float flapSpeed;
+  public float oFlapSpeed;
+  public float oFlap;
+  public float flapping;
+  private float nextFlap;
+  protected boolean panicked;
+  static final boolean $assertionsDisabled;
+  protected net.untitledduckmod.common.entity.WaterfowlEntity(net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.TamableAnimal>, net.minecraft.world.level.Level);
+         3: invokespecial #1                  // Method net/minecraft/world/entity/TamableAnimal."<init>":(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V
+        25: putfield      #22                 // Field heldFoodTick:I
+        30: putfield      #25                 // Field randomForceEatTick:I
+        50: invokevirtual #39                 // Method getRandomLayTime:()I
+  public net.minecraft.world.entity.SpawnGroupData finalizeSpawn(net.minecraft.world.level.ServerLevelAccessor, net.minecraft.world.DifficultyInstance, net.minecraft.world.entity.EntitySpawnReason, net.minecraft.world.entity.SpawnGroupData);
+         1: invokevirtual #81                 // Method getRandomBabyScale:()F
+         7: invokevirtual #85                 // Method getRandomVariant:()B
+        30: invokespecial #97                 // Method net/minecraft/world/entity/TamableAnimal.finalizeSpawn:(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;Lnet/minecraft/world/entity/EntitySpawnReason;Lnet/minecraft/world/entity/SpawnGroupData;)Lnet/minecraft/world/entity/SpawnGroupData;
+  protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData$Builder);
+         2: invokespecial #101                // Method net/minecraft/world/entity/TamableAnimal.defineSynchedData:(Lnet/minecraft/network/syncher/SynchedEntityData$Builder;)V
+        34: invokevirtual #81                 // Method getRandomBabyScale:()F
+  public void addAdditionalSaveData(net.minecraft.world.level.storage.ValueOutput);
+         2: invokespecial #132                // Method net/minecraft/world/entity/TamableAnimal.addAdditionalSaveData:(Lnet/minecraft/world/level/storage/ValueOutput;)V
+         6: ldc           #136                // String Variant
+        18: ldc           #147                // String EggLayTime
+        30: ldc           #153                // String HeldFoodTick
+        33: getfield      #22                 // Field heldFoodTick:I
+        42: ldc           #155                // String RandomForceEatTick
+        45: getfield      #25                 // Field randomForceEatTick:I
+        54: ldc           #157                // String BabyScale
+        66: ldc           #166                // String MouthItem
+  public void readAdditionalSaveData(net.minecraft.world.level.storage.ValueInput);
+         2: invokespecial #182                // Method net/minecraft/world/entity/TamableAnimal.readAdditionalSaveData:(Lnet/minecraft/world/level/storage/ValueInput;)V
+         7: ldc           #136                // String Variant
+        10: invokevirtual #85                 // Method getRandomVariant:()B
+        23: ldc           #157                // String BabyScale
+        26: invokevirtual #81                 // Method getRandomBabyScale:()F
+        39: ldc           #147                // String EggLayTime
+        42: invokevirtual #39                 // Method getRandomLayTime:()I
+        55: ldc           #153                // String HeldFoodTick
+        63: putfield      #22                 // Field heldFoodTick:I
+        68: ldc           #155                // String RandomForceEatTick
+        71: invokevirtual #200                // Method generateRandomForceEatTick:()I
+        79: putfield      #25                 // Field randomForceEatTick:I
+        88: ldc           #166                // String MouthItem
+  public net.untitledduckmod.common.entity.inv.ListenableSimpleContainer getMouthInventory();
+  public net.minecraft.network.chat.Component getDisplayName();
+         1: invokespecial #221                // Method net/minecraft/world/entity/TamableAnimal.getDisplayName:()Lnet/minecraft/network/chat/Component;
+  public void setItemSlot(net.minecraft.world.entity.EquipmentSlot, net.minecraft.world.item.ItemStack);
+         3: invokespecial #225                // Method net/minecraft/world/entity/TamableAnimal.setItemSlot:(Lnet/minecraft/world/entity/EquipmentSlot;Lnet/minecraft/world/item/ItemStack;)V
+  public void setTame(boolean, boolean);
+         3: invokespecial #239                // Method net/minecraft/world/entity/TamableAnimal.setTame:(ZZ)V
+        23: ldc2_w        #260                // double 20.0d
+        30: ldc_w         #266                // float 20.0f
+        52: ldc2_w        #270                // double 7.0d
+  public boolean causeFallDamage(double, float, net.minecraft.world.damagesource.DamageSource);
+  public void tick();
+         1: invokespecial #272                // Method net/minecraft/world/entity/TamableAnimal.tick:()V
+        19: getfield      #22                 // Field heldFoodTick:I
+        24: putfield      #22                 // Field heldFoodTick:I
+        28: getfield      #25                 // Field randomForceEatTick:I
+        36: invokevirtual #200                // Method generateRandomForceEatTick:()I
+        39: putfield      #25                 // Field randomForceEatTick:I
+        47: putfield      #22                 // Field heldFoodTick:I
+        52: putfield      #25                 // Field randomForceEatTick:I
+  private int generateRandomForceEatTick();
+         3: invokeinterface #290,  1          // InterfaceMethod net/untitledduckmod/common/platform/service/IUntitledConfig.forceEatRandomMinTick:()I
+        12: invokeinterface #295,  1          // InterfaceMethod net/untitledduckmod/common/platform/service/IUntitledConfig.forceEatRandomMaxTick:()I
+        32: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        38: invokeinterface #311,  3          // InterfaceMethod net/minecraft/util/RandomSource.nextIntBetweenInclusive:(II)I
+  public abstract boolean isEdibleFood(net.minecraft.world.item.ItemStack);
+  public byte getVariant();
+  public void setVariant(byte);
+  public float getRandomBabyScale();
+         1: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+         4: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+         9: ldc_w         #335                // float 0.45f
+        13: ldc_w         #336                // float 0.25f
+  public float getBabyScale();
+  public void setBabyScale(float);
+  public byte getRandomVariant();
+         1: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+         8: invokeinterface #340,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public int getRandomLayTime();
+        19: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        23: invokeinterface #340,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+  public byte getAnimation();
+  public void setAnimation(byte);
+  public boolean isHungry();
+         8: ldc_w         #356                // float 0.5f
+  public void tryEating();
+        44: ldc_w         #356                // float 0.5f
+        47: ldc_w         #356                // float 0.5f
+        51: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        55: invokeinterface #340,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+        64: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        67: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        73: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        76: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        82: ldc_w         #391                // float 0.2f
+  public boolean lookingAround();
+         1: invokevirtual #432                // Method getAnimation:()B
+         9: invokevirtual #432                // Method getAnimation:()B
+  protected abstract net.minecraft.sounds.SoundEvent getLayEggSound();
+  public abstract net.minecraft.world.item.Item getEggItem();
+  public abstract boolean dropEggItem(net.minecraft.server.level.ServerLevel);
+  public void aiStep();
+         1: invokespecial #435                // Method net/minecraft/world/entity/TamableAnimal.aiStep:()V
+        64: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        67: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        73: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+        76: invokeinterface #332,  1          // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        82: ldc_w         #391                // float 0.2f
+       100: invokevirtual #39                 // Method getRandomLayTime:()I
+       134: ldc_w         #478                // float -1.0f
+       140: ldc_w         #479                // float 4.0f
+       143: ldc_w         #480                // float 0.3f
+       190: ldc_w         #487                // float 0.9f
+       221: ldc2_w        #498                // double 0.6d
+       247: invokevirtual #508                // Method handlePanicAnimation:()V
+  protected boolean isFlapping();
+  protected void onFlap();
+  protected abstract void handlePanicAnimation();
+  public net.minecraft.world.InteractionResult mobInteract(net.minecraft.world.entity.player.Player, net.minecraft.world.InteractionHand);
+       219: invokespecial #562                // Method net/minecraft/world/entity/TamableAnimal.mobInteract:(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/InteractionResult;
+       300: getfield      #307                // Field random:Lnet/minecraft/util/RandomSource;
+       304: invokeinterface #340,  2          // InterfaceMethod net/minecraft/util/RandomSource.nextInt:(I)I
+       364: invokespecial #562                // Method net/minecraft/world/entity/TamableAnimal.mobInteract:(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/InteractionHand;)Lnet/minecraft/world/InteractionResult;
+  protected boolean tryTaming(net.minecraft.world.entity.player.Player, net.minecraft.world.item.ItemStack);
+  protected abstract boolean isTamableItem(net.minecraft.world.item.ItemStack);
+  protected boolean isTamable(net.minecraft.world.entity.player.Player, net.minecraft.world.item.ItemStack);
+  protected net.minecraft.world.entity.ai.navigation.PathNavigation createNavigation(net.minecraft.world.level.Level);
+  protected void jumpInLiquid(net.minecraft.tags.TagKey<net.minecraft.world.level.material.Fluid>);
+        16: ldc2_w        #631                // double 0.03999999910593033d
+        35: ldc2_w        #636                // double 0.3d
+  public boolean checkSpawnObstruction(net.minecraft.world.level.LevelReader);
+  public boolean hurtServer(net.minecraft.server.level.ServerLevel, net.minecraft.world.damagesource.DamageSource, float);
+        20: invokespecial #648                // Method net/minecraft/world/entity/TamableAnimal.hurtServer:(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)Z
+  public double getFluidJumpThreshold();
+         7: ldc2_w        #652                // double 0.1d
+        13: ldc2_w        #654                // double 0.2d
+  public int getEggLayTime();
+  public int getHeldFoodTick();
+         1: getfield      #22                 // Field heldFoodTick:I
+  public int getRandomForceEatTick();
+         1: getfield      #25                 // Field randomForceEatTick:I
+  public boolean tamedFollowOwner();
+  private void lambda$new$1(net.minecraft.world.Container);
+  private static java.lang.String lambda$new$0(net.minecraft.world.entity.EntityType);
+  static {};
+         0: ldc           #13                 // class net/untitledduckmod/common/entity/WaterfowlEntity
+        22: ldc_w         #682                // String look_around
+        25: ldc_w         #684                // class java/lang/Boolean
+        28: invokestatic  #686                // Method com/geckolib/constant/dataticket/DataTicket.create:(Ljava/lang/String;Ljava/lang/Class;)Lcom/geckolib/constant/dataticket/DataTicket;
+        31: putstatic     #692                // Field LOOKING_AROUND_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        34: ldc_w         #696                // String waterfowl_variant
+        37: ldc           #110                // class java/lang/Byte
+        39: invokestatic  #686                // Method com/geckolib/constant/dataticket/DataTicket.create:(Ljava/lang/String;Ljava/lang/Class;)Lcom/geckolib/constant/dataticket/DataTicket;
+        42: putstatic     #698                // Field VARIANT_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        45: ldc_w         #701                // String waterfowl_baby_scale
+        48: ldc           #128                // class java/lang/Float
+        50: invokestatic  #686                // Method com/geckolib/constant/dataticket/DataTicket.create:(Ljava/lang/String;Ljava/lang/Class;)Lcom/geckolib/constant/dataticket/DataTicket;
+        53: putstatic     #703                // Field BABY_SCALE_TICKET:Lcom/geckolib/constant/dataticket/DataTicket;
+        56: ldc           #13                 // class net/untitledduckmod/common/entity/WaterfowlEntity
+        67: ldc           #13                 // class net/untitledduckmod/common/entity/WaterfowlEntity
+        78: ldc           #13                 // class net/untitledduckmod/common/entity/WaterfowlEntity
+        89: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+        92: ldc_w         #725                // String walk
+        95: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+        98: putstatic     #731                // Field WALK_ANIM:Lcom/geckolib/animation/RawAnimation;
+       101: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       104: ldc_w         #735                // String idle
+       107: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       110: putstatic     #737                // Field IDLE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       113: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       116: ldc_w         #740                // String swim
+       119: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       122: putstatic     #742                // Field SWIM_ANIM:Lcom/geckolib/animation/RawAnimation;
+       125: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       128: ldc_w         #745                // String idle_swim
+       131: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       134: putstatic     #747                // Field SWIM_IDLE_ANIM:Lcom/geckolib/animation/RawAnimation;
+       137: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       140: ldc_w         #750                // String panic
+       143: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       146: putstatic     #752                // Field PANIC_ANIM:Lcom/geckolib/animation/RawAnimation;
+       149: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       152: ldc_w         #755                // String fly
+       155: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       158: putstatic     #757                // Field FLY_ANIM:Lcom/geckolib/animation/RawAnimation;
+       161: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       164: ldc_w         #760                // String clean
+       167: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       170: ldc_w         #735                // String idle
+       173: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       176: putstatic     #762                // Field CLEAN_ANIM:Lcom/geckolib/animation/RawAnimation;
+       179: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       182: ldc_w         #765                // String eat
+       185: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       188: putstatic     #767                // Field EAT_ANIM:Lcom/geckolib/animation/RawAnimation;
+       191: invokestatic  #719                // Method com/geckolib/animation/RawAnimation.begin:()Lcom/geckolib/animation/RawAnimation;
+       194: ldc_w         #770                // String sit
+       197: invokevirtual #727                // Method com/geckolib/animation/RawAnimation.thenPlay:(Ljava/lang/String;)Lcom/geckolib/animation/RawAnimation;
+       200: putstatic     #772                // Field SIT_ANIM:Lcom/geckolib/animation/RawAnimation;
+
+## net/untitledduckmod/common/entity/ai/navigation/WaterfowlPathNavigation
+  public net.untitledduckmod.common.entity.ai.navigation.WaterfowlPathNavigation(net.minecraft.world.entity.Mob, net.minecraft.world.level.Level);
+  public boolean isStableDestination(net.minecraft.core.BlockPos);
+
+## net/untitledduckmod/common/item/WaterfowlEggItem
+  private final java.util.function.Supplier<net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile>> thrownEntityType;
+  private final java.util.function.Supplier<net.minecraft.world.entity.EntityType<? extends net.untitledduckmod.common.entity.WaterfowlEntity>> mobEntityType;
+  public net.untitledduckmod.common.item.WaterfowlEggItem(net.minecraft.world.item.Item$Properties, java.util.function.Supplier<net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile>>, java.util.function.Supplier<net.minecraft.world.entity.EntityType<? extends net.untitledduckmod.common.entity.WaterfowlEntity>>);
+  public net.minecraft.world.InteractionResult use(net.minecraft.world.level.Level, net.minecraft.world.entity.player.Player, net.minecraft.world.InteractionHand);
+        27: ldc           #44                 // float 0.5f
+        29: ldc           #45                 // float 0.4f
+        32: invokevirtual #46                 // Method net/minecraft/world/level/Level.getRandom:()Lnet/minecraft/util/RandomSource;
+        35: invokeinterface #52,  1           // InterfaceMethod net/minecraft/util/RandomSource.nextFloat:()F
+        40: ldc           #45                 // float 0.4f
+        43: ldc           #58                 // float 0.8f
+        79: ldc           #69                 // float 1.5f
+  public net.minecraft.world.entity.projectile.Projectile asProjectile(net.minecraft.world.level.Level, net.minecraft.core.Position, net.minecraft.world.item.ItemStack, net.minecraft.core.Direction);
+  private net.untitledduckmod.common.entity.WaterfowlEggEntity lambda$use$0(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.LivingEntity, net.minecraft.world.item.ItemStack);
