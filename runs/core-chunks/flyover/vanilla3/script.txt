@@ -1,0 +1,13 @@
+# P2-4: flying over saved terrain at 12 chunks (ci/server/chunks-run.sh), on the saved terrain of chunks-area-core.txt.
+# The window (ci/server/harness/.../CiChunks.java): every chunk within 12 of the centre kept loaded by the game's
+# player-loading ticket, the centre moving one chunk every 8 ticks (2.5 chunks a second, about elytra speed) round a
+# square of 16 chunks a side, at the game's normal tick rate (not sprinting), so the server has its usual time between
+# ticks for chunk work. A chunk leaving the window is marked changed (as one a player has been near is), so it is saved
+# as it unloads. Nothing ticks in the window (no simulation ticket), so a tick's time is chunk loading, saving and
+# unloading.
+window minecraft:overworld -8 -8 12
+fly 8 +x16 +z16 -x16 -z16
+dirty-on-leave
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+ticks 1200
