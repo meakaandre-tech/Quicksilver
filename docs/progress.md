@@ -18,6 +18,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 |---|---|---|
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
+| test pack (replaces SIFTEC's suite) | `test-pack` (not merged: Andre checks it first) | the popular-mods test pack: pack suite (client and server) replaces SIFTEC's; see "Test pack" below |
 | phase 2, P2-4 (chunk saving and loading) | `p2-4` (not merged: Andre checks it first) | Chunks module: chunks.cow-sections (save snapshots share sections, copy on write); server-thread save time down 8-11%, save-all spike down; saved region files equal to vanilla's; see "Phase 2, P2-4" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-3b (hopper cache) | **shelved** (branch `p2-3b` kept on GitHub, not merged) | exact (border run equal in every run, verify run 9910 answers), but factory MSPT within noise after two attempts; see "Phase 2, P2-3b" below |
@@ -2497,6 +2498,63 @@ face shapes and vanilla's identity-keyed caches, the spawner's re-seed (above), 
 (works on Java 25; a later JDK may refuse), the config file rewritten without the user's comments when keys are
 added.
 
+## Test pack: popular mods replace SIFTEC's suite (branch `test-pack`, not merged: Andre checks it first)
+
+SIFTEC was scrapped on 2026-11-12. Its CI suite kept running, frozen, from the `pack-snapshot` release until this
+package; the test pack replaces it in both the client and the server suite. SIFTEC's suite's history stays in the
+sections above (read "siftec" there as the suite this one replaced).
+
+### The pack (Andre's picks, 2026-11-12)
+
+Create Fly with its bundled Flywheel (Andre's build, `pack-snapshot`), JEI (+ MezzConfig), Xaero's Minimap, Untitled
+Duck Mod (GeckoLib entities; + Architectury) and GeckoLib, Terralith (+ Lithostitched), Continuity, Mod Menu (+ Text
+Placeholder API), Jade, Farmer's Delight Refabricated, Traveler's Backpack (+ Forge Config API Port). Versions,
+licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were picked and how to update one:
+`ci/pack-resolve.py` (the `pack-resolve` workflow, since the agent workspace can't reach Modrinth). Sets in the lock:
+`pack` (server and client) and `packclient` (JEI and MezzConfig, client only, see below).
+
+### What was built
+
+- **CI plumbing renamed, SIFTEC's removed:** the `pack-world` job (`ci/pack-world.sh`: the pack's server, seed 12345,
+  every scene area generated and saved once) replaces `siftec-world`; `ci/server/pack-mods.sh` replaces
+  `siftec-mods.sh`; `ci/pack_status.py` replaces `ci/siftec_status.py` (names a pack that didn't assemble or start;
+  `pack_report_only`, false); `[pack]` in a commit message adds the pack's client and server suites to a quick run
+  (was `[siftec]`). Gone: SIFTEC's world job and its checkout of SIFTEC's `.github`, its self-tests, its scenes (sift,
+  hub, mam, map, hud, hologram, factory, factory_flat), the Sift particle pin, the harness's SIFTEC post-generation
+  hooks, SIFTEC's baselines, and SIFTEC's jars from `ci/pack-sources.txt` and the lock (they stay in the release only for
+  main's frozen suite until this merges).
+- **Client scenes (`scenes/pack.json`):** minimap (Xaero's Minimap, the only scene with the HUD on), geckolib
+  (Untitled Duck Mod's geese, game frozen before they are summoned so their animation time is fixed; then F1 for the
+  rest of the session), jei (the survival inventory with JEI's item list), ponder, terrain (Terralith's land), continuity
+  (Continuity's connected glass, sandstone, bookshelves, panes), create_ct, kinetics (creative motor, cogs, gearbox, fan,
+  belt, mixer, press, a clockwork bearing contraption, a train at a station), kinetics_instancing, and kinetics_flat
+  (smooth lighting off: factory_flat's job). Create's clock pin covers the kinetics platform.
+- **Server suite:** worldgen diff (the pack's overworld with Terralith, the nether), the scripted run (world diff,
+  the Create train and contraption checks, unchanged scripts), the factory MSPT scene (`perf-pack.txt`, gated at most
+  1.10 like SIFTEC's), the heap run and, in full mode, the verify run.
+- **CI-only additions:** `ci/pack-resolve.py` and its workflow; a pin mixin that logs a connection's failing exception
+  in full; a harness item trace (`-Dci.harness.itemTrace`, CI ITEMS lines) in the pack's server runs.
+
+### Found on the way
+
+- **Fabric API's recipe sync dropped the client** in about half the pack's client sessions, vanilla's and
+  Quicksilver's alike, with JEI on both sides: a custom ingredient the client could not decode
+  (`CustomIngredientStreamCodec`, "No value present"; runs 43106805198, 43118801686). JEI is client-only in the pack
+  (`packclient`): the server sends no recipe sync, JEI shows its item list without the server's recipes. Not
+  Quicksilver's; a pack problem a real player would also hit with JEI on a server.
+- **Continuity's Glass Pane Culling Fix pack** replaces vanilla's glass pane post model; with a vanilla model replaced,
+  Quicksilver's visibility module defers to vanilla (its designed fallback). Only Continuity's Default Connected
+  Textures pack is on in the pack sessions. For Andre: a player with that pack on loses the visibility module.
+- **Item entities at 56,2,41 (pack server suite), Quicksilver only:** two of the twelve item entities under the
+  scripted area ended in another place in about one Quicksilver run in nine (the scripted run of 43106805198, perf
+  factory round 2 of 43127438207), never in vanilla's runs. Treated as a bug; the item trace is in to name it.
+- Terralith's ground is below the scripted runs' platforms, so their air fills did nothing (removed). Untitled Duck
+  Mod picks a duck's look at random on spawn (its summon data didn't pin it): the scene shows geese.
+
+### Results
+
+(filled in from the collection runs)
+
 ## Phase 2, P2-4: chunk saving and loading (branch `p2-4`, not merged: Andre checks it first)
 
 Design doc: [Quicksilver Phase 2: Design](https://claude.ai/artifact/6QVKeDHfvCQDDDppdrxu45), P2-4. Files: the Chunks
@@ -3420,6 +3478,9 @@ renderer, above). As asked:
 
 ## Open bugs
 
+- **Item entities at 56,2,41, test pack server suite, Quicksilver only (found 2026-11-12):** two item entities
+  ended in another place in about one Quicksilver run in nine, never in vanilla's (see "Test pack", "Found on the
+  way"). The harness's item trace (CI ITEMS lines in the pack's run and perf logs) is in to name the cause.
 - **Phase 1 track (Andre, 2026-11-04):** 2b's draw-call gate on `core/old-gpu-2p/flythrough` sits 0.3 above main's own
   reading (limit old-GPU's 67.41 + 3 = 70.41; main 70.13, package 2b's branch 69.17, P2-3's runs 70.54 and 69.96);
   re-collect it by the noise rule from 3 clean runs.
@@ -3462,7 +3523,7 @@ renderer, above). As asked:
   (from the section's palette / non-air count), with byte-identical output. Every other scene is under vanilla. The vanilla side's own median moves 0.29-0.71 ms between
   runs on the same jars.
 
-- **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from
+- **Closed 2026-11-12 (SIFTEC scrapped; the test pack replaced its suite, see "Test pack"):** **SIFTEC gating again** (Andre, 2026-11-01; was "When SIFTEC starts with MapMod again"): Andre's own jars come from
   this repo's `pack-snapshot` release (docs/ci-limits.md, "Pack lock"), SIFTEC's suites gate again
   (`siftec_report_only=false` in the workflow's mode job). Still to do on `pack-snapshot-ci`: fix-worldgen-diff's 3
   SIFTEC proof runs and SIFTEC's numbers re-collected from 3 clean runs; then re-run every package merged in the
@@ -3477,7 +3538,7 @@ renderer, above). As asked:
   (81788 bytes, Andre 2026-10-25), and direct buffers keep the higher of the old and new value (the open direct-buffer
   bug). SIFTEC's pixel limits passed all three runs unchanged.
 
-- **When MapMod is finished** (Andre, 2026-10-30): put it back in the pack lock, restore the map and hud scenes,
+- **Closed 2026-11-12 (SIFTEC's suite gone):** **When MapMod is finished** (Andre, 2026-10-30): put it back in the pack lock, restore the map and hud scenes,
   re-collect their numbers, and restore the full strict check where the minimap shows (factory_flat, hologram:
   `ciStrictMask`, `ciGatedCounts` in `scenes/siftec.json`; `docs/ci-limits.md`, "Pack lock").
 
@@ -3513,7 +3574,9 @@ strict-sample scripts (`scratchpad/tools/strict2.py`, `samples.py`).
 
 **Package 2b (phase 1):** merged as `e8e771c`; main full run 41396095000 green, latest rebuilt. See "Package 2b".
 
-**Now (P2-4):** branch `p2-4` built and gated, waiting for Andre (see "Phase 2, P2-4").
+**Now (test pack):** branch `test-pack`, the popular-mods test pack replacing SIFTEC's suite (see "Test pack").
+
+**Before (P2-4):** merged (`9341b25`, #1).
 
 **Before (P2-3b):** shelved (Andre, 2026-11-06): exact, but no measurable factory gain after two attempts; branch `p2-3b`
 kept on GitHub, not merged (see "Phase 2, P2-3b"). Next in phase 2: P2-4 (chunk saving and loading), in a new chat.
