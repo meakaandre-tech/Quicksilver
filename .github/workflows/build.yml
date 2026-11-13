@@ -419,7 +419,11 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add -A && git commit -q -m "CI logs for ${GITHUB_SHA} (${GITHUB_REF_NAME}, ${{ needs.mode.outputs.mode }})"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$logs"
+          # two runs of one branch can publish at the same moment ("cannot lock ref", run 43309848392): try again
+          for t in 1 2 3 4 5; do
+            git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$logs" && break
+            [ $t = 5 ] && exit 1; sleep $((t * 7))
+          done
       - name: Fail on a wrong picture or a rise in counts
         shell: bash
         run: test "${{ steps.compare.outputs.status }}" = "0"
@@ -704,7 +708,11 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add -A && git commit -q -m "Server suite logs for ${GITHUB_SHA} (${GITHUB_REF_NAME})"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$logs"
+          # two runs of one branch can publish at the same moment ("cannot lock ref", run 43309848392): try again
+          for t in 1 2 3 4 5; do
+            git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$logs" && break
+            [ $t = 5 ] && exit 1; sleep $((t * 7))
+          done
       - name: Fail on any Quicksilver-only difference or a harness that doesn't repeat
         shell: bash
         run: test "${{ steps.compare.outputs.status }}" = "0"
