@@ -2594,6 +2594,9 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
 
 ### Results (full run of `27d80e8`; limits and baselines from the collection runs)
 
+Green full run on the final code: `1753831` (run 43381644683; client, server and chunk scenes all passed; Vulkan's
+switch to still camera listed at the top of its report, by kinetics_flat).
+
 Every pack scene matches vanilla within its limits on all four profiles (full, old-GPU, Vulkan, old-GPU two-phase); in
 `27d80e8` every strict count was 0 but terrain's (Quicksilver's vertex rounding) and the kinetics scenes' (the same,
 along the track ties). Limits and where they come from: `docs/ci-limits.md` (rows "pack/..."). Baselines (`ci/baselines/pack-*.json`, each listing its runs in `fromRuns`): the runs of `27d80e8`, `f3f9542` and
