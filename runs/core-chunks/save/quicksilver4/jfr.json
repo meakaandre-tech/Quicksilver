@@ -1,0 +1,1363 @@
+{
+ "ticks": 7000,
+ "windowMs": 3601,
+ "samplesOutsideWindow": 23963,
+ "samplesUntimed": 0,
+ "samples": {
+  "tick native": 6,
+  "tick java": 460,
+  "between java": 11
+ },
+ "phases": [
+  {
+   "phase": "autosave",
+   "tickJava": 89,
+   "tickNative": 2,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.013,
+   "msPerTickAll": 0.013,
+   "allocMB": 105.83
+  },
+  {
+   "phase": "chunk save",
+   "tickJava": 2,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0003,
+   "msPerTickAll": 0.0003,
+   "allocMB": 1.0
+  },
+  {
+   "phase": "entity save",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "POI save",
+   "tickJava": 4,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0006,
+   "msPerTickAll": 0.0006,
+   "allocMB": 3.0
+  },
+  {
+   "phase": "chunk load",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "chunk to full (promote)",
+   "tickJava": 4,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0006,
+   "msPerTickAll": 0.0006,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "entity load",
+   "tickJava": 1,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0001,
+   "msPerTickAll": 0.0001,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "POI load",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "chunk unload",
+   "tickJava": 1,
+   "tickNative": 0,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0001,
+   "msPerTickAll": 0.0001,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "light",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 1,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0001,
+   "allocMB": 0.0
+  },
+  {
+   "phase": "chunk system (tickets, holders, tasks)",
+   "tickJava": 114,
+   "tickNative": 1,
+   "betweenJava": 1,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0164,
+   "msPerTickAll": 0.0166,
+   "allocMB": 45.25
+  },
+  {
+   "phase": "tick, other",
+   "tickJava": 245,
+   "tickNative": 3,
+   "betweenJava": 0,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0354,
+   "msPerTickAll": 0.0354,
+   "allocMB": 6.75
+  },
+  {
+   "phase": "idle or other",
+   "tickJava": 0,
+   "tickNative": 0,
+   "betweenJava": 9,
+   "betweenNative": 0,
+   "msPerTickInTick": 0.0,
+   "msPerTickAll": 0.0013,
+   "allocMB": 0.0
+  }
+ ],
+ "load": {
+  "msPerTickInTick": 0.0007,
+  "msPerTickAll": 0.0007
+ },
+ "save": {
+  "msPerTickInTick": 0.0139,
+  "msPerTickAll": 0.0139
+ },
+ "autosave": {
+  "msPerTickInTick": 0.013,
+  "msPerTickAll": 0.013
+ },
+ "anchors": {
+  "SerializableChunkData.copyOf": {
+   "samples": 67,
+   "callees": [
+    {
+     "method": "LevelChunk.getBlockEntityNbtForSaving",
+     "samples": 11
+    },
+    {
+     "method": "LightEngine.getDataLayerData",
+     "samples": 11
+    },
+    {
+     "method": "LevelChunkSection.copy",
+     "samples": 11
+    },
+    {
+     "method": "SerializableChunkData.packStructureData",
+     "samples": 7
+    },
+    {
+     "method": "LevelChunk.getTicksForSerialization",
+     "samples": 6
+    },
+    {
+     "method": "Heightmap.getRawData",
+     "samples": 2
+    },
+    {
+     "method": "SectionPos.of",
+     "samples": 1
+    },
+    {
+     "method": "Collections$UnmodifiableCollection$1.next",
+     "samples": 1
+    },
+    {
+     "method": "ArrayList.add",
+     "samples": 1
+    },
+    {
+     "method": "LevelLightEngine.getMaxLightSection",
+     "samples": 1
+    },
+    {
+     "method": "ReferencePipeline.toArray",
+     "samples": 1
+    },
+    {
+     "method": "ChunkAccess.getBlockEntitiesPos",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "LevelChunk.getBlockEntityNbtForSaving > BlockEntity.saveWithFullMetadata",
+     "samples": 11
+    },
+    {
+     "path": "LevelChunkSection.copy > LevelChunkSection.<init>",
+     "samples": 11
+    },
+    {
+     "path": "LightEngine.getDataLayerData > LayerLightSectionStorage.getDataLayerData",
+     "samples": 10
+    },
+    {
+     "path": "LevelChunk.getTicksForSerialization > LevelChunkTicks.pack",
+     "samples": 6
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > StructureStart.createTag",
+     "samples": 3
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > Identifier.toString",
+     "samples": 1
+    },
+    {
+     "path": "Collections$UnmodifiableCollection$1.next > EnumMap$EntryIterator.next",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > Collections$UnmodifiableMap$UnmodifiableEntrySet$1.next",
+     "samples": 1
+    },
+    {
+     "path": "ArrayList.add > ArrayList.add",
+     "samples": 1
+    },
+    {
+     "path": "LevelLightEngine.getMaxLightSection > LevelLightEngine.getMinLightSection",
+     "samples": 1
+    },
+    {
+     "path": "LightEngine.getDataLayerData > SectionPos.asLong",
+     "samples": 1
+    },
+    {
+     "path": "ReferencePipeline.toArray > AbstractPipeline.evaluateToArrayNode",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.packStructureData > Collections$UnmodifiableMap.entrySet",
+     "samples": 1
+    },
+    {
+     "path": "ChunkAccess.getBlockEntitiesPos > AbstractCollection.addAll",
+     "samples": 1
+    }
+   ]
+  },
+  "ChunkMap.save": {
+   "samples": 68,
+   "callees": [
+    {
+     "method": "SerializableChunkData.copyOf",
+     "samples": 67
+    },
+    {
+     "method": "CompletableFuture.supplyAsync",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "SerializableChunkData.copyOf > LevelChunk.getBlockEntityNbtForSaving",
+     "samples": 11
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LightEngine.getDataLayerData",
+     "samples": 11
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LevelChunkSection.copy",
+     "samples": 11
+    },
+    {
+     "path": "SerializableChunkData.copyOf > SerializableChunkData.packStructureData",
+     "samples": 7
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LevelChunk.getTicksForSerialization",
+     "samples": 6
+    },
+    {
+     "path": "SerializableChunkData.copyOf > Heightmap.getRawData",
+     "samples": 2
+    },
+    {
+     "path": "SerializableChunkData.copyOf > SectionPos.of",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > Collections$UnmodifiableCollection$1.next",
+     "samples": 1
+    },
+    {
+     "path": "CompletableFuture.supplyAsync > CompletableFuture.asyncSupplyStage",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ArrayList.add",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > LevelLightEngine.getMaxLightSection",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ReferencePipeline.toArray",
+     "samples": 1
+    },
+    {
+     "path": "SerializableChunkData.copyOf > ChunkAccess.getBlockEntitiesPos",
+     "samples": 1
+    }
+   ]
+  },
+  "ChunkMap.saveChunksEagerly": {
+   "samples": 2,
+   "callees": [
+    {
+     "method": "LongLinkedOpenHashSet.iterator",
+     "samples": 1
+    },
+    {
+     "method": "Util.getMillis",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "LongLinkedOpenHashSet.iterator > LongLinkedOpenHashSet.iterator",
+     "samples": 1
+    },
+    {
+     "path": "Util.getMillis > Util.getNanos",
+     "samples": 1
+    }
+   ]
+  },
+  "ChunkMap.processUnloads": {
+   "samples": 3,
+   "callees": [
+    {
+     "method": "ChunkMap.saveChunksEagerly",
+     "samples": 2
+    },
+    {
+     "method": "LongOpenHashSet.iterator",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "ChunkMap.saveChunksEagerly > LongLinkedOpenHashSet.iterator",
+     "samples": 1
+    },
+    {
+     "path": "ChunkMap.saveChunksEagerly > Util.getMillis",
+     "samples": 1
+    },
+    {
+     "path": "LongOpenHashSet.iterator > LongOpenHashSet$SetIterator.<init>",
+     "samples": 1
+    }
+   ]
+  },
+  "ChunkMap.saveAllChunks": {
+   "samples": 74,
+   "callees": [
+    {
+     "method": "ChunkMap.saveChunkIfNeeded",
+     "samples": 56
+    },
+    {
+     "method": "ReferencePipeline.forEach",
+     "samples": 15
+    },
+    {
+     "method": "Long2ObjectLinkedOpenHashMap$ValueIterator.next",
+     "samples": 1
+    },
+    {
+     "method": "ReferencePipeline.toList",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "ChunkMap.saveChunkIfNeeded > ChunkMap.save",
+     "samples": 55
+    },
+    {
+     "path": "ReferencePipeline.forEach > AbstractPipeline.evaluate",
+     "samples": 15
+    },
+    {
+     "path": "Long2ObjectLinkedOpenHashMap$ValueIterator.next > Long2ObjectLinkedOpenHashMap$MapIterator.nextEntry",
+     "samples": 1
+    },
+    {
+     "path": "ReferencePipeline.toList > ReferencePipeline.toArray",
+     "samples": 1
+    }
+   ]
+  },
+  "MinecraftServer.saveEverything": {
+   "samples": 90,
+   "callees": [
+    {
+     "method": "DedicatedServer.saveAllChunks",
+     "samples": 89
+    },
+    {
+     "method": "MinecraftServer.warnOnLowDiskSpace",
+     "samples": 1
+    }
+   ],
+   "callees2": [
+    {
+     "path": "DedicatedServer.saveAllChunks > MinecraftServer.saveAllChunks",
+     "samples": 89
+    },
+    {
+     "path": "MinecraftServer.warnOnLowDiskSpace > LevelStorageSource$LevelStorageAccess.checkForLowDiskSpace",
+     "samples": 1
+    }
+   ]
+  },
+  "ServerLevel.save": {
+   "samples": 83,
+   "callees": [
+    {
+     "method": "ServerChunkCache.save",
+     "samples": 74
+    },
+    {
+     "method": "PersistentEntitySectionManager.autoSave",
+     "samples": 4
+    },
+    {
+     "method": "PersistentEntitySectionManager.saveAll",
+     "samples": 3
+    },
+    {
+     "method": "ServerLevel.saveLevelData",
+     "samples": 2
+    }
+   ],
+   "callees2": [
+    {
+     "path": "ServerChunkCache.save > ChunkMap.saveAllChunks",
+     "samples": 74
+    },
+    {
+     "path": "PersistentEntitySectionManager.autoSave > AbstractLongCollection.forEach",
+     "samples": 4
+    },
+    {
+     "path": "PersistentEntitySectionManager.saveAll > LongCollection.removeIf",
+     "samples": 3
+    },
+    {
+     "path": "ServerLevel.saveLevelData > SavedDataStorage.saveAndJoin",
+     "samples": 2
+    }
+   ]
+  },
+  "PersistentEntitySectionManager.autoSave": {
+   "samples": 4,
+   "callees": [
+    {
+     "method": "AbstractLongCollection.forEach",
+     "samples": 4
+    }
+   ],
+   "callees2": [
+    {
+     "path": "AbstractLongCollection.forEach > LongIterable.forEach",
+     "samples": 4
+    }
+   ]
+  }
+ },
+ "self": [
+  {
+   "method": "PalettedContainer.get",
+   "samples": 21
+  },
+  {
+   "method": "Long2ByteOpenHashMap.get",
+   "samples": 20
+  },
+  {
+   "method": "SerializableChunkData.copyOf",
+   "samples": 13
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.get",
+   "samples": 10
+  },
+  {
+   "method": "PalettedContainer.create$quicksilver_$md$7ad771$0",
+   "samples": 9
+  },
+  {
+   "method": "NaturalSpawner.createState",
+   "samples": 6
+  },
+  {
+   "method": "ScheduledTick.toSavedTick",
+   "samples": 5
+  },
+  {
+   "method": "ServerChunkCache.tickChunks",
+   "samples": 4
+  },
+  {
+   "method": "SectionPos.of",
+   "samples": 4
+  },
+  {
+   "method": "ChunkPos.pack",
+   "samples": 3
+  },
+  {
+   "method": "Math.floorMod",
+   "samples": 3
+  },
+  {
+   "method": "VarHandleReferences$Array.getVolatile",
+   "samples": 3
+  },
+  {
+   "method": "Object2IntOpenHashMap.addTo",
+   "samples": 2
+  },
+  {
+   "method": "EnvironmentAttributeSystem$ValueSampler.computeValuePositional",
+   "samples": 2
+  },
+  {
+   "method": "CompletableFuture.join",
+   "samples": 2
+  },
+  {
+   "method": "Encoder.encodeStart",
+   "samples": 2
+  },
+  {
+   "method": "LevelChunkSection.<init>",
+   "samples": 2
+  },
+  {
+   "method": "LevelReader.getMinY",
+   "samples": 2
+  },
+  {
+   "method": "Object2IntOpenHashMap.<init>",
+   "samples": 2
+  },
+  {
+   "method": "Heightmap.getRawData",
+   "samples": 2
+  },
+  {
+   "method": "CompletableFuture.reportJoin",
+   "samples": 2
+  },
+  {
+   "method": "ServerChunkCache.storeInCache",
+   "samples": 2
+  },
+  {
+   "method": "RegularImmutableMap.get",
+   "samples": 2
+  },
+  {
+   "method": "ServerChunkCache.getChunk",
+   "samples": 2
+  },
+  {
+   "method": "ServerChunkCache.tick",
+   "samples": 2
+  },
+  {
+   "method": "Hashtable.put",
+   "samples": 1
+  },
+  {
+   "method": "ServerChunkCache.getChunkFutureMainThread",
+   "samples": 1
+  },
+  {
+   "method": "Inflater.inflateBytesBytes",
+   "samples": 1
+  },
+  {
+   "method": "ClassReader.readUtf",
+   "samples": 1
+  },
+  {
+   "method": "ZipFile$Source.getEntryPos",
+   "samples": 1
+  },
+  {
+   "method": "Int2ObjectOpenHashMap$MapIterator.nextEntry",
+   "samples": 1
+  },
+  {
+   "method": "ChunkAccess.getNoiseBiome",
+   "samples": 1
+  },
+  {
+   "method": "NaturalSpawner.lambda$createState$0",
+   "samples": 1
+  },
+  {
+   "method": "Long2ByteOpenHashMap$MapIterator.<init>",
+   "samples": 1
+  },
+  {
+   "method": "Mob.requiresCustomPersistence",
+   "samples": 1
+  },
+  {
+   "method": "ServerLevel.getEntities",
+   "samples": 1
+  },
+  {
+   "method": "ChunkMap.collectSpawningChunks",
+   "samples": 1
+  },
+  {
+   "method": "EnvironmentAttributeMap.applyModifier",
+   "samples": 1
+  },
+  {
+   "method": "Long2ByteMaps$1.iterator",
+   "samples": 1
+  },
+  {
+   "method": "Codec$20.encode",
+   "samples": 1
+  },
+  {
+   "method": "Arrays.sort",
+   "samples": 1
+  },
+  {
+   "method": "Long2ObjectLinkedOpenHashMap$MapIterator.nextEntry",
+   "samples": 1
+  },
+  {
+   "method": "ChunkMap.saveChunkIfNeeded",
+   "samples": 1
+  },
+  {
+   "method": "JigsawJunction.serialize",
+   "samples": 1
+  },
+  {
+   "method": "PotDecorations.equals",
+   "samples": 1
+  },
+  {
+   "method": "MixinProcessor.couldTransformClass",
+   "samples": 1
+  },
+  {
+   "method": "LinuxNativeDispatcher.setmntent0",
+   "samples": 1
+  },
+  {
+   "method": "ImmutableMap.keySet",
+   "samples": 1
+  },
+  {
+   "method": "TicketStorage.removeTicketIf",
+   "samples": 1
+  },
+  {
+   "method": "LevelChunkSection.getNoiseBiome",
+   "samples": 1
+  },
+  {
+   "method": "ReferenceOpenHashSet$SetIterator.<init>",
+   "samples": 1
+  },
+  {
+   "method": "Math.floor",
+   "samples": 1
+  },
+  {
+   "method": "BiomeManager.getBiome",
+   "samples": 1
+  },
+  {
+   "method": "Int2ObjectLinkedOpenHashMap$ValueIterator.next",
+   "samples": 1
+  },
+  {
+   "method": "ThreadedLevelLightEngine.tryScheduleUpdate",
+   "samples": 1
+  },
+  {
+   "method": "LevelAccessor.getGameTime",
+   "samples": 1
+  },
+  {
+   "method": "PersistentEntitySectionManager.processPendingLoads",
+   "samples": 1
+  },
+  {
+   "method": "ChunkMap.saveAllChunks",
+   "samples": 1
+  },
+  {
+   "method": "BaseSpawner.save",
+   "samples": 1
+  },
+  {
+   "method": "SerializableChunkData.packStructureData",
+   "samples": 1
+  }
+ ],
+ "inclusive": [
+  {
+   "method": "MinecraftServer.lambda$spin$0",
+   "samples": 220
+  },
+  {
+   "method": "MinecraftServer.runServer",
+   "samples": 220
+  },
+  {
+   "method": "Thread.run",
+   "samples": 219
+  },
+  {
+   "method": "MinecraftServer.tickServer",
+   "samples": 218
+  },
+  {
+   "method": "MinecraftServer.processPacketsAndTick",
+   "samples": 218
+  },
+  {
+   "method": "DedicatedServer.tickServer",
+   "samples": 218
+  },
+  {
+   "method": "MinecraftServer.tickChildren",
+   "samples": 123
+  },
+  {
+   "method": "ServerLevel.tick",
+   "samples": 123
+  },
+  {
+   "method": "ServerChunkCache.tick",
+   "samples": 105
+  },
+  {
+   "method": "MinecraftServer.saveEverything",
+   "samples": 90
+  },
+  {
+   "method": "DedicatedServer.saveAllChunks",
+   "samples": 89
+  },
+  {
+   "method": "MinecraftServer.saveAllChunks",
+   "samples": 89
+  },
+  {
+   "method": "ServerTickEvents.lambda$static$1",
+   "samples": 85
+  },
+  {
+   "method": "Harness.startTick",
+   "samples": 85
+  },
+  {
+   "method": "ServerChunkCache.tickChunks",
+   "samples": 83
+  },
+  {
+   "method": "ServerLevel.save",
+   "samples": 83
+  },
+  {
+   "method": "ContextChain.executeAll",
+   "samples": 81
+  },
+  {
+   "method": "Harness.command",
+   "samples": 81
+  },
+  {
+   "method": "ContextChain.runExecutable$mixinextras$wrapped$10",
+   "samples": 81
+  },
+  {
+   "method": "ContextChain.mixinextras$bridge$runExecutable$mixinextras$wrapped$10$11",
+   "samples": 81
+  },
+  {
+   "method": "SaveAllCommand.saveAll",
+   "samples": 81
+  },
+  {
+   "method": "CommandDispatcher.execute",
+   "samples": 81
+  },
+  {
+   "method": "ContextChain.runExecutable",
+   "samples": 81
+  },
+  {
+   "method": "ServerChunkCache.save",
+   "samples": 74
+  },
+  {
+   "method": "ChunkMap.saveAllChunks",
+   "samples": 74
+  },
+  {
+   "method": "NaturalSpawner.createState",
+   "samples": 68
+  },
+  {
+   "method": "ChunkMap.save",
+   "samples": 68
+  },
+  {
+   "method": "SerializableChunkData.copyOf",
+   "samples": 67
+  },
+  {
+   "method": "SaveAllCommand.lambda$register$0",
+   "samples": 58
+  },
+  {
+   "method": "ChunkMap.saveChunkIfNeeded",
+   "samples": 56
+  },
+  {
+   "method": "ServerChunkCache.getFullChunk",
+   "samples": 52
+  },
+  {
+   "method": "ChunkResult$Success.ifSuccess",
+   "samples": 51
+  },
+  {
+   "method": "NaturalSpawner.lambda$createState$0",
+   "samples": 50
+  },
+  {
+   "method": "EnvironmentAttributeReader.getValue",
+   "samples": 46
+  },
+  {
+   "method": "EnvironmentAttributeSystem.getValue",
+   "samples": 45
+  },
+  {
+   "method": "EnvironmentAttributeSystem$ValueSampler.computeValuePositional",
+   "samples": 45
+  },
+  {
+   "method": "EnvironmentAttributeSystem$ValueSampler.getValue",
+   "samples": 45
+  },
+  {
+   "method": "EnvironmentAttributeSystem.lambda$addBiomeLayerForAttribute$0",
+   "samples": 43
+  },
+  {
+   "method": "BiomeManager.getBiome",
+   "samples": 39
+  },
+  {
+   "method": "LevelReader.getNoiseBiome",
+   "samples": 34
+  },
+  {
+   "method": "ChunkAccess.getNoiseBiome",
+   "samples": 25
+  },
+  {
+   "method": "ImposterProtoChunk.getNoiseBiome",
+   "samples": 25
+  },
+  {
+   "method": "LevelChunkSection.getNoiseBiome",
+   "samples": 23
+  },
+  {
+   "method": "SaveAllCommand.lambda$register$1",
+   "samples": 23
+  },
+  {
+   "method": "PalettedContainer.get",
+   "samples": 22
+  },
+  {
+   "method": "Long2ByteOpenHashMap.get",
+   "samples": 20
+  },
+  {
+   "method": "SimulationChunkTracker.getLevel",
+   "samples": 20
+  },
+  {
+   "method": "AbstractPipeline.evaluate",
+   "samples": 19
+  },
+  {
+   "method": "AbstractPipeline.wrapAndCopyInto",
+   "samples": 19
+  },
+  {
+   "method": "ChunkMap.tick",
+   "samples": 18
+  },
+  {
+   "method": "AbstractPipeline.copyInto",
+   "samples": 18
+  },
+  {
+   "method": "ServerLevel.shouldTickBlocksAt",
+   "samples": 17
+  },
+  {
+   "method": "DistanceManager.inBlockTickingRange",
+   "samples": 17
+  },
+  {
+   "method": "LevelTicks.collectTicks",
+   "samples": 16
+  },
+  {
+   "method": "ServerChunkCache.isPositionTicking",
+   "samples": 16
+  },
+  {
+   "method": "LevelTicks.sortContainersToTick",
+   "samples": 16
+  },
+  {
+   "method": "ServerLevel.isPositionTickingWithEntitiesLoaded",
+   "samples": 16
+  },
+  {
+   "method": "LevelTicks.tick",
+   "samples": 16
+  },
+  {
+   "method": "ForEachOps$ForEachOp$OfRef.evaluateSequential",
+   "samples": 15
+  },
+  {
+   "method": "ForEachOps$ForEachOp.evaluateSequential",
+   "samples": 15
+  },
+  {
+   "method": "ReferencePipeline.forEach",
+   "samples": 15
+  },
+  {
+   "method": "ReferencePipeline$3$1.accept",
+   "samples": 15
+  },
+  {
+   "method": "AbstractList$RandomAccessSpliterator.forEachRemaining",
+   "samples": 15
+  },
+  {
+   "method": "ReferencePipeline$2$1.accept",
+   "samples": 13
+  },
+  {
+   "method": "LevelChunk.getBlockEntityNbtForSaving",
+   "samples": 11
+  },
+  {
+   "method": "BlockEntity.saveWithFullMetadata",
+   "samples": 11
+  },
+  {
+   "method": "BlockEntity.saveWithoutMetadata",
+   "samples": 11
+  },
+  {
+   "method": "LightEngine.getDataLayerData",
+   "samples": 11
+  },
+  {
+   "method": "LevelChunkSection.copy",
+   "samples": 11
+  },
+  {
+   "method": "LevelChunkSection.<init>",
+   "samples": 11
+  },
+  {
+   "method": "Encoder.encodeStart",
+   "samples": 10
+  },
+  {
+   "method": "TagValueOutput.store",
+   "samples": 10
+  },
+  {
+   "method": "Long2ObjectOpenHashMap.get",
+   "samples": 10
+  },
+  {
+   "method": "LayerLightSectionStorage.getDataLayerData",
+   "samples": 10
+  },
+  {
+   "method": "MinecraftServer.autoSave",
+   "samples": 10
+  },
+  {
+   "method": "Level.getChunk",
+   "samples": 9
+  },
+  {
+   "method": "ServerChunkCache.getChunk",
+   "samples": 9
+  },
+  {
+   "method": "PalettedContainerInvoker.quicksilver$create",
+   "samples": 9
+  },
+  {
+   "method": "PalettedContainer.create$quicksilver_$md$7ad771$0",
+   "samples": 9
+  },
+  {
+   "method": "PalettedContainer.handler$zom000$quicksilver$share",
+   "samples": 9
+  },
+  {
+   "method": "PalettedContainer.copy",
+   "samples": 9
+  },
+  {
+   "method": "Codec$2.encode",
+   "samples": 8
+  },
+  {
+   "method": "RecordCodecBuilder$2.encode",
+   "samples": 7
+  },
+  {
+   "method": "MapCodec$MapCodecCodec.encode",
+   "samples": 7
+  },
+  {
+   "method": "LayerLightSectionStorage.getDataLayer",
+   "samples": 7
+  },
+  {
+   "method": "DataLayerStorageMap.getLayer",
+   "samples": 7
+  },
+  {
+   "method": "SerializableChunkData.packStructureData",
+   "samples": 7
+  },
+  {
+   "method": "ClassLoader.loadClass",
+   "samples": 6
+  },
+  {
+   "method": "KnotClassDelegate.getPostMixinClassByteArray",
+   "samples": 6
+  },
+  {
+   "method": "KnotClassDelegate.loadClass",
+   "samples": 6
+  },
+  {
+   "method": "KnotClassDelegate.tryLoadClass",
+   "samples": 6
+  },
+  {
+   "method": "KnotClassLoader.loadClass",
+   "samples": 6
+  },
+  {
+   "method": "MapCodec$2.encode",
+   "samples": 6
+  },
+  {
+   "method": "LevelChunk.getTicksForSerialization",
+   "samples": 6
+  },
+  {
+   "method": "LevelChunkTicks.pack",
+   "samples": 6
+  },
+  {
+   "method": "PersistentEntitySectionManager.storeChunkSections",
+   "samples": 6
+  },
+  {
+   "method": "KnotClassDelegate.getPreMixinClassByteArray",
+   "samples": 5
+  },
+  {
+   "method": "RecordCodecBuilder$Instance$6.encode",
+   "samples": 5
+  },
+  {
+   "method": "ScheduledTick.toSavedTick",
+   "samples": 5
+  },
+  {
+   "method": "LevelStorageSource$LevelStorageAccess.saveDataTag",
+   "samples": 5
+  },
+  {
+   "method": "BiomeManager.getFiddledDistance",
+   "samples": 4
+  },
+  {
+   "method": "Encoder$1.encode",
+   "samples": 4
+  },
+  {
+   "method": "SpawnerBlockEntity.saveAdditional",
+   "samples": 4
+  },
+  {
+   "method": "BaseSpawner.save",
+   "samples": 4
+  },
+  {
+   "method": "FieldEncoder.encode",
+   "samples": 4
+  },
+  {
+   "method": "SectionPos.of",
+   "samples": 4
+  },
+  {
+   "method": "Encoder$2.encode",
+   "samples": 4
+  },
+  {
+   "method": "DataResult$Success.flatMap",
+   "samples": 4
+  },
+  {
+   "method": "EntityStorage.lambda$storeEntities$0",
+   "samples": 4
+  },
+  {
+   "method": "EntityStorage.storeEntities",
+   "samples": 4
+  },
+  {
+   "method": "PersistentEntitySectionManager.autoSave",
+   "samples": 4
+  },
+  {
+   "method": "LongIterable.forEach",
+   "samples": 4
+  },
+  {
+   "method": "LongOpenHashSet.forEach",
+   "samples": 4
+  },
+  {
+   "method": "ReferencePipeline$Head.forEach",
+   "samples": 4
+  },
+  {
+   "method": "AbstractLongCollection.forEach",
+   "samples": 4
+  },
+  {
+   "method": "ArrayList$ArrayListSpliterator.forEachRemaining",
+   "samples": 4
+  },
+  {
+   "method": "LevelStorageSource$LevelStorageAccess.saveLevelData",
+   "samples": 4
+  },
+  {
+   "method": "PoiManager.tick",
+   "samples": 4
+  },
+  {
+   "method": "GenerationChunkHolder.getChunkIfPresentUnchecked",
+   "samples": 4
+  },
+  {
+   "method": "ServerChunkCache.getChunkNow",
+   "samples": 4
+  },
+  {
+   "method": "GenerationChunkHolder.getChunkIfPresent",
+   "samples": 4
+  },
+  {
+   "method": "CiChunks.startTick",
+   "samples": 4
+  },
+  {
+   "method": "KnotClassDelegate.getRawClassByteArray",
+   "samples": 3
+  },
+  {
+   "method": "ChunkMap.forEachBlockTickingChunk",
+   "samples": 3
+  },
+  {
+   "method": "DistanceManager.forEachEntityTickingChunk",
+   "samples": 3
+  },
+  {
+   "method": "EnvironmentAttributeMap.applyModifier",
+   "samples": 3
+  },
+  {
+   "method": "ChunkPos.pack",
+   "samples": 3
+  },
+  {
+   "method": "Long2ObjectFunctions$SynchronizedFunction.get",
+   "samples": 3
+  },
+  {
+   "method": "OptionalFieldCodec.encode",
+   "samples": 3
+  },
+  {
+   "method": "PoolElementStructurePiece.addAdditionalSaveData",
+   "samples": 3
+  },
+  {
+   "method": "StructureStart.createTag",
+   "samples": 3
+  },
+  {
+   "method": "PiecesContainer.save",
+   "samples": 3
+  },
+  {
+   "method": "StructurePiece.createTag",
+   "samples": 3
+  },
+  {
+   "method": "SavedDataStorage.scheduleSave",
+   "samples": 3
+  },
+  {
+   "method": "BiomeManager.getFiddle",
+   "samples": 3
+  },
+  {
+   "method": "Math.floorMod",
+   "samples": 3
+  },
+  {
+   "method": "Encoder$2.lambda$encode$0",
+   "samples": 3
+  },
+  {
+   "method": "PersistentEntitySectionManager.lambda$autoSave$0",
+   "samples": 3
+  },
+  {
+   "method": "Entity.saveWithoutId",
+   "samples": 3
+  },
+  {
+   "method": "Entity.saveAsPassenger",
+   "samples": 3
+  },
+  {
+   "method": "Entity.save",
+   "samples": 3
+  },
+  {
+   "method": "Object2IntOpenHashMap.<init>",
+   "samples": 3
+  },
+  {
+   "method": "ChunkMap.processUnloads",
+   "samples": 3
+  },
+  {
+   "method": "AtomicReferenceArray.get",
+   "samples": 3
+  },
+  {
+   "method": "VarHandleReferences$Array.getVolatile",
+   "samples": 3
+  },
+  {
+   "method": "PersistentEntitySectionManager.lambda$saveAll$0",
+   "samples": 3
+  },
+  {
+   "method": "LongCollection.removeIf",
+   "samples": 3
+  },
+  {
+   "method": "PersistentEntitySectionManager.saveAll",
+   "samples": 3
+  },
+  {
+   "method": "DistanceManager.inEntityTickingRange",
+   "samples": 3
+  },
+  {
+   "method": "SectionStorage.tick",
+   "samples": 3
+  }
+ ],
+ "threads": [
+  {
+   "thread": "Netty Epoll IO ",
+   "samples": 2086
+  },
+  {
+   "thread": "Worker-Main",
+   "samples": 1049
+  },
+  {
+   "thread": "IO-Worker",
+   "samples": 867
+  },
+  {
+   "thread": "Server thread",
+   "samples": 477
+  }
+ ]
+}

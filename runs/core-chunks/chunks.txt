@@ -1,0 +1,314 @@
+chunk scenes suite=core rounds=7
+86f16178a3cecc887a85a4cfe9a79d92fa7341d8f39b5951a4d6ad800ab657a6  core/fabric-api.jar
+pack lock: set core matches ci/pack-lock.txt
+fabric server 26.3, loader 0.19.5, fabric api 0.161.0+26.3 in /home/runner/work/Quicksilver/Quicksilver/srv
+4
+model name	: INTEL(R) XEON(R) PLATINUM 8573C
+openjdk version "25.0.5" 2026-10-20 LTS
+== generating the saved terrain (ci/server/chunks-area-core.txt)
+-rw-r--r-- 1 runner runner 83599360 Nov 13 07:15 chunks-base.tar
+/home/runner/work/Quicksilver/Quicksilver/srv/chunksbase: 10074 stored chunks in 3 stores, 0 differ from the base
+CI SIG ChunkMap.save(net.minecraft.world.level.chunk.ChunkAccess) -> boolean [private]
+CI SIG ChunkMap.processUnloads(java.util.function.BooleanSupplier) -> void [private]
+CI SIG ChunkMap.saveChunkIfNeeded(net.minecraft.server.level.ChunkHolder, long) -> boolean [private]
+CI SIG ChunkMap.scheduleUnload(long, net.minecraft.server.level.ChunkHolder) -> void [private]
+CI SIG ChunkMap.saveChunksEagerly(java.util.function.BooleanSupplier) -> void [private]
+CI SIG ChunkMap.scheduleChunkLoad(net.minecraft.world.level.ChunkPos) -> java.util.concurrent.CompletableFuture [private]
+CI SIG ChunkMap.markPosition(net.minecraft.world.level.ChunkPos, net.minecraft.world.level.chunk.status.ChunkType) -> byte [private]
+CI SIG ChunkMap.readChunk(net.minecraft.world.level.ChunkPos) -> java.util.concurrent.CompletableFuture [private]
+CI SIG ChunkMap.saveAllChunks(boolean) -> void [protected]
+CI SIG SerializableChunkData record: net.minecraft.world.level.chunk.PalettedContainerFactory containerFactory; net.minecraft.world.level.ChunkPos chunkPos; int minSectionY; long lastUpdateTime; long inhabitedTime; net.minecraft.world.level.chunk.status.ChunkStatus chunkStatus; net.minecraft.world.level.levelgen.blending.BlendingData$Packed blendingData; net.minecraft.world.level.levelgen.BelowZeroRetrogen belowZeroRetrogen; net.minecraft.world.level.chunk.UpgradeData upgradeData; java.util.Map<net.minecraft.world.level.levelgen.Heightmap$Types, long[]> heightmaps; net.minecraft.world.level.chunk.ChunkAccess$PackedTicks packedTicks; it.unimi.dsi.fastutil.shorts.ShortList[] postProcessingSections; boolean lightCorrect; java.util.List<net.minecraft.world.level.chunk.storage.SerializableChunkData$SectionData> sectionData; java.util.List<net.minecraft.nbt.CompoundTag> entities; java.util.List<net.minecraft.nbt.CompoundTag> blockEntities; net.minecraft.nbt.CompoundTag structureData; 
+CI SIG SerializableChunkData.copyOf(net.minecraft.server.level.ServerLevel, net.minecraft.world.level.chunk.ChunkAccess) -> net.minecraft.world.level.chunk.storage.SerializableChunkData [public static]
+CI SIG SerializableChunkData.write() -> net.minecraft.nbt.CompoundTag [public]
+CI SIG SerializableChunkData.parse(net.minecraft.world.level.LevelHeightAccessor, net.minecraft.world.level.chunk.PalettedContainerFactory, net.minecraft.nbt.CompoundTag) -> net.minecraft.world.level.chunk.storage.SerializableChunkData [public static]
+CI SIG SerializableChunkData.read(net.minecraft.server.level.ServerLevel, net.minecraft.world.entity.ai.village.poi.PoiManager, net.minecraft.world.level.chunk.storage.RegionStorageInfo, net.minecraft.world.level.ChunkPos) -> net.minecraft.world.level.chunk.ProtoChunk [public]
+CI SIG SerializableChunkData.unpackStructureStart(net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext, net.minecraft.nbt.CompoundTag, long) -> java.util.Map [private static]
+CI SIG SerializableChunkData.packStructureData(net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext, net.minecraft.world.level.ChunkPos, java.util.Map, java.util.Map) -> net.minecraft.nbt.CompoundTag [private static]
+CI SIG SerializableChunkData.saveTicks(net.minecraft.nbt.CompoundTag, net.minecraft.world.level.chunk.ChunkAccess$PackedTicks) -> void [private static]
+CI SIG IOWorker.store(net.minecraft.world.level.ChunkPos, java.util.function.Supplier) -> java.util.concurrent.CompletableFuture [public]
+CI SIG IOWorker.store(net.minecraft.world.level.ChunkPos, net.minecraft.nbt.CompoundTag) -> java.util.concurrent.CompletableFuture [public]
+CI SIG IOWorker.storePendingChunk() -> void [private]
+CI SIG IOWorker.submitTask(java.util.function.Supplier) -> java.util.concurrent.CompletableFuture [private]
+CI SIG IOWorker.runStore(net.minecraft.world.level.ChunkPos, net.minecraft.world.level.chunk.storage.IOWorker$PendingStore) -> void [private]
+CI SIG IOWorker.tellStorePending() -> void [private]
+CI SIG IOWorker.loadAsync(net.minecraft.world.level.ChunkPos) -> java.util.concurrent.CompletableFuture [public]
+CI SIG IOWorker.synchronize(boolean) -> java.util.concurrent.CompletableFuture [public]
+CI SIG net.minecraft.world.level.chunk.storage.ChunkStorage: java.lang.ClassNotFoundException: net.minecraft.world.level.chunk.storage.ChunkStorage
+CI SIG RegionFile.flush() -> void [public]
+CI SIG RegionFile.write(net.minecraft.world.level.ChunkPos, java.nio.ByteBuffer) -> void [protected synchronized]
+CI SIG RegionFile.close() -> void [public]
+CI SIG RegionFile.getChunkDataOutputStream(net.minecraft.world.level.ChunkPos) -> java.io.DataOutputStream [public]
+CI SIG RegionFile.getChunkDataInputStream(net.minecraft.world.level.ChunkPos) -> java.io.DataInputStream [public synchronized]
+CI SIG RegionFile.<init>(net.minecraft.world.level.chunk.storage.RegionStorageInfo, java.nio.file.Path, java.nio.file.Path, boolean) [public]
+CI SIG RegionFile.<init>(net.minecraft.world.level.chunk.storage.RegionStorageInfo, java.nio.file.Path, java.nio.file.Path, net.minecraft.world.level.chunk.storage.RegionFileVersion, boolean) [public]
+CI SIG RegionFileStorage.flush() -> void [public]
+CI SIG RegionFileStorage.write(net.minecraft.world.level.ChunkPos, net.minecraft.nbt.CompoundTag) -> void [public]
+CI SIG RegionFileStorage.read(net.minecraft.world.level.ChunkPos) -> net.minecraft.nbt.CompoundTag [public]
+CI SIG RegionFileStorage.getRegionFile(net.minecraft.world.level.ChunkPos, boolean) -> net.minecraft.world.level.chunk.storage.RegionFile [private]
+CI SIG RegionFileStorage.<init>(net.minecraft.world.level.chunk.storage.RegionStorageInfo, java.nio.file.Path, boolean) [public]
+CI SIG RegionFileVersion.wrap(java.io.InputStream) -> java.io.InputStream [public]
+CI SIG RegionFileVersion.wrap(java.io.OutputStream) -> java.io.OutputStream [public]
+CI SIG RegionFileVersion.getSelected() -> net.minecraft.world.level.chunk.storage.RegionFileVersion [public static]
+CI SIG RegionFileVersion.<init>(int, java.lang.String, net.minecraft.world.level.chunk.storage.RegionFileVersion$StreamWrapper, net.minecraft.world.level.chunk.storage.RegionFileVersion$StreamWrapper) [private]
+CI SIG MinecraftServer.autoSave() -> void [private]
+CI SIG MinecraftServer.saveEverything(boolean, boolean, boolean) -> boolean [public]
+CI SIG MinecraftServer.saveAllChunks(boolean, boolean, boolean) -> boolean [public]
+CI SIG MinecraftServer.computeNextAutosaveInterval() -> int [private]
+CI SIG ServerLevel.save(net.minecraft.util.ProgressListener, boolean, boolean) -> void [public]
+CI SIG ServerLevel.saveLevelData(boolean) -> void [private]
+CI SIG LevelChunkSection.copy() -> net.minecraft.world.level.chunk.LevelChunkSection [public]
+CI SIG LevelChunkSection.<init>(net.minecraft.world.level.chunk.PalettedContainerFactory) [public]
+CI SIG LevelChunkSection.<init>(net.minecraft.world.level.chunk.PalettedContainer, net.minecraft.world.level.chunk.PalettedContainerRO) [public]
+CI SIG LevelChunkSection.<init>(net.minecraft.world.level.chunk.LevelChunkSection) [private]
+CI SIG PalettedContainer.copy() -> net.minecraft.world.level.chunk.PalettedContainer [public]
+CI SIG PalettedContainer.codecRW(com.mojang.serialization.Codec, net.minecraft.world.level.chunk.Strategy, java.lang.Object) -> com.mojang.serialization.Codec [public static]
+CI SIG PalettedContainer.unpack(net.minecraft.world.level.chunk.Strategy, net.minecraft.world.level.chunk.PalettedContainerRO$PackedData) -> com.mojang.serialization.DataResult [public static]
+CI SIG PalettedContainer.pack(net.minecraft.world.level.chunk.Strategy) -> net.minecraft.world.level.chunk.PalettedContainerRO$PackedData [public]
+CI SIG PalettedContainer.<init>(net.minecraft.world.level.chunk.Strategy, net.minecraft.world.level.chunk.Configuration, net.minecraft.util.BitStorage, net.minecraft.world.level.chunk.Palette) [private]
+CI SIG PalettedContainer.<init>(net.minecraft.world.level.chunk.PalettedContainer) [private]
+CI SIG PalettedContainer.<init>(java.lang.Object, net.minecraft.world.level.chunk.Strategy) [public]
+CI SIG DataLayer.copy() -> net.minecraft.world.level.chunk.DataLayer [public]
+CI SIG DataLayer.isEmpty() -> boolean [public]
+CI SIG DataLayer.<init>([B) [public]
+CI SIG DataLayer.<init>(int) [public]
+CI SIG DataLayer.<init>() [public]
+CI SIG LevelChunk.runPostLoad() -> void [public]
+CI SIG LevelChunk.postProcessGeneration(net.minecraft.server.level.ServerLevel) -> void [public]
+CI SIG LevelChunk.registerAllBlockEntitiesAfterLevelLoad() -> void [public]
+CI SIG LevelChunk.getBlockEntityNbtForSaving(net.minecraft.core.BlockPos, net.minecraft.core.HolderLookup$Provider) -> net.minecraft.nbt.CompoundTag [public]
+CI SIG LevelChunk.<init>(net.minecraft.server.level.ServerLevel, net.minecraft.world.level.chunk.ProtoChunk, net.minecraft.world.level.chunk.LevelChunk$PostLoadProcessor) [public]
+CI SIG LevelChunk.<init>(net.minecraft.world.level.Level, net.minecraft.world.level.ChunkPos, net.minecraft.world.level.chunk.UpgradeData, net.minecraft.world.ticks.LevelChunkTicks, net.minecraft.world.ticks.LevelChunkTicks, long, [Lnet.minecraft.world.level.chunk.LevelChunkSection;, net.minecraft.world.level.chunk.LevelChunk$PostLoadProcessor, net.minecraft.world.level.levelgen.blending.BlendingData) [public]
+CI SIG LevelChunk.<init>(net.minecraft.world.level.Level, net.minecraft.world.level.ChunkPos) [public]
+CI SIG ChunkAccess.markUnsaved() -> void [public]
+CI SIG ChunkAccess.getAllStarts() -> java.util.Map [public]
+CI SIG ChunkAccess.tryMarkSaved() -> boolean [public]
+CI SIG ChunkAccess.isUnsaved() -> boolean [public]
+CI SIG ChunkAccess.getPostProcessing() -> [Lit.unimi.dsi.fastutil.shorts.ShortList; [public]
+CI SIG ChunkAccess.getBlockEntityNbtForSaving(net.minecraft.core.BlockPos, net.minecraft.core.HolderLookup$Provider) -> net.minecraft.nbt.CompoundTag [public abstract]
+CI SIG ChunkAccess.getTicksForSerialization(long) -> net.minecraft.world.level.chunk.ChunkAccess$PackedTicks [public abstract]
+CI SIG SectionStorage.flush(net.minecraft.world.level.ChunkPos) -> void [public]
+CI SIG SectionStorage.tick(java.util.function.BooleanSupplier) -> void [protected]
+CI SIG SectionStorage.flushAll() -> void [public]
+CI SIG EntityStorage.flush(boolean) -> void [public]
+CI SIG EntityStorage.loadEntities(net.minecraft.world.level.ChunkPos) -> java.util.concurrent.CompletableFuture [public]
+CI SIG EntityStorage.storeEntities(net.minecraft.world.level.entity.ChunkEntities) -> void [public]
+CI SIG PersistentEntitySectionManager.storeChunkSections(long, java.util.function.Consumer) -> boolean [private]
+CI SIG PersistentEntitySectionManager.saveAll() -> void [public]
+CI SIG PersistentEntitySectionManager.autoSave() -> void [public]
+CI SIG DistanceManager.runAllUpdates(net.minecraft.server.level.ChunkMap) -> boolean [public]
+== scene flyover (chunks-flyover-core.txt, 1200 ticks, normal, 7 rounds)
+flyover vanilla1: mspt avg/p99/max 1.902 10.998 26.643 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+/tmp/sout/core-chunks/flyover/vanilla1/rec.jfr: server thread {'tick java': 1579, 'tick native': 1, 'between java': 447, 'between native': 6}; load 0.211, save 0.347 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+flyover quicksilver1: mspt avg/p99/max 1.86 11.244 31.247 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver1/rec.jfr: server thread {'tick java': 1475, 'tick native': 2, 'between java': 494, 'between native': 5}; load 0.195, save 0.305 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+flyover quicksilver2: mspt avg/p99/max 1.803 8.748 32.552 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver2/rec.jfr: server thread {'tick java': 1479, 'tick native': 5, 'between java': 502, 'between native': 8}; load 0.219, save 0.316 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover vanilla2: mspt avg/p99/max 1.997 11.419 27.314 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+/tmp/sout/core-chunks/flyover/vanilla2/rec.jfr: server thread {'tick java': 1639, 'between java': 439, 'between native': 8}; load 0.204, save 0.373 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+flyover vanilla3: mspt avg/p99/max 1.954 10.492 36.132 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+/tmp/sout/core-chunks/flyover/vanilla3/rec.jfr: server thread {'tick java': 1615, 'tick native': 5, 'between java': 470, 'between native': 5}; load 0.223, save 0.361 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+flyover quicksilver3: mspt avg/p99/max 1.913 9.874 28.168 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6016} 
+  (88 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver3/rec.jfr: server thread {'tick java': 1639, 'tick native': 1, 'between java': 466, 'between native': 7}; load 0.204, save 0.358 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+flyover quicksilver4: mspt avg/p99/max 1.952 9.343 27.077 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver4/rec.jfr: server thread {'tick java': 1622, 'tick native': 2, 'between java': 518, 'between native': 3}; load 0.227, save 0.347 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover vanilla4: mspt avg/p99/max 1.998 9.176 32.962 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (86 s)
+/tmp/sout/core-chunks/flyover/vanilla4/rec.jfr: server thread {'tick java': 1650, 'tick native': 3, 'between java': 505, 'between native': 1}; load 0.226, save 0.362 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover vanilla5: mspt avg/p99/max 2.077 13.234 23.243 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+/tmp/sout/core-chunks/flyover/vanilla5/rec.jfr: server thread {'tick native': 3, 'tick java': 1685, 'between java': 490, 'between native': 5}; load 0.207, save 0.342 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+flyover quicksilver5: mspt avg/p99/max 1.968 10.026 29.664 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (88 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver5/rec.jfr: server thread {'tick java': 1615, 'tick native': 3, 'between java': 479, 'between native': 6}; load 0.212, save 0.334 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover quicksilver6: mspt avg/p99/max 2.089 14.051 31.667 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (88 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver6/rec.jfr: server thread {'tick java': 1644, 'between java': 506, 'between native': 3, 'tick native': 4}; load 0.208, save 0.344 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover vanilla6: mspt avg/p99/max 1.985 9.636 29.886 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (86 s)
+/tmp/sout/core-chunks/flyover/vanilla6/rec.jfr: server thread {'tick java': 1586, 'tick native': 2, 'between java': 463, 'between native': 4}; load 0.203, save 0.342 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover vanilla7: mspt avg/p99/max 1.88 10.126 47.292 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (86 s)
+/tmp/sout/core-chunks/flyover/vanilla7/rec.jfr: server thread {'between java': 485, 'tick native': 6, 'tick java': 1496, 'between native': 3}; load 0.212, save 0.347 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover quicksilver7: mspt avg/p99/max 1.98 10.082 41.324 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (87 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/flyover/quicksilver7/rec.jfr: server thread {'tick java': 1578, 'tick native': 2, 'between java': 464, 'between native': 4}; load 0.201, save 0.339 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1681 differ from the base
+flyover quicksilver-verify: mspt avg/p99/max 1.764 9.046 23.024 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 149, 'dirtied': 3725, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '8,-3', 'writesRecorded': 6015} 
+  (86 s)
+  Quicksilver chunks: cow-sections=on, verify=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10077 stored chunks in 3 stores, 1686 differ from the base
+== scene save (chunks-save-core.txt, 7000 ticks, sprint, 7 rounds)
+save vanilla1: mspt avg/p99/max 0.513 0.758 2725.256 over 50 ms 4 autosaves [5734] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2006} 
+  (32 s)
+/tmp/sout/core-chunks/save/vanilla1/rec.jfr: server thread {'tick java': 495, 'tick native': 8, 'between java': 14, 'between native': 1}; load 0.000, save 0.012 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save quicksilver1: mspt avg/p99/max 0.523 0.67 2813.058 over 50 ms 2 autosaves [5733] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2082} 
+  (33 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver1/rec.jfr: server thread {'between java': 15, 'tick java': 513, 'tick native': 4}; load 0.000, save 0.011 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save quicksilver2: mspt avg/p99/max 0.512 0.775 2620.896 over 50 ms 4 autosaves [5742] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2109} 
+  (32 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver2/rec.jfr: server thread {'tick native': 8, 'tick java': 528, 'between java': 24}; load 0.000, save 0.012 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save vanilla2: mspt avg/p99/max 0.513 0.681 2777.54 over 50 ms 4 autosaves [5734] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2034} 
+  (32 s)
+/tmp/sout/core-chunks/save/vanilla2/rec.jfr: server thread {'tick java': 387, 'between java': 24, 'tick native': 1}; load 0.000, save 0.010 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save vanilla3: mspt avg/p99/max 0.529 0.794 2821.647 over 50 ms 4 autosaves [5732] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2099} 
+  (32 s)
+/tmp/sout/core-chunks/save/vanilla3/rec.jfr: server thread {'tick java': 439, 'tick native': 9, 'between java': 11}; load 0.000, save 0.013 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save quicksilver3: mspt avg/p99/max 0.538 0.765 2830.261 over 50 ms 3 autosaves [5736] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2051} 
+  (33 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver3/rec.jfr: server thread {'tick java': 533, 'tick native': 8, 'between java': 15}; load 0.001, save 0.013 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save quicksilver4: mspt avg/p99/max 0.509 0.674 2762.81 over 50 ms 3 autosaves [5732] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2040} 
+  (33 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver4/rec.jfr: server thread {'tick native': 6, 'tick java': 460, 'between java': 11}; load 0.001, save 0.014 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save vanilla4: mspt avg/p99/max 0.532 0.953 2702.31 over 50 ms 3 autosaves [5735] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2044} 
+  (33 s)
+/tmp/sout/core-chunks/save/vanilla4/rec.jfr: server thread {'tick java': 550, 'tick native': 10, 'between java': 14}; load 0.000, save 0.018 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save vanilla5: mspt avg/p99/max 0.545 0.643 2920.436 over 50 ms 4 autosaves [5729] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2080} 
+  (33 s)
+/tmp/sout/core-chunks/save/vanilla5/rec.jfr: server thread {'tick java': 500, 'between java': 19, 'tick native': 6}; load 0.000, save 0.014 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save quicksilver5: mspt avg/p99/max 0.539 0.541 2886.316 over 50 ms 4 autosaves [5731] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2015} 
+  (33 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver5/rec.jfr: server thread {'tick java': 630, 'tick native': 8, 'between java': 26}; load 0.001, save 0.022 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save quicksilver6: mspt avg/p99/max 0.491 0.785 2709.376 over 50 ms 3 autosaves [5735] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2003} 
+  (33 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver6/rec.jfr: server thread {'tick java': 390, 'tick native': 4, 'between java': 16}; load 0.001, save 0.011 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+save vanilla6: mspt avg/p99/max 0.511 0.851 2651.433 over 50 ms 4 autosaves [5730] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2067} 
+  (32 s)
+/tmp/sout/core-chunks/save/vanilla6/rec.jfr: server thread {'tick java': 428, 'tick native': 4, 'between java': 11}; load 0.001, save 0.012 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save vanilla7: mspt avg/p99/max 0.494 0.736 2748.939 over 50 ms 3 autosaves [5731] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2033} 
+  (33 s)
+/tmp/sout/core-chunks/save/vanilla7/rec.jfr: server thread {'tick java': 372, 'tick native': 8, 'between java': 10}; load 0.001, save 0.011 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save quicksilver7: mspt avg/p99/max 0.517 0.783 2746.03 over 50 ms 4 autosaves [5729] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2014} 
+  (32 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/save/quicksilver7/rec.jfr: server thread {'tick java': 514, 'tick native': 7, 'between java': 20}; load 0.001, save 0.011 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+save quicksilver-verify: mspt avg/p99/max 0.494 0.53 2599.367 over 50 ms 3 autosaves [5736] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 9375, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 2100} 
+  (31 s)
+  Quicksilver chunks: cow-sections=on, verify=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+== scene churn (chunks-churn-core.txt, 600 ticks, sprint, 3 rounds)
+churn vanilla1: mspt avg/p99/max 17.214 257.143 2334.964 over 50 ms 32 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 13651} 
+  (47 s)
+/tmp/sout/core-chunks/churn/vanilla1/rec.jfr: server thread {'tick java': 1384, 'tick native': 175, 'between java': 30}; load 0.062, save 1.443 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+churn quicksilver1: mspt avg/p99/max 16.05 227.506 2114.594 over 50 ms 28 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 13046} 
+  (47 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/churn/quicksilver1/rec.jfr: server thread {'tick java': 1283, 'tick native': 164, 'between java': 31, 'between native': 1}; load 0.063, save 1.173 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+churn quicksilver2: mspt avg/p99/max 16.617 216.288 2362.367 over 50 ms 26 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 12805} 
+  (48 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/churn/quicksilver2/rec.jfr: server thread {'tick java': 1395, 'tick native': 126, 'between java': 25}; load 0.062, save 1.282 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+churn vanilla2: mspt avg/p99/max 17.034 195.379 2642.688 over 50 ms 28 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 13266} 
+  (47 s)
+/tmp/sout/core-chunks/churn/vanilla2/rec.jfr: server thread {'tick java': 1345, 'tick native': 137, 'between java': 19, 'between native': 1}; load 0.058, save 1.372 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+churn vanilla3: mspt avg/p99/max 17.035 248.87 2368.933 over 50 ms 31 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 12995} 
+  (48 s)
+/tmp/sout/core-chunks/churn/vanilla3/rec.jfr: server thread {'tick java': 1348, 'tick native': 207, 'between java': 37}; load 0.070, save 1.320 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+churn quicksilver3: mspt avg/p99/max 16.984 230.226 2535.149 over 50 ms 27 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 12853} 
+  (49 s)
+  Quicksilver chunks: cow-sections=on
+/tmp/sout/core-chunks/churn/quicksilver3/rec.jfr: server thread {'tick java': 1260, 'tick native': 185, 'between java': 34, 'between native': 1}; load 0.055, save 1.110 ms per tick (in the tick and between)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+churn quicksilver-verify: mspt avg/p99/max 16.148 208.488 2038.584 over 50 ms 32 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 8, 'moves': 0, 'dirtied': 0, 'churned': 44756, 'churnSkipped': 12748, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 13486} 
+  (46 s)
+  Quicksilver chunks: cow-sections=on, verify=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10075 stored chunks in 3 stores, 358 differ from the base
+== scene kill (chunks-kill-core.txt, 200 ticks, sprint, 2 rounds)
+  killed 1 (1 = after the save had finished)
+kill vanilla-complete1: no result
+  (27 s)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+  killed 0 (1 = after the save had finished)
+kill vanilla-killed1: no result
+  (26 s)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10074 stored chunks in 3 stores, 540 differ from the base
+kill vanilla-reload1: mspt avg/p99/max 2.229 23.263 23.263 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 0, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 0} 
+  (26 s)
+  killed 1 (1 = after the save had finished)
+kill quicksilver-complete1: no result
+  (27 s)
+  Quicksilver chunks: cow-sections=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+  killed 0 (1 = after the save had finished)
+kill quicksilver-killed1: no result
+  (27 s)
+  Quicksilver chunks: cow-sections=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10074 stored chunks in 3 stores, 538 differ from the base
+kill quicksilver-reload1: mspt avg/p99/max 2.143 18.801 18.801 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 0, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 0} 
+  (26 s)
+  Quicksilver chunks: cow-sections=on
+  killed 1 (1 = after the save had finished)
+kill quicksilver-complete2: no result
+  (28 s)
+  Quicksilver chunks: cow-sections=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 629 differ from the base
+  killed 0 (1 = after the save had finished)
+kill quicksilver-killed2: no result
+  (26 s)
+  Quicksilver chunks: cow-sections=on
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10074 stored chunks in 3 stores, 537 differ from the base
+kill quicksilver-reload2: mspt avg/p99/max 2.154 18.683 18.683 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 0, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 0} 
+  (26 s)
+  Quicksilver chunks: cow-sections=on
+  killed 1 (1 = after the save had finished)
+kill vanilla-complete2: no result
+  (27 s)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10076 stored chunks in 3 stores, 627 differ from the base
+  killed 0 (1 = after the save had finished)
+kill vanilla-killed2: no result
+  (27 s)
+/home/runner/work/Quicksilver/Quicksilver/srv/world: 10074 stored chunks in 3 stores, 538 differ from the base
+kill vanilla-reload2: mspt avg/p99/max 2.162 20.269 20.269 over 50 ms 0 autosaves [] {'ticket': 'ticket PLAYER_LOADING', 'radius': 12, 'moves': 0, 'dirtied': 0, 'churned': 0, 'churnSkipped': 0, 'notLoadedOnLeave': 0, 'windowNotFullAtEnd': 0, 'endCentre': '0,0', 'writesRecorded': 0} 
+  (26 s)
+chunk scenes done
