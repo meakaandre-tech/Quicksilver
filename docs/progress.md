@@ -2574,9 +2574,30 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
 - **CI:** two compares of one branch pushing to ci-logs at once failed one with "cannot lock ref"; the publish steps
   now retry.
 
-### Results
+### Results (full run of `27d80e8`; limits and baselines from the collection runs)
 
-(filled in from the collection runs)
+Every pack scene matches vanilla within its limits on all four profiles (full, old-GPU, Vulkan, old-GPU two-phase); in
+`27d80e8` every strict count was 0 but terrain's (Quicksilver's vertex rounding) and the kinetics scenes' (the same,
+along the track ties). Limits and where they come from: `docs/ci-limits.md` (rows "pack/..."). Baselines (`ci/baselines/pack-*.json`):
+the runs of `f3f9542`, `27d80e8` and `6b0d628` (7eea70b's report.json was overwritten on the logs branch before it was
+read; its markdown report, read from the job log, is green with geckolib at 0).
+
+| scene | draw calls/frame, full profile: Quicksilver / vanilla (same run) |
+|---|---|
+| minimap | 41.7 / 127.8 |
+| geckolib | 9.7 / 9.7 (F1, only the geese and the grass) |
+| jei | 23.7 / 109.3 |
+| ponder | 82.6 / 168.3 |
+| terrain | 13.0 / 137.0 |
+| continuity | 7.7 / 93.3 |
+| create_ct | 7.7 / 93.3 |
+| kinetics | 9.2 / 95.0 |
+| kinetics_instancing | 8.2 / 94.7 |
+| kinetics_flat | 9.1 / 94.8 |
+
+Server suite (`27d80e8`, PASS): worldgen and world diffs equal where vanilla agrees; the bearing contraption assembled,
+placed and reassembled in every run; the train scene reported (median MSPT -0.6% against vanilla); the factory scene
+gated at most 1.10, median -6.4% (0.783 against 0.866 ms).
 
 ## Phase 2, P2-4: chunk saving and loading (branch `p2-4`, not merged: Andre checks it first)
 
