@@ -2524,8 +2524,8 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
   hooks, SIFTEC's baselines, and SIFTEC's jars from `ci/pack-sources.txt` and the lock (they stay in the release only for
   main's frozen suite until this merges).
 - **Client scenes (`scenes/pack.json`):** minimap (Xaero's Minimap, the only scene with the HUD on), geckolib
-  (Untitled Duck Mod's geese, game frozen before they are summoned so their animation time is fixed; then F1 for the
-  rest of the session), jei (the survival inventory with JEI's item list), ponder, terrain (Terralith's land), continuity
+  (six of Untitled Duck Mod's geese, game frozen before they are summoned, look, size and facing fixed in the summon
+  data, GeckoLib's clock and controllers pinned by the CI pin mod; then F1 for the rest of the session), jei (the survival inventory with JEI's item list), ponder, terrain (Terralith's land), continuity
   (Continuity's connected glass, sandstone, bookshelves, panes), create_ct, kinetics (creative motor, cogs, gearbox, fan,
   belt, mixer, press, a clockwork bearing contraption, a train at a station), kinetics_instancing, and kinetics_flat
   (smooth lighting off: factory_flat's job). Create's clock pin covers the kinetics platform.
@@ -2551,8 +2551,28 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
   velocity comes from a random draw that differs between vanilla's own runs too (vanilla b against a there); the item
   then settles up to 2 blocks away. The scripted run and the factory scene take the cave's moss carpets out before tick
   0. The item trace stays (CI ITEMS lines, `-Dci.harness.itemTrace`).
+  6b0d628's perf factory showed the carpet can still pop while the area loads, before the fill reaches it (1 round
+  of 8): its item is also killed at tick 1.
 - Terralith's ground is below the scripted runs' platforms, so their air fills did nothing (removed). Untitled Duck
   Mod picks a duck's look at random on spawn (its summon data didn't pin it): the scene shows geese.
+- **The geese differed in every run, vanilla against vanilla (199-1,318 strict pixels), for three reasons.** Their
+  body turn stopped part-way when the game froze (now all summoned facing yaw 0); GeckoLib's animation time ran from
+  the first frame each goose was drawn, in AnimationProcessor and again in each AnimationController, which adds up its
+  own timeline time (the pin mod now holds both: `cipingecko.GeckoLibClockMixin`, `GeckoLibControllerMixin`); and
+  Untitled Duck Mod rolls each goose's size at random when the summon data has no `BabyScale` (now 0.6 for all six).
+  The size was the last and largest: from d5b5efe every run draws the geese pixel for pixel alike.
+- **Quicksilver's animation module turned itself off** whenever Quicksilver's own mesher took every section ("compile
+  hook did not run in 600 frames"): the hook it waited for is the vanilla compile path the mesher replaces. The mesher
+  now marks the hook seen before its own compile (`Mesher`). A Quicksilver bug, found by the pack's kinetics scenes.
+- **Mid-frame occlusion waits timed out in about 590 frames** of kinetics_flat on the Vulkan profile after the probe
+  had said the GPU path works. `GpuOcclusion` now takes the still-camera path after 3 timeouts in a row (and logs it),
+  and the compare allows that switch on Vulkan. A Quicksilver bug.
+- **Scene setup:** the kinetics fan's airflow particles were the kinetics scenes' only noise (a block now stands in
+  front of the fan; 7-12 strict pixels left, all Quicksilver's vertex rounding along the track ties); the jei scene's
+  player fell to his death in survival (a block under him now, placed first) and its hovered slot and player model
+  moved between runs (mouse parked, model masked).
+- **CI:** two compares of one branch pushing to ci-logs at once failed one with "cannot lock ref"; the publish steps
+  now retry.
 
 ### Results
 

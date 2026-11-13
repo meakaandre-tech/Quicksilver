@@ -67,6 +67,16 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | siftec/create_ct (package 4) | a wrong connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
 | siftec/kinetics (package 5) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,500; one shaft block (~60 px by 7): ~200; the shaft piece showing between the two cogwheels ~80; the train's carriage ~5,000 | 30 (the carriage's rectangle masked out: 8/255 check only, 2,304 px) | yes, but the carriage: whole carriage yes, one part of it **no** |
 | siftec/kinetics_instancing (package 5) | as kinetics, with Flywheel's instancing backend and still-camera occlusion | as kinetics | 30 (as kinetics) | as kinetics |
+| pack/minimap (test pack) | a wrong minimap pixel, icon or coordinate glyph (Xaero's Minimap) | one coordinate glyph ~20-40 | 10 | yes |
+| pack/geckolib (test pack) | a missing, misplaced or wrongly posed GeckoLib entity | one goose ~1,600; its beak ~100 | 10 (pending: the three collection runs) | yes |
+| pack/jei (test pack) | a wrong item icon, slot or text in the inventory or JEI's list | one item icon (32 px): ~300-1,000; one glyph ~20-40 | 10 (player model's box masked: 8/255 check only) | yes |
+| pack/ponder (test pack) | a wrong item icon or text on Create's Ponder index | one item icon (32 px): ~1,000 | 10 | yes |
+| pack/terrain (test pack) | a missing or wrongly lit Terralith section | a section on the far island (blocks ~6 px): ~9,000; one block face ~36 | 340 | section yes; one far block face **no** |
+| pack/continuity (test pack) | a wrong Continuity connected-texture border or pane | one block's border strip ~300 | 10 | yes |
+| pack/create_ct (test pack) | a wrong Create connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
+| pack/kinetics (test pack) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,000; one shaft block ~80 | 30 | yes |
+| pack/kinetics_instancing (test pack) | as kinetics, with Flywheel's instancing backend | as kinetics | 30 | yes |
+| pack/kinetics_flat (test pack) | as kinetics, smooth lighting off (factory_flat's job) | as kinetics | 30 | yes |
 
 The **no** rows are limits already set (by the rule and Andre's earlier decisions) that are larger than the smallest
 thing the scene shows; they are listed for Andre, not changed. Package 7 made the hub and mam scenes quiet and gave
@@ -331,6 +341,11 @@ pixels: the smallest hideable object seen there, the iron golem in the doorway, 
 | SIFTEC/factory (package 5, Create's clock pinned) | runs 41596247834, 41605550531, 41613381142, 41627022279, 41633272149: 0 everywhere but one state flip of 243 pixels (quicksilver-2p-old in 41605550531; measure-old, a vanilla stand-in, in 41627022279) | 0 or 243 | **370** (was 500; 243 x 1.5, rounded up to 10) |
 | SIFTEC/kinetics (package 5; carriage masked, also checked where same-backend vanilla runs agree) | runs 41613381142, 41627022279, 41633272149 (after the lighting fix): outside the carriage, measure runs (vanilla stand-ins) 0-1 | 7-10, all along the track ties: the 16-byte vertex's rounding | **30** (package 3's finer rule: 10 for the noise, plus 1.5 x the rounding extra 10, rounded up to 10) |
 | SIFTEC/kinetics_instancing (package 5; as kinetics) | the same three runs, outside the carriage: 0-1 | 7-10 (track ties) | **30** (as kinetics) |
+| pack/minimap, ponder, continuity, create_ct (test pack) | 0 in runs of 58025a2, 1582f6d, fc717d5 (measure runs 0) | 0 | **10** (floor); pixel 0.25 |
+| pack/jei (test pack) | the same three: 0 (player model masked; the hovered slot gone with the mouse parked) | 0; pixel noise 0.065-0.121% between vanilla runs | **10**; pixel **0.4** |
+| pack/terrain (test pack) | the same three: measure runs 0 | 204-214, all Quicksilver's 16-byte vertex rounding at the island's edges | **340** (finer rule: 10 for the noise, plus 1.5 x 214, rounded up to 10); pixel 0.3 |
+| pack/kinetics, kinetics_instancing, kinetics_flat (test pack; the fan's particles blocked) | runs of 94c28ea, 1eb2be5, 9db78fc: measure runs 0-4 | 7-12, along the track ties: the rounding | **30** (finer rule: 10 for the noise, plus 1.5 x 12, rounded up to 10); pixel 0.3 |
+| pack/geckolib (test pack) | before d5b5efe 56-1,318, vanilla's own runs too (body turn, GeckoLib's clock and controllers, random goose size; see progress.md, "Test pack"); from d5b5efe 0 | pending: the three collection runs | pending |
 | SIFTEC/ponder (package 7) | final setup: 0/0 in runs 40273668937, 40276630375, 40288414898 (earlier placements: 0/0) | final setup: 0 in every Quicksilver and measure run of those three runs (earlier placements: 3-5 pixels of the minimap in every Quicksilver and measure run, 425 and 578 once; see below) | **10** |
 | core/outline, outline.bare (package 7) | 0/0 in runs 40249146134 to 40260847921 (bare: 40260847921) | 0 (measure runs 0) | **10** |
 
