@@ -16,6 +16,9 @@ cmd fill -44 199 -44 23 199 39 minecraft:stone
 # velocity came from a random draw that differs between vanilla's own runs (vanilla a against b, run 43136722450's CI
 # ITEMS lines), so the item ended up to 2 blocks away; the cave's moss carpets are taken out before tick 0
 cmd fill 48 -6 32 68 12 50 minecraft:air replace minecraft:moss_carpet
+# ... but the carpet can still pop while the area loads, before these commands reach it (one Quicksilver round of
+# 6b0d628's perf run: the item went 0.8 blocks east of vanilla's, a different random draw), so its item is also
+# taken out at tick 1, in every run
 
 # 4 lines of 8 mechanical presses on a shaft (axis x), each over a depot fed by a hopper from a chest of iron ingots,
 # emptied by a hopper under the depot into a chest
@@ -460,6 +463,7 @@ cmd setblock -32 200 38 minecraft:chest
 ticks 1200
 
 # the motors start on a fixed tick in every run
+at 1 kill @e[type=minecraft:item,x=48,y=-6,z=32,dx=20,dy=18,dz=18]
 at 1 setblock -41 202 -40 create:creative_motor[facing=east]
 at 1 setblock -41 202 -32 create:creative_motor[facing=east]
 at 1 setblock -41 202 -24 create:creative_motor[facing=east]

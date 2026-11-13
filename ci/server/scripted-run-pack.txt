@@ -15,6 +15,9 @@ cmd fill 0 199 0 31 199 31 minecraft:stone
 # velocity came from a random draw that differs between vanilla's own runs (vanilla a against b, run 43136722450's CI
 # ITEMS lines), so the item ended up to 2 blocks away; the cave's moss carpets are taken out before tick 0
 cmd fill 48 -6 32 68 12 50 minecraft:air replace minecraft:moss_carpet
+# ... but the carpet can still pop while the area loads, before these commands reach it (one Quicksilver round of
+# 6b0d628's perf run: the item went 0.8 blocks east of vanilla's, a different random draw), so its item is also
+# taken out at tick 1, in every run
 
 # a mechanical bearing turning a small frame of planks (a rotating contraption); its creative motor is placed at tick
 # 1 (below): Create ticks kinetics through its own hooks even while the game is frozen before tick 0, so a motor
@@ -57,6 +60,7 @@ cmd summon minecraft:villager 18 200 18
 ticks 1200
 
 # the bearing's motor and the furnace start on a fixed tick in every run (P2-1)
+at 1 kill @e[type=minecraft:item,x=48,y=-6,z=32,dx=20,dy=18,dz=18]
 at 1 setblock 2 200 2 create:creative_motor[facing=up]
 at 1 setblock 2 200 11 minecraft:furnace{Items:[{Slot:0b,id:"minecraft:raw_iron",count:8},{Slot:1b,id:"minecraft:coal",count:2}]}
 
