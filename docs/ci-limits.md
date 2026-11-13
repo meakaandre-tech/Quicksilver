@@ -74,9 +74,9 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | pack/terrain (test pack) | a missing or wrongly lit Terralith section | a section on the far island (blocks ~6 px): ~9,000; one block face ~36 | 340 | section yes; one far block face **no** |
 | pack/continuity (test pack) | a wrong Continuity connected-texture border or pane | one block's border strip ~300 | 10 | yes |
 | pack/create_ct (test pack) | a wrong Create connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
-| pack/kinetics (test pack) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,000; one shaft block ~80 | 30 | yes |
-| pack/kinetics_instancing (test pack) | as kinetics, with Flywheel's instancing backend | as kinetics | 30 | yes |
-| pack/kinetics_flat (test pack) | as kinetics, smooth lighting off (factory_flat's job) | as kinetics | 30 | yes |
+| pack/kinetics (test pack) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,000; one shaft block ~80; the train's carriage ~5,000 | 30 (the carriage's rectangle masked out, as in SIFTEC's: 8/255 check only) | yes, but the carriage: whole carriage yes, one part of it **no** |
+| pack/kinetics_instancing (test pack) | as kinetics, with Flywheel's instancing backend | as kinetics | 30 (carriage masked, as kinetics) | as kinetics |
+| pack/kinetics_flat (test pack) | as kinetics, smooth lighting off (factory_flat's job) | as kinetics | 30 (carriage masked, as kinetics) | as kinetics |
 
 The **no** rows are limits already set (by the rule and Andre's earlier decisions) that are larger than the smallest
 thing the scene shows; they are listed for Andre, not changed. Package 7 made the hub and mam scenes quiet and gave
@@ -344,7 +344,7 @@ pixels: the smallest hideable object seen there, the iron golem in the doorway, 
 | pack/minimap, ponder, continuity, create_ct (test pack) | 0 in runs of 58025a2, 1582f6d, fc717d5 (measure runs 0) | 0 | **10** (floor); pixel 0.25 |
 | pack/jei (test pack) | the same three: 0 (player model masked; the hovered slot gone with the mouse parked) | 0; pixel noise 0.065-0.121% between vanilla runs | **10**; pixel **0.4** |
 | pack/terrain (test pack) | the same three: measure runs 0 | 204-214, all Quicksilver's 16-byte vertex rounding at the island's edges | **340** (finer rule: 10 for the noise, plus 1.5 x 214, rounded up to 10); pixel 0.3 |
-| pack/kinetics, kinetics_instancing, kinetics_flat (test pack; the fan's particles blocked) | runs of 94c28ea, 1eb2be5, 9db78fc: measure runs 0-4 | 7-12, along the track ties: the rounding | **30** (finer rule: 10 for the noise, plus 1.5 x 12, rounded up to 10); pixel 0.3 |
+| pack/kinetics, kinetics_instancing, kinetics_flat (test pack; the fan's particles blocked; carriage masked) | runs of 94c28ea, 1eb2be5, 9db78fc, outside the carriage: measure runs 0-4 | 7-12, along the track ties: the rounding | **30** (finer rule: 10 for the noise, plus 1.5 x 12, rounded up to 10); pixel 0.3 |
 | pack/geckolib (test pack) | before d5b5efe 56-1,318, vanilla's own runs too (body turn, GeckoLib's clock and controllers, random goose size; see progress.md, "Test pack"); from d5b5efe 0; collection runs f3f9542, 7eea70b, 27d80e8: 0 | 0 | **10** (floor); pixel 0.25 |
 | SIFTEC/ponder (package 7) | final setup: 0/0 in runs 40273668937, 40276630375, 40288414898 (earlier placements: 0/0) | final setup: 0 in every Quicksilver and measure run of those three runs (earlier placements: 3-5 pixels of the minimap in every Quicksilver and measure run, 425 and 578 once; see below) | **10** |
 | core/outline, outline.bare (package 7) | 0/0 in runs 40249146134 to 40260847921 (bare: 40260847921) | 0 (measure runs 0) | **10** |
@@ -960,7 +960,11 @@ p99, frames over 50 ms, draw calls and the largest upload per frame.
   draw, nothing with the pyramid or the box test. Its draws, passes and readback are left out of the counters.
 - **Gates** (`ci/compare.py`, every Quicksilver bench): occlusion on, no fallback; the last frame in the mode the run asks
   for (full and Vulkan two-phase, old-GPU still-camera, old-GPU two-phase); the check on, 0 visible pixels and 0 timeouts
-  since start-up, no frame skipped; no wait timed out and no frame drew deferred sections untested; scenes marked
+  since start-up, no frame skipped; no wait timed out and no frame drew deferred sections untested (one exception, the
+  test pack, 2026-11-13: on Vulkan, where the calibration's wait within a frame worked but later timed out, Quicksilver
+  takes still camera after 3 timeouts in a row, `GpuOcclusion.MAX_TIMEOUTS_IN_A_ROW`; those 3 pass only in the bench
+  where the bench JSON shows the switch, `midFrameWaitSwitched`, and the switch is listed at the top of the report);
+  scenes marked
   `ciRequiresOcclusion` (occlusion, occlusion_corner) culled something (still-camera only where the camera stands
   still); "Quicksilver occlusion: turned off" or "Quicksilver occlusion check:" in a client log fails the run.
 - **Draw calls at most main's + 3 and at or under vanilla** (Andre): per scene and profile, draw calls per frame (median

@@ -2530,8 +2530,11 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
   belt, mixer, press, a clockwork bearing contraption, a train at a station), kinetics_instancing, and kinetics_flat
   (smooth lighting off: factory_flat's job). Create's clock pin covers the kinetics platform.
 - **Server suite:** worldgen diff (the pack's overworld with Terralith, the nether), the scripted run (world diff,
-  the Create train and contraption checks, unchanged scripts), the factory MSPT scene (`perf-pack.txt`, gated at most
+  the Create train and contraption checks; SIFTEC's scripts plus the cave's moss carpets taken out before tick 0 and their item killed at tick 1), the factory MSPT scene (`perf-pack.txt`, gated at most
   1.10 like SIFTEC's), the heap run and, in full mode, the verify run.
+- **Pin mod's particle pin gone with the Sift:** `SiftParticlesMixin` held particles off in the Sift and in Create's
+  pin areas (the train's blaze burner, the fan); it went with SIFTEC, so the kinetics scenes block the fan's air current
+  instead (a smooth stone block in front of it) and nothing near the train burns.
 - **CI-only additions:** `ci/pack-resolve.py` and its workflow; a pin mixin that logs a connection's failing exception
   in full; a harness item trace (`-Dci.harness.itemTrace`, CI ITEMS lines) in the pack's server runs.
 
@@ -2574,13 +2577,29 @@ licences and download counts: `docs/ci-limits.md`, "Pack lock"; how they were pi
 - **CI:** two compares of one branch pushing to ci-logs at once failed one with "cannot lock ref"; the publish steps
   now retry.
 
+### Open for Andre
+
+- **kinetics_flat's meshing median is reported, not gated, and has no pair minimum** (`ciMedianReportOnly`, as
+  kinetics_instancing and SIFTEC's factory_flat; factory_flat also had `ciMinMeshPairs` 500 with six chunk reloads).
+  Added by analogy, not by a decision of yours.
+- **Two Terralith 2.6.5+26.3 jars:** the terralith set (`modrinth:terralith@2.6.5+26.3`, sha256 9764...) and the pack
+  set (version `aGE3hYAA`, sha256 ad953...) hold files of the same name with different hashes; the agent workspace
+  can't reach Modrinth to say why. Each suite's limits were collected with its own.
+- **Third-party listings in the branch's history:** `ci/pack-inspect*.txt` (javap listings of GeckoLib's and Untitled
+  Duck Mod's classes, used to find what to pin) and a few Terralith data files in `ci/pack-resolved.txt` were committed
+  and are deleted again; they stay in the branch's history unless it is squashed on merge.
+- **Vulkan occlusion switch:** after 3 timed-out waits in a row on Vulkan, two-phase becomes still camera until the
+  next calibration (a resource reload). Why lavapipe's waits stop completing was not found; on OpenGL a timed-out wait
+  stays a CI failure and nothing switches.
+
 ### Results (full run of `27d80e8`; limits and baselines from the collection runs)
 
 Every pack scene matches vanilla within its limits on all four profiles (full, old-GPU, Vulkan, old-GPU two-phase); in
 `27d80e8` every strict count was 0 but terrain's (Quicksilver's vertex rounding) and the kinetics scenes' (the same,
-along the track ties). Limits and where they come from: `docs/ci-limits.md` (rows "pack/..."). Baselines (`ci/baselines/pack-*.json`):
-the runs of `f3f9542`, `27d80e8` and `6b0d628` (7eea70b's report.json was overwritten on the logs branch before it was
-read; its markdown report, read from the job log, is green with geckolib at 0).
+along the track ties). Limits and where they come from: `docs/ci-limits.md` (rows "pack/..."). Baselines (`ci/baselines/pack-*.json`, each listing its runs in `fromRuns`): the runs of `27d80e8`, `f3f9542` and
+`7eea70b`, all after the geese were pinned (7eea70b's report.json was overwritten on the logs branch by a later run
+before it was read: its counts were read from its markdown report in the compare job's log, the same numbers for
+every scene and profile).
 
 | scene | draw calls/frame, full profile: Quicksilver / vanilla (same run) |
 |---|---|

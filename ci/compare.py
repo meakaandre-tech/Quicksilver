@@ -480,6 +480,7 @@ def main():
     strict_limits = json.load(open("ci/strict-pixel-limits.json")) if os.path.exists("ci/strict-pixel-limits.json") else None
     vanilla_draws = json.load(open("ci/vanilla-draw-calls.json")) if os.path.exists("ci/vanilla-draw-calls.json") else {}
     failures, lines, data = [], [], {}
+    notes = []  # reported at the top, not failures
     for sfile in sorted(glob.glob("src/main/resources/quicksilver/scenes/*.json")):
         suite = json.load(open(sfile))
         name = suite["suite"]
@@ -510,7 +511,7 @@ def main():
             if os.path.isdir(d) and r.startswith("measure") and "Quicksilver memory: off, quicksilver.ci.measureOnly is set" not in t:
                 failures.append(f"{name}/{r}: the Memory module did not stay off for measuring (no measure-only line in the client log)")
             if os.path.isdir(d) and "quicksilver_ci_pin" not in t:
-                failures.append(f"{name}/{r}: CI's pin mod (ci/pin-mod: lightmap flicker, texture animation, feature batch order, no crosshair outline, no particles in the Sift, the particle and animation areas, banner sway) is not among the loaded mods")
+                failures.append(f"{name}/{r}: CI's pin mod (ci/pin-mod: lightmap flicker, texture animation, feature batch order, no crosshair outline, the particle and animation areas, banner sway, Create's and GeckoLib's clocks in the test pack's areas) is not among the loaded mods")
             # the animation scenes test animation only if the pin really ran its fixed number of texture ticks there
             # (fix-animation-flake: a pin mixin that did not apply left them on frame 0 and still passed)
             if os.path.isdir(d) and any(s["id"] == "animation" and not s.get("skip") for s in scenes) \
@@ -761,8 +762,12 @@ def main():
                                                     f" ({oc.get('checkTimeoutsSinceStart')} timeouts, {oc.get('checkSkipped')} frames skipped)")
                                 # the test pack (2026-11-13): on Vulkan the wait within a frame may stop completing after the
                                 # calibration found it working; after 3 timeouts in a row Quicksilver takes still camera, as when
-                                # the calibration finds none (GpuOcclusion.MAX_TIMEOUTS_IN_A_ROW). Those 3 are accepted there only
-                                vk_switched = r in VULKAN_WAIT_OPTIONAL and oc.get("midFrameWait") is False and oc.get("timeouts", 0) <= 3
+                                # the calibration finds none (GpuOcclusion.MAX_TIMEOUTS_IN_A_ROW). Those 3 are accepted there
+                                # only, in the bench where the switch happened (it is reported at the top either way)
+                                vk_switched = (r in VULKAN_WAIT_OPTIONAL and oc.get("midFrameWaitSwitched") is True
+                                               and oc.get("timeouts", 0) <= 3)
+                                if oc.get("midFrameWaitSwitched") is True:
+                                    notes.append(f"{name}/{r}: occlusion switched to still camera after timed-out waits within a frame (by bench {bj['scene']})")
                                 if (oc.get("timeouts", 0) != 0 and not vk_switched) or oc.get("untestedFrames", 0) != 0:
                                     failures.append(f"{name}/{r}: bench {bj['scene']}: occlusion: {oc.get('timeouts')} waits timed out, {oc.get('untestedFrames')} frames drew deferred sections untested")
                                 # still camera culls only while the camera stands still: a moving scene asks two-phase runs only
@@ -1213,9 +1218,11 @@ def main():
     import pack_status
     failures, pack_soft, pack_lines = pack_status.split(failures, res, os.path.join(os.path.dirname(os.path.abspath(rep)), "pack-world", "pack-world.txt"))
     lines[0:0] = pack_lines
+    if notes:
+        lines.insert(0, "Noted (not failures):\n\n" + "\n".join(f"- {n}" for n in notes) + "\n")
     lines.insert(0, "# Quicksilver CI comparison\n\n" + ("**FAILED**\n\n" + "\n".join(f"- {f}" for f in failures) if failures else "**passed**") + "\n")
     open(os.path.join(rep, "report.md"), "w").write("\n".join(lines) + "\n")
-    json.dump({"failures": failures, "packReportOnly": pack_soft, "suites": data}, open(os.path.join(rep, "report.json"), "w"), indent=2)
+    json.dump({"failures": failures, "notes": notes, "packReportOnly": pack_soft, "suites": data}, open(os.path.join(rep, "report.json"), "w"), indent=2)
     print("\n".join(lines))
     sys.exit(1 if failures else 0)
 

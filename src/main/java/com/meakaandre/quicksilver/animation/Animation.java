@@ -86,6 +86,8 @@ public final class Animation {
      * that goes to vanilla's compiler later without the wrapper only costs redraws, never a wrong picture.)
      */
     public static volatile boolean compileHookSeen;
+    /** Which of the two set it, apart (bench JSON, "compileScopes"): vanilla's compiler through its wrapper; Quicksilver's mesher. */
+    public static volatile boolean vanillaScopeSeen, mesherScopeSeen;
 
     /** Per thread: inside vanilla's section meshing (or another scope whose UV reads are not uses), how deep. */
     private static final ThreadLocal<int[]> NOT_A_USE = ThreadLocal.withInitial(() -> new int[1]);
@@ -689,6 +691,7 @@ public final class Animation {
         JsonObject o = new JsonObject();
         o.addProperty("state", state.name().toLowerCase(java.util.Locale.ROOT));
         o.addProperty("reason", reason);
+        o.addProperty("compileScopes", (vanillaScopeSeen ? "vanilla" : "") + (vanillaScopeSeen && mesherScopeSeen ? "," : "") + (mesherScopeSeen ? "mesher" : ""));
         o.addProperty("fallbacks", FALLBACKS.get());
         o.addProperty("sprites", t == null ? 0 : t.states.length);
         o.addProperty("usedOutsideTerrain", t == null ? 0 : t.usedElsewhere.get());

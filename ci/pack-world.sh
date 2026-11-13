@@ -45,9 +45,9 @@ PY
 }
 if grep -q 'Done (' server.log; then
   {
-    # every pack scene is round 2000..2300, -1985 (platforms high over Terralith's terrain, 8 chunks), and the
-    # terrain scene at 600 300 (Terralith's land, 8 chunks)
-    area minecraft:overworld 1856 -2128 2447 -1840
+    # every pack scene is round 1920..2300, -1985 (platforms high over Terralith's terrain, 8 chunks: the minimap
+    # scene at x 1920 needs from x 1792), and the terrain scene at 600 300 (Terralith's land, 8 chunks)
+    area minecraft:overworld 1776 -2128 2447 -1840
     area minecraft:overworld 456 156 743 443
   } > /tmp/out/pack-world-commands.txt
   while read -r line; do echo "$line" >&3; sleep 0.3; done < /tmp/out/pack-world-commands.txt

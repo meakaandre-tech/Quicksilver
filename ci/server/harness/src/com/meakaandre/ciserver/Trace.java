@@ -63,7 +63,8 @@ public final class Trace {
     // ---- item entities (the test pack, 2026-11-12): with -Dci.harness.itemTrace=x1,y1,z1,x2,y2,z2 every item entity
     // inside the box is logged every 20 ticks of the run (and at ticks 0 to 3): its UUID, position, motion, stack, age
     // and whether it is on the ground, as lines "CI ITEMS". Diagnosis of two item entities at 56,2,41 that ended in
-    // another place in about one Quicksilver run in nine (runs 43106805198, 43127438207), never in vanilla's
+    // another place in about one Quicksilver run in nine (runs 43106805198, 43127438207); the trace then showed vanilla's
+    // own runs differing the same way (a random draw), see docs/progress.md, "Test pack"
     private static final int[] ITEM_BOX = itemBox();
 
     private static int[] itemBox() {

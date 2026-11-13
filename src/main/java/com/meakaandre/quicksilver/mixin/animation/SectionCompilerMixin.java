@@ -20,7 +20,10 @@ public abstract class SectionCompilerMixin {
     @WrapMethod(method = "compile")
     private SectionCompiler.Results quicksilver$compileScope(SectionPos pos, RenderSectionRegion region, VertexSorting sorting,
                                                            SectionBufferBuilderPack pack, Operation<SectionCompiler.Results> original) {
-        Animation.compileHookSeen = true;
+        if (!Animation.vanillaScopeSeen) {
+            Animation.vanillaScopeSeen = true;
+            Animation.compileHookSeen = true;
+        }
         Animation.notAUseEnter();
         try {
             return original.call(pos, region, sorting, pack);

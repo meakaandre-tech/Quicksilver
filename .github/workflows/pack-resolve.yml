@@ -6,7 +6,7 @@ name: pack-resolve
 on:
   push:
     branches-ignore: ["main", "ci-logs", "ci-logs-*"]
-    paths: ["ci/pack-resolve.txt", "ci/pack-resolve.py", "ci/pack-inspect.sh"]
+    paths: ["ci/pack-resolve.txt", "ci/pack-resolve.py"]
 permissions:
   contents: write
 jobs:
@@ -15,23 +15,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 25
       - name: Resolve
         run: python3 -I ci/pack-resolve.py ci/pack-resolved.txt | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Inspect the GeckoLib scene's mod (its animation choices, for the CI pin)
-        run: |
-          url=$(grep '^pack/untitledduckmod' ci/pack-sources.txt | awk '{print $2}')
-          bash ci/pack-inspect.sh "$url" '[Gg]oose|[Ww]aterfowl|[Aa]nim' ci/pack-inspect.txt
-          gurl=$(grep '^pack/geckolib' ci/pack-sources.txt | awk '{print $2}')
-          bash ci/pack-inspect.sh "$gurl" 'animation/AnimationController$|animatable/manager/AnimatableManager$|util/RenderUtil$|animatable/GeoEntity$|animatable/GeoAnimatable$|renderer/base/GeoRenderer$|renderer/GeoEntityRenderer$|AnimationProcessor$|animation/state/AnimationTest$' ci/pack-inspect-geckolib.txt
       - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add ci/pack-resolved.txt ci/pack-inspect.txt ci/pack-inspect-geckolib.txt
+          git add ci/pack-resolved.txt
           git diff --cached --quiet && exit 0
           git commit -m "Pack: ci/pack-resolved.txt from pack-resolve run ${GITHUB_RUN_ID}"
           git push origin "HEAD:${GITHUB_REF_NAME}"

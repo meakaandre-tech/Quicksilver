@@ -84,6 +84,8 @@ public final class OcclusionStats {
         o.addProperty("configured", GpuOcclusion.configured == null ? "unset" : GpuOcclusion.configured.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'));
         o.addProperty("lastFrame", GpuOcclusion.frameName());
         o.addProperty("midFrameWait", GpuOcclusion.midFrameWait);
+        o.addProperty("midFrameWaitCalibrated", GpuOcclusion.midFrameWaitCalibrated);
+        o.addProperty("midFrameWaitSwitched", GpuOcclusion.midFrameWaitSwitched);
         o.addProperty("fallbacks", GpuOcclusion.fallbacks);
         o.addProperty("frames", frames);
         long without = wPhase1 + wCandidates + wCulledStill;

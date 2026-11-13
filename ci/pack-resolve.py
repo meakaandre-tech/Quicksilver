@@ -86,20 +86,6 @@ def main():
                     except Exception:  # noqa
                         pass
             info.append(f"#   jar mod id {mods}; entities {ents[:40]}")
-            # for pinning an entity's look in a scene: string constants naming variants or types in the jar's classes
-            import re as _re
-            keys = set()
-            for n in z.namelist():
-                if n.endswith(".class") and "duck" in n.lower():
-                    keys |= {m.decode() for m in _re.findall(rb"[A-Za-z_]{0,24}(?:[Vv]ariant|Type)[A-Za-z_]{0,24}", z.read(n))}
-            if keys:
-                info.append(f"#   variant/type strings in its duck classes: {sorted(keys)[:60]}")
-            vfiles = [n for n in z.namelist() if "variant" in n.lower() and not n.endswith(".class")]
-            if vfiles:
-                info.append(f"#   variant files: {vfiles[:40]}")
-                for n in vfiles[:3]:
-                    if n.endswith(".json"):
-                        info.append(f"#   {n}: {z.read(n)[:300]!r}")
         except Exception as e:  # noqa
             info.append(f"#   jar not readable: {e}")
         src.append(f"{setname}/{name}  {f['url']}")

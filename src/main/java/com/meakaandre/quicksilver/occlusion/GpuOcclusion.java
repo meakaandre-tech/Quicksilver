@@ -476,12 +476,16 @@ public final class GpuOcclusion {
                     if (l0 == null) {
                         OcclusionStats.timeouts++;
                         // the calibration found the wait completing, but it stopped doing so (lavapipe, Vulkan: 590 waits
-                        // timed out in one of the test pack's sessions, run fc717d5): after a few in a row, the still-camera
-                        // path, as where the calibration finds no wait (every timed-out frame drew every candidate)
-                        if (++timeoutsInARow >= MAX_TIMEOUTS_IN_A_ROW && midFrameWait) {
+                        // timed out in one of the test pack's sessions, run fc717d5; why was not found): after a few in a
+                        // row, the still-camera path, as where the calibration finds no wait (every timed-out frame drew
+                        // every candidate). Vulkan only, where it was seen: on OpenGL a timed-out wait stays a failure CI
+                        // catches. Until the next calibration (a resource reload calibrates again)
+                        String backend = RenderSystem.getDevice().getDeviceInfo().backendName();
+                        if (++timeoutsInARow >= MAX_TIMEOUTS_IN_A_ROW && midFrameWait && backend.toLowerCase(java.util.Locale.ROOT).contains("vulkan")) {
                             midFrameWait = false;
+                            midFrameWaitSwitched = true;
                             QuicksilverClient.LOG.warn("Quicksilver occlusion: waiting for the GPU within a frame timed out {} times in a row on {}; still camera from now on",
-                                timeoutsInARow, RenderSystem.getDevice().getDeviceInfo().backendName());
+                                timeoutsInARow, backend);
                         }
                     } else {
                         timeoutsInARow = 0;
@@ -544,6 +548,10 @@ public final class GpuOcclusion {
     private static int calibrationFrames;
     /** Whether a fence wait within the frame completes on this backend (calibration): two-phase needs it. */
     static boolean midFrameWait;
+    /** Whether the calibration found the wait within a frame completing (bench JSON). */
+    static boolean midFrameWaitCalibrated;
+    /** Whether timed-out waits switched this session to still camera since the last calibration (Vulkan only; bench JSON). */
+    static boolean midFrameWaitSwitched;
     private static boolean twoPhaseUnavailableLogged;
 
     /**
@@ -570,6 +578,9 @@ public final class GpuOcclusion {
             return false;
         }
         midFrameWait = c.midFrameWait;
+        midFrameWaitCalibrated = c.midFrameWait;
+        midFrameWaitSwitched = false;
+        timeoutsInARow = 0;
         calibration = c.flip;
         QuicksilverClient.LOG.info("Quicksilver occlusion: rendered rows are stored {} first, depth {} ({}), backend {}, waiting for the GPU within a frame {}",
             calibration[1] ? "top" : "bottom", zeroToOne ? "0..1" : "-1..1 mapped to 0..1", reversed ? "greater is nearer" : "less is nearer",
