@@ -183,6 +183,27 @@ def main():
             time.sleep(3)
             p = os.path.join(out, "shots", sid + "." + extra["name"] + ".png")
             entry.setdefault("extraShots", {})[extra["name"]] = steady_shot(p)
+        # package 6: far entity LOD shots, Quicksilver runs only (not the measure runs: their modules are off). Each
+        # turns LOD on with a client command, takes the shot <scene>.<name>, and turns it off again; compare.py checks
+        # them against the stored references in ci/references (LOD has no vanilla picture to match).
+        if mode == "quicksilver" and os.environ.get("RUN", "").startswith("quicksilver"):
+            for extra in sc.get("ciLodShots", []):
+                for cmd in extra["commands"]:
+                    send(cmd)
+                chat("quicksilver lod on")
+                time.sleep(2)
+                xdo("keydown", "F3")
+                xdo("key", "d")
+                xdo("keyup", "F3")
+                time.sleep(2)
+                p = os.path.join(out, "shots", sid + "." + extra["name"] + ".png")
+                entry.setdefault("lodShots", {})[extra["name"]] = steady_shot(p)
+                chat("quicksilver lod off")
+                time.sleep(2)
+                xdo("keydown", "F3")
+                xdo("key", "d")
+                xdo("keyup", "F3")
+                time.sleep(1)
         # seconds each shot waited for Quicksilver's upload queue; -1: timed out (compare.py fails on it)
         entry["uploadWaits"] = list(WAITS)
         if screen:

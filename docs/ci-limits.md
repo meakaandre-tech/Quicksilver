@@ -65,6 +65,7 @@ square of its edge in pixels at the subject's distance). Other gates that catch 
 | siftec/factory_flat (package 4) | a wrongly flat-lit Create or SIFTEC part | as factory: a machine ~4,800; one ladder strip ~320 | 40 | yes |
 | siftec/create_ct (package 4) | a wrong connected-texture border | one block's border strip (~38 px by 3): ~110 | 10 | yes |
 | siftec/kinetics (package 5) | a Create machine part, contraption or train missing, drawn twice or in another state | a cogwheel ~1,500; one shaft block (~60 px by 7): ~200; the shaft piece showing between the two cogwheels ~80; the train's carriage ~5,000 | 30 (the carriage's rectangle masked out: 8/255 check only, 2,304 px) | yes, but the carriage: whole carriage yes, one part of it **no** |
+| core/block_entities (+ chest_open, sign_edit, closed; package 6) | a block entity missing, merged into the wrong texture or drawn out of order | one head ~700; one chest ~10,000; one sign's text 10-27 | 240 to 310 (closed 130 and sign_edit 220 before the 2026-11-10 re-collection) | head and larger yes; one sign's text **no** (below the ender chest particles' own noise, measure runs up to 152) |
 | siftec/kinetics_instancing (package 5) | as kinetics, with Flywheel's instancing backend and still-camera occlusion | as kinetics | 30 (as kinetics) | as kinetics |
 
 The **no** rows are limits already set (by the rule and Andre's earlier decisions) that are larger than the smallest
@@ -551,8 +552,9 @@ with a game tick draw about 26 more, so the median flips between two values; the
 runs). **Memory**: heap used after a GC at the end of the bench, and java.nio direct buffers.
 
 **Baseline = the highest value across the clean runs listed.** CI fails when a count goes over **baseline x 1.10
-plus a step allowance**: 2 draw calls, 1 upload, 16 KiB, 16 MB heap, 4 MB direct (direct buffers grow in 2 MB steps
-and land on either side between runs). Against these committed baselines the fly-through is gated on memory only (its draw calls are gated against vanilla in the same run since package 3, see "Against vanilla in the same run"): its uploads and draw calls depend on
+plus a step allowance**: 2 draw calls, 1 upload, 16 KiB, 16 MB heap. Direct buffers (package 6) are gated against vanilla in
+the same run, with these baselines only as a ceiling (x 1.10 + 8 MB): see "Direct buffers against vanilla in the same
+run". Against these committed baselines the fly-through is gated on memory only (its draw calls are gated against vanilla in the same run since package 3, see "Against vanilla in the same run"): its uploads and draw calls depend on
 how fast CI's server generates the new terrain. The Vulkan count baselines come from two runs; the core spawn scene's limit and baselines from one run (its camera moved to a fixed height in the last package-0 run).
 
 | suite-profile | scene | draw calls/frame (avg) | uploads/frame (median) | bytes/frame (median) | heap after GC MB | direct MB | runs |
@@ -828,6 +830,90 @@ now decides run and hold at the start of each texture tick and counts 70 texture
 ticks they took. Not noise: no limit changed. compare.py now also fails a run whose client log lacks the pin's "texture
 ticks of animation done" line (the fix's first run, 40496751536, passed with the new mixin missing from the pin's
 config: animation never ran, the scenes showed frame 0 in every run alike).
+
+## Package 6: entities and block entities
+
+| scene / shot | runs | samples (8/255 %: vanilla a/b, Quicksilver; strict: Quicksilver) | limit % | strict limit |
+|---|---|---|---|---|
+| core/mobs.far (the crowd at 53-67 blocks, LOD off) | 42550160930 attempts 1-3 (quick, `4947305b`); 42754284510 (full, `7e3f4801`: full, old-GPU, Vulkan, two-phase) | all 0.0; strict all 0 | 0.25 | 10 |
+| core/block_entities | 42550160930 attempts 1-3 (quick), 42572488452 (full); all after `4947305b` | a/b 0.0012-0.0262; Quicksilver at most 0.0259; strict at most 180 | 0.3 | 270 |
+| core/block_entities.chest_open | the same | a/b at most 0.0277; Quicksilver at most 0.0272; strict at most 156 | 0.3 | 240 |
+| core/block_entities.sign_edit | the same, then full runs 42773014543, 42777299349, 42777819099 (package 6) | a/b at most 0.0173; Quicksilver at most 0.0243; strict at most 185 (Quicksilver full, 42777299349; 145 before) | 0.3 | 280 (220 before) |
+| core/block_entities.closed | the same, then full runs 42773014543, 42777299349, 42777819099 (package 6) | a/b at most 0.0101; Quicksilver at most 0.0264; strict at most 206 (Quicksilver Vulkan, 42773014543; 83 before); measure-full 152 | 0.3 | 310 (130 before) |
+
+Limit = max(2 x largest, largest + 0.25, 0.1) rounded up to 0.05; strict = largest x 1.5 rounded up to 10, at least 10.
+**Re-collected in package 6 (2026-11-10, the noise rule above):** `block_entities.closed` failed its strict limit of 130 in two of three full runs on unchanged code (`8bc3d7eb`: Vulkan 206; `9e270a3d`: two-phase 131 and measure-full, every module off, 152). Every strict pixel of those shots but six is in the ender chest's particle area (x 600-900, y 370-545 of 1280x720), in Quicksilver's, the measure runs' and vanilla old-GPU/Vulkan's alike; the particles land differently each run. sign_edit (185 of 220 in `9e270a3d`) is the same particles and was re-collected with it. Vanilla's own largest
+(the measure runs, every module off, in these three runs): closed 152, sign_edit 74. The rule takes the largest sample
+of the scene's noise, Quicksilver's runs included as in every row above: its strict pixels here are the same particles
+(located per pixel), not a Quicksilver difference; block_entities and chest_open keep 270 and 240 (largest 180 and 156). Smallest thing these shots must catch: one head (about 700 pixels), above both new limits. One sign's text (10-27 pixels) is below the noise floor (the measure runs alone reach 152), as it already was at 130. The six other pixels are the five on the spruce sign's post (below) and one on the zombie head's left edge (568, 394), a texel one row off (6/255) on full and old-GPU, not Vulkan: it goes with the entity atlas off (diagnostic run on `diag-p6-atlas-off`), so it is the atlas's UV remap rounding at a texel edge, in every run since the atlas landed: a Quicksilver-only
+difference, worked around on 2026-11-11 by leaving heads out of the atlas (docs/progress.md; gone in full run 42951127093). That costs four draws per frame, so block_entities' draw-call baselines were re-collected from that run with Andre's OK (2026-11-12): full 35.11, old-GPU 36.11 (the two-player run), Vulkan 34.15. The limits were collected with it in
+and are not lowered for it (one pixel).
+
+block_entities' samples: vanilla's own noise is the ender chest's particles (a/b 0.0012-0.0277%; the measure runs, Quicksilver
+loaded with every module off, 5-110 strict pixels, all in the ender chest's area), the same area as nearly all of
+Quicksilver's strict pixels. The rest is the 16-byte vertex's rounding (package 3, Andre's decision): five pixels, one
+every three rows, along the right edge of the spruce sign's post. In 26.3 sign boards, sign posts and beds are terrain
+(only sign text is a block entity), scaled by 2/3 off the 1/2048-block grid; the five pixels are in every Quicksilver
+profile and in no vanilla run on either API, and go with Quicksilver's terrain switched off (diagnostic runs
+42579890612, 42589945739; the entity atlas, LOD, occlusion, the mesher, animation, memory, logic, visibility and the
+block renderer each switched off left them). Earlier samples (the copper chest oxidising on a random tick: 0.63% in two
+of five runs, before `4947305b` waxed it) are not counted. Baselines (`ci/baselines/core-*.json`) are the highest of
+the same runs (`ci/make-baselines.py`'s rule); old-GPU's direct buffers keep the 8.24 MB of the two-phase run in attempt
+2 (4.24-5.99 MB in the others), as the last re-collection of SIFTEC's baselines kept theirs; since package 6 only the
+ceiling of the same-run gate below.
+
+**Spruce sign-post pixels accepted (Andre, 2026-11-23, the new look rule).** The five pixels on the spruce sign's post
+(the 16-byte vertex's rounding, above) are accepted: Quicksilver no longer has to match vanilla pixel for pixel, and a
+difference you can't notice in play is fine. They stay inside block_entities' limits; nothing is changed for them.
+
+### Direct buffers against vanilla in the same run (Andre, 2026-11-10; the recurring step closed)
+
+The step that failed P2-0, package 5 and package 6 (`core/old-gpu-2p/translucent_move` 8.24 MB against 3.73 in run
+42755201376) is the JVM's direct pool, and vanilla takes it too. Evidence: every full run whose logs are still on a
+`ci-logs-*` branch (20 runs: main `c6a34218`, p2-0 to p2-3, packages 2b, 4, 4b, 4c, 5, 6, 7, 8 and the CI branches;
+Quicksilver's runs named `brimstone-*` before the rename included), each Quicksilver run's direct-buffer MB at the end
+of each scene against its same-run measure run (vanilla drawing, Quicksilver's modules off; the two-phase run against
+measure-old). A step is the rise from one scene's end value to the next scene's, in run order.
+
+- Steps per run session, vanilla's measure runs (119) against Quicksilver's runs (129): about 2 MB 37 and 43, 3.5-6 MB
+  37 and 44, at the same scenes: SIFTEC `mam` (vanilla 27, Quicksilver 33), `map` (5, 7), core `translucent_move`
+  (vanilla once, p2-3 `8a3774a5` measure-full 4.24 to 8.24; Quicksilver 3). Vanilla's highest value reached 8 MB or more
+  in 29 runs and 10.04-10.06 in 3 (SIFTEC map).
+- In run 42755201376 measure-old stepped from 3.99 to 5.99 one scene earlier (occlusion_corner) than the two-phase run
+  stepped from 4.24 to 8.24 (translucent_move); 8.24 is 2.25 over vanilla's 5.99 there.
+- Quicksilver minus vanilla, 1,596 scene pairs: 7 more than 4.0 MB over, by 0.19-0.25 MB, all in SIFTEC from MapMod's
+  map scene on (map, hologram, hud, create_ct; brimstone-vk in `dcc639b1`, brimstone-full in `be01dda7`): Quicksilver at
+  10.06-10.12 where that run's measure run was at 5.81-5.93, the same 10.04-10.06 vanilla reached at map in other runs.
+  The pool reached 10 MB at map and stayed there for the scenes after it; hologram and create_ct are still in CI, but
+  since MapMod's map and hud scenes were dropped no run has reached that step, and no scene pair in those runs is more
+  than 4.0 over.
+- Peaks (each scene's highest value) against vanilla's peak + 4: none over in the 1,596 pairs. The ceiling below: none
+  over, Quicksilver's runs or vanilla's.
+
+**Gates** (`ci/compare.py`, `DIRECT_POOL_STEP_MB`, `DIRECT_CEILING_MB`), full mode, in every scene: Quicksilver's
+direct-buffer MB at the end at most the same-run measure run's + 4.0 MB (one pool step), and its peak at most the
+measure run's peak + 4.0, like the draw calls against vanilla. The measure run loads Quicksilver (modules off), so a leak
+in code that is always on would rise in both runs alike: both stay under a ceiling, the committed baseline x 1.10 + 8 MB
+(two steps). Quick mode has no measure run: the ceiling alone. A missing value fails. P2-0's one-off (run 40803126672
+attempt 1, SIFTEC full, 13.8-13.99 MB from the map scene on, a re-run of the same job 5.9) is higher than any value
+vanilla showed and over the full-mode gate unless vanilla's same-run value was 9.8 MB or more; that run's measure value
+is no longer on a log branch, so it stays unexplained, and its map scene is out of CI.
+
+### Far entity LOD (`ci/lod-limits.json`, `ci/references/`)
+
+LOD has no vanilla picture to match, so its shots (scene key `ciLodShots`, Quicksilver runs only: each turns LOD on with
+`/quicksilver lod on`, takes the shot and turns it off) are compared with a stored reference, on the picture check's
+8/255 measure. A reference is committed only after its shot was checked against vanilla's picture of the same view with
+LOD off (the scene's `vanillaShot`); compare.py reports that difference with every run.
+
+| shot | reference | runs | samples % (reference; vanilla same view) | limit % |
+|---|---|---|---|---|
+| core/mobs.far_lod | run 42545903745, old-GPU (identical to vanilla a's mobs.far and the two-phase shot, pixel for pixel) | 42550160930 attempts 1-3 (old-GPU, two-phase); 42754284510 (full, `7e3f4801`: full, old-GPU, Vulkan, two-phase) | at most 0.0014 (Vulkan); 0.0 | 0.25 |
+
+At 53-67 blocks LOD holds about half of the far mobs' animation updates and skips no cube (165,636 tested in run
+42545903745): every cube is still at least a pixel there, and vanilla stops drawing small mobs not much further out
+(entity distance scaling 1.0). The limit is the pixel rule's floor; any change to what LOD draws there shows as a
+difference from the reference.
 
 ## Counter audit
 

@@ -41,6 +41,7 @@ block or shade, large enough to ignore rounding.
 """
 import glob
 import json
+import shutil
 import os
 import re
 import sys
@@ -146,6 +147,60 @@ def strict(shot, out_prefix, skip_runs=(), pairs=None, mask=None):
     return round(float(agree.mean() * 100), 2), out, anyd
 
 
+def lod_check(name, scenes, runs, rep, sd, failures, lines):
+    """Package 6: far entity LOD's shots ("ciLodShots", Quicksilver runs only) against their stored references
+    (ci/references/<suite>/<shot>.png) with the limits in ci/lod-limits.json (share of pixels over 8/255, as the picture
+    check). A missing reference fails and the shot is copied to the report's new-references folder for review: a
+    reference is only committed after its picture was checked against the vanilla shot of the same view (docs/ci-limits.md,
+    "Far entity LOD"). Also reported: how far each LOD shot is from vanilla's picture of the same view (LOD off)."""
+    lod_limits = json.load(open("ci/lod-limits.json")) if os.path.exists("ci/lod-limits.json") else {}
+    rows = []
+    for sc in scenes:
+        if sc.get("skip"):
+            continue
+        for extra in sc.get("ciLodShots", []):
+            shot_id = sc["id"] + "." + extra["name"]
+            ref = os.path.join("ci", "references", name, shot_id + ".png")
+            limit = lod_limits.get(name, {}).get(shot_id)
+            same_view = extra.get("vanillaShot")
+            res = sd.setdefault("lod", {}).setdefault(shot_id, {})
+            for prof, (b, v) in PAIRS.items():
+                if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
+                    continue
+                # the shot only tests LOD if LOD really ran: the switch back off logs what it did while on
+                t = logs(runs[b])
+                did = [(int(a), int(h)) for a, h in re.findall(r"Quicksilver entity LOD: off \(since the last switch: far states (\d+), held (\d+)", t)]
+                if "Quicksilver entity LOD failed" in t:
+                    failures.append(f"{name}/{shot_id}: far entity LOD failed and turned itself off in {prof} (see client log)")
+                if not any(a > 0 and h > 0 for a, h in did):
+                    failures.append(f"{name}/{shot_id}: far entity LOD held no far states in {prof} (switch-off lines: {did or 'none'}); the LOD shot tested nothing")
+                got = os.path.join(runs[b], "shots", shot_id + ".png")
+                if not os.path.exists(got):
+                    failures.append(f"{name}/{shot_id}: no {prof} LOD screenshot")
+                    continue
+                vs_vanilla = diff(got, os.path.join(runs[v], "shots", sc["id"] + "." + same_view + ".png")) if same_view else None
+                if not os.path.exists(ref):
+                    os.makedirs(os.path.join(rep, "new-references", name), exist_ok=True)
+                    shutil.copy(got, os.path.join(rep, "new-references", name, f"{shot_id}-{prof}.png"))
+                    failures.append(f"{name}/{shot_id}: no stored reference in {ref} (this run's shot is in new-references for review)")
+                    res[prof] = {"reference": None, "vanilla": vs_vanilla}
+                    rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | missing | {limit} | {vs_vanilla['pct'] if vs_vanilla else ''} |")
+                    continue
+                d = diff(got, ref, os.path.join(rep, "diff", f"{name}-{shot_id}-{prof}-reference.png"))
+                res[prof] = {"reference": d, "vanilla": vs_vanilla}
+                if limit is None:
+                    failures.append(f"{name}/{shot_id}: no LOD limit in ci/lod-limits.json")
+                elif d["pct"] > limit:
+                    failures.append(f"{name}/{shot_id}: {prof} differs from its stored reference on {d['pct']}% of pixels (limit {limit}%)")
+                rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | {d['pct']} | {limit} | {vs_vanilla['pct'] if vs_vanilla else ''} |")
+    if rows:
+        lines.append("")
+        lines.append("Far entity LOD (on) against its stored references, % of pixels over 8/255; last column: against vanilla's picture of the same view (LOD off), reported only:\n")
+        lines.append("| shot | profile | reference % | limit % | vanilla % |")
+        lines.append("|---|---|---|---|---|")
+        lines.extend(rows)
+
+
 def bench_results(run_dir):
     out = {}
     for f in sorted(glob.glob(os.path.join(run_dir, "bench", "*.json"))):
@@ -159,7 +214,7 @@ def bench_results(run_dir):
             "drawCallsPerFrameMedian": g["drawCallsPerFrame"].get("p50"),
             "uploadBytesPerFrameAvg": g["uploadBytesPerFrame"]["avg"],
             "heapUsedAfterGcMB": m["heapUsedAfterGcMB"],
-            "directBuffersMB": m.get("directBuffersMB", 0),
+            "directBuffersMB": m.get("directBuffersMB"),  # missing stays missing (a failure below), never 0
             "directBuffersStartMB": m.get("directBuffersStartMB"),
             "directBuffersMaxMB": m.get("directBuffersMaxMB"),
             "directBuffersMaxAtTick": m.get("directBuffersMaxAtTick"),
@@ -242,15 +297,26 @@ BENCH_ONLY = ("bench-plain", "bench-sodium")
 BENCH_ONLY_SCENES = ("spawn", "flythrough", "water_glass", "nether")
 
 
-DIRECT_JUMP_MB = 4.0  # a rise this large in one step is reported (phase 1's gate allows 10% + 4 MB on the end value)
+DIRECT_JUMP_MB = 4.0  # a rise this large in one step is marked in the report's direct-buffer table
+# package 6 (Andre, 2026-11-10): direct-buffer MB is gated against vanilla measured in the same run (MEASURE), not a
+# committed baseline: at most vanilla's end-of-scene value plus one step of the JVM's direct pool, and the scene's peak
+# at most vanilla's peak plus one step. Vanilla's measure runs take the same 2 and 4 MB steps at the same scenes
+# (docs/ci-limits.md, "Direct buffers against vanilla in the same run"). The measure run loads Quicksilver with its
+# modules off, so a leak in code that is always on would rise in both runs alike: both stay under a loose ceiling, the
+# committed baseline x 1.10 + DIRECT_CEILING_MB (two steps). Quick mode has no measure run: that ceiling alone.
+DIRECT_POOL_STEP_MB = 4.0
+DIRECT_CEILING_MB = 8.0
 
 
 def direct_buffers(res, lines):
-    """Reported, not gated (Andre, 2026-10-29: open bug, a Quicksilver-only +8 MB step in SIFTEC full from the map
-    scene on, run 40803126672 attempt 1): every run's direct-buffer MB per scene, in run order, at the start of
-    measuring, its peak (with the tick) and at the end, and each rise of DIRECT_JUMP_MB or more marked with where it
-    happened: inside a scene (start to end) or between scenes (the previous scene's end to this one's start)."""
-    lines.append("## Direct buffers per scene (reported; open bug, see docs/progress.md)\n")
+    """Every run's direct-buffer MB per scene, in run order (vanilla's measure runs too), at the start of measuring,
+    its peak (with the tick) and at the end, and each rise of DIRECT_JUMP_MB or more marked with where it happened:
+    inside a scene (start to end) or between scenes (the previous scene's end to this one's start). The gate is the
+    same-run one in the counts (DIRECT_POOL_STEP_MB); quick mode has no measure run and gates the ceiling only."""
+    if QUICK:
+        lines.append("## Direct buffers per scene (quick mode: gated at the ceiling, committed baseline x 1.10 + 8 MB, see the counts)\n")
+    else:
+        lines.append("## Direct buffers per scene (gated against the same-run measure run and the ceiling, see the counts)\n")
     lines.append("| run | scene | start MB | peak MB (tick) | end MB | rise |\n|---|---|---|---|---|---|")
     jumps = []
     for d in sorted(glob.glob(os.path.join(res, "*-*"))):
@@ -504,6 +570,33 @@ def main():
                     failures.append(f"{name}/{r}: the Memory module was not fully on: {[x for x in mem if re.search(r'=(off|fallback)|^off', x)][0][:200]}")
             if os.path.isdir(d) and r.startswith("measure") and "Quicksilver memory: off, quicksilver.ci.measureOnly is set" not in t:
                 failures.append(f"{name}/{r}: the Memory module did not stay off for measuring (no measure-only line in the client log)")
+            # package 6: the entity atlas on in every Quicksilver run with no fallback (else its draw saving could vanish
+            # with pictures still vanilla's), off in the measure runs; far entity LOD's hooks applied, and LOD off in
+            # every bench (it is opt-in)
+            if os.path.isdir(d) and (r.startswith("quicksilver") or r.startswith("measure")):
+                benches = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(d, "bench", "*.json")))]
+                if r.startswith("quicksilver"):
+                    if "Quicksilver entity atlas: on (" not in t:
+                        failures.append(f"{name}/{r}: the entity atlas did not turn on (no 'Quicksilver entity atlas: on' line in the client log)")
+                    for bad in ("Quicksilver entity atlas: turned off", "Quicksilver entity atlas: off,"):
+                        if bad in t:
+                            failures.append(f"{name}/{r}: the entity atlas turned off ('{bad}' in the client log)")
+                    for bj in benches:
+                        ea, el = bj.get("entityAtlas") or {}, bj.get("entityLod") or {}
+                        # "starting": no model submitted yet in the session (the atlas starts on the first one)
+                        if ea.get("state") not in ("on", "starting") or ea.get("fallbacks", 0):
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: entity atlas {ea.get('state')} with {ea.get('fallbacks')} fallbacks in the bench (want on, 0)")
+                        if el.get("hooks") is not True:
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: far entity LOD's hooks did not all apply (bench entityLod.hooks)")
+                        if el.get("enabled"):
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: far entity LOD was on during the bench (it is off by default)")
+                else:
+                    if "Quicksilver entity atlas: on (" in t:
+                        failures.append(f"{name}/{r}: the entity atlas turned on in a measure run")
+                    for bj in benches:
+                        ea, el = bj.get("entityAtlas") or {}, bj.get("entityLod") or {}
+                        if ea.get("state") not in ("off", "starting") or el.get("enabled"):
+                            failures.append(f"{name}/{r}/{bj.get('scene')}: entity atlas {ea.get('state')} / LOD enabled {el.get('enabled')} in a measure run (want off, off)")
             if os.path.isdir(d) and "quicksilver_ci_pin" not in t:
                 failures.append(f"{name}/{r}: CI's pin mod (ci/pin-mod: lightmap flicker, texture animation, feature batch order, no crosshair outline, no particles in the Sift, the particle and animation areas, banner sway) is not among the loaded mods")
             # the animation scenes test animation only if the pin really ran its fixed number of texture ticks there
@@ -968,6 +1061,7 @@ def main():
         lines.append("| scene | vanilla runs agree on % of pixels | strict limit (pixels) | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
         lines.append("|---|---|---|" + "---|" * len(PAIRS))
         lines.extend(strict_lines)
+        lod_check(name, scenes, runs, rep, sd, failures, lines)
         if backend_lines:
             lines.append("")
             lines.append("Strict picture where the vanilla runs drawing the same way agree (package 5, Create scenes: Flywheel on in"
@@ -1017,14 +1111,24 @@ def main():
                     cell = f"{v}"
                     if k == "drawCallsPerFrame" and sid in median_gated:
                         cell += f" median (avg {c['drawCallsPerFrameAvg']})"
-                    if base is None:
+                    if k == "directBuffersMB" and v is None:
+                        failures.append(f"{name}/{prof}/{sid}: no direct-buffer value in the bench")
+                        cell += " (missing)"
+                    elif k == "directBuffersMB" and not QUICK:
+                        # package 6: gated against the same-run measure run below, not the committed baseline
+                        cell += " (against vanilla, below)"
+                    elif base is None or (k == "directBuffersMB" and (sid not in base or base[sid].get(k) is None)):
                         cell += " (no baseline)"
+                        if k == "directBuffersMB":
+                            failures.append(f"{name}/{prof}/{sid}: no committed direct-buffer baseline, so no ceiling to gate it against")
                     elif k not in gated:
                         cell += " (reported, not gated)"
                     elif sid in base:
                         bv = base[sid][k]
                         cell += f" (base {bv})"
-                        if v > bv * RISE + SLACK[k]:
+                        # package 6: quick mode has no measure run, so direct buffers get the full mode's ceiling (two pool steps)
+                        slack = DIRECT_CEILING_MB if k == "directBuffersMB" else SLACK[k]
+                        if (round(v, 2) > round(bv * RISE + slack, 2)) if k == "directBuffersMB" else (v > bv * RISE + slack):
                             failures.append(f"{name}/{prof}/{sid}: {k}{' (median)' if k == 'drawCallsPerFrame' and sid in median_gated else ''} rose from {bv} to {v} (over 10%)")
                     cells.append(cell)
                 # package 2b (Andre, 2026-11-02): draw calls at most main's + 3 (the depth pyramid's draw and the late
@@ -1075,6 +1179,40 @@ def main():
                                             f"{(' + ' + str(allowance[name + '/' + prof + '/' + sid])) if sid in translucent and name + '/' + prof + '/' + sid in allowance else '' if sid in translucent else ' x 1.10 + 2'}; fps {c.get('fps')} against vanilla's {vc.get('fps')})")
                     lines.append(f"| {sid} | {c['drawCallsPerFrameAvg']} / {c['drawCallsPerFrameMedian']} ({c.get('fps')}) | {vc['drawCallsPerFrameAvg']} / {vc['drawCallsPerFrameMedian']} ({vc.get('fps')}) | "
                                  f"{' and '.join(l for l, _ in stats)}{(', at most vanilla + ' + str(allowance[name + '/' + prof + '/' + sid])) if sid in translucent and name + '/' + prof + '/' + sid in allowance else ', at most vanilla' if sid in translucent else ', x 1.10 + 2'} |")
+                lines.append("")
+                lines.append(f"Direct buffers against vanilla measured in the same run ({MEASURE[prof]}), {name} {prof} (MB at the end of"
+                             f" each scene; at most vanilla's + {DIRECT_POOL_STEP_MB}, one step of the JVM's direct pool):\n")
+                lines.append("| scene | Quicksilver end / peak | vanilla end / peak | limit end / peak | ceiling (baseline x 1.10 + %s) |" % DIRECT_CEILING_MB)
+                lines.append("|---|---|---|---|---|")
+                for sc in scenes:
+                    sid = sc["id"]
+                    c, vc = cur.get(sid), van.get(sid)
+                    if sc.get("skip") or c is None or b in set(sc.get("ciSkipRuns", [])):
+                        continue
+                    v, vv = c.get("directBuffersMB"), (vc or {}).get("directBuffersMB")
+                    if v is None or vv is None:
+                        failures.append(f"{name}/{prof}/{sid}: direct buffers missing (Quicksilver {v}, vanilla {vv} in {MEASURE[prof]})")
+                        continue
+                    lim = round(vv + DIRECT_POOL_STEP_MB, 2)
+                    if round(v, 2) > lim:
+                        failures.append(f"{name}/{prof}/{sid}: {v} MB of direct buffers, more than vanilla's {vv} + {DIRECT_POOL_STEP_MB} in the same run ({MEASURE[prof]})")
+                    pk, vpk = c.get("directBuffersMaxMB"), (vc or {}).get("directBuffersMaxMB")
+                    plim = None
+                    if pk is None or vpk is None:
+                        failures.append(f"{name}/{prof}/{sid}: direct-buffer peak missing (Quicksilver {pk}, vanilla {vpk} in {MEASURE[prof]})")
+                    else:
+                        plim = round(vpk + DIRECT_POOL_STEP_MB, 2)
+                        if round(pk, 2) > plim:
+                            failures.append(f"{name}/{prof}/{sid}: direct-buffer peak {pk} MB, more than vanilla's peak {vpk} + {DIRECT_POOL_STEP_MB} in the same run ({MEASURE[prof]})")
+                    ceil = None
+                    if base is None or sid not in base or base[sid].get("directBuffersMB") is None:
+                        failures.append(f"{name}/{prof}/{sid}: no committed direct-buffer baseline, so no ceiling to gate it against")
+                    else:
+                        ceil = round(base[sid]["directBuffersMB"] * RISE + DIRECT_CEILING_MB, 2)
+                        for who, x in (("Quicksilver", v), (f"vanilla ({MEASURE[prof]})", vv)):
+                            if round(x, 2) > ceil:
+                                failures.append(f"{name}/{prof}/{sid}: {who} direct buffers {x} MB, over the ceiling {ceil} (committed {base[sid]['directBuffersMB']} x 1.10 + {DIRECT_CEILING_MB}: a rise in both runs alike)")
+                    lines.append(f"| {sid} | {v} / {pk} | {vv} / {vpk} | {lim} / {plim} | {ceil} |")
                 lines.append("")
                 lines.append(f"Terrain GPU memory, {name} {prof} (MB; reserved in the Quicksilver run must not be more than vanilla's):\n")
                 lines.append("| scene | Quicksilver run reserved / used | of which Quicksilver's arenas | of which vanilla's heaps | vanilla (measure run) reserved / used |")

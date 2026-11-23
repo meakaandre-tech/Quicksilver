@@ -16,6 +16,7 @@ the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the
 
 | track | branch | status |
 |---|---|---|
+| package 6 (entities and block entities) | `package-6` | not merged: Andre checks it first; entity texture atlas (feature draws mobs 12 -> 5, block_entities 13.1 -> 9.1), far entity LOD opt-in, baking dropped (can't match vanilla exactly); see "Package 6" below |
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
 | phase 2, P2-4 (chunk saving and loading) | `p2-4` (not merged: Andre checks it first) | Chunks module: chunks.cow-sections (save snapshots share sections, copy on write); server-thread save time down 8-11%, save-all spike down; saved region files equal to vanilla's; see "Phase 2, P2-4" below |
@@ -3278,6 +3279,95 @@ Sections drawn per frame (solid/cutout; without culling -> drawn):
 - Try `occlusion=two-phase` on Intel and compare fps and the bench's `waitMsPerFrame` against auto (still camera);
   on Vulkan, check the log line "waiting for the GPU within a frame ..." (a real driver may allow the wait).
 
+## Package 6: entities and block entities (branch `package-6`, not merged: Andre checks it first)
+
+### Measure first
+
+FeatureStats (bench `features`) counts every draw of 26.3's feature pass by phase, feature and render type, and the
+distinct states per phase run (the fewest draws any reordering could reach). Vanilla already merges submits per
+render type, so the draws left are one per (render type, texture): mobs 12, occlusion 10, block_entities 13.1
+(measure runs). Block entities mostly arrive "already mapped" on vanilla's sheets (chest, sign, shulker, pot), so
+their textures are shared already.
+
+### Entity texture atlas (Andre, 2026-11-06: "Shared texture atlas")
+
+`entity/EntityAtlas`, `mixin/entity/`: model submits with a vanilla entity render type and one plain nearest texture
+go to the same render type bound to a shared 512x512 page, with the texture's slot as the model's `UvMapping` (the
+path vanilla's sheets take). Pages fill lazily; a one-texel ring repeats the edge (clamp) or the opposite edge
+(repeat). Only non-blended types are allowed (entity_solid, the cutout family but entity_cutout_z_offset,
+armor_cutout_no_cull, entity_eyes): merging translucent draws would change their blend order. Anything else, GeckoLib,
+BlockDisplay, item frames, signs, banners, heads (since 2026-11-11, below) and Flywheel's machines included, draws as
+before. Found on the way: `getDeclaredFields` returns copies, so
+the textures field was never skipped by `==` and every texture made its own kind (fixed with `equals`; the bench's
+`kindSplits` says why two kinds split).
+
+Feature draws per frame, vanilla (measure) -> Quicksilver, full run 42572488452, every profile: mobs 12 -> 5,
+occlusion 10 -> 3, block_entities 13.1 -> 9.1 with heads in the atlas, 13.1 -> 13.1 without them (full run 42951127093: the merged draws there were the heads); SIFTEC factory, factory_flat and hologram 1-3, unchanged (nothing to
+merge). All draws per frame, old-GPU: mobs 298 -> 17.7, occlusion 161 -> 13.7, block_entities 105 -> 31.1 (terrain
+included). Pictures unchanged within the documented limits. Heap after GC against main's last full run (`c6a34218`):
+-3.4 to +3.2 MB per scene; mobs +1.5 MB in every profile, and the measure runs (modules off) gained the same there.
+
+### Baking still block entities: dropped (Andre, 2026-11-10)
+
+26.3 already draws sign boards, sign posts and beds as terrain (only sign text is a block entity). For chests,
+skulls, pots and shulker boxes, terrain's fragment stage can't match vanilla: it samples with `sampleNearest` (a
+`textureGrad` that smooths texel edges) or RGSS on the mipmapped block atlas, where entities take one nearest sample
+of an unmipmapped sheet. A separate pass with the entity shader would be exact but saves no draws (block entities on
+one sheet already draw together). The 9.1 feature draws left in block_entities are already near the 8.1 distinct
+states. Sign text and banners stay on their renderers (Andre, 2026-11-06).
+
+### Far entity LOD (opt-in, off by default)
+
+`entity/EntityLod`: beyond 32 blocks (`/quicksilver lod distance N`), mobs and item entities refresh their animation
+floats at most every 50 ms (one tick) while position, body turn, death, size and shadow stay live; far mobs' cubes whose
+bounding sphere covers under one pixel at its nearest depth are not written. Players are left alone. `/quicksilver lod
+on|off`; off by default and in measure runs; it only turns on when all three hooks applied. In CI's far shot (the
+crowd at 53-67 blocks) about half the far states were held and no cube was under a pixel: vanilla stops drawing small
+mobs not far beyond. The LOD-on shot equals its stored reference (`ci/references/core/mobs.far_lod.png`, identical to
+vanilla's far shot).
+
+### CI
+
+- `core/block_entities`: chests of every kind, shulker boxes, standing, wall and hanging signs with text, heads, pots,
+  a bell, beds, standing and wall banners. The pin mod holds the banners at a swayed pose (the banner sway check); extra
+  shots open four lids, edit two signs, close the lids again. The copper chest is waxed (it oxidised on a random tick).
+- `core/mobs.far` (LOD off, against vanilla) and `core/mobs.far_lod` (LOD on, against its reference;
+  `ci/lod-limits.json`, missing references go to the report's `new-references/`).
+- Block outline: the existing `core/outline` scene.
+- The sign-post pixels in block_entities are the 16-byte vertex's rounding (package 3): diagnostic runs switched each
+  module off and only Quicksilver's terrain removed them. Limits and baselines: `docs/ci-limits.md`, "Package 6".
+- The build dumps the game's shaders (`.github/dump-shaders`) with the bytecode list, for reading only.
+- Full run 42755201376 (`03f7c17f`, review fixes) failed without a check finding a difference: four client jobs
+  (core vanilla-a, siftec vanilla-vk, siftec quicksilver-vk, siftec measure-full; three of them load no Quicksilver)
+  stopped right after listing the server's mods and hit the 90-minute timeout, so the game never started and every
+  check reading those runs failed for missing data. Next in `ci/client-run.sh` are the server start (its wait is
+  bounded at 10 minutes and prints "server did not start", which none did) and `apt-get update` / `install`, whose
+  output goes to /dev/null and which has no timeout: the likely stall. Four different GitHub-hosted runners, all
+  started 05:03-05:32 UTC; no client job in the runs checked back to 2026-11-06 stalled there (a diag run's job that
+  timed out had started the game). Not repeated yet, so no early timeout added. The one count over its limit,
+  `core/old-gpu-2p/translucent_move` direct buffers 8.24 MB (baseline 3.73), was the direct-buffer step; vanilla takes
+  it too, and it is now gated against the same-run measure run (below and `docs/ci-limits.md`).
+- Full runs 42773014543 (`8bc3d7eb`) and 42777299349 (`9e270a3d`) failed only `core/block_entities.closed`'s strict
+  limit (206 on Vulkan; 131 two-phase and 152 in measure-full, every module off), on code unchanged since `03f7c17f`;
+  42777819099 (`e960fce8`) passed. The pixels are the ender chest's particles, vanilla's own noise: closed and
+  sign_edit were re-collected by the noise rule (310 and 280; `docs/ci-limits.md`). No start hang in these three runs.
+- **Worked around (found 2026-11-10, 2026-11-11):** one pixel on the zombie head's edge differed from vanilla (one texel
+  row off, 6/255, full and old-GPU, not Vulkan) and went with the entity atlas off: the atlas's UV remap rounding at a
+  texel edge. Andre chose to leave heads out of the atlas: entity_cutout_z_offset, the skull render type, is off the
+  allow-list (in CI's scenes only heads draw with it: zombie, creeper, skeleton, wither skeleton and piglin, from a
+  bench listing of the atlas's redirects in quick run 42945865508), so heads draw as in vanilla and lose their merge.
+  A first try left out entity_cutout_no_cull_z_offset, which nothing in CI draws with, and changed nothing. The
+  rounding itself stays for every other atlas texture; no other check shows it, but a one-texel edge difference
+  elsewhere would sit inside the scenes' strict limits. The bench's renderTypesNotAllowed now counts per submit (it
+  missed types first seen before the bench window). Full run 42951127093 (`31e6c38e`): (568, 394) is gone in every
+  profile's block_entities and block_entities.closed shots; only the five spruce sign-post pixels remain. The cost:
+  four more draws per frame in block_entities (full 31.11 -> 35.11, Vulkan 30.24 -> 34.15, old-GPU two-player 32.11 ->
+  36.11; vanilla 136 / 144), one over the main + 3 gate. Andre accepted the +4 (2026-11-12), so block_entities'
+  draw-call baselines were re-collected from that run (the scene is new in this package; the other counts keep theirs).
+- **Decided by Andre (2026-11-11):** quick mode gates direct buffers at the ceiling only (committed baseline x 1.10 +
+  8 MB; full runs gate against the same-run measure run); block_entities.closed keeps 310 (collected with Quicksilver's
+  particle samples); heap after GC within -3.4 to +3.2 MB of main's run is accepted as run-to-run noise.
+
 ## Package 5: Flywheel and Create (branch `package-5`, not merged: Andre checks it first)
 
 ### What Flywheel needs, and where it comes from with Quicksilver
@@ -3481,7 +3571,12 @@ renderer, above). As asked:
   re-collect their numbers, and restore the full strict check where the minimap shows (factory_flat, hologram:
   `ciStrictMask`, `ciGatedCounts` in `scenes/siftec.json`; `docs/ci-limits.md`, "Pack lock").
 
-- **Direct-buffer jump, Quicksilver only (found 2026-10-29).** Run
+- **Direct-buffer jump (found 2026-10-29): closed in package 6 (Andre, 2026-11-10).** Vanilla's measure runs take the
+  same 2 and 4 MB steps at the same scenes, and direct buffers are now gated against the same-run measure run plus one
+  4 MB pool step (end and peak), under a ceiling of the committed baseline x 1.10 + 8 MB, instead of a fixed baseline
+  (`docs/ci-limits.md`, "Direct buffers against vanilla in the same run"). P2-0's +8 MB one-off below stays unexplained
+  (higher than any vanilla value; its scene is out of CI).
+  The original report: run
   [40803126672](https://github.com/meakaandre-tech/Quicksilver/actions/runs/40803126672), attempt 1, SIFTEC
   `quicksilver-full`: direct buffers went from about 8 MB to 13.8–13.9 MB in the map, hologram and hud scenes
   (create_ct 13.99), against an 8.24 MB baseline. The step of about +8 MB began at the map scene and stayed for the

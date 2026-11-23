@@ -26,6 +26,7 @@ public final class FrameRecorder {
         for (BenchModules.Section sec : BenchModules.all()) sec.startWindow();
         EffectsStats.startWindow();
         com.meakaandre.quicksilver.gui.GuiStats.startWindow();
+        com.meakaandre.quicksilver.entity.FeatureStats.startWindow();
         FRAME_NANOS.clear();
         DRAWS.clear();
         UPLOADS.clear();
@@ -47,6 +48,7 @@ public final class FrameRecorder {
         GpuCounters.enabled = false;
         endPhase = lastPhase;
         com.meakaandre.quicksilver.gui.GuiStats.stopWindow();
+        com.meakaandre.quicksilver.entity.FeatureStats.stopWindow();
         endDraws = lastDraws;
         endUploads = lastUploads;
         endBytes = lastBytes;
@@ -56,6 +58,7 @@ public final class FrameRecorder {
     public static void onPresent() {
         GpuCounters.resetDepth();
         com.meakaandre.quicksilver.gui.GuiStats.frameEnd();
+        com.meakaandre.quicksilver.entity.FeatureStats.frameEnd();
         if (!recording) return;
         long now = System.nanoTime();
         long[] d = GpuCounters.snapshot(GpuCounters.DRAWS);
