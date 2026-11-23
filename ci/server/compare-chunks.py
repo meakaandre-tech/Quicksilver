@@ -45,7 +45,8 @@ GATES = {
     # 0.87, 1.014, 1.021, 1.007 and 1.022 on unchanged Java code (per-round ratios 0.68-1.41), too noisy for "faster"
     ("save", "saveAllMs"): ("no-regression", 1.10),
     ("flyover", "msptP99"): ("no-regression", 1.10),
-    ("flyover", "msptMax"): ("no-regression", 1.10),
+    # flyover's slowest tick: reported, not gated (Andre, 2026-11-24, package L): one tick per round, median ratio 1.131 in
+    # main's run 45158105599 and 0.786 in the branch's 45150343176 on the same code (per-round ratios 0.65-1.57)
     # copy on write moves a section's copy to its first write after a save: the churn's tick (writes every tick, a
     # save every 5) must not get slower for it
     ("churn", "msptAvg"): ("no-regression", 1.10),

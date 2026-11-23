@@ -46,7 +46,8 @@ talk about SIFTEC or the strict limits.**
   and the chunk scenes in two (flyover; save, churn and kill), each group alternating vanilla and Quicksilver on its
   own runner, so every scene's per-round ratios still pair runs of one machine;
   P2-4's save-all tick (`core/save: saveAllMs`) gates regressions only, at most 1.10 (Andre, 2026-11-23: its median
-  ratio went 0.82, 0.87, 1.014, 1.021, 1.007 and 1.022 on unchanged Java code); compare-chunks.py fails a chunk scene
+  ratio went 0.82, 0.87, 1.014, 1.021, 1.007 and 1.022 on unchanged Java code); flyover's slowest tick (`msptMax`) is
+  reported, not gated (Andre, 2026-11-24: median ratio 1.131 and 0.786 on the same code; p99 stays gated); compare-chunks.py fails a chunk scene
   of `ci/server/chunks-core.txt` with no results.
 - **Spruce sign-post pixels** (package 6): accepted under the new look rule; see "Package 6".
 

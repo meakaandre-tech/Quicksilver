@@ -58,7 +58,9 @@ server check but one: `core/save: saveAllMs` (P2-4's gate, median per-round rati
 flyover). Andre (2026-11-23): it gates regressions only now, at most 1.10. Full run 45138924960 (per-shot limits)
 failed only P2-4's churn world check (one of 9,801 chunks with LastUpdate outside vanilla's own noise in Quicksilver's
 round 3; vanilla's rounds differ on LastUpdate in 200-290 chunks each); the re-run, 45150343176 (50 min), passed
-everything (Andre's choice: re-run, merge if green).
+everything (Andre's choice: re-run, merge if green). Merged as `bfd9c89`; main's full run 45158105599 failed only
+`core/flyover: msptMax` (median ratio 1.131 over 1.10; 0.786 on the branch, same code): Andre made it report-only
+(2026-11-24).
 
 Not done here (for Andre): the `pack-snapshot` release on GitHub and the branches listed in the hand-off can't be
 deleted from the agent workspace (no GitHub API access; the git proxy refuses branch deletes).
