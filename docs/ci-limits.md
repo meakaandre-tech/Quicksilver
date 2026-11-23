@@ -3,6 +3,53 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package L: lighter CI and the new look rule (Andre, 2026-11-23)
+
+**These rules replace the older ones below wherever they differ; the sections after this one are history where they
+talk about SIFTEC or the strict limits.**
+
+- **Look rule.** Quicksilver no longer has to match vanilla pixel for pixel: differences you can't notice in play are
+  fine (design doc, "Reined-in plan").
+- **Picture gate** (`ci/compare.py`). Per shot and profile, the share of pixels whose largest channel difference from
+  the profile's vanilla run is over 8/255. A Quicksilver run fails over the shot's **approximation limit**
+  (`ci/approx-limits.json`, per shot; Andre, 2026-11-23: each below the smallest thing its scene must catch). The
+  measure runs (vanilla stand-ins) are gated on the **noise limit** (`ci/pixel-limits.json`, the rule in "Pixel limits").
+  Far entity LOD's shots keep `ci/lod-limits.json`. A shot with no approximation limit fails.
+- **How the approximation limits were set.** Twice the largest difference over 8/255 seen in three full runs
+  (45119196701, 45100988874, 43127050928: every Quicksilver profile against vanilla, every measure run, vanilla a/b;
+  27 samples a shot), at least 0.001% (9 pixels), rounded up to 0.0005%; then checked against the table "Smallest thing
+  each scene must catch". Every shot is below it: spawn 0.89% (8,202 px; a mid-distance section ~16,000), nether
+  0.0715% (659; a block face ~2,500), block_entities 0.0455-0.0515% (up to 475; a head ~700), flat_plants 0.046% (424;
+  a row of one plant kind ~1,500), water_glass and its OIT scene 0.012% (111), every other shot 0.001-0.004% (9-37 px),
+  particles 0.0008% (7 px, under the smallest particle, 9). Still out of reach: one flower in flat_plants (~150, noise
+  212) and a sign's text in block_entities (10-27, under the ender chest particles' noise); mobs.far's smallest mob
+  (~20 px at 53-67 blocks) is an estimate. A chicken-sized square (484 px) painted into the mobs shot fails (0.0525%
+  against 0.001%). Raise a shot's limit deliberately when an approximation needs it (package A), never to or above the
+  smallest thing its scene must catch.
+- **Noise limits re-collected** (they gate the measure runs only now), by the rule, from the same three runs: spawn
+  10.05 -> 0.9, flythrough 14.95 -> 0.3, water_glass 6.45 -> 0.3, nether 0.8 -> 0.3.
+- **Strict limits removed.** `ci/strict-pixel-limits.json` is gone; the count of pixels over 2/255 where every
+  vanilla run agrees is still in the report, not gated.
+- **Same-run gates kept.** Draw calls, direct buffers and terrain GPU memory are gated against vanilla measured in the
+  same run (the measure runs), MSPT in the server perf and chunk jobs; client heap stays gated against the committed
+  baselines; rules below.
+- **SIFTEC suite removed** (SIFTEC is cancelled): its client and server jobs, the siftec-world job, its scenes, baselines
+  and limits, the `siftec` pack-lock set, and the pack-snapshot mechanism (`ci/pack-snapshot.txt`,
+  `ci/update-pack-snapshot.sh`, its workflow). Nothing in CI loads Create or Flywheel any more, so package 5's Flywheel
+  compat has no CI check. The harness's and pin mod's SIFTEC and Create hooks stay in their code, inert without those mods.
+- **Shorter runs.** Every core client run is split over two jobs, shard 1 and 2 (scene key `ciShard`, whole client
+  sessions; `ci/client-run.sh`'s `SHARD`); vanilla's runs are split the same way, so each comparison is between runs
+  that played the same scenes in the same order on a fresh server. Sessions keep one numbering over both shards
+  (`client-<n>.log`); each shard's server log is `server.log` / `server-2.log`. The bench-only and single-player runs
+  play every scene in one job. flythrough now sets `random_tick_speed 0` itself (it used to run after flat_plants, which
+  sets it). The server perf scenes run in three groups (mobs; random and run; factory and village)
+  and the chunk scenes in two (flyover; save, churn and kill), each group alternating vanilla and Quicksilver on its
+  own runner, so every scene's per-round ratios still pair runs of one machine;
+  P2-4's save-all tick (`core/save: saveAllMs`) gates regressions only, at most 1.10 (Andre, 2026-11-23: its median
+  ratio went 0.82, 0.87, 1.014, 1.021, 1.007 and 1.022 on unchanged Java code); compare-chunks.py fails a chunk scene
+  of `ci/server/chunks-core.txt` with no results.
+- **Spruce sign-post pixels** (package 6): accepted under the new look rule; see "Package 6".
+
 ## Profiles
 
 Every scene runs in each suite (core: plain world, Fabric API and Quicksilver only; SIFTEC: SIFTEC's pack and server)

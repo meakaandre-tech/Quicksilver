@@ -1,12 +1,15 @@
 #!/bin/bash
-# One CI client run: SUITE (core | siftec) x RUN (vanilla-a | vanilla-b | vanilla-old | vanilla-vk | quicksilver-full |
+# One CI client run: SUITE (core) x RUN (vanilla-a | vanilla-b | vanilla-old | vanilla-vk | quicksilver-full |
 # quicksilver-old | quicksilver-vk | quicksilver-2p-old | measure-full | measure-old | measure-vk). measure runs load Quicksilver with every module
 # off (quicksilver.ci.measureOnly): vanilla draws everything and Quicksilver's bench measures it, in the same profile as the
 # Quicksilver run of the same name (package 3).
 #
-# Starts the suite's server (core: a plain Fabric server with Fabric API, seed 12345, fresh world; siftec: SIFTEC's
-# server and CI world from the siftec-world job), then one dev client per render distance the suite's scenes use,
-# drives the scenes (ci/drive.py), and leaves everything in $OUT. Quicksilver runs put the built jar in the client's and
+# Starts the suite's server (core: a plain Fabric server with Fabric API, seed 12345, the core-world job's world), then
+# one dev client per session (render distance, client options and shard of the suite's scenes), drives the scenes
+# (ci/drive.py), and leaves everything in $OUT.
+# SHARD (package L): 1 or 2 runs only the sessions of that shard (scene key "ciShard", default 1), so one run's scenes are
+# split over two jobs; every run, vanilla and Quicksilver alike, is split the same way. Unset or 0: every session.
+# Sessions keep one numbering over both shards (client-<n>.log), so the two jobs' files never collide. Quicksilver runs put the built jar in the client's and
 # the server's mods; vanilla runs have no Quicksilver anywhere (the dev classpath's own copy is emptied out first).
 # old runs hide multi-draw indirect and buffer storage and force GL down to vanilla's minimum (3.3); the Quicksilver old
 # run also sets quicksilver.debug.forceIntelMdiIssue (vanilla's Intel multi-draw-indirect flag, the school laptop's path).
@@ -18,8 +21,10 @@ root=$PWD
 OUT=${OUT:-/tmp/out}
 BENCH_SECONDS=${BENCH_SECONDS:-20}
 mkdir -p "$OUT"
-exec > >(tee "$OUT/run.txt") 2>&1
-echo "suite=$SUITE run=$RUN"
+SHARD=${SHARD:-0}
+sfx=""; [ "$SHARD" -gt 1 ] && sfx="-$SHARD"
+exec > >(tee "$OUT/run$sfx.txt") 2>&1
+echo "suite=$SUITE run=$RUN shard=$SHARD"
 mc=$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
 loader=$(grep '^loader_version' gradle.properties | sed 's/.*= *//')
 fapi=$(grep '^fabric_version' gradle.properties | sed 's/.*= *//')
@@ -64,9 +69,7 @@ elif [ $qs = 1 ]; then
 fi
 
 # ---- server
-if [ "$SUITE" = siftec ]; then
-  cp -r siftec-server server
-elif [ -d core-server ]; then
+if [ -d core-server ]; then
   # the core world, generated once per CI run by ci/core-world.sh, so every run loads the same chunks
   cp -r core-server server
   echo "core server and world: from the core-world job"
@@ -104,10 +107,9 @@ print("measure run: contains_renderer taken out of the jar's fabric.mod.json (In
 PY
 fi
 # the pack lock (ci/pack-lock.txt): this run's server jars, as checked in the world jobs (the hashes go to the logs)
-if [ "$SUITE" = siftec ]; then pset=siftec; else pset=core; fi
-bash ci/pack-check.sh server/mods $pset complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
+bash ci/pack-check.sh server/mods core complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
 cd server
-# SIFTEC's own settings, plus a view distance that covers the 12-chunk fly-through and no console echo in chat
+# a view distance that covers the 12-chunk fly-through and no console echo in chat
 printf 'level-seed=12345\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
 ls -l mods
 rm -f in.fifo; mkfifo in.fifo
@@ -118,7 +120,7 @@ for i in $(seq 1 120); do
   sleep 5
 done
 cd "$root"
-if ! grep -q 'Done (' server/server.log; then echo "server did not start"; cp server/server.log "$OUT/"; exit 1; fi
+if ! grep -q 'Done (' server/server.log; then echo "server did not start"; cp server/server.log "$OUT/server$sfx.log"; exit 1; fi
 
 # ---- client
 sudo apt-get update -q >/dev/null 2>&1
@@ -164,13 +166,15 @@ rd={}
 for x in s['scenes']:
     o=dict(x.get('clientOptions') or {}); o.update({'quicksilver.'+k: v for k,v in (x.get('quicksilverConfig') or {}).items()}); o.update({'flywheel.'+k: v for k,v in (x.get('flywheelConfig') or {}).items()})
     opts=','.join(k+'='+str(v) for k,v in sorted(o.items()))
-    rd.setdefault((x.get('renderDistance',8), opts),[]).append(x['id'])
-print(' '.join(str(k[0])+'|'+(k[1] or '-')+'|'+','.join(v) for k,v in sorted(rd.items())))")
+    rd.setdefault((x.get('ciShard',1), x.get('renderDistance',8), opts),[]).append(x['id'])
+print(' '.join(str(k[0])+'|'+str(k[1])+'|'+(k[2] or '-')+'|'+','.join(v) for k,v in sorted(rd.items())))")
 echo "sessions: $groups"
 n=0
 for g in $groups; do
   n=$((n+1))
+  shard=${g%%|*}; g=${g#*|}
   rd=${g%%|*}; rest=${g#*|}; opts=${rest%%|*}; ids=$(echo "${rest#*|}" | tr ',' ' ')
+  if [ "$SHARD" -gt 0 ] && [ "$shard" != "$SHARD" ]; then echo "session $n: shard $shard, not this job's"; continue; fi
   if [ $benchonly = 1 ]; then
     keep=""
     for id in $ids; do case " $BENCH_SCENES " in *" $id "*) keep="$keep $id";; esac; done
@@ -231,13 +235,13 @@ for g in $groups; do
   # archive a previous session's log into a .log.gz when it starts)
   { for z in $(ls run/logs/*.log.gz 2>/dev/null | sort); do zcat "$z"; done; cat run/logs/latest.log 2>/dev/null; } \
     | awk '/Loading Minecraft .* with Fabric Loader/ {n++} {l[NR]=$0; s[NR]=n} END {for (i=1;i<=NR;i++) if (s[i]==n) print l[i]}' > "$OUT/client-$n.log"
-  cp -r run/crash-reports "$OUT/client-crash-reports" 2>/dev/null
+  cp -r run/crash-reports "$OUT/client-crash-reports$sfx" 2>/dev/null
 done
 mkdir -p "$OUT/bench" && cp run/quicksilver/bench/*.json "$OUT/bench/" 2>/dev/null
 echo "stop" >&3
 for i in $(seq 1 60); do grep -q '^EXIT' server/server.log && break; sleep 2; done
 exec 3>&-
-cp server/server.log "$OUT/server.log"
-cp -r server/crash-reports "$OUT/server-crash-reports" 2>/dev/null
+cp server/server.log "$OUT/server$sfx.log"
+cp -r server/crash-reports "$OUT/server-crash-reports$sfx" 2>/dev/null
 ls -R "$OUT" | head -80
 exit 0

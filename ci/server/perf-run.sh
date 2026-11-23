@@ -1,7 +1,7 @@
 #!/bin/bash
 # The server suite's perf job (phase 2, P2-2): MSPT of vanilla and Quicksilver measured on ONE runner, so the two are
 # compared in the same run on the same machine (CI's runners differ from each other by more than Quicksilver's savings).
-# SUITE (core | siftec | ...): the scenes in ci/server/perf-<SUITE>.txt (none: nothing to do), each a scripted run on
+# SUITE (core | terralith): the scenes in ci/server/perf-<SUITE>.txt (none: nothing to do), each a scripted run on
 # the suite's base world (server-base.tar), played sprinting (`tick sprint`) for its number of ticks, with the
 # script's qs-at lines left out (Quicksilver's bench would cost its side time vanilla's doesn't pay).
 #
@@ -13,13 +13,16 @@
 # Every run loads the CI harness (fixed seeds, fixed generation order) and Java runs with -Dmax.bg.threads=1, as in the
 # server suite. Scenes marked `world` keep their saved world: ci/server/compare-p2.py compares every Quicksilver round
 # with vanilla's rounds (gated where vanilla's rounds agree, the server suite's rule).
+# SCENES (package L): only these scenes (space-separated), so the workflow splits the scenes over runners; each
+# scene's rounds still alternate on one runner. Unset: every scene. The log is perf-<first scene>.txt then.
 # Output: $OUT/<scene>/<side><round>/ (ci-harness-result.json, the server log, jfr.json in round 8, world/).
 set +e
 root=$PWD
 SUITE=${SUITE:-core}
 OUT=${OUT:-/tmp/sout/$SUITE-perf}
 mkdir -p "$OUT"
-exec > >(tee "$OUT/perf.txt") 2>&1
+log=perf.txt; [ -n "${SCENES:-}" ] && log="perf-${SCENES%% *}.txt"
+exec > >(tee "$OUT/$log") 2>&1
 spec=ci/server/perf-$SUITE.txt
 if [ ! -f "$spec" ]; then echo "no $spec: no perf scenes for $SUITE"; exit 0; fi
 [ -f server-base.tar ] || { echo "no base world (server-base.tar)"; exit 1; }
@@ -29,7 +32,6 @@ rm -rf "$srv"
 bash ci/server/fetch-server.sh "$srv" || { echo "could not fetch the server"; exit 1; }
 cp ci-server-harness/ci-server-harness.jar "$srv/mods/" || { echo "ci-server-harness.jar missing"; exit 1; }
 case "$SUITE" in
-  siftec) bash ci/server/siftec-mods.sh "$srv/mods" || { echo "could not assemble SIFTEC's pack"; exit 1; };;
   terralith) PACK_CHECK=partial bash ci/pack-fetch.sh terralith "$srv/mods" || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; };;
 esac
 [ -f dist/quicksilver.jar ] || { echo "dist/quicksilver.jar missing"; exit 1; }
@@ -82,6 +84,7 @@ one() {
 
 while read -r scene script ticks keep; do
   case "$scene" in ''|'#'*) continue;; esac
+  if [ -n "${SCENES:-}" ]; then case " $SCENES " in *" $scene "*) ;; *) continue;; esac; fi
   echo "== scene $scene ($script, $ticks ticks sprinting, keep: $keep)"
   for r in 1 2 3 4 5 6 7; do
     if [ $((r % 2)) = 1 ]; then first=vanilla; second=quicksilver; else first=quicksilver; second=vanilla; fi

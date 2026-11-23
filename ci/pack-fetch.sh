@@ -1,12 +1,10 @@
 #!/bin/bash
 # usage: pack-fetch.sh SET DIR
-# Downloads every jar of SET listed in ci/pack-sources.txt into DIR (Andre's own builds from this repo's pack-snapshot
-# release, third-party jars at their pinned versions), then checks DIR against ci/pack-lock.txt (complete, unless
+# Downloads every jar of SET listed in ci/pack-sources.txt into DIR (third-party jars at their pinned versions), then checks DIR against ci/pack-lock.txt (complete, unless
 # PACK_CHECK=partial: a jar "provided" by the caller may not be there yet). Run from the repo root.
 set_=$1
 dir=$2
 here="$(cd "$(dirname "$0")" && pwd)"
-repo=${GITHUB_REPOSITORY:-meakaandre-tech/Quicksilver}
 mkdir -p "$dir"
 fetch() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "$1" "$2"; }
 bad=0
@@ -16,7 +14,6 @@ while read -r key src _; do
   name=${key#*/}
   case "$src" in
     provided) continue;;
-    snapshot) url="https://github.com/$repo/releases/download/pack-snapshot/$name";;
     https://*) url=$src;;
     modrinth:*)
       p=${src#modrinth:}

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 2 checks that sit next to compare-server.py (P2-2): the perf job, the Logic module, and SIFTEC's report-only
-state. Kept in its own file so compare-server.py (shared with other branches) stays as it is.
+"""Phase 2 checks that sit next to compare-server.py (P2-2): the perf job and the Logic module. Kept in its own file so compare-server.py (shared with other branches) stays as it is.
 
 usage:
   compare-p2.py server RESULTS_DIR REPORT_DIR   after compare-server.py, in server-compare
@@ -20,10 +19,8 @@ server:
   - Logic module (P2-2): every Quicksilver server start (server suite and perf) logs `Quicksilver logic:` with every
     optimisation on; no `Quicksilver logic fallback:` line in any run; no identity hash in the module's sources (P2-1's
     rule: an identity hash moves every later one, and with them the order of vanilla's hash sets).
-  - Create contraptions (SIFTEC's scripted run, harness CiContraption): the bearing assembles, places its frame back
-    when its motor stops and assembles again; the same CI CONTRAPTION line in every run, every expectation met.
-  - SIFTEC's own perf and Logic checks are listed as owed, not failed, while SIFTEC reports only
-    (CI_SIFTEC_REPORT_ONLY=true; compare-server.py and compare.py handle their own SIFTEC failures, ci/siftec_status.py).
+  - perf scenes run in groups on several runners (package L: ci/server/perf-run.sh's SCENES); each group's
+    rounds alternate on its own runner, so every scene's ratios still pair runs of one machine.
 client:
   - Logic module in every client run's own log (client-*.log; the client joins a dedicated server, whose log is checked
     for fallbacks only): Quicksilver runs log it on, measure runs off; no fallback line in any log of the run.
@@ -47,14 +44,12 @@ GATED_SCENES = {("core", "mobs"): ("faster", 1.0), ("core", "random"): ("no-regr
                 # P2-3: the village scene must be faster; both factory scenes gate regressions only (Andre, 2026-11-02
                 # and 2026-11-04: their saving in P2-3 is smaller than their noise; their main cost, hoppers' block and
                 # container lookups, is P2-3b's cache, whose done-when is factory MSPT down)
-                ("core", "factory"): ("no-regression", 1.10), ("core", "village"): ("faster", 1.0),
-                ("siftec", "factory"): ("no-regression", 1.10)}
+                ("core", "factory"): ("no-regression", 1.10), ("core", "village"): ("faster", 1.0)}
 LOGIC_ON = "Quicksilver logic:"
 LOGIC_FALLBACK = "Quicksilver logic fallback:"
 CHUNKS_ON = "Quicksilver chunks:"
 CHUNKS_FALLBACK = "Quicksilver chunks fallback:"
-# SIFTEC's suites report only while the workflow's mode job says so (CI_SIFTEC_REPORT_ONLY, ci/siftec_status.py)
-REPORT_ONLY_SUITES = ("siftec",) if os.environ.get("CI_SIFTEC_REPORT_ONLY") == "true" else ()
+REPORT_ONLY_SUITES = ()  # SIFTEC's report-only state went with its suite (package L)
 PLAIN_ROUNDS = (1, 2, 3, 4, 5, 6, 7)
 ALL_ROUNDS = (1, 2, 3, 4, 5, 6, 7, 8)
 JFR_ROUND = 8
@@ -137,7 +132,7 @@ def fmt(v):
 
 def expected_suites():
     """The server suites this run had (as compare-server.py reads them: quick mode core plus CI_EXTRA_SUITES, full mode all)."""
-    exp = ["core"] if os.environ.get("CI_MODE") == "quick" else ["core", "siftec", "terralith"]
+    exp = ["core"] if os.environ.get("CI_MODE") == "quick" else ["core", "terralith"]
     exp += [x for x in os.environ.get("CI_EXTRA_SUITES", "").split(",") if x and x not in exp]
     return exp
 
@@ -280,31 +275,6 @@ def perf(res, rep, lines, fails, owed, summary):
 def server(res, rep):
     fails, owed, lines, summary = [], [], ["# Phase 2 checks (compare-p2.py)\n"], {}
     perf(res, rep, lines, fails, owed, summary)
-
-    # the contraption checks in SIFTEC's scripted run (CiContraption): in every run, every expectation met, the same line
-    # in vanilla's runs and Quicksilver's
-    if "siftec" in expected_suites():
-        sink = owed if "siftec" in REPORT_ONLY_SUITES else fails
-        got = {}
-        for r in ("vanilla-a", "vanilla-b", "vanilla-c", "quicksilver"):
-            m = re.findall(r"CI CONTRAPTION result=(.*)", text(os.path.join(res, "siftec-" + r, "run-server.log")))
-            got[r] = m[-1].strip() if m else None
-        lines.append("## Create contraptions (SIFTEC's scripted run)\n\n| run | result |\n|---|---|")
-        lines += ["| %s | %s |" % (r, v or "missing") for r, v in got.items()]
-        lines.append("")
-        for r, v in got.items():
-            if v is None:
-                sink.append("siftec contraption: no result in %s" % r)
-            elif not v.startswith("allMet=true"):
-                sink.append("siftec contraption %s: an expectation not met (%s)" % (r, v[:300]))
-            elif any(("t%d:bearing:" % t) not in v for t in (300, 500, 700)):
-                # every check of the script must be in the line (a shorter line in every run would match itself)
-                sink.append("siftec contraption %s: the bearing's checks at ticks 300, 500 and 700 aren't all in the line (%s)" % (r, v[:300]))
-        for r in ("vanilla-b", "vanilla-c"):
-            if got["vanilla-a"] and got[r] and got[r] != got["vanilla-a"]:
-                sink.append("siftec contraption: vanilla-a and %s differ (%s / %s)" % (r, got["vanilla-a"][:200], got[r][:200]))
-        if got["vanilla-a"] and got["quicksilver"] and got["quicksilver"] != got["vanilla-a"]:
-            sink.append("siftec contraption: quicksilver differs from vanilla (%s / %s)" % (got["quicksilver"][:200], got["vanilla-a"][:200]))
 
     # the verify run (P2-3, full mode): every suite with a scripted run has one in its quicksilver run, and it finished
     # (its status line and fallbacks are checked below with every other server log's)

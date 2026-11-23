@@ -3,7 +3,7 @@
 Windows, Intel integrated graphics, Prism Launcher. Quicksilver 0.0.1 only measures, so every number from this build is
 a **vanilla** number: the baseline later packages are judged against.
 
-Run two instances: a plain one (vanilla Fabric, Fabric API, Quicksilver) and the SIFTEC one with Quicksilver added.
+Run the plain instance (vanilla Fabric, Fabric API, Quicksilver). The SIFTEC instance was dropped with SIFTEC (2026-11-23).
 
 ## Before each session
 
@@ -43,35 +43,6 @@ Download `quicksilver-26.3.jar` from the `latest` release of meakaandre-tech/Qui
    Run `flythrough` first: it flies over terrain that has never been generated, which is only true in a new world.
 8. Memory after 10 minutes (one run is enough): `/quicksilver bench spawn 600 confirm`.
 9. Quit to the title screen.
-
-## Instance 2: SIFTEC
-
-1. Copy your SIFTEC instance in Prism (right-click → **Copy Instance**) so your own worlds and settings stay apart.
-2. In the copy: Edit → Mods → **Add file** → `quicksilver-26.3.jar`. Same Java, memory and 1280 × 720 window as above;
-   same video settings (Unlimited, VSync off, GUI scale 2).
-3. **Create a new world** just for this: Creative, **Allow Commands: On**, **Seed: 12345**. The scenes build
-   platforms and place a HUB and a MAM, so never run them in a world you play in.
-4. Wait 30 seconds, then run, one at a time:
-
-   ```
-   /quicksilver bench flythrough confirm
-   /quicksilver bench spawn confirm
-   /quicksilver bench sift confirm
-   /quicksilver bench hub confirm
-   /quicksilver bench mam confirm
-   /quicksilver bench water_glass confirm
-   /quicksilver bench mobs confirm
-   /quicksilver bench nether confirm
-   ```
-
-   `hub` and `mam` stand you in front of the block and ask you to right-click it. Measuring starts when the screen
-   opens. Leave it open: the bench closes it when it is done.
-
-   `factory` and `map` need SIFTEC's selftest mod (its test commands build the factory row and open the map), which
-   SIFTEC's release doesn't include, so the bench won't offer them in a normal SIFTEC instance. If you drop
-   `siftec-selftest-26.3.jar` into the mods folder, also run `/quicksilver bench factory confirm` and
-   `/quicksilver bench map confirm`.
-5. Memory after 10 minutes: `/quicksilver bench sift 600 confirm`.
 
 ## What to paste back
 
@@ -150,11 +121,9 @@ comparable, do these the same way every time:
    world → Play). The `world load ms` in the next bench block is the server's start, including loading that world.
 3. **Heap after load:** the first bench after joining (`flythrough` in a new world): read `after GC` in its `heap MB`
    line (the `server:` line's heap is taken without a GC, so it moves with garbage).
-4. **Heap after 10 minutes:** the 600-second bench in step 8 (plain) and step 5 (SIFTEC), `after GC` in `heap MB`.
+4. **Heap after 10 minutes:** the 600-second bench in step 8, `after GC` in `heap MB`.
 5. **MSPT while flying over new terrain:** the `flythrough` block's `server:` line (`p99` and `over 50 ms` are what
    the "no server tick over 50 ms" target reads).
-6. **SIFTEC factory (50+ machines):** only with `siftec-selftest-26.3.jar` in the mods folder (see Instance 2):
-   `/quicksilver bench factory confirm`, then paste its block.
 
 Optional, a dedicated server (only if you want to see a server on its own; the laptop targets are single player):
 start a Fabric 26.3 server with Fabric API and the same Quicksilver jar (`quicksilver-26.3.jar`) in its

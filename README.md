@@ -28,8 +28,8 @@ multi-draw indirect and still-camera elsewhere (Intel integrated graphics, old G
 
 ## Tested with
 
-Every build is checked in CI against vanilla, pixel by pixel, in a plain world (only Fabric API and Quicksilver) and in
-the SIFTEC modpack, with a full and an old-GPU driver profile. See `docs/`.
+Every build is checked in CI against vanilla in a plain world (only Fabric API and Quicksilver), on a full, an old-GPU
+and a Vulkan driver profile, with small differences from vanilla allowed (`docs/ci-limits.md`). See `docs/`.
 
 ## Licence
 

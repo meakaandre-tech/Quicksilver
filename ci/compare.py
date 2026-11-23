@@ -6,7 +6,11 @@ usage: compare.py RESULTS_DIR REPORT_DIR
 RESULTS_DIR holds one directory per run, named <suite>-<run> (run: vanilla-a, vanilla-b, vanilla-old, quicksilver-full,
 quicksilver-old), as written by ci/client-run.sh. Per suite:
   - noise: vanilla-a against vanilla-b, scene by scene;
-  - picture: quicksilver-full against vanilla-a, quicksilver-old against vanilla-old; over ci/pixel-limits.json fails;
+  - picture (package L, 2026-11-23): each Quicksilver run against its profile's vanilla run, the share of pixels over
+    8/255; over the shot's approximation limit (ci/approx-limits.json, set per shot below the smallest thing its scene
+    must catch) fails. Quicksilver no longer has to match vanilla pixel for pixel: differences you can't notice in play
+    pass, a missing or wrong object fails. The measure runs (vanilla stand-ins) are gated on the noise limit
+    (ci/pixel-limits.json);
   - probe: Quicksilver's capability line must show each profile (full: both extensions; old: neither, GL 3.3);
   - counts (draw calls: per-frame average, as frames that line up with a game tick draw more and the median flips;
     a scene with "ciDrawCallGate": "median" is gated on the per-frame median instead, as its average follows the
@@ -29,12 +33,9 @@ block or shade, large enough to ignore rounding.
     order, latest sort, back to front), no measured frame where vanilla still drew translucent sections next to
     Quicksilver's, no dry run; scenes with "ciRequiresTranslucent" must have Quicksilver draw translucent sections, scenes
     with "ciRequiresOit" must be drawn with Improved Transparency in every measured frame and the others never;
-  - strict picture: on the pixels where all four vanilla runs (GL 4.5 a and b, GL 3.3, Vulkan) agree exactly, the
+  - strict picture (reported only since package L): on the pixels where all four vanilla runs agree exactly, the
     number of pixels where a Quicksilver run differs from its own profile's vanilla run by more than STRICT_THRESHOLD
-    (2/255 in any channel: Andre's decision, 2026-10-25, as the 16-byte vertex's rounding moves interpolated colours by
-    1-2/255; the count at any difference is reported next to it); over
-    ci/strict-pixel-limits.json fails (see docs/ci-limits.md); a scene with "ciNoStrict" (a reason) is reported, not
-    gated, on this check.
+    (2/255); the per-scene strict limits are gone (docs/ci-limits.md, "Package L").
   - animation (package 8): every Quicksilver run must show the animation module on with no fallback and no late redraw
     (a stale animated sprite redrawn only after something may have drawn from it); measure runs must show it off;
     scenes with "ciRequiresAnimationSkip" must have Quicksilver leave out changed sprites and redraw stale ones.
@@ -67,7 +68,6 @@ OCCLUSION_MODE = {"quicksilver-full": "two-phase", "quicksilver-vk": "two-phase"
 VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk")
 SUITES = None  # every suite
 # scenes allowed to opt out of the strict gate ("ciNoStrict"), each by a decision recorded in docs/ci-limits.md
-NO_STRICT_ALLOWED = set()  # siftec/map was the only one; strict-gated since package 7
 RUNS = ["vanilla-a", "vanilla-b", "vanilla-old", "vanilla-vk", "quicksilver-full", "quicksilver-old", "quicksilver-vk",
         "quicksilver-2p-old", "measure-full", "measure-old", "measure-vk"]
 # per profile, the run that measures vanilla's own counts (Quicksilver loaded, every module off; package 3)
@@ -88,15 +88,6 @@ if QUICK:
         PAIRS["vulkan"] = ("quicksilver-vk", "vanilla-vk")
         RUNS += ["vanilla-vk", "quicksilver-vk"]
         VANILLA_RUNS = ("vanilla-a", "vanilla-b", "vanilla-vk")
-    if os.environ.get("CI_QUICK_SIFTEC") == "1":
-        # package 5: [siftec] in the commit message adds SIFTEC's client suite, with the same runs as core's plus
-        # vanilla-old: Flywheel picks its backend from the GPU profile (old GPUs end up with a different one than GL 4.5),
-        # so the old-GPU runs are compared with vanilla's old-GPU run, as in full mode, in both suites
-        SUITES = {"core", "siftec"}
-        PAIRS["old-gpu"] = ("quicksilver-old", "vanilla-old")
-        PAIRS["old-gpu-2p"] = ("quicksilver-2p-old", "vanilla-old")
-        RUNS += ["vanilla-old"]
-        VANILLA_RUNS = tuple(VANILLA_RUNS) + ("vanilla-old",)
 
 
 def diff(a, b, out=None):
@@ -274,7 +265,7 @@ def drive_skips(run_dir):
 
 
 def session_options(suite):
-    """Each client session's options in client-run.sh's order (client-<n>.log is session n): per render distance and
+    """Each client session's options in client-run.sh's order (client-<n>.log is session n): per shard, render distance and
     set of client options and Quicksilver config entries (quicksilver.<key>=<value>)."""
     rd = {}
     for x in suite["scenes"]:
@@ -282,8 +273,8 @@ def session_options(suite):
         o.update({"quicksilver." + k: v for k, v in (x.get("quicksilverConfig") or {}).items()})
         o.update({"flywheel." + k: v for k, v in (x.get("flywheelConfig") or {}).items()})
         opts = ",".join(k + "=" + str(v) for k, v in sorted(o.items()))
-        rd.setdefault((x.get("renderDistance", 8), opts), []).append(x["id"])
-    return [k[1] for k in sorted(rd)]
+        rd.setdefault((x.get("ciShard", 1), x.get("renderDistance", 8), opts), []).append(x["id"])
+    return [k[2] for k in sorted(rd)]
 
 
 def logs(run_dir):
@@ -454,91 +445,12 @@ def run_profile(r):
     return "vk" if r.endswith("-vk") else "old" if r.endswith("-old") else "full"
 
 
-def flywheel(res, failures, lines):
-    """Package 5: Flywheel with Quicksilver, in SIFTEC's client runs (Create Fly installed). Every run, vanilla's and
-    Quicksilver's, logs Flywheel's own backend choice (CI's pin mod); it must be the profile's (FLW_EXPECT) and the same
-    in Quicksilver's run as in vanilla's. Quicksilver's bench reports the same backend, Flywheel's three hooks on
-    vanilla's classes in place (the block-entity step, light updates, the draw before the terrain) and Create Fly
-    present. Create's animation clock pin must have reached Create's code, and the kinetics scene's /qsci steps must
-    have run (on the server). Pictures and counts of the Create scenes are gated with every other scene."""
-    if SUITES is not None and "siftec" not in SUITES:
-        return
-    rows = []
-    for r in RUNS:
-        d = os.path.join(res, f"siftec-{r}")
-        if not os.path.isdir(d):
-            continue
-        t = logs(d)
-        want = FLW_EXPECT[run_profile(r)]
-        # the backend each session ended up with (the last line of its log: a backend that fails falls back once)
-        got = []
-        sessions = session_options(json.load(open("src/main/resources/quicksilver/scenes/siftec.json")))
-        for f in sorted(glob.glob(os.path.join(d, "client-*.log"))):
-            m_n = re.fullmatch(r"client-(\d+)\.log", os.path.basename(f))
-            if not m_n:
-                continue
-            b = FLW_BACKEND.findall(open(f, errors="replace").read())
-            n = int(m_n.group(1))
-            if not b:
-                # every SIFTEC session has Create Fly and a level, so every one logs Flywheel's backend
-                failures.append(f"siftec/{r}/client-{n}: no Flywheel backend line from CI's pin mod in this session")
-                continue
-            got.append(b[-1])
-            forced = n <= len(sessions) and "flywheel.backend=" in sessions[n - 1]
-            w = FLW_FORCED["kinetics_instancing"][run_profile(r)] if forced else want
-            if b[-1] != w:
-                failures.append(f"siftec/{r}/client-{n}: Flywheel's backend ended as {b[-1]}, expected {w} on this profile"
-                                + (" (session with the backend forced)" if forced else ""))
-        if not got:
-            failures.append(f"siftec/{r}: no Flywheel backend line from CI's pin mod (Create Fly not loaded, or the pin did not run)")
-        if "Quicksilver CI pin: Create's animation clock pinned in AnimationTickHolder" not in t:
-            failures.append(f"siftec/{r}: Create's animation clock pin never reached Create's code (no 'animation clock pinned in AnimationTickHolder' line)")
-        if want != "flywheel:off" and "Quicksilver CI pin: Create's animation clock pinned in Flywheel's frame time" not in t:
-            failures.append(f"siftec/{r}: Flywheel's frame time pin never ran though Flywheel draws on this profile")
-        srv = open(os.path.join(d, "server.log"), errors="replace").read() if os.path.exists(os.path.join(d, "server.log")) else ""
-        for step in QSCI_STEPS:
-            if f"Quicksilver CI create: {step} done" not in srv:
-                failures.append(f"siftec/{r}: the kinetics scene's step '/qsci {step}' did not run (see server.log)")
-        bench = {}
-        if r.startswith(("quicksilver", "measure")):
-            for f in sorted(glob.glob(os.path.join(d, "bench", "*.json"))):
-                j = json.load(open(f))
-                fw = j.get("flywheel")
-                if r.startswith("quicksilver"):
-                    if not fw or fw.get("createFly") in (None, "absent"):
-                        failures.append(f"siftec/{r}/{j['scene']}: the bench has no Flywheel block with Create Fly present")
-                        continue
-                    w = FLW_FORCED.get(j["scene"], {}).get(run_profile(r), want)
-                    if fw.get("backend") != w:
-                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver reports Flywheel backend {fw.get('backend')}, expected {w}")
-                    hooks = fw.get("hooks") or {}
-                    missing = [k for k in ("blockEntityStep", "lightUpdate", "beforeSolid") if not hooks.get(k)]
-                    if missing:
-                        failures.append(f"siftec/{r}/{j['scene']}: Flywheel's hooks on vanilla's classes not in place: {missing}")
-                    bench[j["scene"]] = fw
-                    # Quicksilver's own hook in Flywheel (the still-camera stamp hangs on it): where Flywheel draws, the
-                    # Create scenes' benches must have seen its visuals and counted the frames it drew before the terrain
-                    if w != "flywheel:off" and j["scene"] in ("kinetics", "kinetics_instancing") and not (
-                            (fw.get("visuals") or 0) > 0 and (fw.get("framesDrawingBeforeTerrain") or 0) > 0):
-                        failures.append(f"siftec/{r}/{j['scene']}: Quicksilver saw no Flywheel visual drawn before the terrain"
-                                        f" (visuals {fw.get('visuals')}, frames {fw.get('framesDrawingBeforeTerrain')}): its hook in Flywheel did not run")
-        kin = bench.get("kinetics") or {}
-        rows.append(f"| {r} | {', '.join(got) or '-'} | {kin.get('visuals', '-')} | {kin.get('framesDrawingBeforeTerrain', '-')} / {kin.get('frames', '-')} |")
-    lines.append("## Flywheel (package 5)\n")
-    lines.append("Flywheel's own backend choice per run (CI's pin mod), and in Quicksilver's runs its visuals and the frames it drew"
-                 " before the terrain in the kinetics scene's bench.\n")
-    lines.append("| run | backend per session | kinetics: visuals | frames drawing before terrain |")
-    lines.append("|---|---|---|---|")
-    lines += rows
-    lines.append("")
-
-
 def main():
     res, rep = sys.argv[1], sys.argv[2]
     os.makedirs(os.path.join(rep, "diff"), exist_ok=True)
     os.makedirs(os.path.join(rep, "baselines"), exist_ok=True)
     limits = json.load(open("ci/pixel-limits.json")) if os.path.exists("ci/pixel-limits.json") else {}
-    strict_limits = json.load(open("ci/strict-pixel-limits.json")) if os.path.exists("ci/strict-pixel-limits.json") else None
+    approx = json.load(open("ci/approx-limits.json"))
     vanilla_draws = json.load(open("ci/vanilla-draw-calls.json")) if os.path.exists("ci/vanilla-draw-calls.json") else {}
     failures, lines, data = [], [], {}
     for sfile in sorted(glob.glob("src/main/resources/quicksilver/scenes/*.json")):
@@ -549,7 +461,7 @@ def main():
         scenes = [s for s in suite["scenes"]]
         scene_by_id = {s["id"]: s for s in scenes}
         sd = data.setdefault(name, {"noise": {}, "picture": {}, "strict": {}, "counts": {}, "skipped": {}})
-        strict_lines, measure_lines, backend_lines = [], [], []
+        strict_lines, measure_lines = [], []
         lines.append(f"## Suite {name}\n")
         runs = {r: os.path.join(res, f"{name}-{r}") for r in RUNS}
         for r, d in runs.items():
@@ -748,18 +660,6 @@ def main():
                             failures.append(f"{name}/{r}: the mesher's nearest-and-visible-first order never read vanilla's meshing task")
                         if "Quicksilver mesher: fluid self-test:" not in t:
                             failures.append(f"{name}/{r}: the mesher's fluid self-test did not run (see client log)")
-                        # package 5 (Andre, 2026-11-04): with The Sift installed, only its own fluids go through vanilla's
-                        # fluid renderer (its mixin changes it); water and lava stay Quicksilver's, checked per section
-                        # against vanilla's compiler (the mesher check below)
-                        if name == "siftec":
-                            if "Quicksilver mesher: the fluids of the_sift go through vanilla's fluid renderer" not in t:
-                                failures.append(f"{name}/{r}: the mesher did not send The Sift's fluids (only) through vanilla's fluid renderer (see client log)")
-                            if "Quicksilver mesher: every fluid goes through vanilla's fluid renderer" in t:
-                                failures.append(f"{name}/{r}: the mesher sent every fluid through vanilla's fluid renderer (a fluid mixin whose mod it could not find)")
-                            if "Quicksilver's fluid mesher draws the_sift:" in t:
-                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher drew one of The Sift's fluids")
-                            if "Quicksilver's fluid mesher draws minecraft:water" not in t:
-                                failures.append(f"{name}/{r}: Quicksilver's fluid mesher never drew water (see client log)")
                         nwarn = len(re.findall(r"Quicksilver mesher check:", t))
                         if nwarn:
                             failures.append(f"{name}/{r}: mesher check: {nwarn} sections where Quicksilver's mesh differed from vanilla's compiler's (see client log)")
@@ -929,8 +829,8 @@ def main():
                                 failures.append(f"{name}/{r}: bench {bj['scene']} has no counter audit")
                             elif miss:
                                 failures.append(f"{name}/{r}: counters that did not apply: {', '.join(miss)}")
-                srv = os.path.join(d, "server.log")
-                st = open(srv, errors="replace").read() if os.path.exists(srv) else ""
+                # one server log per shard job (server.log, server-2.log; package L)
+                st = "".join(open(f, errors="replace").read() for f in sorted(glob.glob(os.path.join(d, "server*.log"))))
                 if not re.search(r"\bquicksilver\b", st):
                     failures.append(f"{name}/{r}: the server did not list Quicksilver among its mods")
                 if re.search(r"(ERROR|Exception)[^\n]*[Bb]rimstone|[Bb]rimstone[^\n]*(ERROR|Exception)", st):
@@ -949,8 +849,11 @@ def main():
             lines.append("**Quick mode** (core suite; vanilla a, vanilla b, Quicksilver old-GPU against vanilla a): the measure-run"
                          " gates (same-run draw calls, terrain GPU memory, measure pictures) and the full and Vulkan profiles are"
                          " not run. A merge needs a full run.\n")
-        lines.append("| scene | noise (vanilla a/b) % | limit % | " + " | ".join(PROFILE_NAMES[p] + " %" for p in PAIRS) + " |")
-        lines.append("|---|---|---|" + "---|" * len(PAIRS))
+        lines.append("Picture (package L): % of pixels over 8/255 against the profile's vanilla run. A Quicksilver run fails over the"
+                     " shot's approximation limit (ci/approx-limits.json), a measure run (vanilla stand-in) over its noise limit"
+                     " (ci/pixel-limits.json).\n")
+        lines.append("| scene | noise (vanilla a/b) % | noise limit % | approximation limit % | " + " | ".join(PROFILE_NAMES[p] + " %" for p in PAIRS) + " |")
+        lines.append("|---|---|---|---|" + "---|" * len(PAIRS))
         skips = [drive_skips(d) for d in runs.values() if os.path.isdir(d)]
         for sc in scenes:
             sid = sc["id"]
@@ -977,6 +880,9 @@ def main():
                     row[prof] = None if prof in skipped_profiles else diff(shot(b), shot(v), os.path.join(rep, "diff", f"{name}-{sid}-{prof}.png"))
                 sd["picture"][sid] = row
                 limit = limits.get(name, {}).get(sid)
+                alimit = approx.get(name, {}).get(sid, approx["default"])
+                qlimit = alimit
+                sd.setdefault("limits", {})[sid] = {"noise": limit, "approximation": alimit, "quicksilver": qlimit}
                 for prof, dv in row.items():
                     if prof in skipped_profiles:
                         continue
@@ -984,95 +890,37 @@ def main():
                         failures.append(f"{name}/{sid}: no {prof} screenshot pair")
                     elif limit is None:
                         failures.append(f"{name}/{sid}: no pixel limit in ci/pixel-limits.json")
-                    elif dv["pct"] > limit:
-                        failures.append(f"{name}/{sid}: {prof} differs from vanilla on {dv['pct']}% of pixels (limit {limit}%)")
+                    elif sid not in approx.get(name, {}):
+                        failures.append(f"{name}/{sid}: no approximation limit in ci/approx-limits.json")
+                    elif dv["pct"] > qlimit:
+                        failures.append(f"{name}/{sid}: {prof} differs from vanilla on {dv['pct']}% of pixels (approximation limit {qlimit}%)")
                 fmt = lambda d, p=None: f"skipped ({sc.get('ciSkipReason', 'ciSkipRuns')})" if p in skipped_profiles else ("missing" if d is None else f"{d['pct']}")
-                lines.append(f"| {sid} | {fmt(noise)} | {limit} | " + " | ".join(fmt(row[p], p) for p in PAIRS) + " |")
+                lines.append(f"| {sid} | {fmt(noise)} | {limit} | {alimit} | " + " | ".join(fmt(row[p], p) for p in PAIRS) + " |")
+                # reported only (package L): pixels over 2/255 where every vanilla run agrees exactly
                 agree, counts, counts_any = strict(shot, os.path.join(rep, "diff", f"{name}-{sid}"), skip_runs, mask=sc.get("ciStrictMask"))
                 sd["strict"][sid] = {"vanillaAgreePct": agree, "pixels": counts, "pixelsAnyDifference": counts_any}
-                slimit = None if strict_limits is None else strict_limits.get(name, {}).get(sid)
-                if agree is None:
-                    failures.append(f"{name}/{sid}: strict picture check is missing a vanilla screenshot")
-                for prof in PAIRS:
-                    if prof in skipped_profiles:
-                        continue
-                    c = counts.get(prof)
-                    if agree is not None and c is None:
-                        failures.append(f"{name}/{sid}: strict picture check is missing the {prof} screenshot")
-                    elif c is not None and strict_limits is not None:
-                        if sc.get("ciNoStrict") and f"{name}/{sid}" in NO_STRICT_ALLOWED:
-                            # no strict gate for this scene (its own noise is larger than anything it could show; the
-                            # 8/255 limit above still applies); the counts are reported
-                            continue
-                        if slimit is None:
-                            failures.append(f"{name}/{sid}: no strict pixel limit in ci/strict-pixel-limits.json")
-                        elif c > slimit:
-                            failures.append(f"{name}/{sid}: {prof} differs from vanilla on {c} pixels where every vanilla run"
-                                            f" agrees exactly, by more than {STRICT_THRESHOLD}/255 (strict limit {slimit})")
                 # the measure runs (Quicksilver loaded, every module off) must look like vanilla within vanilla's own
-                # noise, the same 8/255 and strict limits as Quicksilver's runs (package 3): they stand in for vanilla
-                # in the draw-call and terrain memory gates
+                # noise: they stand in for vanilla in the draw-call, memory and terrain memory gates
                 mpairs = {} if QUICK else {prof: (MEASURE[prof], v) for prof, (b, v) in PAIRS.items() if prof not in skipped_profiles}
                 mrow = {prof: diff(shot(mb), shot(v), os.path.join(rep, "diff", f"{name}-{sid}-{prof}-measure.png")) for prof, (mb, v) in mpairs.items()}
-                _, mcounts, _ = strict(shot, os.path.join(rep, "diff", f"{name}-{sid}-measure"), skip_runs, mpairs, mask=sc.get("ciStrictMask")) if mpairs else (None, {}, {})
-                no_strict = sc.get("ciNoStrict") and f"{name}/{sid}" in NO_STRICT_ALLOWED
                 for prof, dv in mrow.items():
                     if dv is None:
                         failures.append(f"{name}/{sid}: no {MEASURE[prof]} screenshot")
-                        continue
-                    if limit is not None and dv["pct"] > limit:
+                    elif limit is not None and dv["pct"] > limit:
                         failures.append(f"{name}/{sid}: {MEASURE[prof]} (vanilla stand-in) differs from vanilla on {dv['pct']}% of pixels (limit {limit}%)")
-                    mc = mcounts.get(prof)
-                    if not no_strict and mc is None:
-                        failures.append(f"{name}/{sid}: strict picture check is missing the {MEASURE[prof]} screenshot (or its size differs)")
-                    elif not no_strict and slimit is not None and mc > slimit:
-                        failures.append(f"{name}/{sid}: {MEASURE[prof]} (vanilla stand-in) differs from vanilla on {mc} strict pixels (limit {slimit})")
-                # package 5: in the Create scenes Flywheel draws the machines in vanilla a and b (full profile) and
-                # vanilla's renderers draw them in vanilla old and Vulkan (Flywheel off), so the four runs never agree
-                # on those pixels and the check above can't see them. Each profile is checked again where the vanilla
-                # runs drawing the same way agree, against the same strict limit; the measure runs too.
-                if sc.get("ciBackendStrict"):
-                    for group in (("vanilla-a", "vanilla-b"), ("vanilla-old", "vanilla-vk")):
-                        if not all(g in VANILLA_RUNS and g not in skip_runs for g in group):
-                            continue
-                        gskip = tuple(skip_runs) + tuple(r for r in VANILLA_RUNS if r not in group)
-                        gpairs = {p: bv for p, bv in PAIRS.items() if bv[1] in group and p not in skipped_profiles}
-                        for label, pp in (("", gpairs), ("measure", {} if QUICK else {p: (MEASURE[p], bv[1]) for p, bv in gpairs.items()})):
-                            if not pp:
-                                continue
-                            gagree, gcounts, _ = strict(shot, os.path.join(rep, "diff", f"{name}-{sid}-backend{label}"), gskip, pp, mask=sc.get("ciStrictMask"))
-                            sd["strict"][sid].setdefault("sameBackend", {})[f"{'+'.join(group)}{'/' + label if label else ''}"] = {"agreePct": gagree, "pixels": gcounts}
-                            for prof, c in gcounts.items():
-                                who = MEASURE[prof] + " (vanilla stand-in)" if label else prof
-                                if c is None:
-                                    failures.append(f"{name}/{sid}: same-backend strict check is missing the {who} screenshot")
-                                elif slimit is not None and c > slimit:
-                                    failures.append(f"{name}/{sid}: {who} differs from vanilla on {c} pixels where {' and '.join(group)}"
-                                                    f" (drawing the same way) agree exactly, by more than {STRICT_THRESHOLD}/255 (strict limit {slimit})")
-                            backend_lines.append(f"| {sid} | {label or 'Quicksilver'} | {' and '.join(group)} | {gagree} | "
-                                                 + ", ".join(f"{p} {c}" for p, c in gcounts.items()) + " |")
-                measure_lines.append(f"| {sid} | " + " | ".join("skipped" if p not in mrow else ("missing" if mrow[p] is None else f"{mrow[p]['pct']} / {mcounts.get(p)}") for p in PAIRS) + " |")
-                shown = f"not gated ({sc['ciNoStrict']})" if sc.get("ciNoStrict") and f"{name}/{sid}" in NO_STRICT_ALLOWED else (slimit if strict_limits is not None else 'not set yet')
-                strict_lines.append(f"| {sid} | {agree} | {shown} | "
-                                    + " | ".join(f"{counts.get(p)} ({counts_any.get(p)})" for p in PAIRS) + " |")
+                measure_lines.append(f"| {sid} | " + " | ".join("skipped" if p not in mrow else ("missing" if mrow[p] is None else f"{mrow[p]['pct']}") for p in PAIRS) + " |")
+                strict_lines.append(f"| {sid} | {agree} | " + " | ".join(f"{counts.get(p)} ({counts_any.get(p)})" for p in PAIRS) + " |")
         lines.append("")
-        lines.append(f"Strict picture: pixels where { {4: "all four", 3: "all three"}.get(len(VANILLA_RUNS), "both")} vanilla runs agree exactly but the Quicksilver run differs by more than"
-                     f" {STRICT_THRESHOLD}/255 (in brackets: differs at all, reported only):\n")
-        lines.append("| scene | vanilla runs agree on % of pixels | strict limit (pixels) | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
-        lines.append("|---|---|---|" + "---|" * len(PAIRS))
+        lines.append(f"Strict picture (reported only): pixels where { {4: "all four", 3: "all three"}.get(len(VANILLA_RUNS), "both")} vanilla runs agree exactly but the Quicksilver run differs by more than"
+                     f" {STRICT_THRESHOLD}/255 (in brackets: differs at all):\n")
+        lines.append("| scene | vanilla runs agree on % of pixels | " + " | ".join(PROFILE_NAMES[p] for p in PAIRS) + " |")
+        lines.append("|---|---|" + "---|" * len(PAIRS))
         lines.extend(strict_lines)
         lod_check(name, scenes, runs, rep, sd, failures, lines)
-        if backend_lines:
-            lines.append("")
-            lines.append("Strict picture where the vanilla runs drawing the same way agree (package 5, Create scenes: Flywheel on in"
-                         " vanilla a and b, off in vanilla old and Vulkan), same strict limits:\n")
-            lines.append("| scene | runs | vanilla runs | agree on % of pixels | strict pixels |")
-            lines.append("|---|---|---|---|---|")
-            lines.extend(backend_lines)
         lines.append("")
         if not QUICK:
             lines.append("Measure runs (Quicksilver loaded, every module off) against vanilla's run of the same profile: % of pixels over"
-                         f" 8/255 / strict pixels over {STRICT_THRESHOLD}/255; the same limits as Quicksilver's runs:\n")
+                         " 8/255; the noise limit:\n")
             lines.append("| scene | full | old-GPU | Vulkan |")
             lines.append("|---|---|---|---|")
             lines.extend(measure_lines)
@@ -1341,17 +1189,12 @@ def main():
                 cell = lambda k: f"{g.get(k)} / {vg.get(k, '-')}"
                 lines.append(f"| {sc['id']} | {cell('drawCallsPerFrame')} | {cell('prepareDrawCallsPerFrame')} | {cell('elementsPerFrame')} | {cell('statesPerFrame')} (pipelines {g.get('pipelinesPerFrame')}, textures {g.get('textureSetupsPerFrame')}, scissors {g.get('scissorAreasPerFrame')}) | {cell('reorderedDrawsPerFrame')} ({cell('reorderedIgnoringTextPerFrame')}) |")
             lines.append("")
-    flywheel(res, failures, lines)
     bench_only(res, failures, lines)
     single_player(res, failures, lines)
     direct_buffers(res, lines)
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import siftec_status
-    failures, siftec_soft, siftec_lines = siftec_status.split(failures, res, os.path.join(os.path.dirname(os.path.abspath(rep)), "siftec-world", "siftec-world.txt"))
-    lines[0:0] = siftec_lines
     lines.insert(0, "# Quicksilver CI comparison\n\n" + ("**FAILED**\n\n" + "\n".join(f"- {f}" for f in failures) if failures else "**passed**") + "\n")
     open(os.path.join(rep, "report.md"), "w").write("\n".join(lines) + "\n")
-    json.dump({"failures": failures, "siftecReportOnly": siftec_soft, "suites": data}, open(os.path.join(rep, "report.json"), "w"), indent=2)
+    json.dump({"failures": failures, "suites": data}, open(os.path.join(rep, "report.json"), "w"), indent=2)
     print("\n".join(lines))
     sys.exit(1 if failures else 0)
 

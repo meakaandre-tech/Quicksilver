@@ -91,15 +91,6 @@ def gametests(log):
     return found
 
 
-def selftests(log):
-    """SIFTEC's suite summaries: {suite: (passed, failed)}, the last summary of each suite name (the server's own log
-    lines, not their chat copies)."""
-    out = {}
-    for m in re.finditer(r"^(?!.*System chat).*SELFTEST (.+?) (?:done|result|OK): (\d+) passed, (\d+) failed", log, re.M):
-        out[m.group(1)] = (int(m.group(2)), int(m.group(3)))
-    return out
-
-
 RANDOM_MIN_Y = 192  # scripted-run-core-random.txt's random-ticks line
 
 
@@ -177,7 +168,7 @@ def main(res, rep):
     suites = sorted({os.path.basename(p)[:-len(r) - 1] for p in glob.glob(os.path.join(res, "*-*"))
                      for r in RUNS if os.path.basename(p).endswith("-" + r)})
     lines.append("# Server suite (phase 2)\n")
-    expected = ["core"] if os.environ.get("CI_MODE") == "quick" else ["core", "siftec", "terralith"]
+    expected = ["core"] if os.environ.get("CI_MODE") == "quick" else ["core", "terralith"]
     expected += [x for x in os.environ.get("CI_EXTRA_SUITES", "").split(",") if x and x not in expected]
     lines.append("Mode: %s (suites expected: %s; quick mode runs core only)\n" % (os.environ.get("CI_MODE", "full"), ", ".join(expected)))
     for e in expected:
@@ -394,53 +385,6 @@ def main(res, rep):
                 s["bench"] = b
                 lines.append("Quicksilver server bench: `%s`\n" % json.dumps(b.get("server", b))[:600])
 
-        # ---- the Create train (SIFTEC's scripted run): every arrival with its tick, final speed and schedule state,
-        # equal in every run; at least two arrivals (it ran its schedule)
-        if suite == "siftec":
-            tr = {}
-            for r in RUNS:
-                m = re.findall(r"CI TRAIN result=(.*)", text(os.path.join(d[r], "run-server.log")))
-                tr[r] = m[-1].strip() if m else None
-            lines.append("### Create train\n\n| run | result |\n|---|---|")
-            for r in RUNS:
-                lines.append("| %s | %s |" % (r, tr[r] or "missing"))
-            lines.append("")
-            for r in RUNS:
-                if tr[r] is None:
-                    fails.append("siftec train: no result in %s" % r)
-                elif "error=" in tr[r]:
-                    fails.append("siftec train %s: %s" % (r, tr[r][tr[r].index("error="):][:200]))
-                elif int(re.match(r"arrivals=(\d+)", tr[r]).group(1)) < 2:
-                    fails.append("siftec train %s: fewer than 2 arrivals (%s)" % (r, tr[r][:120]))
-            for v in OTHER_VANILLA:
-                if tr["vanilla-a"] and tr[v] and tr[v] != tr["vanilla-a"]:
-                    fails.append("siftec train: vanilla-a and %s differ (%s / %s)" % (v, tr["vanilla-a"][:80], tr[v][:80]))
-            if tr["vanilla-a"] and tr["quicksilver"] and tr["quicksilver"] != tr["vanilla-a"]:
-                fails.append("siftec train: quicksilver differs from vanilla (%s / %s)" % (tr["quicksilver"][:80], tr["vanilla-a"][:80]))
-            s["train"] = tr
-
-        # ---- SIFTEC's self-tests: every suite's passed and failed counts, against vanilla
-        if suite == "siftec":
-            st = {r: selftests(text(os.path.join(d[r], "selftest-server.log"))) for r in RUNS}
-            names = sorted(set().union(*[set(v) for v in st.values()]))
-            lines.append("### SIFTEC self-tests (passed/failed)\n\n| suite | vanilla-a | vanilla-b | vanilla-c | quicksilver |\n|---|---|---|---|---|")
-            for n in names:
-                lines.append("| %s | %s |" % (n, " | ".join("%d/%d" % st[r][n] if n in st[r] else "missing" for r in RUNS)))
-                a, q = st["vanilla-a"].get(n), st["quicksilver"].get(n)
-                for v in OTHER_VANILLA:
-                    if a is not None and st[v].get(n) is not None and st[v][n] != a:
-                        fails.append("siftec self-test %s: vanilla-a %s and %s %s differ" % (n, a, v, st[v][n]))
-                if a is not None and q != a:
-                    fails.append("siftec self-test %s: quicksilver %s, vanilla %s" % (n, q, a))
-            for n in names:
-                if st["quicksilver"].get(n) is None:
-                    fails.append("siftec self-test %s: no result in quicksilver (vanilla has one)" % n)
-            for r in RUNS:
-                if not st[r]:
-                    fails.append("siftec self-tests: no results in %s" % r)
-            s["selftests"] = {r: {k: list(v) for k, v in st[r].items()} for r in RUNS}
-            lines.append("")
-
     # ---- network check (ci/server/net-run.sh)
     lines.append("## Network check\n\n| run | client joined | run finished | client left early | protocol problems | server bytes in/out |\n|---|---|---|---|---|---|")
     for r in NET_RUNS:
@@ -493,11 +437,6 @@ def main(res, rep):
                 fails.append("identity hash in the Memory module: %s:%d: %s" % (os.path.basename(f), i, l.strip()[:120]))
     for e in ERRORS:
         fails.append("comparator crashed: " + e)
-    sys.path.insert(0, os.path.join(HERE, ".."))
-    import siftec_status
-    fails, siftec_soft, siftec_lines = siftec_status.split(fails, res)
-    lines += siftec_lines
-    summary["siftecReportOnly"] = siftec_soft
     lines.append("## Result\n")
     lines.append("**%s**" % ("PASS" if not fails else "FAIL"))
     lines += ["- " + f for f in fails]

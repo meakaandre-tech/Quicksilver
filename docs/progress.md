@@ -10,16 +10,69 @@ migrated. The terrain shader's own names went too (Andre, 2026-10-29): `BrimCell
 the `brim*` outputs are `QsCell`, `QsTint`, `QsTexel`, `QsRegion` and `qs*`; the scenes' entity tag `brim_mover` is `qs_mover`.
 
 
+## Reined-in plan (2026-11-23)
+
+The project stopped on 2026-11-17 and restarted with a smaller scope (design doc, "Reined-in plan (2026-11-23)").
+
+**New rules:**
+- **Look rule:** Quicksilver no longer has to match vanilla pixel for pixel; differences you can't notice in play are
+  fine. Invisible approximations may be on by default where they buy speed; visible simplifications are opt-in settings.
+- **CI picture gate (package L):** the 8/255 check against vanilla, failing over each shot's approximation limit, set
+  below the smallest thing the scene must catch; per-scene strict limits are gone. Draw-call, memory and
+  MSPT gates against vanilla in the same run stay. Details: `docs/ci-limits.md`, "Package L".
+- SIFTEC is cancelled: no SIFTEC suite, pack or scenes in CI.
+
+**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, L; phase 2's P2-0 to P2-4.
+
+**Still to do, in order:** A (approximations and speed options),
+9 (settings screen), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
+judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
+
+**Cut:** 2c (GPU-driven culling), 7b (GUI batching), 10 (compat sign-off and its popular-mods test pack; branch
+`test-pack` stays unmerged), the pixel-art palettes other than natural (Neon City, Sunset, Toxic Green, Game Boy).
+**Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
+
+Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Package L: lighter CI (merged, squash of `ci-light`; branch full run 45150343176 green)
+
+What changed (rules in `docs/ci-limits.md`, "Package L"):
+- SIFTEC suite removed: client and server jobs, the siftec-world job, scenes (`scenes/siftec.json`, so the mod's bench
+  no longer offers them either), baselines, limits, the `siftec` pack-lock set, the pack-snapshot mechanism.
+- Picture gate: 8/255 against vanilla, over the shot's approximation limit fails (`ci/approx-limits.json`, per shot,
+  below the smallest thing its scene must catch; Andre, 2026-11-23); the four large noise limits re-collected; strict
+  limits removed (counts still reported).
+- Core client runs split over two jobs (`ciShard`), vanilla's the same way; perf scenes in three runner groups,
+  chunk scenes in two.
+- Package 6's spruce sign-post pixels accepted under the new rule.
+
+**Run time** (wall clock, push to the last job): before, full runs 42948503477 (main, 78 min) and 43127050928
+(package 6, 92 min); after, full runs 45109623610 (48 min), 45114451694 (45 min) and 45119196701 (38 min; flyover then
+save on one runner, reverted since: no difference to the save gate). The longest jobs are now the flyover chunk scene
+(~30 min) and the shard-2 Quicksilver client runs (~24 min); some client jobs queue for runners (about 20 at once).
+
+**Full runs:** every client check passed in all three (pictures, draw calls, memory, every module check), and every
+server check but one: `core/save: saveAllMs` (P2-4's gate, median per-round ratio below 1.00) failed in all three, 1.021,
+1.007 and 1.022 (per-round ratios 0.68-1.41). On unchanged Java code it gave 0.82 (main 45100988874), 0.87 (package 6
+43127050928) and 1.014 (main 42948503477, failed). Not caused by package L's layout (the third run put save back after
+flyover). Andre (2026-11-23): it gates regressions only now, at most 1.10. Full run 45138924960 (per-shot limits)
+failed only P2-4's churn world check (one of 9,801 chunks with LastUpdate outside vanilla's own noise in Quicksilver's
+round 3; vanilla's rounds differ on LastUpdate in 200-290 chunks each); the re-run, 45150343176 (50 min), passed
+everything (Andre's choice: re-run, merge if green).
+
+Not done here (for Andre): the `pack-snapshot` release on GitHub and the branches listed in the hand-off can't be
+deleted from the agent workspace (no GitHub API access; the git proxy refuses branch deletes).
+
 ## Where things stand
 
 **For Andre (2026-10-26), tracks:**
 
 | track | branch | status |
 |---|---|---|
-| package 6 (entities and block entities) | `package-6` | not merged: Andre checks it first; entity texture atlas (feature draws mobs 12 -> 5, block_entities 13.1 -> 9.1), far entity LOD opt-in, baking dropped (can't match vanilla exactly); see "Package 6" below |
+| package 6 (entities and block entities) | merged | `44ca583` (squash of `package-6`; branch full run 43127050928 green), main full run after the merge: see "Package L" below; entity texture atlas (feature draws mobs 12 -> 5), far entity LOD opt-in, baking dropped; spruce sign-post pixels accepted under the new look rule; see "Package 6" below |
 | package 5 (Flywheel and Create) | merged | `c6a3421` (squash of `package-5`; branch full run 41914090158 green), **main full run 41928677170 green, `latest` rebuilt**; Flywheel compat, Create scenes, mesh order fixed and gated; see "Package 5" below |
 | package 2b (occlusion culling) | `package-2b` | merged: `e8e771c` (squash of `package-2b`; branch full run 41390461057 green), main full run 41396095000 green, latest rebuilt; two-phase on OpenGL with multi-draw indirect, still camera on old GPUs and Vulkan; 0 pop-in pixels; see "Package 2b" below |
-| phase 2, P2-4 (chunk saving and loading) | `p2-4` (not merged: Andre checks it first) | Chunks module: chunks.cow-sections (save snapshots share sections, copy on write); server-thread save time down 8-11%, save-all spike down; saved region files equal to vanilla's; see "Phase 2, P2-4" below |
+| phase 2, P2-4 (chunk saving and loading) | merged | `9341b25` (PR #1); **main full run 42948503477 failed** only on `core/save: saveAllMs` (median per-round ratio 1.014, gate below 1.00; package 6's run passed it on the same code), so `latest` was not rebuilt from it; Chunks module: chunks.cow-sections; see "Phase 2, P2-4" below |
 | phase 2, P2-3 (logic II) | merged | `8951f5c` (squash of `p2-3`; branch green full run 41773484254), **main full run 41781297724 green, `latest` rebuilt**; Logic module II: brain-behaviours, gate-behaviours, hopper-entities, block-entity-checks; village MSPT -14%, mobs -11%, factories within their regression gates (P2-3b next); see "Phase 2, P2-3" below |
 | phase 2, P2-3b (hopper cache) | **shelved** (branch `p2-3b` kept on GitHub, not merged) | exact (border run equal in every run, verify run 9910 answers), but factory MSPT within noise after two attempts; see "Phase 2, P2-3b" below |
 | phase 2, P2-2 (logic I) | merged | `be948a4` (squash of `p2-2`; branch green full run 41307717253), **main full run 41313195874 green, `latest` rebuilt**; Logic module: block-collisions (section masks), entity-sections, entity-collisions; mobs MSPT -10% against vanilla; perf job, mob scene, contraption check; see "Phase 2, P2-2" below |
@@ -3598,9 +3651,9 @@ renderer, above). As asked:
 Working notes for a new chat picking this up: read this file, then `docs/backend.md`, `docs/ci-limits.md`,
 `docs/laptop-bench.md` and the design doc. CI results are on each branch's `ci-logs-<branch>` branch (main's on
 `ci-logs-main`; each run overwrites its branch's). Branch pushes run quick mode (core suite, vanilla a and b,
-Brimstone old-GPU, about 10 minutes); main, `[full]` commits and manual runs the full matrix (`docs/ci-limits.md`,
+Quicksilver old-GPU and two-phase, each split over two jobs); main, `[full]` commits and manual runs the full matrix (`docs/ci-limits.md`,
 "Quick CI"). A package merges only on a green full run, so no branch-only CI commit is needed any more. Local builds aren't possible in the agent workspace (no access to
-Fabric's maven or Mojang); everything is built and tested in CI. A full CI run takes about 30-40 minutes (20 client runs; longer when the SIFTEC world cache is rebuilt).
+Fabric's maven or Mojang); everything is built and tested in CI. A full CI run took about 80-90 minutes before package L (SIFTEC suite, one job per client run); see "Package L" for after.
 Game class dumps are a 1-day Actions artifact (`game-dumps`) the workspace can't download; ask Andre to attach one if
 needed. Scratch tools (not in the repo): a compile check against stubs generated from a javap dump
 (`scratchpad/p3/stubgen/check.sh`; it does not cover `ci/pin-mod`), the shader harness (`scratchpad/p3/harness4.py`),

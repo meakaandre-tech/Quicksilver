@@ -9,14 +9,16 @@
 # Every run loads the CI harness and runs with -Dmax.bg.threads=1, as the server suite does.
 # Output: $OUT/<scene>/<side><round>/ (ci-harness-result.json, ticks.json, the server log, jfr.json, dump.json), the
 # full runs' verify run ($OUT/<scene>/quicksilver-verify/), the kill check ($OUT/kill/<side>-complete|killed|reload<round>/)
-# and $OUT/base.json (the saved terrain's dump). ROUNDS caps every scene's rounds.
+# and $OUT/base.json (the saved terrain's dump). ROUNDS caps every scene's rounds. SCENES (package L): only these scenes
+# (space-separated), so the workflow splits the scenes over runners; each scene's rounds still alternate on one runner.
 set +e
 root=$PWD
 SUITE=${SUITE:-core}
 OUT=${OUT:-/tmp/sout/$SUITE-chunks}
 ROUNDS=${ROUNDS:-7}
 mkdir -p "$OUT"
-exec > >(tee "$OUT/chunks.txt") 2>&1
+log=chunks.txt; [ -n "${SCENES:-}" ] && log="chunks-${SCENES%% *}.txt"
+exec > >(tee "$OUT/$log") 2>&1
 spec=ci/server/chunks-$SUITE.txt
 if [ ! -f "$spec" ]; then echo "no $spec: no chunk scenes for $SUITE"; exit 0; fi
 echo "chunk scenes suite=$SUITE rounds=$ROUNDS"
@@ -125,6 +127,7 @@ print('$scene $name: mspt avg/p99/max', j.get('msptAvg'), j.get('msptP99'), j.ge
 
 while read -r scene script ticks speed rounds; do
   case "$scene" in ''|'#'*) continue;; esac
+  if [ -n "${SCENES:-}" ]; then case " $SCENES " in *" $scene "*) ;; *) continue;; esac; fi
   rounds=${rounds:-$ROUNDS}
   [ "$rounds" -gt "$ROUNDS" ] && rounds=$ROUNDS
   echo "== scene $scene ($script, $ticks ticks, $speed, $rounds rounds)"

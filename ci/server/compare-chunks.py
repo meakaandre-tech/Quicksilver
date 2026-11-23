@@ -34,14 +34,16 @@ MEASURING = False
 EXACT_FILES = ("save", "churn")
 # P2-4's time gates: the median of the per-round ratios (Quicksilver / vanilla, same round) of a measure. "faster": below
 # the limit; "no-regression": at most the limit. Save time on the server thread must be down where chunks are saved
-# (the fly-over's unloads, the churn's save-all every 5 ticks), the save-all tick down (the save spike: the three plain
-# save-alls of the save scene; the game's autosave is the same save, once per run, and reported); the fly-over's p99 and
+# (the fly-over's unloads, the churn's save-all every 5 ticks), the save-all tick not up (the save spike: the three plain
+# save-alls of the save scene, no-regression since 2026-11-23; the game's autosave is the same save, once per run, and reported); the fly-over's p99 and
 # slowest tick gate regressions (Andre, 2026-11-10: slowest tick and p99 against vanilla; ticks over 50 ms reported, the
 # laptop bench judges those). The limit is P2-3's regression limit (docs/ci-limits.md, "P2-4"). Never raised to pass.
 GATES = {
     ("flyover", "saveAll"): ("faster", 1.0),
     ("churn", "saveAll"): ("faster", 1.0),
-    ("save", "saveAllMs"): ("faster", 1.0),
+    # Andre, 2026-11-23 (package L): the save-all tick gates regressions only; its median per-round ratio went 0.82,
+    # 0.87, 1.014, 1.021, 1.007 and 1.022 on unchanged Java code (per-round ratios 0.68-1.41), too noisy for "faster"
+    ("save", "saveAllMs"): ("no-regression", 1.10),
     ("flyover", "msptP99"): ("no-regression", 1.10),
     ("flyover", "msptMax"): ("no-regression", 1.10),
     # copy on write moves a section's copy to its first write after a save: the churn's tick (writes every tick, a
@@ -357,6 +359,17 @@ def main(results, report_dir):
     suites = sorted(glob.glob(os.path.join(results, "*-chunks")))
     if not suites:
         lines.append("No chunk scene results.\n")
+    # package L: the scenes run in groups on several runners; every scene of ci/server/chunks-<suite>.txt must have
+    # come back (a lost group would otherwise drop its gates silently), core always
+    here = os.path.dirname(os.path.abspath(__file__))
+    for suite in sorted({"core"} | {os.path.basename(d)[:-len("-chunks")] for d in suites}):
+        spec = os.path.join(here, "chunks-%s.txt" % suite)
+        if not os.path.exists(spec):
+            continue
+        for l in open(spec):
+            w = l.split()
+            if w and not w[0].startswith("#") and not glob.glob(os.path.join(results, "%s-chunks" % suite, w[0], "*")):
+                fails.append("%s/%s: no results (its chunk scene group did not run or lost its results)" % (suite, w[0]))
     for sdir in suites:
         suite = os.path.basename(sdir)[:-len("-chunks")]
         base = load(os.path.join(sdir, "base.json"))
