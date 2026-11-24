@@ -48,7 +48,15 @@ else
   echo "== saved terrain from the cache"
 fi
 ls -l chunks-base.tar
-(cd "$srv" && tar xf "$root/chunks-base.tar") && python3 -I ci/server/regiondump.py "$srv/chunksbase" "$OUT/base.json"
+# the saved terrain's dump: in $OUT (published as <suite>-chunks/base.json) only by the group that runs the kill scene
+# (or all scenes), elsewhere a local copy. Every group's artifact is merged into one folder for compare-chunks.py: two
+# base.json files there raced (main run 45324605921, cache miss: each group generated its own terrain, and the shorter
+# file was written over the longer one, leaving the longer one's last bytes behind).
+case " ${SCENES:-kill} " in
+  *" kill "*) base_json="$OUT/base.json";;
+  *) base_json="$root/chunks-base-dump.json";;
+esac
+(cd "$srv" && tar xf "$root/chunks-base.tar") && python3 -I ci/server/regiondump.py "$srv/chunksbase" "$base_json"
 rm -rf "$srv/chunksbase"
 
 # the shapes of the methods P2-4's mixins target (CI SIG lines; a vanilla start of its own, not measured)
@@ -119,7 +127,7 @@ print('$scene $name: mspt avg/p99/max', j.get('msptAvg'), j.get('msptP99'), j.ge
     python3 -I ci/server/chunks-jfr.py "$dir/rec.jfr" "$dir/jfr.json" "$ticks" "${a:-0}" "${b:-0}" || echo "  jfr summary failed"
     rm -f "$dir/rec.jfr"
   fi
-  [ "$kind" = reload ] || python3 -I ci/server/regiondump.py "$srv/world" "$dir/dump.json" --base "$OUT/base.json" || echo "  region dump failed"
+  [ "$kind" = reload ] || python3 -I ci/server/regiondump.py "$srv/world" "$dir/dump.json" --base "$base_json" || echo "  region dump failed"
   cp -r "$srv/crash-reports" "$dir/crash-reports" 2>/dev/null
   rm -rf "$srv/quicksilver" "$srv/crash-reports"
   [ "$kind" = killed ] || rm -rf "$srv/world"
