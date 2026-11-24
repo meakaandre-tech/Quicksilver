@@ -1,0 +1,44 @@
+{
+  "suite": "create",
+  "requiresMod": "create",
+  "ciSmokeOnly": true,
+  "description": "Package A: CI's Create + Flywheel smoke job (ci/create-smoke.py): the core world with Create Fly (which carries Flywheel) on the server and the client, one scene of Create machines drawn through Flywheel; checked for no errors and no crash, and for Quicksilver's Flywheel compatibility (package 5) being on. No picture comparison.",
+  "preamble": [
+    "gamerule advance_time false",
+    "gamerule advance_weather false",
+    "gamerule send_command_feedback false",
+    "gamerule spawn_wandering_traders false",
+    "gamemode spectator @a",
+    "time set 6000",
+    "weather clear"
+  ],
+  "scenes": [
+    {
+      "id": "create_smoke",
+      "title": "Create machines on a platform (package A's Create + Flywheel smoke scene): a creative motor turning shafts, a large and a small cogwheel, a gearbox and an encased fan, and a second motor under a mechanical bearing with planks on it",
+      "renderDistance": 8,
+      "settleSeconds": 25,
+      "requiresMod": "create",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18",
+        "#wait 6",
+        "execute in minecraft:overworld run fill 2138 236 -2018 2184 254 -1999 minecraft:air",
+        "execute in minecraft:overworld run fill 2138 236 -1998 2184 254 -1980 minecraft:air",
+        "execute in minecraft:overworld run fill 2138 239 -2016 2184 239 -1982 minecraft:smooth_stone",
+        "execute in minecraft:overworld run setblock 2146 241 -2000 create:creative_motor[facing=east]",
+        "execute in minecraft:overworld run fill 2147 241 -2000 2148 241 -2000 create:shaft[axis=x]",
+        "execute in minecraft:overworld run setblock 2149 241 -2000 create:large_cogwheel[axis=x]",
+        "execute in minecraft:overworld run setblock 2150 241 -2000 create:cogwheel[axis=x]",
+        "execute in minecraft:overworld run setblock 2151 241 -2000 create:shaft[axis=x]",
+        "execute in minecraft:overworld run setblock 2152 241 -2000 create:gearbox[axis=y]",
+        "execute in minecraft:overworld run setblock 2152 241 -2001 create:encased_fan[facing=north]",
+        "execute in minecraft:overworld run fill 2152 241 -1999 2152 241 -1998 create:shaft[axis=z]",
+        "execute in minecraft:overworld run setblock 2160 241 -2004 create:creative_motor[facing=up]",
+        "execute in minecraft:overworld run setblock 2160 242 -2004 create:mechanical_bearing[facing=up]",
+        "execute in minecraft:overworld run fill 2158 243 -2004 2162 243 -2004 minecraft:oak_planks",
+        "#wait 3",
+        "execute in minecraft:overworld run tp @a 2160.5 245 -1986.5 180 18"
+      ]
+    }
+  ]
+}

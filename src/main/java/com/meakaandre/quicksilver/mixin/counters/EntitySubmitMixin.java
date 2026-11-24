@@ -18,5 +18,12 @@ public abstract class EntitySubmitMixin {
     private void quicksilver$entitySubmit(EntityRenderState state, CameraRenderState camera, double x, double y, double z,
                                           PoseStack poseStack, SubmitNodeCollector collector, CallbackInfo ci) {
         FeatureStats.entity(state);
+        com.meakaandre.quicksilver.bench.StageProfile.push("entities.submit");
+    }
+
+
+    @Inject(method = "submit", at = @At("RETURN"))
+    private void quicksilver$entitySubmitEnd(CallbackInfo ci) {
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

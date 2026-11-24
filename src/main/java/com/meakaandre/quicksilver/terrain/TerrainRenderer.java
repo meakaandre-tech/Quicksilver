@@ -203,6 +203,7 @@ public final class TerrainRenderer {
     /** The camera position of the frame being extracted (render thread); see {@link BackFaces}. */
     public static void camera(double x, double y, double z) {
         BackFaces.camera(x, y, z);
+        com.meakaandre.quicksilver.speed.Speed.camera(x, y, z);
         com.meakaandre.quicksilver.occlusion.GpuOcclusion.camera(x, y, z);
     }
 
@@ -240,6 +241,7 @@ public final class TerrainRenderer {
         GpuOcclusion.resetFrame();
         Terrain.beginFrame();
         if (!Terrain.drawing()) return;
+        com.meakaandre.quicksilver.bench.StageProfile.push("terrain.prepare");
         try {
             sortTranslucent = sort;
             prepareFrame(visible, fadeSeconds, indirect && !Terrain.FORCE_PLAIN);
@@ -249,6 +251,8 @@ public final class TerrainRenderer {
             LATE.clear();
             CULLED.clear();
             Terrain.fail("preparing terrain draws", t, false);
+        } finally {
+            com.meakaandre.quicksilver.bench.StageProfile.pop();
         }
     }
 
@@ -283,6 +287,11 @@ public final class TerrainRenderer {
 
         boolean audit = GpuCounters.enabled;
         int audited = 0;
+        // package A: sections wholly inside the render-distance fog, and the cutout layer beyond the far-detail distance
+        boolean speedCount = com.meakaandre.quicksilver.speed.Speed.counting;
+        double fogEnd = com.meakaandre.quicksilver.speed.SpeedTerrain.fogEndThisFrame();
+        double farCutout = com.meakaandre.quicksilver.speed.SpeedTerrain.farCutoutBlocks();
+        FOGGED.clear();
         AUDIT_MESHES.clear();
         AUDIT_LAYERS.clear();
         synchronized (TerrainStore.LOCK) {
@@ -296,6 +305,16 @@ public final class TerrainRenderer {
                 if (es == null) continue;
                 TerrainStore.Entry any = es[0] != null ? es[0] : es[1] != null ? es[1] : es[2];
                 if (any == null) continue;
+                double nearXz = 0;
+                if (fogEnd > 0 || farCutout > 0) {
+                    nearXz = com.meakaandre.quicksilver.speed.SpeedTerrain.nearXz(any.originX, any.originZ);
+                    if (speedCount) com.meakaandre.quicksilver.speed.Speed.SECTIONS_SEEN.increment();
+                    if (fogEnd > 0 && fogBox(es, any) && com.meakaandre.quicksilver.speed.SpeedTerrain.inFogBelowEye(FOG_BOX, fogEnd)) {
+                        if (speedCount) com.meakaandre.quicksilver.speed.Speed.SECTIONS_IN_FOG.increment();
+                        FOGGED.add(section);
+                        continue;
+                    }
+                }
                 float visibility = section.getVisibility(now, fadeMs);
                 int instance = INSTANCES.size();
                 if (plain) {
@@ -312,12 +331,16 @@ public final class TerrainRenderer {
                 int decision = GpuOcclusion.DRAW;
                 if (culling) decision = classify(section, es);
                 if (decision != GpuOcclusion.DRAW) {
-                    Late late = late(section.getSectionNode(), es, instance);
+                    Late late = late(section.getSectionNode(), es, instance, farCutout > 0 && nearXz > farCutout);
                     if (late != null) (decision == GpuOcclusion.DEFER ? LATE : CULLED).add(late);
                 }
                 for (int li = 0; li < 2 && decision == GpuOcclusion.DRAW; li++) {
                     TerrainStore.Entry e = es[li];
                     if (e == null) continue;
+                    if (li == 1 && farCutout > 0 && nearXz > farCutout) {
+                        if (speedCount) com.meakaandre.quicksilver.speed.Speed.CUTOUT_SKIPPED.increment();
+                        continue;
+                    }
                     {
                         TerrainStore.Part part = e.part;
                         if (part == null) continue;
@@ -331,6 +354,11 @@ public final class TerrainRenderer {
                         // ranges are CPU-side entries of the same call and cost nothing to upload
                         boolean span = path == Path.PLAIN_SINGLE || path == Path.INDIRECT;
                         int ranges = BackFaces.ranges(part, e, skipBackFaces, span, RANGE_COUNT, RANGE_FIRST);
+                        if (speedCount) {
+                            long quads = 0;
+                            for (int r = 0; r < ranges; r++) quads += RANGE_COUNT[r];
+                            com.meakaandre.quicksilver.speed.Speed.TERRAIN_TRIANGLES.add(quads * 2);
+                        }
                         if (path == Path.INDIRECT) {
                             // decided after the loop, in this order: a few layers may get their full ranges (EXTRA_COMMANDS)
                             Pending pd = new Pending(ad, instance, part, whole, RANGE_COUNT[0], ranges == 0 ? 0 : RANGE_FIRST[0], ranges);
@@ -363,6 +391,7 @@ public final class TerrainRenderer {
                 }
                 if (tl != null && tl.index != null && mesh instanceof CompiledSectionMesh cm) {
                     if (audit && tl.part != null) TerrainStats.layerTriangles(tl.index.count / 3, tl.index.count / 3, 1);
+                    if (speedCount) com.meakaandre.quicksilver.speed.Speed.TERRAIN_TRIANGLES.add(tl.index.count / 3);
                     TL_ENTRIES.add(tl);
                     TL_MESHES.add(cm);
                     TL_INSTANCES.add(instance);
@@ -378,7 +407,15 @@ public final class TerrainRenderer {
                     drawnMeshes.addAll(run.meshes);
                     drawn.addAll(run.entries);
                 }
-                TranslucencyCheck.frame(visible, sortTranslucent, drawnMeshes, drawn);
+                // package A: a section left out inside the fog is not drawn on purpose; the check sees the rest
+                List<SectionRenderDispatcher.RenderSection> checked = visible;
+                if (!FOGGED.isEmpty()) {
+                    checked = new ArrayList<>(visible.size());
+                    java.util.Set<SectionRenderDispatcher.RenderSection> out = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+                    out.addAll(FOGGED);
+                    for (SectionRenderDispatcher.RenderSection sec : visible) if (!out.contains(sec)) checked.add(sec);
+                }
+                TranslucencyCheck.frame(checked, sortTranslucent, drawnMeshes, drawn);
             }
             CommandEncoder encoder = null;
             for (TerrainStore.Region r : touched) {
@@ -968,6 +1005,8 @@ public final class TerrainRenderer {
 
     /** This frame: sections deferred to the late pass (two-phase), and sections proven hidden (not drawn). */
     private static final List<Late> LATE = new ArrayList<>(), CULLED = new ArrayList<>();
+    /** Package A: sections left out this frame because they are wholly inside the fog. */
+    private static final List<SectionRenderDispatcher.RenderSection> FOGGED = new ArrayList<>();
     /** The late pass's draw lists (solid, cutout). */
     @SuppressWarnings("unchecked")
     private static final List<ArenaDraws>[] FRAME2 = new List[] {new ArrayList<ArenaDraws>(), new ArrayList<ArenaDraws>()};
@@ -980,6 +1019,38 @@ public final class TerrainRenderer {
     private static boolean lateIndirect;
 
     private static final double[] BOX = new double[6];
+    private static final double[] FOG_BOX = new double[6];
+
+    /**
+     * Package A: the box the fog test uses, in FOG_BOX: the solid and cutout vertices' recorded bounds, grown to the block
+     * box plus {@code SpeedTerrain.TRANSLUCENT_MARGIN} when the section has translucent geometry; false if not known.
+     */
+    private static boolean fogBox(TerrainStore.Entry[] es, TerrainStore.Entry any) {
+        boolean solid = es[0] != null && es[0].part != null || es[1] != null && es[1].part != null;
+        if (solid && !box(es, FOG_BOX)) return false;
+        if (es[2] != null) {
+            double m = com.meakaandre.quicksilver.speed.SpeedTerrain.TRANSLUCENT_MARGIN;
+            double ax = any.originX - m, ay = any.originY - m, az = any.originZ - m, bx = any.originX + 16 + m, by = any.originY + 16 + m,
+                bz = any.originZ + 16 + m;
+            if (solid) {
+                FOG_BOX[0] = Math.min(FOG_BOX[0], ax);
+                FOG_BOX[1] = Math.min(FOG_BOX[1], ay);
+                FOG_BOX[2] = Math.min(FOG_BOX[2], az);
+                FOG_BOX[3] = Math.max(FOG_BOX[3], bx);
+                FOG_BOX[4] = Math.max(FOG_BOX[4], by);
+                FOG_BOX[5] = Math.max(FOG_BOX[5], bz);
+            } else {
+                FOG_BOX[0] = ax;
+                FOG_BOX[1] = ay;
+                FOG_BOX[2] = az;
+                FOG_BOX[3] = bx;
+                FOG_BOX[4] = by;
+                FOG_BOX[5] = bz;
+            }
+            return true;
+        }
+        return solid;
+    }
 
     /** The box of a section's solid and cutout geometry (world coordinates); false if it has none. */
     private static boolean box(TerrainStore.Entry[] es, double[] out) {
@@ -1013,7 +1084,7 @@ public final class TerrainRenderer {
     }
 
     /** The prepared solid and cutout draws of a section left out of the first part of the frame. */
-    private static Late late(long key, TerrainStore.Entry[] es, int instance) {
+    private static Late late(long key, TerrainStore.Entry[] es, int instance, boolean noCutout) {
         if (!box(es, BOX)) return null;
         TerrainStore.Entry any = es[0] != null ? es[0] : es[1];
         Late l = new Late(key, BOX, instance, any.region);
@@ -1021,9 +1092,16 @@ public final class TerrainRenderer {
         for (int li = 0; li < 2; li++) {
             TerrainStore.Entry e = es[li];
             if (e == null || e.part == null) continue;
+            // package A, option far-detail: the late pass leaves the cutout layer out past the distance too
+            if (li == 1 && noCutout) continue;
             TerrainStore.Part part = e.part;
             maxIndexCount = Math.max(maxIndexCount, part.indexCount());
             int ranges = BackFaces.ranges(part, e, skipBackFaces, span, RANGE_COUNT, RANGE_FIRST);
+            if (com.meakaandre.quicksilver.speed.Speed.counting) {
+                long quads = 0;
+                for (int r = 0; r < ranges; r++) quads += RANGE_COUNT[r];
+                com.meakaandre.quicksilver.speed.Speed.TERRAIN_TRIANGLES.add(quads * 2);
+            }
             l.arena[li] = part.arena;
             l.count[li] = new int[ranges];
             l.base[li] = new int[ranges];

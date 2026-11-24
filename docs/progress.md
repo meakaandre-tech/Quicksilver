@@ -22,9 +22,12 @@ The project stopped on 2026-11-17 and restarted with a smaller scope (design doc
   MSPT gates against vanilla in the same run stay. Details: `docs/ci-limits.md`, "Package L".
 - SIFTEC is cancelled: no SIFTEC suite, pack or scenes in CI.
 
-**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, L; phase 2's P2-0 to P2-4.
+**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, A, L; phase 2's P2-0 to P2-4.
 
-**Still to do, in order:** A (approximations and speed options),
+**Package A** (approximations and speed options): merged 2026-11-24, squash of branch `package-a` (branch full run
+45317393864 green; see "Package A" below, "Decisions for Andre" there).
+
+**Still to do, in order:**
 9 (settings screen), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
 judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
 
@@ -33,6 +36,163 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Package A: approximations and speed options (merged, squash of `package-a`)
+
+**Status:** merged 2026-11-24 (squash of `package-a`); branch full run 45317393864 green; independent review done
+and fixed (below).
+
+**What it adds**
+- **Speed bench** (`bench/SpeedBench`, `bench/StageProfile`, `bench/SpeedWindow`): CI's two new speed runs
+  (`speed-old`, `speed-full`; `ci/client-run.sh`) play the scenes that have a `speedAb` list with Quicksilver's defaults,
+  the frame limit, vsync and the game's inactivity frame limit off. Per scene: wait for meshing; a **stage profile**
+  (8 s; the GPU waited for at each stage on OpenGL, so a stage's time is its CPU time plus its GPU work: shares, not frame
+  rates); then **each switch off against on**, three rounds of 5 s a side (off-on, on-off, off-on, the camera path
+  restarted each window, the world re-meshed for switches that change meshes), medians over the rounds, and the switch
+  put back before the next one. Results: `speed/*.json` in the run's logs; report and gates: `ci/speed-compare.py`
+  (`compare/speed.md`), gates in `ci/speed-gates.json`. Locally: the same bench runs with `-Dquicksilver.ci.speed=true`.
+- **Switches** (`speed/Speed`): one line each in `config/quicksilver.properties`, and `/qs speed` (list),
+  `/qs speed <name>` (show), `/qs speed <name> on|off|<n>` (until restart). `approx.*` are invisible and may be on by
+  default; `option.*` change the picture and are off by default. Measure runs keep every one off. No UI (package 9).
+- **Create + Flywheel smoke job** (suite `create`, run `quicksilver-smoke`, full GPU profile, ~4 min): the core world
+  with Create Fly (it carries Flywheel and Ponder) on the server and client, one scene of Create machines
+  (`scenes/create.json`). `ci/create-smoke.py` fails on a crash report, an ERROR line vanilla-a's run doesn't also log
+  (the runner's no-sound, no-network lines are reported), a mixin failure, a missing
+  "Quicksilver compat: Flywheel backend" line, or Flywheel drawing no visuals. In full runs; `[create]` adds it to a quick run.
+  `[speed]` adds the two speed runs to a quick run.
+
+**Step 1, where frame time still goes** (stage profile, run 45292287186, after the profile fix; ms per profiled frame
+and share):
+
+| scene | old GPU | full |
+|---|---|---|
+| spawn (rd 8) | terrain cutout 32.2 (39%), solid 25.7 (31%), translucent 11.7 (14%), other 7.1 (9%), GUI 2.9 (3.5%), particles 1.8 (2%), sky 0.3, light updates 0.01 | cutout 40.3 (39%), solid 31.7 (30%), translucent 13.9 (13%), other 11.2 (11%), GUI 3.7, particles 2.2 |
+| water_glass | solid 9.0 (28%), translucent 7.9 (24%), cutout 7.5 (23%), other 4.9, GUI 2.6 | solid 11.0, translucent 9.9, cutout 9.0, other 8.8 |
+| mobs (64 mobs) | solid 6.7 (29%), other 5.5, cutout 3.7, entity models 3.4 (15%), GUI 2.6, shadows 0.7 | other 9.0, solid 8.2, cutout 4.3, entity models 4.2 (14%), shadows 0.8 |
+| block_entities | other 5.2, solid 4.9 (33%), GUI 2.6, entity models (block entities) 1.3 (9%), text 0.1 | the same shape |
+
+So terrain is where the time is (70-85% in the outdoor scenes; the cutout layer, mostly leaves, the largest part), then
+entities where there are many. Light updates (0.01-0.04 ms), particles' tick and extraction (0.1-0.3 ms), block-entity
+submission (0.05 ms) and the sky (0.3 ms) are too small to win anything from. Entities and particles never reach the
+render-distance fog at render distance 8-12 (entities are tracked to 64-80 blocks, block entities drawn to 64, particles
+made within 32), so fog culling only helps terrain.
+
+**Approximations and options** (full run 45310672623, the build after the review; on against off in the same session,
+on/off = median of the three rounds' own ratios; old GPU / full profile)
+
+| switch | kind, default | scene | frame time | FPS | 1% lows | terrain triangles | other |
+|---|---|---|---|---|---|---|---|
+| `approx.fog-sections` | invisible, **on** | spawn | -8.1% / -7.2% | +8.7% / +7.7% | +11.3% / +16.8% | -7.3% / -8.0% | 31.5 sections left out a frame |
+| | | flythrough (rd 12, moving) | -6.6% / -2.6% | +7.1% / +2.7% | +25.0% / +6.5% | -3.7% / +0.8% | 19-26 sections a frame |
+| `option.opaque-leaves` | visible, off | spawn | -19.8% / -18.3% | +24.6% / +22.4% | +19.8% / +24.8% | -17.4% / -18.8% | re-meshes when switched |
+| `option.far-detail=4` (chunks) | visible, off | spawn | -26.9% / -21.0% | +36.8% / +26.6% | +18.8% / +23.8% | -32.8% / -34.2% | ~150 cutout layers left out a frame |
+| `option.far-detail=6` | visible, off | flythrough | -23.7% / -24.7% | +31.1% / +32.7% | +17.0% / +37.2% | -26.4% / -28.4% | |
+| `option.simple-water` | visible, off | water_glass | -12.9% / -8.2% | +14.8% / +8.9% | +29.6% / +7.7% | -0.7% / -0.6% | re-meshes when switched |
+| `option.entity-distance=16` | visible, off | mobs | -9.0% / -9.6% | +9.9% / +10.6% | +10.7% / +14.9% | | 42 of 64 mobs hidden; entity vertex upload -65% |
+| `option.block-entity-distance=12` | visible, off | block_entities | -9.3% / -8.1% | +10.3% / +8.8% | +19.5% / -1.2% | | 18 hidden; draws 21.4 -> 16.3; upload -51% |
+| `option.particle-distance=24` | visible, off | spawn (+ end rods) | -3.8% / -2.4% | +4.0% / +2.4% | +11.2% / +3.4% | | ~2,300 particles dropped; upload -58% / -47% |
+| `option.particle-density=50` | visible, off | spawn (+ end rods) | -2.3% / -1.9% | +2.4% / +1.9% | +12.7% / -0.3% | | ~3,000 dropped; upload -44% |
+
+The first version of `approx.fog-sections` (any section past the fog, 1-block margin; full run 45296764596) gained a
+little more (-6.8% / -5.3% frame time in spawn) but could show the sky through the far edge (review, below). The second
+(8-block margin) kept almost nothing (7 sections a frame, triangles -1%) and failed its speed gates in full run
+45304557083, which is what they are for. The third, on each section's recorded vertex bounds and below the eye, is the one
+above. Pictures with it on (run 45310672623): every shot within its limit in every profile but `core/nether` on old GPU,
+see "Full runs" below.
+
+Measured on CI's software rasteriser (llvmpipe, 4 cores), which is fill-rate bound like the school laptop's Intel GPU
+but not the same; the laptop bench (package R) is the real check. Particles cost little on this machine, so their two
+options show in upload bytes, not frame time; they stay as opt-in options for weak GPUs.
+
+**Tried and dropped**
+- **Compact vertex formats for entities and particles:** not built. In the mobs scene (64 mobs, entity models 14-15% of
+  the profiled frame, 610 KB of entity vertices uploaded a frame) a format a quarter to a third smaller would save about a
+  third of the upload and at best a few percent of the frame, only where there are dozens of mobs; it needs its own entity
+  pipeline and shader, which can't be checked against vanilla's entity shader from here (the game's shaders are in the
+  1-day `game-dumps` artifact the workspace can't download). Particles are 2% of the busiest frame. Not worth the risk now.
+- **Cheaper light and smooth lighting:** nothing left to cut on the frame: the client's light updates take 0.01-0.04 ms a
+  frame, and the mesher already reads each position's light once per section (package 4c's `SectionSnapshot`).
+- **Fog culling for entities, block entities and particles:** measured zero: none of them is drawn far enough to be in
+  the render-distance fog (above).
+- **Less detail for small far things, on by default:** at the distances where vanilla still draws them (block entities
+  to 64 blocks, a chest there ~7 px tall) they are not invisible, so they became the opt-in distance options below; far
+  entity LOD (package 6) stays opt-in as well.
+
+**Independent review** (a fresh agent, after full run 45296764596) and what was done (code in `4e40bd9` and `16e4dad`):
+- far-detail still drew the cutout layer through occlusion's late pass (two-phase): fixed, late pass counted too.
+- fog-sections not fully invisible: a removed section shows what is behind it, which may be the sun, moon, sunrise,
+  clouds or the End's sky rather than the fog colour (CI only shoots daytime scenes): now only sections whose geometry
+  is wholly below the camera's eye (every line of sight to them points down), never in the End or with the camera above
+  the clouds; the test uses each section's recorded vertex box (models may reach outside their section), translucent
+  geometry the block box plus 1. Still read from the render distance, not the fog renderer (decision 2).
+- block-entity distance with no known camera (terrain hooks skipped) would hide everything far from the origin: fixed.
+- the A/B summary's medians could favour "on" by one window of drift: on/off is now the median of each round's own ratio.
+- settling ignored the upload queue: it now waits for no mesh waiting for upload.
+- `[speed]` was dropped by `[vulkan]`, and quick-mode checks passed on a run that produced nothing: fixed.
+- smaller: simple water read once per section, the animation profile stage pops only itself, scene values and switch
+  ranges checked. Left as is: the A/B windows run with the bench's counters on (the same overhead on both sides).
+
+**Limits:** none changed. With `approx.fog-sections` on, every shot stayed under its approximation limit in full runs
+45296764596 and 45304557083 (all four Quicksilver profiles; spawn 0.20-0.45%, against vanilla a/b 0.20-0.43% in the same
+runs and a 0.89% limit); in 45310672623 the nether old-GPU shot went over on vanilla's own random particles (above).
+
+**Run time:** full runs 45296764596 45 min, 45304557083 48 min, 45310672623 50 min, push to the last job, each with about
+10 minutes queued for runners at the start (48-51 jobs, about 20 run at once). The speed runs take ~25 min and the smoke
+job ~4, alongside the core client runs. Quick runs with `[speed] [create]` ~28 min.
+
+**Full runs:**
+- 45296764596 (`d2896b4`): green.
+- 45304557083 (`4e40bd9`, review fixes): every client check passed but the fog-sections speed gates (above).
+- 45310672623 (`16e4dad`): every speed gate, the smoke job and every picture passed but `core/nether` on old GPU, 0.0972%
+  against its 0.0715% limit (full 0.0014%, Vulkan 0.0146%, old-GPU two-phase 0.069%). The diff is a few random nether
+  particles (smoke and a lava pop from dripping lava, from vanilla's random client ticks) in vanilla's old-GPU shot that
+  Quicksilver's shot didn't catch; nothing of package A makes or hides particles with its options off, and fog culling
+  can't touch them. Vanilla-only noise: the limit was not raised. The server suite's `core/flyover: saveAll` (median
+  per-round ratio 1.000, not below 1.00) failed in the same run: server code package A doesn't change (main's run
+  45268983521 passed it). The next full run is the explained re-run of both.
+- 45317393864 (`d04ba53`, the explained re-run, same code as `16e4dad`): **green**, 53 min (about 10 queued). Nether back at
+  0.0003% old GPU; spawn 0.06-0.20%; fog-sections speed gates: spawn triangles 0.928 / 0.920, frame ms 0.944 / 0.930,
+  31.5 sections a frame; fly-through 19-25. Create + Flywheel smoke passed.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **Only `approx.fog-sections` is on by default.** It is the one invisible approximation that measured a gain. To turn it
+   off: `approx.fog-sections=off` in `config/quicksilver.properties` (or its default in `speed/Speed.java`), and drop its
+   gates from `ci/speed-gates.json`.
+2. **Fog end = the render distance in blocks (+1 block margin)**, from `options.getEffectiveRenderDistance()`, as
+   vanilla's fog set-up uses; not read from vanilla's fog renderer (its method couldn't be checked from here). If a later
+   game version or a mod moves or removes the render-distance fog (a no-fog mod, a shader pack), the far ring of terrain
+   below the eye would show missing; CI's daytime scenes would catch a moved end in vanilla, not a mod. Alternative: hook
+   the fog renderer once a dump is available and cull only when that hook ran; or turn it off by default.
+3. **Underwater, lava, blindness and powder-snow fog not used** for culling (only the render-distance fog): the
+   environmental fog's distances come from vanilla's fog code, which isn't hooked. Those cases would gain the most; a
+   later package can add them with a fog-renderer hook.
+4. **Option defaults when switched on without a number:** none: each distance option takes a number (`/qs speed
+   option.entity-distance 24`). The CI scenes measure far-detail at 4 and 6 chunks, entity distance at 16, block-entity
+   distance at 12, particle distance at 24 blocks and particle density at 50%; package 9 picks the presets.
+5. **`option.far-detail` drops the cutout layer** beyond the distance (grass, flowers, crops and, unless opaque leaves is
+   on, leaves). Alternative: keep leaves (they are most of the cutout layer's cost) and drop only plants, which needs the
+   mesher to split them; or tie it to opaque leaves.
+6. **`option.simple-water` draws water opaque in the solid layer** (no blending, no sorting). Alternative "simple" waters
+   (a flat surface, no side faces) were not built; this one is the cheapest to undo (one layer change in `FluidMesher`).
+7. **Players are never hidden by `option.entity-distance`.** To include them, drop the `Player` check in
+   `Visibility.entityVisible`.
+8. **The opaque-leaves and simple-water switches re-mesh the world when changed in game** (like F3+A); vanilla's own
+   compiler (the fallback for sections Quicksilver can't hold) doesn't apply them, so such a section keeps fancy leaves or
+   translucent water.
+9. **The Create + Flywheel smoke job uses the `pack-snapshot` release's `create-fly-26.3.jar`** (sha256 fe089016..., the
+   jar SIFTEC's set locked on 2026-10-31; Create 6.0.9-1). Package L meant to delete that release; deleting it now
+   breaks this job. Alternatives: upload the jar as a new release asset (e.g. `create-smoke`) and point
+   `ci/pack-sources.txt` at it, or fetch Create Fly's own `pack-26.3-latest` release (moving tag; the lock then fails on
+   each new build, by design).
+10. **The smoke job's ERROR rule:** ERROR lines that vanilla-a's client logs too (no sound device, no network for Realms
+    and profiles, the narrator) are the runner's, not failures. Stricter alternative: an explicit allow-list.
+11. **Speed gates on frame time are "not slower" (on/off at most 1.00)**, plus a triangles cut (at most 0.96) and a count
+    of fogged sections, in spawn on both speed runs. Tighter (e.g. 0.97) would catch a smaller loss but may flake on runner
+    noise; options are reported, not gated.
+12. **Speed runs are not compared on pictures** (they run with the frame limit off and the switches toggled); the
+    approximations' pictures are checked in the normal runs, where defaults are on.
+13. The test branch `claude-push-test` (pushed at the start to check push access) is still on GitHub: the git proxy
+    refuses branch deletes from here. Delete it on GitHub.
 
 ## Package L: lighter CI (merged, squash of `ci-light`; branch full run 45150343176 green)
 

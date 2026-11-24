@@ -15,10 +15,12 @@ public abstract class EffectsCloudMixin {
     @Inject(method = {RENDER, "renderOit"}, at = @At("HEAD"))
     private void quicksilver$cloudsStart(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.CLOUDS);
+        com.meakaandre.quicksilver.bench.StageProfile.push("clouds");
     }
 
     @Inject(method = {RENDER, "renderOit"}, at = @At("RETURN"))
     private void quicksilver$cloudsEnd(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.OTHER);
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

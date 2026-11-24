@@ -44,6 +44,13 @@ public final class Scenes {
         /** Degrees per second the camera turns while measuring (package 2b's corner scene); 0 to keep its direction. */
         public double yawRate;
         /**
+         * Package A: the speed switches the speed bench measures here, on against off ("approx.fog-sections", or
+         * "option.far-detail=4" for a value); only in CI's speed runs ({@code quicksilver.ci.speed}).
+         */
+        public List<String> speedAb;
+        /** Package A: commands the speed bench sends twice a second during its windows (e.g. particles for the particle options). */
+        public List<String> speedEmit;
+        /**
          * Commands sent as the player while measuring, each at its time (seconds after measuring starts), e.g. to open
          * a wall or move an entity during the bench (package 2's moving occlusion pass). Null for none.
          */

@@ -220,6 +220,10 @@ def main():
             xdo("key", "Return")
             waits = sum(float(c[6:]) for c in sc["setup"] if c.startswith("#wait "))
             budget = time.time() + waits + sc.get("settleSeconds", 20) + int(bench_seconds) + 240
+            # package A: the speed bench's windows come first in the speed runs (about a minute per switch, more while
+            # the world meshes again)
+            if os.environ.get("RUN", "").startswith("speed-") and sc.get("speedAb"):
+                budget += 120 + 150 * len(sc["speedAb"])
             pressed = 0.0
             result = "timeout"
             while time.time() < budget:

@@ -25,7 +25,10 @@ public abstract class ChunkSectionsToRenderMixin {
     private void quicksilver$drawLayer(ChunkSectionsToRender self, ChunkSectionLayer layer, RenderPass pass, GpuBuffer indexBuffer,
                                      IndexType indexType, RenderPipeline wireframe, RenderPipeline wireframeMultidraw,
                                      Operation<Void> original) {
+        boolean prof = com.meakaandre.quicksilver.bench.StageProfile.active();
+        if (prof) com.meakaandre.quicksilver.bench.StageProfile.push("terrain." + String.valueOf(layer).toLowerCase(java.util.Locale.ROOT));
         original.call(self, layer, pass, indexBuffer, indexType, wireframe, wireframeMultidraw);
         TerrainRenderer.draw(layer, pass, wireframe, wireframeMultidraw);
+        if (prof) com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

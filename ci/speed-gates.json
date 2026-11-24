@@ -1,0 +1,51 @@
+{
+  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame.",
+  "gates": [
+    {
+      "setting": "approx.fog-sections",
+      "scene": "spawn",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "sectionsInFogPerFrame",
+      "value": "on",
+      "min": 10,
+      "reason": "the render-distance fog test must still find sections to leave out at spawn (31.5 a frame when measured)"
+    },
+    {
+      "setting": "approx.fog-sections",
+      "scene": "spawn",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "terrainTrianglesPerFrame",
+      "max": 0.96,
+      "reason": "leaving those sections out must cut terrain triangles (0.92-0.93 when measured; 0.96 leaves room for the camera's pose)"
+    },
+    {
+      "setting": "approx.fog-sections",
+      "scene": "spawn",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "frameMsAvg",
+      "max": 1.0,
+      "reason": "it must not make frames slower (0.92-0.93 when measured)"
+    },
+    {
+      "setting": "approx.fog-sections",
+      "scene": "flythrough",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "sectionsInFogPerFrame",
+      "value": "on",
+      "min": 5,
+      "reason": "the moving fly-through must also find fogged sections (19-26 a frame when measured)"
+    }
+  ]
+}

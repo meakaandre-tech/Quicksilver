@@ -13,10 +13,12 @@ public abstract class EffectsSkyMixin {
     @Inject(method = "render", at = @At("HEAD"))
     private void quicksilver$skyStart(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.SKY);
+        com.meakaandre.quicksilver.bench.StageProfile.push("sky");
     }
 
     @Inject(method = "render", at = @At("RETURN"))
     private void quicksilver$skyEnd(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.OTHER);
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

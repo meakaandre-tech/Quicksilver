@@ -456,6 +456,9 @@ def main():
     for sfile in sorted(glob.glob("src/main/resources/quicksilver/scenes/*.json")):
         suite = json.load(open(sfile))
         name = suite["suite"]
+        # package A: the Create + Flywheel smoke suite has its own job and check (ci/create-smoke.py), no pictures
+        if suite.get("ciSmokeOnly"):
+            continue
         if SUITES is not None and name not in SUITES:
             continue
         scenes = [s for s in suite["scenes"]]

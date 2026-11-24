@@ -28,11 +28,13 @@ public abstract class GuiRendererMixin {
     @Inject(method = "render", at = @At("HEAD"))
     private void quicksilver$guiRender(CallbackInfo ci) {
         GuiStats.renderStart();
+        com.meakaandre.quicksilver.bench.StageProfile.push("gui");
     }
 
     @Inject(method = "render", at = @At("RETURN"))
     private void quicksilver$guiRenderEnd(CallbackInfo ci) {
         GuiStats.renderEnd();
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 
     @Inject(method = "draw", at = @At("HEAD"))

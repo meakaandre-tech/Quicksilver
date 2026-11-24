@@ -24,6 +24,7 @@ public abstract class EffectsParticleEngineMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void quicksilver$tickStart(CallbackInfo ci) {
         EffectsStats.particleTickStart();
+        com.meakaandre.quicksilver.bench.StageProfile.push("particles.tick");
     }
 
     @Inject(method = "tick", at = @At("RETURN"))
@@ -31,11 +32,13 @@ public abstract class EffectsParticleEngineMixin {
         int alive = 0;
         for (ParticleGroup<?> g : particles.values()) alive += g.size();
         EffectsStats.particleTickEnd(alive);
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 
     @Inject(method = "extract", at = @At("HEAD"))
     private void quicksilver$extractStart(CallbackInfo ci) {
         EffectsStats.extractStart();
+        com.meakaandre.quicksilver.bench.StageProfile.push("particles.extract");
     }
 
     @Inject(method = "extract", at = @At("RETURN"))
@@ -46,5 +49,6 @@ public abstract class EffectsParticleEngineMixin {
             if (g instanceof QuadParticleCountAccessor q) drawn += q.quicksilver$particleCount();
         }
         EffectsStats.extractEnd(drawn);
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

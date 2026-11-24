@@ -226,6 +226,9 @@ final class FluidMesher {
         TextureAtlasSprite flowing = model.flowingMaterial().sprite();
         TextureAtlasSprite overlay = model.overlayMaterial() == null ? null : model.overlayMaterial().sprite();
         layer = layerIndex(model.layer());
+        // package A, option simple-water: water in the solid layer, drawn opaque (no blending, no sorting)
+        if (layer == SectionWriter.TRANSLUCENT && level.simpleWater
+            && fluidState.is(net.minecraft.tags.FluidTags.WATER)) layer = SectionWriter.SOLID;
         BlockTintSource tintSource = model.tintSource();
         int tint = tintSource == null ? -1 : tintSource.colorInWorld(own, level, pos);
         float r = (float) (tint >> 16 & 0xFF) / 255.0F, g = (float) (tint >> 8 & 0xFF) / 255.0F, b = (float) (tint & 0xFF) / 255.0F;

@@ -57,6 +57,8 @@ public final class FrameRecorder {
     /** Called from the frontend surface's present, on the render thread. */
     public static void onPresent() {
         GpuCounters.resetDepth();
+        StageProfile.frameEnd();
+        SpeedWindow.onPresent();
         com.meakaandre.quicksilver.gui.GuiStats.frameEnd();
         com.meakaandre.quicksilver.entity.FeatureStats.frameEnd();
         if (!recording) return;

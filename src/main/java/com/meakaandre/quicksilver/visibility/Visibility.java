@@ -204,6 +204,9 @@ public final class Visibility {
     public static boolean entityVisible(Entity entity, boolean vanilla, double camX, double camY, double camZ, float partialTick) {
         entityHookSeen = true;
         if (!vanilla) return false;
+        // package A, option entity-distance (players always drawn)
+        if (com.meakaandre.quicksilver.speed.Speed.ENTITY_DISTANCE.on() && !(entity instanceof net.minecraft.world.entity.player.Player)
+            && com.meakaandre.quicksilver.speed.Speed.entityTooFar(entity.distanceToSqr(camX, camY, camZ))) return false;
         VisibilityStats.entityConsidered();
         if (!ready) return true;
         if (spent >= BUDGET_NANOS) {
@@ -243,6 +246,13 @@ public final class Visibility {
     /** False to hide a block entity vanilla is about to draw (from a visible section's list). */
     public static boolean blockEntityVisible(BlockEntityRenderDispatcher dispatcher, BlockEntity be) {
         blockEntityHookSeen = true;
+        // package A, option block-entity-distance
+        if (com.meakaandre.quicksilver.speed.Speed.BLOCK_ENTITY_DISTANCE.on()) {
+            BlockPos bp = be.getBlockPos();
+            double dx = bp.getX() + 0.5 - com.meakaandre.quicksilver.speed.Speed.camX, dy = bp.getY() + 0.5 - com.meakaandre.quicksilver.speed.Speed.camY,
+                dz = bp.getZ() + 0.5 - com.meakaandre.quicksilver.speed.Speed.camZ;
+            if (com.meakaandre.quicksilver.speed.Speed.blockEntityTooFar(dx * dx + dy * dy + dz * dz)) return false;
+        }
         VisibilityStats.blockEntityConsidered();
         if (!ready) return true;
         if (spent >= BUDGET_NANOS) {

@@ -25,7 +25,7 @@ import net.minecraft.core.SectionPos;
  * </ul>
  * Without a camera position (its hook didn't run) the order is visible first, then staging order.
  */
-final class UploadBudget {
+public final class UploadBudget {
     static final long BYTES_PER_MS = 64L << 10;
     static final long MIN_BYTES = 256L << 10;
     static final long MAX_BYTES = 2L << 20;
@@ -140,7 +140,11 @@ final class UploadBudget {
         windowStagedMaxBytes = Math.max(windowStagedMaxBytes, stagedBytes);
     }
 
+    /** Package A: meshes waiting for upload at the last frame (the speed bench waits for none). */
+    public static volatile int lastWaiting;
+
     static void frame(long bytes, int meshes, int exempt, int waiting, long budget, long nanos) {
+        lastWaiting = waiting;
         if (DEBUG_LOG && (waiting > 0) != wasWaiting) {
             wasWaiting = waiting > 0;
             com.meakaandre.quicksilver.QuicksilverClient.LOG.info(wasWaiting ? "Quicksilver uploads: waiting ({} meshes)" : "Quicksilver uploads: caught up", waiting);

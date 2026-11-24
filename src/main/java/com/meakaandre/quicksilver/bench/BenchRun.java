@@ -16,7 +16,7 @@ import net.minecraft.network.chat.Component;
  * right-click waits for the player to open it.
  */
 public final class BenchRun {
-    private enum Stage { SETUP, SETTLE, WAIT_SCREEN, MEASURE, DONE }
+    private enum Stage { SETUP, SETTLE, WAIT_SCREEN, SPEED, MEASURE, DONE }
 
     private static BenchRun current;
 
@@ -33,6 +33,8 @@ public final class BenchRun {
     private double px, py, pz;
     private float yaw, pitch;
     private final BenchReport.Memory memory = new BenchReport.Memory();
+    /** Package A: the speed bench, in CI's speed runs, before the main window. */
+    private SpeedBench speed;
 
     private BenchRun(Scenes.Scene scene, int seconds) {
         this.scene = scene;
@@ -114,6 +116,15 @@ public final class BenchRun {
                     abort("the " + scene.screen.expect + " screen was not opened within 2 minutes");
                 }
             }
+            case SPEED -> {
+                pin(player, now);
+                if (speed.step(now)) {
+                    speed = null;
+                    measureStart = now;
+                    pin(player, now); // back at the scene's starting pose
+                    startMain(now);
+                }
+            }
             case MEASURE -> {
                 pin(player, now);
                 runSteps(player, now);
@@ -136,6 +147,21 @@ public final class BenchRun {
         pz = player.getZ();
         yaw = player.getYRot();
         pitch = player.getXRot();
+        if (SpeedBench.wanted(scene)) {
+            stage = Stage.SPEED;
+            measureStart = now;
+            speed = new SpeedBench(this, scene);
+            return;
+        }
+        startMain(now);
+    }
+
+    /** Package A: the speed bench's windows each start the scene's camera path again from its starting pose. */
+    void restartPath(long now) {
+        measureStart = now;
+    }
+
+    private void startMain(long now) {
         stage = Stage.MEASURE;
         measureStart = now;
         nextStep = 0;
@@ -189,6 +215,10 @@ public final class BenchRun {
     }
 
     private void abort(String why) {
+        if (speed != null) {
+            speed.restore();
+            speed = null;
+        }
         FrameRecorder.stop();
         stage = Stage.DONE;
         current = null;

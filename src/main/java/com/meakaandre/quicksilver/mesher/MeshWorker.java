@@ -76,6 +76,9 @@ final class MeshWorker {
     int lastNonAir, lastModels, lastDrawn, lastFluids, lastQuads;
     long lastSnap, lastLoop, lastFinish;
 
+    /** Package A, option opaque-leaves: set while a leaves block is drawn with the option on. */
+    boolean leavesSolid;
+
     /** Why the last {@link #compile} returned null (the section goes to vanilla's compiler). */
     String declined;
 
@@ -89,6 +92,8 @@ final class MeshWorker {
             blocks = r.altModelBlockRenderer(ao, true, colors);
             java.util.function.Consumer<net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadView> sink = quad -> {
                 int layer = FluidMesher.layerIndex(quad.chunkLayer());
+                // package A, option opaque-leaves: the block being drawn is leaves, drawn into the solid layer
+                if (leavesSolid && layer == SectionWriter.CUTOUT) layer = SectionWriter.SOLID;
                 SectionWriter w = writer;
                 if (layer < 0) {
                     if (w.unstorable == null) w.unstorable = "a quad in layer " + quad.chunkLayer();
@@ -144,6 +149,10 @@ final class MeshWorker {
             VisGraph visGraph = new VisGraph();
             BlockPos.MutableBlockPos p = pos;
             int nonAir = 0, modelCount = 0, drawn = 0, fluidCount = 0;
+            boolean opaqueLeaves = com.meakaandre.quicksilver.speed.Speed.OPAQUE_LEAVES.on();
+            snap.opaqueLeaves = opaqueLeaves;
+            snap.simpleWater = com.meakaandre.quicksilver.speed.Speed.SIMPLE_WATER.on();
+            leavesSolid = false;
             for (int z = 0; z < 16; z++) {
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
@@ -173,6 +182,7 @@ final class MeshWorker {
                             modelCount++;
                             if (!hidden.drawsNothing(models, model, snap, SectionSnapshot.localIndex(x, y, z))) {
                                 drawn++;
+                                leavesSolid = opaqueLeaves && state.is(net.minecraft.tags.BlockTags.LEAVES);
                                 blockRenderer.tesselateBlock(out, x, y, z, snap, p, state, model, state.getSeed(p));
                             }
                         }

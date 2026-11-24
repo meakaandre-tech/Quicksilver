@@ -15,10 +15,12 @@ public abstract class EffectsWeatherMixin {
     @Inject(method = {RENDER, "renderOit"}, at = @At("HEAD"))
     private void quicksilver$weatherStart(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.WEATHER);
+        com.meakaandre.quicksilver.bench.StageProfile.push("weather");
     }
 
     @Inject(method = {RENDER, "renderOit"}, at = @At("RETURN"))
     private void quicksilver$weatherEnd(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.OTHER);
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

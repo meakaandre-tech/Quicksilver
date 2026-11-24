@@ -26,5 +26,11 @@ public abstract class FeatureGroupMixin {
     @Inject(method = "execute", at = @At("HEAD"))
     private void quicksilver$featureGroup(CallbackInfo ci) {
         FeatureStats.group(featureType == null ? null : featureType.name(), strictlyOrdered);
+        if (com.meakaandre.quicksilver.bench.StageProfile.active()) com.meakaandre.quicksilver.bench.StageProfile.push("features." + (featureType == null ? "?" : featureType.name()));
+    }
+
+    @Inject(method = "execute", at = @At("RETURN"))
+    private void quicksilver$featureGroupEnd(CallbackInfo ci) {
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

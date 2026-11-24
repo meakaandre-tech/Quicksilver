@@ -50,11 +50,11 @@ public final class CounterAudit implements IMixinConfigPlugin {
             phases.add("quicksilver$feature" + n + "End");
         }
         EXPECTED.put("net.minecraft.client.renderer.feature.FeatureRenderDispatcher$PreparedFrame", phases);
-        EXPECTED.put("net.minecraft.client.renderer.feature.FeatureRenderDispatcher$PreparedGroup", List.of("quicksilver$featureGroup"));
+        EXPECTED.put("net.minecraft.client.renderer.feature.FeatureRenderDispatcher$PreparedGroup", List.of("quicksilver$featureGroup", "quicksilver$featureGroupEnd"));
         EXPECTED.put("net.minecraft.client.renderer.rendertype.PreparedRenderType", List.of("quicksilver$featureDraw"));
         EXPECTED.put("net.minecraft.client.renderer.rendertype.RenderType", List.of("quicksilver$featureTransforms"));
-        EXPECTED.put("net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher", List.of("quicksilver$blockEntitySubmit"));
-        EXPECTED.put("net.minecraft.client.renderer.entity.EntityRenderDispatcher", List.of("quicksilver$entitySubmit"));
+        EXPECTED.put("net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher", List.of("quicksilver$blockEntitySubmit", "quicksilver$blockEntitySubmitEnd"));
+        EXPECTED.put("net.minecraft.client.renderer.entity.EntityRenderDispatcher", List.of("quicksilver$entitySubmit", "quicksilver$entitySubmitEnd"));
         // package 8: what vanilla's effects draw and how many particles it keeps (bench "effects" block)
         EXPECTED.put("net.minecraft.client.renderer.SkyRenderer", List.of("quicksilver$skyStart", "quicksilver$skyEnd"));
         EXPECTED.put("net.minecraft.client.renderer.WeatherEffectRenderer", List.of("quicksilver$weatherStart", "quicksilver$weatherEnd"));

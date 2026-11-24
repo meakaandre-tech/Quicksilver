@@ -104,6 +104,11 @@ public final class MesherStats {
         return n % 2 == 1 ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
     }
 
+    /** Package A: sections meshed by Quicksilver since start (the speed bench waits for meshing to settle). */
+    public static long meshedCount() {
+        return MESHED.get();
+    }
+
     static void meshed(long nanos) {
         ServerAware.meshed();
         MESHED.incrementAndGet();

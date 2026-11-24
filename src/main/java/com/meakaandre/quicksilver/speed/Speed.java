@@ -1,0 +1,319 @@
+package com.meakaandre.quicksilver.speed;
+
+import com.google.gson.JsonObject;
+import com.meakaandre.quicksilver.QuicksilverClient;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.atomic.LongAdder;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+
+/**
+ * Package A: approximations and speed options, one switch each.
+ *
+ * <p>Two kinds (design doc, look rule, 2026-11-23): an <b>approximation</b> ({@code approx.*}) changes nothing you can
+ * notice in play and may be on by default where it was measured to buy speed; an <b>option</b> ({@code option.*})
+ * visibly simplifies the picture and is always off by default. Each is a line in {@code config/quicksilver.properties}
+ * (read at start-up) and can be switched in game with {@code /quicksilver speed <name> on|off|<number>} (also
+ * {@code /qs}); {@code /qs speed} lists them. The settings screen is package 9's.
+ *
+ * <p>In CI's measure runs (Quicksilver loaded as a vanilla stand-in) every one stays off and can't be switched on.
+ */
+public final class Speed {
+    /** One switch. {@code value} 0 is off; booleans are 0 or 1, numbers are a distance or a share. */
+    public static final class Setting {
+        public final String key, what, unit;
+        public final boolean approximation, remesh;
+        public final int defaultValue, min, max;
+        volatile int value;
+
+        Setting(String key, boolean approximation, boolean remesh, int defaultValue, int min, int max, String unit, String what) {
+            this.key = key;
+            this.approximation = approximation;
+            this.remesh = remesh;
+            this.defaultValue = defaultValue;
+            this.min = min;
+            this.max = max;
+            this.unit = unit;
+            this.what = what;
+            this.value = defaultValue;
+        }
+
+        public boolean on() {
+            return value != 0;
+        }
+
+        public int value() {
+            return value;
+        }
+
+        boolean bool() {
+            return max == 1;
+        }
+    }
+
+    private static final Map<String, Setting> ALL = new LinkedHashMap<>();
+
+    // ---- approximations (invisible; on by default only where measured to help, see docs/progress.md, package A)
+
+    /** Terrain sections wholly inside the render-distance fog (drawn in the fog's colour) are not drawn. */
+    public static final Setting FOG_SECTIONS = add(new Setting("approx.fog-sections", true, false, 1, 0, 1, "",
+        "terrain sections wholly inside the render-distance fog are not drawn"));
+
+    // ---- options (visible simplifications; always off by default)
+
+    public static final Setting OPAQUE_LEAVES = add(new Setting("option.opaque-leaves", false, true, 0, 0, 1, "",
+        "leaves drawn opaque (no see-through gaps), and leaf faces against other leaves left out"));
+    public static final Setting SIMPLE_WATER = add(new Setting("option.simple-water", false, true, 0, 0, 1, "",
+        "water drawn opaque, in the solid layer (no blending, no sorting; you can't see into it)"));
+    public static final Setting FAR_CUTOUT = add(new Setting("option.far-detail", false, false, 0, 0, 64, "chunks",
+        "beyond this many chunks, the cutout layer (grass, flowers, crops, and leaves unless opaque-leaves is on) is not drawn"));
+    public static final Setting ENTITY_DISTANCE = add(new Setting("option.entity-distance", false, false, 0, 0, 512, "blocks",
+        "entities (not players) beyond this many blocks are not drawn"));
+    public static final Setting BLOCK_ENTITY_DISTANCE = add(new Setting("option.block-entity-distance", false, false, 0, 0, 512, "blocks",
+        "block entities (chests, signs, banners, heads...) beyond this many blocks are not drawn"));
+    public static final Setting PARTICLE_DISTANCE = add(new Setting("option.particle-distance", false, false, 0, 0, 512, "blocks",
+        "particles that start beyond this many blocks from the camera are not made"));
+    public static final Setting PARTICLE_DENSITY = add(new Setting("option.particle-density", false, false, 100, 1, 100, "%",
+        "only this share of new particles is made (100: all)"));
+
+    /** Counted while a speed bench window measures (bench only). */
+    public static final LongAdder SECTIONS_IN_FOG = new LongAdder(), SECTIONS_SEEN = new LongAdder(), CUTOUT_SKIPPED = new LongAdder(),
+        ENTITIES_HIDDEN = new LongAdder(), BLOCK_ENTITIES_HIDDEN = new LongAdder(), PARTICLES_DROPPED = new LongAdder(),
+        TERRAIN_TRIANGLES = new LongAdder();
+    public static volatile boolean counting;
+
+    private static boolean loaded, locked;
+
+    private Speed() {
+    }
+
+    private static Setting add(Setting s) {
+        ALL.put(s.key, s);
+        return s;
+    }
+
+    public static Map<String, Setting> all() {
+        return ALL;
+    }
+
+    /** Reads every switch from {@code config/quicksilver.properties} (missing lines keep their defaults). */
+    public static synchronized void load() {
+        if (loaded) return;
+        loaded = true;
+        if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
+            locked = true;
+            for (Setting s : ALL.values()) s.value = s.key.equals(PARTICLE_DENSITY.key) ? 100 : 0;
+            QuicksilverClient.LOG.info("Quicksilver speed: every approximation and option off (measure run)");
+            return;
+        }
+        Path file = FabricLoader.getInstance().getConfigDir().resolve("quicksilver.properties");
+        Properties p = new Properties();
+        if (Files.exists(file)) {
+            try (InputStream in = Files.newInputStream(file)) {
+                p.load(in);
+            } catch (IOException e) {
+                QuicksilverClient.LOG.warn("Quicksilver speed: could not read {}; every switch keeps its default", file, e);
+            }
+        }
+        StringBuilder log = new StringBuilder();
+        for (Setting s : ALL.values()) {
+            String v = p.getProperty(s.key);
+            if (v != null) {
+                Integer parsed = parse(s, v.trim());
+                if (parsed == null) {
+                    QuicksilverClient.LOG.warn("Quicksilver speed: {}={} in {} is not valid; it stays at its default", s.key, v, file);
+                } else {
+                    s.value = parsed;
+                }
+            }
+            if (log.length() > 0) log.append(", ");
+            log.append(s.key).append('=').append(show(s));
+        }
+        QuicksilverClient.LOG.info("Quicksilver speed: {}", log);
+    }
+
+    static Integer parse(Setting s, String v) {
+        if (v.equalsIgnoreCase("on") || v.equalsIgnoreCase("true")) return s.bool() ? 1 : null;
+        if (v.equalsIgnoreCase("off") || v.equalsIgnoreCase("false")) return s.key.equals(PARTICLE_DENSITY.key) ? 100 : 0;
+        try {
+            int n = Integer.parseInt(v);
+            if (n == 0 && !s.key.equals(PARTICLE_DENSITY.key)) return 0;
+            if (n < s.min || n > s.max) return null;
+            return n;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    public static String show(Setting s) {
+        if (s.bool()) return s.on() ? "on" : "off";
+        if (s.key.equals(PARTICLE_DENSITY.key)) return s.value + "%";
+        return s.on() ? s.value + " " + s.unit : "off";
+    }
+
+    /**
+     * Sets a switch (the command, or the speed bench). Re-meshes the world if the switch changes meshes. Returns why not,
+     * or null.
+     */
+    public static String set(Setting s, int value) {
+        if (locked) return "switches stay off in a measure run";
+        boolean offValue = value == 0 || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
+        if (!offValue && (value < s.min || value > s.max)) return "takes " + s.min + "-" + s.max + (s.unit.isEmpty() ? "" : " " + s.unit);
+        if (s.value == value) return null;
+        s.value = value;
+        QuicksilverClient.LOG.info("Quicksilver speed: {} = {}", s.key, show(s));
+        if (s.remesh) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.levelExtractor != null) mc.levelExtractor.allChanged();
+        }
+        return null;
+    }
+
+    // ---- checks used by the modules (cheap: called per section, entity or particle)
+
+    /** The camera of the frame being extracted (render thread; from the terrain module's camera hook). */
+    public static volatile double camX, camY, camZ;
+    private static volatile boolean cameraKnown;
+
+    /** Whether the terrain module's camera hook has run (the distance tests need it). */
+    public static boolean cameraKnown() {
+        return cameraKnown;
+    }
+
+    public static void camera(double x, double y, double z) {
+        camX = x;
+        camY = y;
+        camZ = z;
+        cameraKnown = true;
+    }
+
+    /** Particle density: of every 100 new particles, keeps {@code density}, spread evenly (an error accumulator). */
+    private static int densityAcc;
+
+    /** True if a new particle at this position is not to be made (particle density or distance). */
+    public static boolean dropNewParticle(double x, double y, double z) {
+        int d = PARTICLE_DENSITY.value;
+        if (d < 100) {
+            densityAcc += d;
+            if (densityAcc < 100) {
+                if (counting) PARTICLES_DROPPED.increment();
+                return true;
+            }
+            densityAcc -= 100;
+        }
+        int far = PARTICLE_DISTANCE.value;
+        if (far > 0 && cameraKnown) {
+            double dx = x - camX, dy = y - camY, dz = z - camZ;
+            if (dx * dx + dy * dy + dz * dz > (double) far * far) {
+                if (counting) PARTICLES_DROPPED.increment();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True if an entity at this distance (squared, blocks) from the camera is not to be drawn (entity distance). */
+    public static boolean entityTooFar(double distSq) {
+        int far = ENTITY_DISTANCE.value;
+        if (far > 0 && distSq > (double) far * far) {
+            if (counting) ENTITIES_HIDDEN.increment();
+            return true;
+        }
+        return false;
+    }
+
+    /** As {@link #entityTooFar}, for block entities. */
+    public static boolean blockEntityTooFar(double distSq) {
+        int far = BLOCK_ENTITY_DISTANCE.value;
+        if (far > 0 && cameraKnown && distSq > (double) far * far) {
+            if (counting) BLOCK_ENTITIES_HIDDEN.increment();
+            return true;
+        }
+        return false;
+    }
+
+    // ---- command
+
+    public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher) {
+        for (String name : new String[] {"quicksilver", "qs"}) {
+            LiteralArgumentBuilder<FabricClientCommandSource> speed = ClientCommands.literal("speed").executes(c -> list(c.getSource()));
+            speed.then(ClientCommands.argument("name", StringArgumentType.word())
+                .suggests((c, b) -> {
+                    for (Setting s : ALL.values()) b.suggest(s.key);
+                    return b.buildFuture();
+                })
+                .executes(c -> show(c.getSource(), StringArgumentType.getString(c, "name")))
+                .then(ClientCommands.argument("value", StringArgumentType.word())
+                    .suggests((c, b) -> {
+                        b.suggest("on");
+                        b.suggest("off");
+                        return b.buildFuture();
+                    })
+                    .executes(c -> setCommand(c.getSource(), StringArgumentType.getString(c, "name"), StringArgumentType.getString(c, "value")))));
+            dispatcher.register(ClientCommands.literal(name).then(speed));
+        }
+    }
+
+    private static Setting find(String name) {
+        Setting s = ALL.get(name);
+        if (s != null) return s;
+        for (Setting t : ALL.values()) if (t.key.endsWith("." + name)) return t;
+        return null;
+    }
+
+    private static int list(FabricClientCommandSource src) {
+        src.sendFeedback(Component.literal("[Quicksilver] Speed switches (approx.* are invisible, option.* change the picture):"));
+        for (Setting s : ALL.values()) src.sendFeedback(Component.literal("  " + s.key + " = " + show(s) + ": " + s.what));
+        return 1;
+    }
+
+    private static int show(FabricClientCommandSource src, String name) {
+        Setting s = find(name);
+        if (s == null) {
+            src.sendError(Component.literal("[Quicksilver] No speed switch called " + name + " (/qs speed lists them)."));
+            return 0;
+        }
+        src.sendFeedback(Component.literal("[Quicksilver] " + s.key + " = " + show(s) + ": " + s.what));
+        return 1;
+    }
+
+    private static int setCommand(FabricClientCommandSource src, String name, String value) {
+        Setting s = find(name);
+        if (s == null) {
+            src.sendError(Component.literal("[Quicksilver] No speed switch called " + name + " (/qs speed lists them)."));
+            return 0;
+        }
+        Integer v = parse(s, value);
+        if (v == null) {
+            src.sendError(Component.literal("[Quicksilver] " + s.key + " takes " + (s.bool() ? "on or off" : "off or " + s.min + "-" + s.max + " " + s.unit) + "."));
+            return 0;
+        }
+        String why = set(s, v);
+        if (why != null) {
+            src.sendError(Component.literal("[Quicksilver] " + s.key + ": " + why + "."));
+            return 0;
+        }
+        src.sendFeedback(Component.literal("[Quicksilver] " + s.key + " = " + show(s) + " (until restart; put it in config/quicksilver.properties to keep it)."));
+        return 1;
+    }
+
+    /** The bench's block: every switch's value. */
+    public static JsonObject json() {
+        JsonObject o = new JsonObject();
+        for (Setting s : ALL.values()) o.addProperty(s.key, show(s));
+        return o;
+    }
+}

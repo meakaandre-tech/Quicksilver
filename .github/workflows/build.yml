@@ -26,6 +26,7 @@ jobs:
       server_suites: ${{ steps.m.outputs.server_suites }}
       logs: ${{ steps.m.outputs.logs }}
       quick_vulkan: ${{ steps.m.outputs.quick_vulkan }}
+      extra_runs: ${{ steps.m.outputs.extra_runs }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +48,7 @@ jobs:
           # (SIFTEC is cancelled).
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0}]}'
+            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":0},{"suite":"core","run":"speed-full","shard":0},{"suite":"create","run":"quicksilver-smoke","shard":0}]}'
             server_suites='["core","terralith"]'
           else
             matrix='{"suite":["core"],"run":["quicksilver-old","quicksilver-2p-old","vanilla-a","vanilla-b"],"shard":[1,2]}'
@@ -57,12 +58,23 @@ jobs:
               matrix='{"suite":["core"],"run":["quicksilver-old","quicksilver-2p-old","quicksilver-vk","vanilla-a","vanilla-b","vanilla-vk"],"shard":[1,2]}'
               echo "quick_vulkan=1" >> "$GITHUB_OUTPUT";;
             esac
+            # package A: [speed] adds the two speed runs (ci/speed-compare.py) to a quick run, after [vulkan] (which sets
+            # the whole matrix), so the two can be combined
+            case "$MESSAGE" in *"[speed]"*)
+              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"core","run":"speed-old","shard":0},{"suite":"core","run":"speed-full","shard":0}]); print(json.dumps(m,separators=(",",":")))');;
+            esac
+            # package A: [create] adds the Create + Flywheel smoke job (ci/create-smoke.py) to a quick run
+            case "$MESSAGE" in *"[create]"*)
+              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).append({"suite":"create","run":"quicksilver-smoke","shard":0}); print(json.dumps(m,separators=(",",":")))');;
+            esac
             # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); Terralith in full mode, or with
             # [terralith] in the commit message (P2-1)
             suites='"core"'
             case "$MESSAGE" in *"[terralith]"*) suites="$suites,\"terralith\"";; esac
             server_suites="[$suites]"
           fi
+          # package A: the matrix's speed and smoke runs, so their checks fail on a run that produced nothing
+          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke"))))')" >> "$GITHUB_OUTPUT"
           echo "server_suites=$server_suites" >> "$GITHUB_OUTPUT"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
@@ -334,7 +346,15 @@ jobs:
           python3 -I ci/server/compare-p2.py client /tmp/res /tmp/ci/compare
           p2=$?
           cat /tmp/ci/compare/p2-client.md >> "$GITHUB_STEP_SUMMARY"
-          echo "status=$(( st || p2 ))" >> "$GITHUB_OUTPUT"
+          # package A: the speed runs' profile, on/off table and gates (ci/speed-gates.json)
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 -I ci/speed-compare.py /tmp/res /tmp/ci/compare > /dev/null
+          sp=$?
+          cat /tmp/ci/compare/speed.md >> "$GITHUB_STEP_SUMMARY"
+          # package A: the Create + Flywheel smoke job
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 -I ci/create-smoke.py /tmp/res /tmp/ci/compare > /dev/null
+          cs=$?
+          cat /tmp/ci/compare/create-smoke.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$(( st || p2 || sp || cs ))" >> "$GITHUB_OUTPUT"
       - name: Publish logs, bench results and screenshots to the branch's ci-logs-<branch> branch
         if: always()
         shell: bash

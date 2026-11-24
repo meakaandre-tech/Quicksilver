@@ -3,6 +3,24 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package A: speed runs, speed gates, Create + Flywheel smoke (2026-11-24)
+
+- **Approximation limits:** unchanged. `approx.fog-sections` (on by default) leaves out terrain sections wholly inside
+  the render-distance fog (only sections wholly below the camera's eye); with it on, every shot stayed under its
+  approximation limit in every profile (full runs in `docs/progress.md`, "Package A"; one old-GPU nether shot went over on
+  vanilla's own random particles and was not raised), so no shot's limit was raised. A later approximation that changes pixels raises its
+  shot's limit in `ci/approx-limits.json` with the reason, always below the "Smallest thing each scene must catch".
+- **Speed runs** `speed-old` and `speed-full` (full mode; `[speed]` in a quick run): Quicksilver with its defaults plays
+  the scenes with a `speedAb` list, frame limit, vsync and inactivity limit off, and its speed bench measures a stage
+  profile and each listed switch off against on (three rounds, medians). Not compared on pictures. `ci/speed-compare.py`
+  writes `compare/speed.md` and fails on a speed bench problem (a switch that couldn't be set, meshing that didn't
+  settle), a missing speed run in full mode, or a gate in `ci/speed-gates.json`.
+- **Speed gates** (each default-on approximation, so it can't silently stop helping): `approx.fog-sections` in spawn,
+  both speed runs: sections in fog per frame at least 10, terrain triangles on/off at most 0.96, frame time on/off at
+  most 1.00; in the fly-through at least 5 sections in fog per frame. Options (off by default) are reported only.
+- **Create + Flywheel smoke** (suite `create`, run `quicksilver-smoke`; full mode, `[create]` in a quick run):
+  `ci/create-smoke.py`, rules in `docs/progress.md`, "Package A". Pack set `create` in `ci/pack-lock.txt`.
+
 ## Package L: lighter CI and the new look rule (Andre, 2026-11-23)
 
 **These rules replace the older ones below wherever they differ; the sections after this one are history where they

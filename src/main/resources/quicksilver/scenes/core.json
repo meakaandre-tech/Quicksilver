@@ -14,6 +14,9 @@
   "scenes": [
     {
       "id": "spawn",
+      "speedAb": ["approx.fog-sections", "option.opaque-leaves", "option.far-detail=4", "option.particle-distance=24", "option.particle-density=50"],
+      "speedEmit": ["particle minecraft:end_rod 96.5 158 -5 8 3 8 0.01 300 force @a"],
+      "speedNote": "Package A: CI's speed runs (ci/client-run.sh speed-*) measure these switches here, off against on (bench/SpeedBench); speedEmit makes particles twice a second during the speed windows only (end rods 20-30 blocks in front of the camera), for the particle options.",
       "title": "World spawn of seed 12345, 8 chunks, daylight (fixed camera height above the terrain)",
       "renderDistance": 8,
       "settleSeconds": 20,
@@ -23,6 +26,7 @@
     },
     {
       "id": "flythrough",
+      "speedAb": ["approx.fog-sections", "option.far-detail=6"],
       "title": "Fly-through over fresh terrain, 12 chunks, scripted path north at 10 blocks/s",
       "renderDistance": 12,
       "settleSeconds": 20,
@@ -43,6 +47,7 @@
     },
     {
       "id": "water_glass",
+      "speedAb": ["option.simple-water"],
       "ciVanillaDrawGate": "median",
       "ciVanillaDrawGateReason": "Its average follows the runner's frame rate: below 20 fps every frame lines up with a game tick and draws the tick's extra draws, above it some don't. run 40180107484 attempt 2, Vulkan: Quicksilver 124.0 average / 124 median at 18.57 fps, vanilla's measure run 103.78 / 124 at 24.15 fps. Gated against vanilla on the median (Andre's rule, 2026-10-25).",
       "title": "Water, ice and stained glass in a glass tank",
@@ -76,6 +81,7 @@
     },
     {
       "id": "mobs",
+      "speedAb": ["option.entity-distance=16"],
       "ciVanillaDrawGate": "median",
       "ciVanillaDrawGateReason": "Its average follows the runner's frame rate: below 20 fps every frame lines up with a game tick and draws the tick's extra draws, above it some don't. run 40193520268, Vulkan: Quicksilver 134.0 / 134 at 18.81 fps, vanilla 115.65 / 134 at 23.72 fps (limit x 1.10 + 2: 129.22; also run 40180107484 attempt 2: 114.99 / 134 at 23.83 fps against 95.79 / 134 at 29.78 fps). Gated against vanilla on the median (Andre's rule, 2026-10-25).",
       "title": "A crowd of 64 mobs (no AI, fixed variants, so they hold still and look the same every run)",
@@ -960,6 +966,7 @@
     },
     {
       "id": "block_entities",
+      "speedAb": ["option.block-entity-distance=12"],
       "ciShard": 2,
       "title": "Package 6: a base full of block entities: chests of every kind (single, double, trapped, ender, copper), shulker boxes, standing, wall and hanging signs with text, heads, decorated pots, a bell, beds, standing and wall banners with patterns",
       "renderDistance": 8,

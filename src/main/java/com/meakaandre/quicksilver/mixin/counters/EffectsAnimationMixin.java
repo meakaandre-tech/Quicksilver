@@ -17,10 +17,12 @@ public abstract class EffectsAnimationMixin {
     @Inject(method = "uploadAnimationFrames", at = @At("HEAD"))
     private void quicksilver$animationStart(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.ANIMATION);
+        com.meakaandre.quicksilver.bench.StageProfile.push("animation");
     }
 
     @Inject(method = "uploadAnimationFrames", at = @At("RETURN"))
     private void quicksilver$animationEnd(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.OTHER);
+        com.meakaandre.quicksilver.bench.StageProfile.pop("animation");
     }
 }

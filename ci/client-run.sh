@@ -30,7 +30,12 @@ loader=$(grep '^loader_version' gradle.properties | sed 's/.*= *//')
 fapi=$(grep '^fabric_version' gradle.properties | sed 's/.*= *//')
 suitefile=src/main/resources/quicksilver/scenes/$SUITE.json
 
-case "$RUN" in quicksilver-*|measure-*) qs=1;; *) qs=0;; esac
+case "$RUN" in quicksilver-*|measure-*|speed-*) qs=1;; *) qs=0;; esac
+# package A: speed-old / speed-full run Quicksilver with its defaults and the speed bench (bench/SpeedBench: a stage
+# profile, then each scene's "speedAb" switches off against on, frame limit and vsync off) in the scenes that list
+# switches, in the old-GPU or full profile; no CI checks (verify*) that would slow the frames; not gated on pictures
+# (ci/speed-compare.py reads bench/speed/*.json)
+case "$RUN" in speed-*) speed=1;; *) speed=0;; esac
 # package 4b: bench-plain / bench-sodium load only the bench-only jar (quicksilver-bench, every Quicksilver module out),
 # on plain Fabric or next to Sodium, and bench the scenes in BENCH_SCENES; the server has no Quicksilver
 case "$RUN" in bench-*) benchonly=1;; *) benchonly=0;; esac
@@ -44,7 +49,7 @@ esac
 extra_args=""
 client_jvm=""
 case "$RUN" in *-vk) extra_args="--graphicsBackend vulkan"; echo "Vulkan profile: --graphicsBackend vulkan on lavapipe";; esac
-case "$RUN" in quicksilver-old|quicksilver-2p-old|measure-old) client_jvm="-Dquicksilver.debug.forceIntelMdiIssue=true"; echo "old-GPU Quicksilver run: $client_jvm";; esac
+case "$RUN" in quicksilver-old|quicksilver-2p-old|measure-old|speed-old) client_jvm="-Dquicksilver.debug.forceIntelMdiIssue=true"; echo "old-GPU Quicksilver run: $client_jvm";; esac
 # package 2b (Andre, 2026-11-02): one more old-GPU run with occlusion culling forced to two-phase (auto is still-camera
 # on that path), so the laptop's plain path is tested with the CPU waiting for the GPU too
 case "$RUN" in quicksilver-2p-old) client_jvm="$client_jvm -Dquicksilver.occlusion=two-phase"; echo "two-phase occlusion run: $client_jvm";; esac
@@ -54,7 +59,10 @@ case "$RUN" in quicksilver-2p-old) client_jvm="$client_jvm -Dquicksilver.occlusi
 # every Quicksilver run also checks its translucent draws each frame against vanilla's order and latest sort (package 3;
 # ci/compare.py fails on any miss). TRANSLUCENCY_DRY_RUN=1 leaves translucent terrain with vanilla (noise collection only).
 # and every Quicksilver run runs the renderer's self-test once in the world (package 4; ci/compare.py requires "passed").
-if [ $measure = 1 ]; then
+if [ $speed = 1 ]; then
+  client_jvm="$client_jvm -Dquicksilver.ci.speed=true"
+  echo "speed run JVM properties:$client_jvm"
+elif [ $measure = 1 ]; then
   client_jvm="$client_jvm -Dquicksilver.ci.measureOnly=true"
   echo "measure run JVM properties:$client_jvm"
 elif [ $qs = 1 ]; then
@@ -82,6 +90,14 @@ else
   echo "eula=true" > server/eula.txt
 fi
 if [ $qs = 1 ]; then cp dist/quicksilver.jar server/mods/; fi
+# package A: the Create + Flywheel smoke job (suite create): Create Fly, which carries Flywheel, on the server and the
+# client (the client gets every server jar but Fabric API, below)
+packset=core
+if [ "$SUITE" = create ]; then
+  packset=create
+  PACK_CHECK=partial PACK_REPORT="$OUT/pack-sha256.txt" bash ci/pack-fetch.sh create /tmp/create-jars || { echo "could not fetch Create Fly, or it changed (see above)"; exit 1; }
+  cp /tmp/create-jars/*.jar server/mods/
+fi
 # package 5: CI's pin mod on the server too, in every run alike, for its /qsci command (the kinetics scene's belt and
 # train, which Create has no command for); its mixins are client-only and its command needs Create, so the core
 # suite's server and every other scene are unchanged
@@ -107,7 +123,7 @@ print("measure run: contains_renderer taken out of the jar's fabric.mod.json (In
 PY
 fi
 # the pack lock (ci/pack-lock.txt): this run's server jars, as checked in the world jobs (the hashes go to the logs)
-bash ci/pack-check.sh server/mods core complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
+bash ci/pack-check.sh server/mods $packset complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
 cd server
 # a view distance that covers the 12-chunk fly-through and no console echo in chat
 printf 'level-seed=12345\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
@@ -175,6 +191,14 @@ for g in $groups; do
   shard=${g%%|*}; g=${g#*|}
   rd=${g%%|*}; rest=${g#*|}; opts=${rest%%|*}; ids=$(echo "${rest#*|}" | tr ',' ' ')
   if [ "$SHARD" -gt 0 ] && [ "$shard" != "$SHARD" ]; then echo "session $n: shard $shard, not this job's"; continue; fi
+  if [ $speed = 1 ]; then
+    keep=""
+    for id in $ids; do
+      python3 -c "import json,sys; s=[x for x in json.load(open('$suitefile'))['scenes'] if x['id']=='$id']; sys.exit(0 if s and s[0].get('speedAb') else 1)" && keep="$keep $id"
+    done
+    ids=$(echo $keep)
+    if [ -z "$ids" ]; then echo "session $n: no scene with speedAb, not started"; continue; fi
+  fi
   if [ $benchonly = 1 ]; then
     keep=""
     for id in $ids; do case " $BENCH_SCENES " in *" $id "*) keep="$keep $id";; esac; done
@@ -238,6 +262,7 @@ for g in $groups; do
   cp -r run/crash-reports "$OUT/client-crash-reports$sfx" 2>/dev/null
 done
 mkdir -p "$OUT/bench" && cp run/quicksilver/bench/*.json "$OUT/bench/" 2>/dev/null
+if [ $speed = 1 ]; then mkdir -p "$OUT/speed" && cp run/quicksilver/bench/speed/*.json "$OUT/speed/" 2>/dev/null; fi
 echo "stop" >&3
 for i in $(seq 1 60); do grep -q '^EXIT' server/server.log && break; sleep 2; done
 exec 3>&-

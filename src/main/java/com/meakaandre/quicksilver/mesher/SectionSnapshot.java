@@ -367,8 +367,14 @@ public final class SectionSnapshot implements BlockAndTintGetter, LightLookup {
         return hidden(i, i + NEIGHBOUR[face.ordinal()], face);
     }
 
+    /** Package A, option opaque-leaves (set per section by the mesher): a leaf face against other leaves is hidden. */
+    boolean opaqueLeaves;
+    /** Package A, option simple-water (set per section by the mesher, so one section never mixes both waters). */
+    boolean simpleWater;
+
     private boolean hidden(int i, int j, Direction face) {
         BlockState si = at(i), sj = at(j);
+        if (opaqueLeaves && si.is(net.minecraft.tags.BlockTags.LEAVES) && sj.is(net.minecraft.tags.BlockTags.LEAVES)) return true;
         int a = idx(i), b = idx(j), f = face.ordinal();
         byte known;
         if (a < FACE_TABLE_MAX && b < FACE_TABLE_MAX) {

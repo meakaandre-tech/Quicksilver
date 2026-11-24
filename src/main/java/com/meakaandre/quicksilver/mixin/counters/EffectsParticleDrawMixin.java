@@ -13,10 +13,12 @@ public abstract class EffectsParticleDrawMixin {
     @Inject(method = "executeGroup", at = @At("HEAD"))
     private void quicksilver$particlesStart(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.PARTICLES);
+        com.meakaandre.quicksilver.bench.StageProfile.push("particles.draw");
     }
 
     @Inject(method = "executeGroup", at = @At("RETURN"))
     private void quicksilver$particlesEnd(CallbackInfo ci) {
         GpuCounters.phase(GpuCounters.Phase.OTHER);
+        com.meakaandre.quicksilver.bench.StageProfile.pop();
     }
 }

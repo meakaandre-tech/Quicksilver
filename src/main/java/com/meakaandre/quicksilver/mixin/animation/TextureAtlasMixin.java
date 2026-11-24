@@ -41,6 +41,7 @@ public abstract class TextureAtlasMixin implements AtlasFrames {
         if (Animation.uploadFrames((TextureAtlas) (Object) this)) {
             // the bench's animation phase (set at this method's head by the counters) ends here, as vanilla's body is skipped
             GpuCounters.phase(GpuCounters.Phase.OTHER);
+            com.meakaandre.quicksilver.bench.StageProfile.pop("animation"); // package A: the profile's animation stage, likewise
             ci.cancel();
         }
     }
