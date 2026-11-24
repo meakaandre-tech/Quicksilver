@@ -427,15 +427,36 @@ public final class Harness implements ModInitializer {
         return true;
     }
 
-    /** Every random source from a fixed point: the seed counters, each level's random, each entity's by its UUID. */
+    /**
+     * Every random source from a fixed point: the seed counters, each level's random, and each entity's from its type,
+     * its block and its place among entities of that type on that block (in the order they were made). Until main's run
+     * 45480710531 an entity's random came from its UUID, and UUIDs come from one pinned sequence in the order entities are
+     * made: one extra entity made while the world loaded (an item dropped in a cave at the area's edge, in one
+     * Quicksilver round of the mobs perf scene) moved every later UUID by one, so every mob's random changed and the whole
+     * pen went another way (323 keys). Now an entity's random doesn't depend on how many entities came before it.
+     * Entities that exist at tick 0 and are not in a scripted area's pens are logged (CI ENTITY lines) for the record.
+     */
     private static void reseed(MinecraftServer server) {
         SeedPin.reset(0x5EED_0000L);
         for (ServerLevel level : server.getAllLevels()) {
             level.getRandom().setSeed(SeedPin.mix(level.dimension().identifier().toString().hashCode()));
-            for (Entity e : level.getAllEntities()) {
-                UUID u = e.getUUID();
-                e.getRandom().setSeed(SeedPin.mix(u.getMostSignificantBits() ^ u.getLeastSignificantBits()));
+            List<Entity> all = new ArrayList<>();
+            for (Entity e : level.getAllEntities()) all.add(e);
+            all.sort((a, b) -> Integer.compare(a.getId(), b.getId()));
+            java.util.Map<String, Integer> rank = new java.util.HashMap<>();
+            java.util.Map<String, Integer> types = new java.util.TreeMap<>();
+            for (Entity e : all) {
+                String type = String.valueOf(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()));
+                BlockPos p = e.blockPosition();
+                String key = type + "@" + p.getX() + "," + p.getY() + "," + p.getZ();
+                int n = rank.merge(key, 1, Integer::sum) - 1;
+                e.getRandom().setSeed(SeedPin.mix((key + "#" + n).hashCode()));
+                types.merge(type, 1, Integer::sum);
+                if (type.endsWith(":item") || type.endsWith(":falling_block") || type.endsWith(":experience_orb")) {
+                    LOG.info("CI ENTITY t=0 {} {}", level.dimension().identifier(), key);
+                }
             }
+            if (!all.isEmpty()) LOG.info("CI ENTITIES t=0 {} {}", level.dimension().identifier(), types);
         }
     }
 
