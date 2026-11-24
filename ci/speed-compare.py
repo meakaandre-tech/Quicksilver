@@ -52,9 +52,12 @@ def main():
             prof = j.get("profile") or {}
             lines.append(f"### {scene}: profile ({prof.get('frames')} frames, {prof.get('profiledFrameMs')} ms per profiled frame,"
                          f" GPU waited for at each stage: {prof.get('gpuWaitAtEachStage')})\n")
-            lines.append("| stage | ms/frame | share |\n|---|---|---|")
+            lines.append("| stage | ms/frame | share | draws/frame |\n|---|---|---|---|")
             for s in (prof.get("stages") or [])[:14]:
-                lines.append(f"| {s['stage']} | {s['msPerFrame']} | {s['pct']}% |")
+                lines.append(f"| {s['stage']} | {s['msPerFrame']} | {s['pct']}% | {s.get('drawsPerFrame', '')} |")
+            dsum = sum(s.get("drawsPerFrame") or 0 for s in (prof.get("stages") or []))
+            if dsum:
+                lines.append(f"\nDraw calls per profiled frame: {round(dsum, 2)}")
             lines.append("")
             if j.get("ab"):
                 lines.append("| switch (on value) | frame ms off → on | fps off → on | 1% low off → on | draws/frame | upload B/frame |"
@@ -73,6 +76,17 @@ def main():
                 lines.append(f"| {e['setting']} ({e['onValue']}) | {pair('frameMsAvg')} | {pair('fps')} | {pair('low1pctFps')} |"
                              f" {pair('drawCallsPerFrame')} | {pair('uploadBytesPerFrame')} | {pair('terrainTrianglesPerFrame')} | {', '.join(left) or '-'} |")
             lines.append("")
+            # package B: occlusion culling in each switch's windows
+            occ = [e for e in j.get("ab", []) if "occlusionCulledPct" in e["medians"]]
+            if occ:
+                lines.append("| switch (on value) | occlusion culled % off → on | sections culled/frame off → on |"
+                             " still frames drawn in full off → on |\n|---|---|---|---|")
+                for e in occ:
+                    m = e["medians"]
+                    lines.append(f"| {e['setting']} ({e['onValue']}) | {m['occlusionCulledPct']['off']} → {m['occlusionCulledPct']['on']} |"
+                                 f" {m['occlusionCulledPerFrame']['off']} → {m['occlusionCulledPerFrame']['on']} |"
+                                 f" {m['stillFramesDrawnInFull']['off']} → {m['stillFramesDrawnInFull']['on']} |")
+                lines.append("")
             hooks = j.get("hooks") or {}
             if hooks:
                 lines.append("Speed hooks: " + ", ".join(f"{k} {v}" for k, v in sorted(hooks.items())) + "\n")
@@ -89,7 +103,8 @@ def main():
                     if run in data or not quick or (expected is not None and run in expected):
                         failures.append(f"speed gate {g['setting']} {g['scene']} {run}: no result")
                     continue
-                e = next((x for x in j.get("ab", []) if x["setting"] == g["setting"]), None)
+                e = next((x for x in j.get("ab", []) if x["setting"] == g["setting"]
+                          and ("onValue" not in g or x["onValue"] == g["onValue"])), None)
                 if e is None:
                     failures.append(f"speed gate {g['setting']} {g['scene']} {run}: the switch was not measured")
                     continue

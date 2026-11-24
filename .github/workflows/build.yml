@@ -2,8 +2,9 @@ name: Build
 
 on:
   push:
-    # every branch (design doc, Quick CI); not the ci-logs branches CI itself writes
-    branches-ignore: ["ci-logs", "ci-logs-*"]
+    # every branch (design doc, Quick CI); not the ci-logs branches CI itself writes, nor `cleanup` (trigger-only branch
+    # for .github/workflows/cleanup.yml)
+    branches-ignore: ["ci-logs", "ci-logs-*", "cleanup"]
   workflow_dispatch:
     inputs:
       full:
@@ -354,7 +355,11 @@ jobs:
           CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 -I ci/create-smoke.py /tmp/res /tmp/ci/compare > /dev/null
           cs=$?
           cat /tmp/ci/compare/create-smoke.md >> "$GITHUB_STEP_SUMMARY"
-          echo "status=$(( st || p2 || sp || cs ))" >> "$GITHUB_OUTPUT"
+          # package B: the worst frame of terrain uploads (ci/upload-gates.json)
+          python3 -I ci/upload-compare.py /tmp/res /tmp/ci/compare > /dev/null
+          up=$?
+          cat /tmp/ci/compare/upload.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$(( st || p2 || sp || cs || up ))" >> "$GITHUB_OUTPUT"
       - name: Publish logs, bench results and screenshots to the branch's ci-logs-<branch> branch
         if: always()
         shell: bash

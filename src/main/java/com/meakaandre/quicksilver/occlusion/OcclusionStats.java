@@ -30,8 +30,28 @@ public final class OcclusionStats {
         wReadStart = GpuOcclusion.readBytes();
     }
 
+    // package B: the speed bench's windows (Speed.counting): sections drawn in the first pass, culled, and still frames
+    // drawn in full (the two-phase path's late-pass reveals are not counted as drawn, so its culled share reads high)
+    private static long sFrames, sDrawn, sCulled, sStale;
+
+    /** The speed bench starts a window. */
+    public static void speedReset() {
+        sFrames = sDrawn = sCulled = sStale = 0;
+    }
+
+    /** Frames, sections drawn (first pass), culled, and still frames drawn in full, since {@link #speedReset}. */
+    public static long[] speedCounts() {
+        return new long[] {sFrames, sDrawn, sCulled, sStale};
+    }
+
     /** Folds the frame that just ended into the window (while a bench measures), then clears the frame's counts. */
     static void beginFrame() {
+        if (com.meakaandre.quicksilver.speed.Speed.counting) {
+            sFrames++;
+            sDrawn += phase1;
+            sCulled += culledLate + culledStill;
+            sStale += stillRedrawn;
+        }
         if (GpuCounters.enabled) {
             frames++;
             wPhase1 += phase1;

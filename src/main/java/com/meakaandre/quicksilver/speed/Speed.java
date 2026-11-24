@@ -72,6 +72,16 @@ public final class Speed {
     public static final Setting FOG_SECTIONS = add(new Setting("approx.fog-sections", true, false, 1, 0, 1, "",
         "terrain sections wholly inside the render-distance fog are not drawn"));
 
+    /**
+     * Package B: on the plain draw path (one multi-draw per region and layer: Intel and old GPUs), translucent section
+     * layers are drawn region by region (regions in the order vanilla's back-to-front list first reaches them, each
+     * region's sections in vanilla's order) instead of breaking a draw at every region change; Sodium draws
+     * translucent terrain this way. Only where translucent faces of two regions overlap on screen can the blend order
+     * differ. The indirect path (one draw per arena) is unchanged.
+     */
+    public static final Setting TRANSLUCENT_REGIONS = add(new Setting("approx.translucent-regions", true, false, 1, 0, 1, "",
+        "on the plain draw path, translucent terrain is drawn region by region (fewer draw calls)"));
+
     // ---- options (visible simplifications; always off by default)
 
     public static final Setting OPAQUE_LEAVES = add(new Setting("option.opaque-leaves", false, true, 0, 0, 1, "",
@@ -88,6 +98,27 @@ public final class Speed {
         "particles that start beyond this many blocks from the camera are not made"));
     public static final Setting PARTICLE_DENSITY = add(new Setting("option.particle-density", false, false, 100, 1, 100, "%",
         "only this share of new particles is made (100: all)"));
+
+    // ---- CI only (not listed, not in the config file): checks the speed bench can switch like the others
+
+    private static final Map<String, Setting> CI = new LinkedHashMap<>();
+    /**
+     * Package B: CI's check of fog-sections' automatic switch-off: while on, the fog hook's value is treated as never
+     * having arrived (as with a mod that replaces vanilla's fog code), so fog-sections must switch itself off.
+     */
+    public static final Setting CI_FOG_UNCONFIRMED = ci(new Setting("ci.fog-unconfirmed", false, false, 0, 0, 1, "",
+        "CI only: fog-sections acts as if vanilla's fog set-up had not run"));
+
+    private static Setting ci(Setting s) {
+        CI.put(s.key, s);
+        return s;
+    }
+
+    /** A switch by name, the CI-only ones included (the speed bench's lookup). */
+    public static Setting byKey(String key) {
+        Setting s = ALL.get(key);
+        return s != null ? s : Boolean.getBoolean("quicksilver.ci.speed") ? CI.get(key) : null;
+    }
 
     /** Counted while a speed bench window measures (bench only). */
     public static final LongAdder SECTIONS_IN_FOG = new LongAdder(), SECTIONS_SEEN = new LongAdder(), CUTOUT_SKIPPED = new LongAdder(),
@@ -314,6 +345,8 @@ public final class Speed {
     public static JsonObject json() {
         JsonObject o = new JsonObject();
         for (Setting s : ALL.values()) o.addProperty(s.key, show(s));
+        // package B: whether fog-sections works or switched itself off, and why
+        o.addProperty("fogSectionsState", SpeedTerrain.fogState());
         return o;
     }
 }

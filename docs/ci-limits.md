@@ -3,6 +3,27 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package B: real-hardware fixes (2026-11-24)
+
+- **Approximation limits:** unchanged. fog-sections now also uses the environmental fog (and in the nether sections above
+  the eye), and the plain path draws translucent terrain region by region (`approx.translucent-regions`); every shot
+  stayed under its limit (`docs/progress.md`, "Package B").
+- **Translucency check** (`TranslucencyCheck`): with `approx.translucent-regions` on (plain path), the section order it
+  checks is vanilla's order grouped by region (regions in the order vanilla's order first reaches them); everything else
+  as before.
+- **Upload gate** (`ci/upload-compare.py`, `ci/upload-gates.json`, `compare/upload.md`): in the plain-path runs (old GPU,
+  two-phase old GPU), fly-through, spawn and nether: no frame copies in more than the hard cap (twice the byte budget;
+  outside the camera's sections, index lists and forced overdue meshes) beyond its first mesh, and the slowest frame's
+  terrain upload is at most 20 ms; a missing bench fails. Other Quicksilver runs (indirect path, 64 MB arenas) are
+  reported. Baseline before package B: 28.8 / 41.8 ms (arena grows to 64 MB).
+- **Speed gates added** (`ci/speed-gates.json`): `ci.fog-unconfirmed` in spawn (both speed runs) leaves 0 sections out
+  (fog-sections' automatic switch-off); `approx.translucent-regions` in the fly-through (speed-old) draws on/off at most
+  0.95 and frame time at most 1.03; `approx.fog-sections` in the nether (both) at least 50 sections in fog per frame and
+  frame time on/off at most 1.00.
+- **Speed runs** also report draw calls per profiled stage and occlusion culling per window.
+- **`[rerun]`** (`.github/workflows/cleanup.yml`, `ci/rerun-check.py`): one re-run of main's latest run's failed jobs, for
+  infrastructure failures only; never for a real failure.
+
 ## Package A: speed runs, speed gates, Create + Flywheel smoke (2026-11-24)
 
 - **Approximation limits:** unchanged. `approx.fog-sections` (on by default) leaves out terrain sections wholly inside

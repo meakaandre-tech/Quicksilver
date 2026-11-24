@@ -101,20 +101,42 @@ public final class TranslucencyCheck {
      * visible-section list for this frame (the list vanilla's own draws are built from); {@code drawn}: the meshes and
      * entries in the order Quicksilver's draw calls will draw them, taken from those draw calls.
      */
-    static void frame(List<SectionRenderDispatcher.RenderSection> visible, boolean sorted, List<CompiledSectionMesh> drawnMeshes, List<TerrainStore.Entry> drawn) {
+    static void frame(List<SectionRenderDispatcher.RenderSection> visible, boolean sorted, boolean grouped, List<CompiledSectionMesh> drawnMeshes,
+                      List<TerrainStore.Entry> drawn) {
         TranslucencyStats.checkFrame();
         // vanilla's order, worked out on its own: every visible section whose translucent layer Quicksilver holds
         List<CompiledSectionMesh> expected = new java.util.ArrayList<>();
+        List<TerrainStore.Entry> expectedEntries = new java.util.ArrayList<>();
         for (SectionRenderDispatcher.RenderSection section : visible) {
             if (!(section.getSectionMesh() instanceof CompiledSectionMesh m)) continue;
             TerrainStore.Entry[] es = TerrainStore.ENTRIES.get(m);
-            if (es != null && es[TerrainStore.TRANSLUCENT] != null && es[TerrainStore.TRANSLUCENT].index != null) expected.add(m);
+            if (es != null && es[TerrainStore.TRANSLUCENT] != null && es[TerrainStore.TRANSLUCENT].index != null) {
+                expected.add(m);
+                expectedEntries.add(es[TerrainStore.TRANSLUCENT]);
+            }
         }
         int n = expected.size();
+        // package B (approx.translucent-regions, plain path): the same order grouped by region, regions in the order it
+        // first reaches them
+        // Worked out here on its own (not with the renderer's code): far sections stable-sorted by where vanilla's order
+        // first reaches their region, then the near ones (TerrainRenderer.NEAR_TRANSLUCENT) in vanilla's order.
+        Integer[] want = new Integer[n];
+        for (int k = 0; k < n; k++) want[k] = sorted ? n - 1 - k : k;
+        if (grouped) {
+            java.util.Map<Object, Integer> firstReached = new java.util.IdentityHashMap<>();
+            long[] key = new long[n];
+            for (int k = 0; k < n; k++) {
+                TerrainStore.Entry e = expectedEntries.get(want[k]);
+                boolean near = TerrainRenderer.nearTranslucent(e.originX, e.originY, e.originZ);
+                int region = near ? Integer.MAX_VALUE : firstReached.computeIfAbsent(e.region, r -> firstReached.size());
+                key[want[k]] = ((long) region << 32) | k;
+            }
+            java.util.Arrays.sort(want, (x, y) -> Long.compare(key[x], key[y]));
+        }
         boolean order = n == drawnMeshes.size();
-        for (int i = 0; order && i < n; i++) order = expected.get(sorted ? n - 1 - i : i) == drawnMeshes.get(i);
+        for (int i = 0; order && i < n; i++) order = expected.get(want[i]) == drawnMeshes.get(i);
         if (!order) violation("section order: Quicksilver draws " + drawnMeshes.size() + " translucent section layers in an order other than vanilla's ("
-            + n + " expected, " + (sorted ? "back to front" : "vanilla's list order") + ")");
+            + n + " expected, " + (sorted ? "back to front" : "vanilla's list order") + (grouped ? ", grouped by region" : "") + ")");
         for (int i = 0; i < drawn.size(); i++) {
             TerrainStore.Entry e = drawn.get(i);
             CompiledSectionMesh mesh = drawnMeshes.get(i);

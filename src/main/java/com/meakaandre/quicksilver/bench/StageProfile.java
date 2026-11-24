@@ -75,11 +75,17 @@ public final class StageProfile {
         switchTo(STACK.isEmpty() ? "other" : STACK.get(STACK.size() - 1));
     }
 
+    /** Package B: a draw call made in the current stage (render thread). */
+    static void onDraw() {
+        if (!active) return;
+        TOTALS.computeIfAbsent(current, k -> new long[3])[2]++;
+    }
+
     private static void switchTo(String stage) {
         if (stage.equals(current)) return;
         finish();
         long now = System.nanoTime();
-        long[] t = TOTALS.computeIfAbsent(current, k -> new long[2]);
+        long[] t = TOTALS.computeIfAbsent(current, k -> new long[3]);
         t[0] += now - last;
         t[1]++;
         current = stage;
@@ -91,7 +97,7 @@ public final class StageProfile {
         if (!active) return;
         finish();
         long now = System.nanoTime();
-        long[] t = TOTALS.computeIfAbsent(current, k -> new long[2]);
+        long[] t = TOTALS.computeIfAbsent(current, k -> new long[3]);
         t[0] += now - last;
         t[1]++;
         last = now;
@@ -133,6 +139,7 @@ public final class StageProfile {
             s.addProperty("msPerFrame", Math.round(e.getValue()[0] / f / 1e4) / 100.0);
             s.addProperty("pct", sum == 0 ? 0 : Math.round(1000.0 * e.getValue()[0] / sum) / 10.0);
             s.addProperty("entriesPerFrame", Math.round(e.getValue()[1] / f * 10) / 10.0);
+            s.addProperty("drawsPerFrame", Math.round(e.getValue()[2] / f * 100) / 100.0);
             stages.add(s);
         }
         o.add("stages", stages);

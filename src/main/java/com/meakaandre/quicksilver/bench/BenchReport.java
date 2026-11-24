@@ -155,6 +155,7 @@ final class BenchReport {
         display.addProperty("effectiveRenderDistance", mc.options.getEffectiveRenderDistance());
         display.addProperty("maxFps", mc.options.framerateLimit().get());
         display.addProperty("vsync", mc.options.enableVsync().get());
+        display.addProperty("reduceFpsWhen", BenchRun.inactivityNote);
         out.add("display", display);
         JsonObject mods = modList();
         out.add("mods", mods);
@@ -195,7 +196,8 @@ final class BenchReport {
             + " / " + tg.get("quicksilverArenasUsedMB") + ")");
         line(b, "capabilities", caps == null ? "not probed" : caps.describe());
         line(b, "display", disp.get("width") + "x" + disp.get("height") + ", render distance " + disp.get("renderDistance")
-            + " (effective " + disp.get("effectiveRenderDistance") + "), max fps " + disp.get("maxFps") + ", vsync " + disp.get("vsync"));
+            + " (effective " + disp.get("effectiveRenderDistance") + "), max fps " + disp.get("maxFps") + ", vsync " + disp.get("vsync")
+            + ", reduce fps when: " + disp.get("reduceFpsWhen").getAsString());
         line(b, "mods", mods.get("count") + " mods, list hash " + mods.get("hash").getAsString());
         for (BenchModules.Section sec : BenchModules.all()) {
             if (!(o.get(sec.key()) instanceof JsonObject so)) continue;

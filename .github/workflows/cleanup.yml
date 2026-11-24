@@ -1,0 +1,105 @@
+name: Cleanup
+
+# [rerun] (Andre, 2026-11-24): re-runs the failed jobs of main's latest Build run, at most once per run, and only when
+# ci/rerun-check.py finds an infrastructure failure (a job that failed in GitHub's "Set up job" or lost its runner) and
+# nothing else; never a real Quicksilver failure. Its report (why it re-ran or didn't) goes to the step summary and the
+# ci-logs-rerun branch.
+# [cleanup]: deletes the branches listed in ci/delete-branches.txt, with CI's own token (the session's git proxy can't delete
+# branches). Runs only on a push whose head commit message contains [cleanup]; usually pushed to the trigger-only
+# branch `cleanup`, which the Build workflow ignores and this workflow deletes at the end.
+# Branches only: tags and releases (pack-snapshot, latest) are never deleted.
+on:
+  push:
+    branches-ignore: ["ci-logs", "ci-logs-*"]
+
+permissions:
+  contents: write
+
+jobs:
+  rerun:
+    # only on the trigger-only branch `cleanup` (a squash-merge message on main that mentions [rerun] does nothing)
+    if: github.ref == 'refs/heads/cleanup' && contains(github.event.head_commit.message, '[rerun]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ci
+      - name: Re-run main's latest run's failed jobs, if only infrastructure failed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          w=/tmp/rerun; mkdir -p $w/logs/client $w/logs/server
+          id=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?branch=main&event=push&per_page=1" --jq '.workflow_runs[0].id')
+          gh api "repos/$REPO/actions/runs/$id" > $w/run.json
+          gh api "repos/$REPO/actions/runs/$id/jobs?per_page=100" > $w/jobs.json
+          for b in ci-logs-main:client ci-logs-server-main:server; do
+            br=${b%%:*}
+            if git fetch -q --depth=1 origin "+refs/heads/$br:refs/remotes/origin/$br"; then
+              git archive "origin/$br" commit.txt compare | tar x -C "$w/logs/${b##*:}" || true
+            fi
+          done
+          decision=$(python3 -I ci/rerun-check.py $w/run.json $w/jobs.json $w/logs $w/report.md)
+          if [ "$decision" = rerun ]; then
+            gh run rerun "$id" --failed -R "$REPO"
+            echo "" >> $w/report.md; echo "Re-run requested at $(date -u +%FT%TZ) by $GITHUB_SERVER_URL/$REPO/actions/runs/$GITHUB_RUN_ID" >> $w/report.md
+          fi
+          cat $w/report.md >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p $w/pub && cp $w/report.md $w/pub/report.md && cd $w/pub
+          git init -q -b ci-logs-rerun
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          git add -A && git commit -q -m "[rerun] check for run $id: $decision"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/$REPO.git" ci-logs-rerun
+
+  cleanup:
+    # after [rerun] when both are in one message (the trigger branch it deletes is the one [rerun] checks out)
+    needs: [rerun]
+    if: always() && github.ref == 'refs/heads/cleanup' && contains(github.event.head_commit.message, '[cleanup]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ci
+      - name: Delete the listed branches
+        shell: bash
+        env:
+          RUN_REF: ${{ github.ref_name }}
+        run: |
+          set -uo pipefail
+          # never deleted, whatever the list says
+          protected=" main p2-3b test-pack ci-logs-main ci-logs-server-main ci-logs-rerun "
+          mapfile -t heads < <(git ls-remote --heads origin | sed 's#.*refs/heads/##')
+          targets=()
+          while IFS= read -r line || [ -n "$line" ]; do
+            line="${line%%#*}"; line="${line//[[:space:]]/}"
+            [ -z "$line" ] && continue
+            # a pattern needs at least 3 characters outside wildcards and bracket expressions (no "*" or "[a-z]*"
+            # wiping the repo)
+            plain=$(printf '%s' "$line" | sed 's/\[[^]]*\]//g; s/[*?]//g')
+            if [ ${#plain} -lt 3 ]; then echo "skipping pattern '$line': too broad"; continue; fi
+            matched=0
+            for h in "${heads[@]}"; do
+              case "$h" in $line) targets+=("$h"); matched=1;; esac
+            done
+            [ $matched = 1 ] || echo "no branch matches '$line'"
+          done < ci/delete-branches.txt
+          # the trigger-only branch goes too
+          [ "$RUN_REF" = "cleanup" ] && targets+=("cleanup")
+          failed=0
+          echo "## Cleanup" >> "$GITHUB_STEP_SUMMARY"
+          for b in $(printf '%s\n' "${targets[@]}" | sort -u); do
+            if [[ "$protected" == *" $b "* ]]; then echo "refusing to delete protected branch $b"; continue; fi
+            if git push -q origin --delete "refs/heads/$b"; then
+              echo "deleted $b"; echo "- deleted \`$b\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "FAILED to delete $b"; echo "- FAILED \`$b\`" >> "$GITHUB_STEP_SUMMARY"; failed=1
+            fi
+          done
+          exit $failed

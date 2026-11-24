@@ -54,9 +54,17 @@ public final class FrameRecorder {
         endBytes = lastBytes;
     }
 
+    /** Package B: frames presented since start-up (render thread; fog-sections reads it). Bench-jar safe. */
+    private static long presents;
+
+    public static long presents() {
+        return presents;
+    }
+
     /** Called from the frontend surface's present, on the render thread. */
     public static void onPresent() {
         GpuCounters.resetDepth();
+        presents++;
         StageProfile.frameEnd();
         SpeedWindow.onPresent();
         com.meakaandre.quicksilver.gui.GuiStats.frameEnd();

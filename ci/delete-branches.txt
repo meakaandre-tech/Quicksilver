@@ -1,0 +1,28 @@
+# Branches the cleanup workflow (.github/workflows/cleanup.yml) deletes on a push whose commit message contains
+# [cleanup]. One name or shell glob per line; # starts a comment. Branches only: tags and releases (pack-snapshot,
+# latest) are never touched. main, p2-3b and test-pack are hard-coded as never deleted, whatever this list says.
+claude-push-test
+diag-p6-*
+ci-logs-diag-p6-*
+ci-logs-server-diag-p6-*
+p2-3-diag
+ci-logs-p2-3-diag
+ci-logs-server-p2-3-diag
+p2-4-push-test
+push-test-l
+ci-light
+package-6
+package-a
+fix-chunks-base
+ci-logs-fix-chunks-base
+ci-logs-server-fix-chunks-base
+# 2026-11-24 (Andre): package A's logs and the old push-test logs; from now on each package's ci-logs-* go in its cleanup
+ci-logs-package-a
+ci-logs-server-package-a
+ci-logs-claude-push-test
+ci-logs-server-claude-push-test
+ci-logs-push-test-l
+ci-logs-server-push-test-l
+# package B (2026-11-24): its own CI log branches
+ci-logs-package-b
+ci-logs-server-package-b

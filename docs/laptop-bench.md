@@ -21,11 +21,13 @@ Download `quicksilver-26.3.jar` from the `latest` release of meakaandre-tech/Qui
 1. In Prism: **Add Instance** → Minecraft **26.3** → Mod loader **Fabric**, loader **0.19.5** → OK.
 2. Instance → **Edit** → **Mods** → **Download mods** → add **Fabric API** for 26.3 (0.161.0+26.3 or newer).
    Then **Add file** → `quicksilver-26.3.jar`.
-3. Edit → **Settings** → Java: use a **Java 25** runtime (Prism can download it). Memory: set max memory to what you
-   normally give Minecraft and write it down.
+3. Edit → **Settings** → Java: use a **Java 25** runtime (Prism can download it). Memory: on an 8 GB machine (the
+   school laptop) set max memory to **1536 MiB** (1.5 GB) in every instance; elsewhere what you normally give Minecraft.
+   Write it down.
 4. Edit → Settings → **Game windows**: tick "Start Minecraft with a custom window size", **1280 × 720**.
-5. Launch. In Options → Video Settings: **Max Framerate: Unlimited**, **VSync: Off**, **GUI Scale: 2**, Graphics API
-   left on **Default**. Leave the rest as you play.
+5. Launch. In Options → Video Settings: **Max Framerate: Unlimited**, **VSync: Off**, **GUI Scale: 2**, **Reduce FPS
+   when: Minimized**, Graphics API left on **Default**. Leave the rest as you play. (`/quicksilver bench` also sets
+   "Reduce FPS when" to Minimized while it runs and puts it back after; its `display:` line says what it was.)
 6. **Singleplayer → Create New World**: Game Mode **Creative**, **Allow Commands: On**, More → **Seed: 12345**,
    World Type Default. Create it and wait 30 seconds in the world.
 7. Type these one at a time, waiting for "[Quicksilver] Bench ... done" before the next (each takes about 1.5 minutes).
@@ -81,7 +83,9 @@ Never put the bench-only jar next to Quicksilver, or Quicksilver next to Sodium:
    `quicksilver-26.3.jar` in every copy. Then copy it twice in Prism (right-click, **Copy
    Instance**) and name the three copies `bench-vanilla`, `bench-sodium`, `bench-quicksilver`. Put the mods from the table
    in each. Sodium has its own video settings screen: set the same Max Framerate, VSync and GUI Scale there, leave the
-   rest on Sodium's defaults.
+   rest on Sodium's defaults. Sodium's screen does not save "Reduce FPS when", so set the video options once in the
+   vanilla instance, then copy its `options.txt` (instance folder → `.minecraft/options.txt`) into the other instances
+   (Prism: right-click → **Folder**) before their first launch, so all of them start with the same options.
 2. In each instance, one after the other (not at the same time), with the charger in and nothing else open:
    **Create New World**, Creative, Allow Commands On, **Seed 12345**, World Type Default. Wait 30 seconds, then run one at
    a time, waiting for "[Quicksilver] Bench ... done" each time:
@@ -98,6 +102,27 @@ Never put the bench-only jar next to Quicksilver, or Quicksilver next to Sodium:
    first: it flies over terrain that was never generated, which is where upload spikes and stutter show. Quit to the title screen after the last one.
 3. Paste back the five bench blocks of each instance from `logs/latest.log` (or send the JSON files from
    `quicksilver/bench/`), saying which instance each came from.
+
+If the first bench block's `server:` line says "delayed: ... was shown before the title screen" (the first-run welcome
+screen waits for a click), its start-up time includes that wait: compare start-up only between launches without it.
+
+## R2 (package B onwards)
+
+The same as above, with two changes:
+
+- **Three runs per instance, alternating order.** Run the five scenes in a new world once in each instance, in this
+  order of instances: vanilla, Sodium, Quicksilver, low-end preset; then again in the order low-end preset,
+  Quicksilver, Sodium, vanilla; then once more in the first order. A new world every time. Label each paste with the
+  instance and the run number (1-3).
+- **A 4th instance, "low-end preset":** a copy of `bench-quicksilver` (same mods, same `options.txt`) whose
+  `config/quicksilver.properties` has these two lines (create the file if it isn't there):
+
+  ```
+  option.opaque-leaves=on
+  option.far-detail=4
+  ```
+
+  Label its results **low-end preset**.
 
 What to compare: `fps` (average and 1% low), `frame time ms` (p99 and frames over 50 ms; the floor is 1% lows of at least
 30 FPS), `upload bytes/frame` (its max is the largest upload in one frame), and `heap MB`. In the Quicksilver instance the

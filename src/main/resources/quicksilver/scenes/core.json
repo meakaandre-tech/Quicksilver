@@ -14,7 +14,7 @@
   "scenes": [
     {
       "id": "spawn",
-      "speedAb": ["approx.fog-sections", "option.opaque-leaves", "option.far-detail=4", "option.particle-distance=24", "option.particle-density=50"],
+      "speedAb": ["approx.fog-sections", "ci.fog-unconfirmed", "option.opaque-leaves", "option.far-detail=4", "option.particle-distance=24", "option.particle-density=50"],
       "speedEmit": ["particle minecraft:end_rod 96.5 158 -5 8 3 8 0.01 300 force @a"],
       "speedNote": "Package A: CI's speed runs (ci/client-run.sh speed-*) measure these switches here, off against on (bench/SpeedBench); speedEmit makes particles twice a second during the speed windows only (end rods 20-30 blocks in front of the camera), for the particle options.",
       "title": "World spawn of seed 12345, 8 chunks, daylight (fixed camera height above the terrain)",
@@ -26,7 +26,7 @@
     },
     {
       "id": "flythrough",
-      "speedAb": ["approx.fog-sections", "option.far-detail=6"],
+      "speedAb": ["approx.fog-sections", "approx.translucent-regions", "option.far-detail=6"],
       "title": "Fly-through over fresh terrain, 12 chunks, scripted path north at 10 blocks/s",
       "renderDistance": 12,
       "settleSeconds": 20,
@@ -70,6 +70,8 @@
     },
     {
       "id": "nether",
+      "speedAb": ["approx.fog-sections"],
+      "speedNote": "Package B: the stage profile for the nether gap with Sodium (R1), and fog-sections off against on (the nether's thick environmental fog).",
       "ciVanillaDrawGate": "median",
       "ciVanillaDrawGateReason": "Its average follows the runner's frame rate: below 20 fps every frame lines up with a game tick and draws the tick's extra draws, above it some don't. run 40180107484 attempt 2, Vulkan: Quicksilver 120.73 / 121 at 18.93 fps, vanilla 102.5 / 121 at 23.63 fps (limit x 1.10 + 2: 114.75). Gated against vanilla on the median (Andre's rule, 2026-10-25).",
       "title": "The nether",

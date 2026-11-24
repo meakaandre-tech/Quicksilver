@@ -21,7 +21,11 @@ import net.minecraft.core.SectionPos;
  * <li>Budget per frame: bytes = {@link #BYTES_PER_MS} times the measured frame time (an average over the last frames),
  * between {@link #MIN_BYTES} and {@link #MAX_BYTES}; time = an eighth of the measured frame time, between 1 and 6 ms.
  * So uploads per second stay about the same at any frame rate, and one frame never takes a burst. The first mesh
- * outside the camera's sections goes in every frame even if it alone is over the budget, so nothing waits for ever.</li>
+ * outside the camera's sections goes in every frame even if it alone is over the budget (except in a frame where an
+ * arena grows ahead, package B), so nothing waits for ever.</li>
+ * <li>Package B: a hard cap of twice the byte and time budget on what one frame copies in outside the camera's sections
+ * (index lists and overdue meshes aside); visible meshes close to their maximum wait go first; an arena past three
+ * quarters of its buffer grows ahead, in a frame that copies in only the camera's sections and overdue meshes.</li>
  * </ul>
  * Without a camera position (its hook didn't run) the order is visible first, then staging order.
  */
@@ -35,6 +39,8 @@ public final class UploadBudget {
      * whatever the budget (review S4: the wait for visible sections is bounded and measured).
      */
     static final int MAX_VISIBLE_WAIT_FRAMES = 15;
+    /** Package B: from this many frames of waiting a visible mesh goes first in the next frames (under the budget and cap). */
+    static final int DUE_WAIT_FRAMES = 11;
     /** Staged meshes are CPU memory: past this many bytes waiting, the budget grows by the excess. */
     static final long STAGED_CAP = 64L << 20;
     /** Debug: everything staged goes in at once, as before package 4b. */
@@ -101,6 +107,26 @@ public final class UploadBudget {
         return Math.max(MIN_BYTES, Math.min(MAX_BYTES, (long) (BYTES_PER_MS * frameMs)));
     }
 
+    /**
+     * Package B: the most one frame copies in outside the camera's sections, overdue visible meshes included: twice the
+     * byte budget (the first mesh of a frame always goes in, whatever its size).
+     */
+    static long hardCap() {
+        if (DEBUG_OFF) return Long.MAX_VALUE;
+        return 2 * bytes();
+    }
+
+    /** Package B: past this much upload time in a frame, overdue meshes wait for the next frame too (twice the time budget). */
+    static long hardNanos() {
+        if (DEBUG_OFF) return Long.MAX_VALUE;
+        return 2 * nanos();
+    }
+
+    /** Package B: an arena grew ahead of need, in a frame of its own. */
+    static void preGrew() {
+        if (GpuCounters.enabled) windowPreGrows++;
+    }
+
     static long nanos() {
         if (DEBUG_OFF) return Long.MAX_VALUE;
         return Math.max(MIN_TIME_NANOS, Math.min(MAX_TIME_NANOS, (long) (frameMs * 1e6 / 8)));
@@ -163,7 +189,37 @@ public final class UploadBudget {
         windowMaxNanos = Math.max(windowMaxNanos, nanos);
     }
 
+    // package B: the worst frame in detail (bytes without the camera's sections, the slowest single mesh, arena grows)
+    private static long windowMaxNonExemptBytes, windowMaxMeshNanos, windowGrows, windowGrowNanosMax, windowGrowBytesMax, windowPreGrows,
+        windowMaxCap;
+
+    /** Frames whose bytes under the hard cap went past it (beyond their first mesh). */
+    private static long windowOverCapFrames;
+
+    /**
+     * The frame's bytes under the hard cap (outside the camera's sections, index lists and forced meshes), its slowest
+     * single mesh copy, the cap and the first mesh's bytes (render thread).
+     */
+    static void frameDetail(long nonExemptBytes, long meshNanosMax, long cap, long firstMeshBytes) {
+        if (!GpuCounters.enabled) return;
+        windowMaxNonExemptBytes = Math.max(windowMaxNonExemptBytes, nonExemptBytes);
+        windowMaxCap = Math.max(windowMaxCap, cap);
+        // over the cap only by the frame's first mesh (which always goes in) is not over it
+        if (nonExemptBytes > Math.max(cap, firstMeshBytes)) windowOverCapFrames++;
+        windowMaxMeshNanos = Math.max(windowMaxMeshNanos, meshNanosMax);
+    }
+
+    /** An arena buffer grew into a bigger one (new buffer and copy of what it held): its time and new size. */
+    static void grew(long nanos, long newBytes) {
+        if (!GpuCounters.enabled) return;
+        windowGrows++;
+        windowGrowNanosMax = Math.max(windowGrowNanosMax, nanos);
+        windowGrowBytesMax = Math.max(windowGrowBytesMax, newBytes);
+    }
+
     static void startWindow() {
+        windowMaxNonExemptBytes = windowMaxMeshNanos = windowGrows = windowGrowNanosMax = windowGrowBytesMax = windowPreGrows = windowMaxCap = 0;
+        windowOverCapFrames = 0;
         windowFrames = windowBytes = windowMaxBytes = windowMeshes = windowExempt = windowWaitingSum = windowWaitingMax = 0;
         windowFramesHolding = windowBudgetSum = windowNanos = windowMaxNanos = 0;
         windowVisibleWaitMax = windowVisibleWaited = windowForced = windowStagedMaxBytes = 0;
@@ -190,6 +246,14 @@ public final class UploadBudget {
         o.addProperty("stagedMBMax", round(windowStagedMaxBytes / 1048576.0));
         o.addProperty("uploadMsAvg", round(windowNanos / 1e6 / f));
         o.addProperty("uploadMsMax", round(windowMaxNanos / 1e6));
+        o.addProperty("maxBytesUnderHardCap", windowMaxNonExemptBytes);
+        o.addProperty("slowestMeshMs", round(windowMaxMeshNanos / 1e6));
+        o.addProperty("arenaGrows", windowGrows);
+        o.addProperty("arenaGrowMsMax", round(windowGrowNanosMax / 1e6));
+        o.addProperty("arenaGrowMBMax", round(windowGrowBytesMax / 1048576.0));
+        o.addProperty("arenaGrowsAhead", windowPreGrows);
+        o.addProperty("hardCapBytesMax", windowMaxCap);
+        o.addProperty("framesOverHardCap", windowOverCapFrames);
         o.addProperty("note", "Quicksilver's terrain uploads at the end of each measured frame: bytes copied into its arenas, meshes put in"
             + " (those of the camera's section and its neighbours are never held back), sections still waiting for a later frame");
         return o;

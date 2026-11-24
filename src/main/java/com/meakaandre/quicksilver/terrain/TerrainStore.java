@@ -42,11 +42,28 @@ import org.lwjgl.system.MemoryUtil;
  * frame ({@link #upload}), where vanilla uploads its own. Everything here is guarded by one lock.
  */
 public final class TerrainStore {
+    /** The largest an arena gets (indirect path, as before package B). */
     static final long ARENA_BYTES = 64L << 20;
+    /**
+     * Package B: on the plain path (Intel and old GPUs: one draw per region and layer) an arena gets at most 16 MB. Its
+     * buffer grows by copying what it holds into one twice its size, on the render thread: the grow to 64 MB (32 MB
+     * copied) was the slowest upload of every CI fly-through (28-41 ms) and most likely the laptop's 58 ms one (R1); at
+     * 16 MB a grow copies at most 8 MB (about 10 ms on CI), and regions are kept together in arenas (below). The indirect
+     * path draws once per arena and layer, so there fewer, bigger arenas win: smaller ones cost 3 to 4 draws a frame in
+     * the full profile's fly-through (full runs 45369287133, 45376901277).
+     */
+    static final long PLAIN_ARENA_BYTES = 16L << 20;
+
+    /** The size an arena made now gets: by the draw path of the last frame. */
+    static long arenaBytesNow() {
+        return TerrainRenderer.plainPathInUse() ? PLAIN_ARENA_BYTES : ARENA_BYTES;
+    }
     /** An arena's buffer when it is made; it doubles when full, up to {@link #ARENA_BYTES} (package 3). */
     static final long INITIAL_ARENA_BYTES = 4L << 20;
     /** A layer bigger than this stays with vanilla (it would hog an arena). */
-    public static final int MAX_LAYER_BYTES = (int) (ARENA_BYTES / 8);
+    public static final int MAX_LAYER_BYTES = 8 << 20;
+    /** Package B: a region gets its first section of a layer only in an arena at most this full (or a new one). */
+    static final double NEW_REGION_FILL = 0.5;
 
     static final Object LOCK = new Object();
 
@@ -61,13 +78,19 @@ public final class TerrainStore {
         final int layer;
         long used;
         boolean closed;
+        /** Package B: the furthest byte any allocation has reached (the buffer must hold at least this much). */
+        long highWater;
+
+        /** Package B: the most this arena's buffer gets ({@link #arenaBytesNow} when made). */
+        final long maxBytes;
 
         Arena(GpuDevice device, int index, int layer) {
             this.layer = layer;
             this.index = index;
+            this.maxBytes = arenaBytesNow();
             this.capacity = INITIAL_ARENA_BYTES;
             this.buffer = create(device, capacity);
-            this.allocator = new TlsfAllocator(new TlsfAllocator.Heap(ARENA_BYTES));
+            this.allocator = new TlsfAllocator(new TlsfAllocator.Heap(maxBytes));
         }
 
         private GpuBuffer create(GpuDevice device, long size) {
@@ -80,10 +103,12 @@ public final class TerrainStore {
          * into the bigger one, once; the old buffer is closed before the next frame's draws.
          */
         void ensure(CommandEncoder encoder, long end) {
+            highWater = Math.max(highWater, end);
             if (end <= capacity) return;
+            long g0 = System.nanoTime();
             long size = capacity;
             while (size < end) size *= 2;
-            size = Math.min(size, ARENA_BYTES);
+            size = Math.min(size, maxBytes);
             GpuBuffer bigger = create(RenderSystem.getDevice(), size);
             try {
                 encoder.copyToBuffer(buffer.slice(0, capacity), bigger.slice(0, capacity));
@@ -95,6 +120,7 @@ public final class TerrainStore {
             buffer = bigger;
             capacity = size;
             TerrainStats.ARENA_GROWS.incrementAndGet();
+            UploadBudget.grew(System.nanoTime() - g0, size);
         }
     }
 
@@ -338,9 +364,17 @@ public final class TerrainStore {
             a = pref.allocator.allocate(bytes, stride);
             if (a != null) arena = pref;
         }
+        // package B: a region without a home for this layer (or whose home is full) moves to an arena at most half full,
+        // or a new one, so the sections it gets later still fit beside it: the plain path draws a region with one call
+        // per layer only while its sections share an arena (with 16 MB arenas, regions spread over several split the
+        // fly-through's draws: 31 opaque draws became 44)
+        boolean moved = a == null;
+        // only where regions are drawn one call each (the plain path); the indirect path draws per arena, so there the
+        // fewest arenas wins (first fit, as before)
+        boolean keepRegions = TerrainRenderer.plainPathInUse();
         for (int i = 0; a == null && i < ARENAS.size(); i++) {
             Arena c = ARENAS.get(i);
-            if (c == pref || c.layer != layer) continue;
+            if (c == pref || c.layer != layer || keepRegions && c.used + bytes > c.maxBytes * NEW_REGION_FILL) continue;
             a = c.allocator.allocate(bytes, stride);
             if (a != null) arena = c;
         }
@@ -349,7 +383,7 @@ public final class TerrainStore {
             a = arena.allocator.allocate(bytes, stride);
             if (a == null) throw new IllegalStateException("a fresh terrain arena refused " + bytes + " bytes");
         }
-        if (pref == null || pref.closed || region.live <= 1) region.preferred[layer] = arena;
+        if (keepRegions && moved || pref == null || pref.closed || region.live <= 1) region.preferred[layer] = arena;
         return write(encoder, arena, a, data, vertices, faces);
     }
 
@@ -453,9 +487,16 @@ public final class TerrainStore {
             int n = groups.size();
             double[] key = new double[n];
             Integer[] order = new Integer[n];
+            int frame = UploadBudget.frameNumber();
             for (int i = 0; i < n; i++) {
                 Staged f = groups.get(i).get(0);
                 key[i] = UploadBudget.priority(f.x, f.y, f.z);
+                // package B: a visible mesh close to its maximum wait goes first (after the camera's), longest first, so
+                // it goes in under the budget and the hard cap before it is due and has to be forced in past them
+                if (key[i] >= 0 && UploadBudget.visible(f.x, f.y, f.z)) {
+                    Integer since = VISIBLE_SINCE.get(f.mesh);
+                    if (since != null && frame - since >= UploadBudget.DUE_WAIT_FRAMES) key[i] = -0.5 - (frame - since) * 1e-6;
+                }
                 order[i] = i;
             }
             Arrays.sort(order, (a, b) -> Double.compare(key[a], key[b])); // stable: staging order on ties
@@ -464,22 +505,39 @@ public final class TerrainStore {
             for (List<Staged> g : groups) for (Staged st : g) staged += st.bytes();
             // staged meshes are CPU memory: past the cap the budget takes the excess too (review N3)
             if (staged > UploadBudget.STAGED_CAP) budget = Math.max(budget, staged - UploadBudget.STAGED_CAP);
-            int frame = UploadBudget.frameNumber();
+            // package B: the hard cap on one frame's bytes outside the camera's sections; overdue meshes past it wait for
+            // the next frame (they go first there) instead of all going in at once (R1: 987 KB in one frame)
+            long cap = Math.max(budget, UploadBudget.hardCap());
             boolean full = false;
             int forced = 0;
             List<Staged> done = new ArrayList<>(all.size());
             Set<Staged> left = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
             Set<Staged> processed = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-            long bytes = 0;
+            long bytes = 0, exemptBytes = 0, meshNanosMax = 0, firstMeshBytes = 0, looseBytes = 0, forcedBytes = 0;
             int meshes = 0, exempt = 0;
             boolean tookOne = false;
             Staged current = null;
+            boolean growFrame = false;
             try {
                 GpuDevice device = RenderSystem.getDevice();
                 CommandEncoder encoder = device.createCommandEncoder();
+                // package B: an arena past three quarters of its buffer grows now, in a frame that copies nothing else in
+                // but the camera's sections (R1: one upload took 58 ms), instead of in the middle of a frame's uploads
+                if (!UploadBudget.DEBUG_OFF) {
+                    for (Arena a : ARENAS) {
+                        if (a.closed || a.capacity >= a.maxBytes || a.highWater * 4 <= a.capacity * 3) continue;
+                        long hw = a.highWater;
+                        a.ensure(encoder, a.capacity + 1);
+                        a.highWater = hw;
+                        UploadBudget.preGrew();
+                        growFrame = true;
+                        break;
+                    }
+                }
                 for (Staged s : loose) {
                     current = s;
                     bytes += s.bytes();
+                    looseBytes += s.bytes();
                     rewriteIndices(device, encoder, s);
                     s.free();
                     processed.add(s);
@@ -499,15 +557,25 @@ public final class TerrainStore {
                     boolean overdue = visible && waited >= UploadBudget.MAX_VISIBLE_WAIT_FRAMES;
                     long gb = 0;
                     for (Staged s : g) gb += s.bytes();
-                    if (!full && !camera && tookOne && (bytes + gb > budget || System.nanoTime() - t0 > time)) full = true;
+                    if (!full && !camera && (growFrame || tookOne && (bytes + gb > budget || System.nanoTime() - t0 > time))) full = true;
+                    // package B: the hard cap (twice the budget) on what a frame copies in outside the camera's sections, the
+                    // index lists and meshes forced in; in a grow frame nothing past those. Overdue visible meshes (waited
+                    // MAX_VISIBLE_WAIT_FRAMES) still go in whatever the budget, the cap or a grow, so the 4b wait bound holds;
+                    // they are rare, since meshes close to it already go first
+                    boolean overCap = growFrame || tookOne && (bytes - exemptBytes - looseBytes - forcedBytes + gb > cap
+                        || System.nanoTime() - t0 > UploadBudget.hardNanos());
                     if (full && !camera && !overdue) {
                         // over this frame's budget: this mesh waits (camera sections and overdue visible ones still go in)
                         left.addAll(g);
                         continue;
                     }
-                    if (full && overdue) forced++;
+                    if (full && overdue) {
+                        forced++;
+                        if (overCap) forcedBytes += gb;
+                    }
                     VISIBLE_SINCE.remove(f.mesh);
                     if (visible) UploadBudget.visibleWait(waited);
+                    long m0 = System.nanoTime();
                     for (Staged s : g) {
                         current = s;
                         if (s.indicesOnly()) {
@@ -520,10 +588,16 @@ public final class TerrainStore {
                         processed.add(s);
                         current = null;
                     }
+                    meshNanosMax = Math.max(meshNanosMax, System.nanoTime() - m0);
                     bytes += gb;
                     meshes++;
-                    if (camera) exempt++;
-                    else tookOne = true;
+                    if (camera) {
+                        exempt++;
+                        exemptBytes += gb;
+                    } else {
+                        if (!tookOne && !(full && overdue)) firstMeshBytes = gb;
+                        tookOne = true;
+                    }
                 }
             } catch (Throwable t) {
                 // the item that failed is freed (its allocations were released where they failed); everything not yet
@@ -545,6 +619,8 @@ public final class TerrainStore {
             for (Staged s : all) if (left.contains(s)) STAGED.add(s);
             UploadBudget.forced(forced, staged);
             UploadBudget.frame(bytes, meshes, exempt, groupsWaiting(), budget, System.nanoTime() - t0);
+            // what the hard cap governs: the frame's bytes outside the camera's sections, the index lists and forced meshes
+            UploadBudget.frameDetail(bytes - exemptBytes - looseBytes - forcedBytes, meshNanosMax, cap, firstMeshBytes);
             uploaded(done);
         }
     }

@@ -215,6 +215,20 @@ public final class TerrainRenderer {
         }
     }
 
+    /** Package B: whether the last frame drew terrain on a plain path (one draw per region and layer); render thread. */
+    static boolean plainPathInUse() {
+        Path p = lastPath;
+        if (p != null) return p != Path.INDIRECT;
+        // before the first terrain frame (the world loading: most arenas are made then): what vanilla will choose, from
+        // its own flag for drivers whose multi-draw indirect has known issues (Intel), or the debug switch
+        if (Terrain.FORCE_PLAIN) return true;
+        try {
+            return RenderSystem.getDevice().getDeviceInfo().hintsAndWorkarounds().multiDrawIndirectHasKnownIssues();
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
     static String lastPathName() {
         Path p = lastPath;
         return p == null ? "none" : name(p);
@@ -415,7 +429,7 @@ public final class TerrainRenderer {
                     out.addAll(FOGGED);
                     for (SectionRenderDispatcher.RenderSection sec : visible) if (!out.contains(sec)) checked.add(sec);
                 }
-                TranslucencyCheck.frame(checked, sortTranslucent, drawnMeshes, drawn);
+                TranslucencyCheck.frame(checked, sortTranslucent, groupedTranslucent, drawnMeshes, drawn);
             }
             CommandEncoder encoder = null;
             for (TerrainStore.Region r : touched) {
@@ -530,15 +544,77 @@ public final class TerrainRenderer {
         }
     }
 
+    /** Package B: whether this frame's translucent layers are drawn region by region ({@code approx.translucent-regions}). */
+    private static boolean groupedTranslucent;
+    private static final it.unimi.dsi.fastutil.ints.IntArrayList TL_ORDER = new it.unimi.dsi.fastutil.ints.IntArrayList();
     /**
-     * This frame's translucent runs, in vanilla's order: the visible list as is, or reversed when vanilla sorts. A run
-     * goes on while the next section layer shares its arena, index type and (plain path) region.
+     * Package B: translucent sections whose centre is within this many blocks of the camera are never grouped: they are
+     * drawn last, in vanilla's order. Vanilla's translucent terrain writes depth, so near glass drawn early (with its
+     * region, before a farther region's water) would hide that water behind it.
+     */
+    static final double NEAR_TRANSLUCENT = 64.0;
+
+    /** Whether a section (origin in blocks) is near enough to keep vanilla's exact translucent order (render thread). */
+    static boolean nearTranslucent(int ox, int oy, int oz) {
+        double[] cam = BackFaces.frameCamera();
+        if (cam == null) return true; // no camera: nothing is grouped
+        double dx = ox + 8 - cam[0], dy = oy + 8 - cam[1], dz = oz + 8 - cam[2];
+        return dx * dx + dy * dy + dz * dz <= NEAR_TRANSLUCENT * NEAR_TRANSLUCENT;
+    }
+
+    /**
+     * Indices into TL_ENTRIES in draw order: vanilla's order (reversed when it sorts), or with
+     * {@code approx.translucent-regions} on the plain path, the sections farther than {@link #NEAR_TRANSLUCENT} grouped by
+     * region (stable: regions in the order vanilla's order first reaches them, each region's layers in vanilla's order),
+     * then the near ones in vanilla's order.
+     */
+    static void translucentOrder(int n, boolean sorted, boolean grouped, java.util.function.IntFunction<Object> regionOf,
+                                 java.util.function.IntPredicate near, it.unimi.dsi.fastutil.ints.IntArrayList out) {
+        out.clear();
+        if (!grouped) {
+            for (int k = 0; k < n; k++) out.add(sorted ? n - 1 - k : k);
+            return;
+        }
+        Map<Object, it.unimi.dsi.fastutil.ints.IntArrayList> byRegion = new java.util.LinkedHashMap<>();
+        it.unimi.dsi.fastutil.ints.IntArrayList last = new it.unimi.dsi.fastutil.ints.IntArrayList();
+        for (int k = 0; k < n; k++) {
+            int i = sorted ? n - 1 - k : k;
+            if (near.test(i)) {
+                last.add(i);
+            } else {
+                byRegion.computeIfAbsent(new IdentityKey(regionOf.apply(i)), r -> new it.unimi.dsi.fastutil.ints.IntArrayList()).add(i);
+            }
+        }
+        for (it.unimi.dsi.fastutil.ints.IntArrayList l : byRegion.values()) out.addAll(l);
+        out.addAll(last);
+    }
+
+    /** Identity map key (LinkedHashMap keeps first-reached order; regions compare by identity). */
+    private record IdentityKey(Object o) {
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof IdentityKey k && k.o == o;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(o);
+        }
+    }
+
+    /**
+     * This frame's translucent runs, in the order {@link #translucentOrder} gives: vanilla's order (the visible list as
+     * is, or reversed when vanilla sorts), grouped by region on the plain path with {@code approx.translucent-regions}. A
+     * run goes on while the next section layer shares its arena, index type and (plain path) region.
      */
     private static void buildTranslucentRuns(boolean plain) {
         int n = TL_ENTRIES.size();
+        groupedTranslucent = plain && com.meakaandre.quicksilver.speed.Speed.TRANSLUCENT_REGIONS.on();
+        translucentOrder(n, sortTranslucent, groupedTranslucent, i -> TL_ENTRIES.get(i).region,
+            i -> nearTranslucent(TL_ENTRIES.get(i).originX, TL_ENTRIES.get(i).originY, TL_ENTRIES.get(i).originZ), TL_ORDER);
         TRun run = null;
         for (int k = 0; k < n; k++) {
-            int i = sortTranslucent ? n - 1 - k : k;
+            int i = TL_ORDER.getInt(k);
             TerrainStore.Entry e = TL_ENTRIES.get(i);
             TerrainStore.Part part = e.part;
             TerrainStore.IndexPart ip = e.index;

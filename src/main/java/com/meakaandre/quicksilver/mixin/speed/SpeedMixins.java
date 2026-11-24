@@ -24,7 +24,9 @@ public final class SpeedMixins implements IMixinConfigPlugin {
         "ParticleEngineSpeedMixin", new String[][] {{"net.minecraft.client.particle.ParticleEngine"},
             {"add (Lnet/minecraft/client/particle/Particle;)V"}, {}},
         "ParticleAccessor", new String[][] {{"net.minecraft.client.particle.Particle"}, {}, {"x D", "y D", "z D"}},
-        "LightUpdatesProfileMixin", new String[][] {{"net.minecraft.world.level.lighting.LevelLightEngine"}, {"runLightUpdates ()I"}, {}});
+        "LightUpdatesProfileMixin", new String[][] {{"net.minecraft.world.level.lighting.LevelLightEngine"}, {"runLightUpdates ()I"}, {}},
+        "FogRendererMixin", new String[][] {{"net.minecraft.client.renderer.fog.FogRenderer"},
+            {"updateBuffer (Lnet/minecraft/client/renderer/fog/FogData;)V"}, {"fogEnabled Z"}});
 
     public static final Map<String, String> RESULT = new ConcurrentHashMap<>();
 

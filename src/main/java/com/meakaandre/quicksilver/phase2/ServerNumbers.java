@@ -45,6 +45,9 @@ public final class ServerNumbers {
     private static volatile boolean dedicated = false;
     /** Client start-up to the first title screen and to the first world joined, set by {@link ClientTimes}; 0 until then. */
     static volatile long clientStartupMs = 0, clientFirstJoinMs = 0;
+    /** Package B: a screen shown before the title screen (the first-run welcome screen), and the ms from it to the title. */
+    static volatile String clientStartupScreen;
+    static volatile long clientStartupScreenMs = 0;
     private static volatile boolean off = false;
 
     // a dedicated server's own bench: due when the wall clock passes benchEnd
@@ -217,6 +220,10 @@ public final class ServerNumbers {
         long jvm = ManagementFactory.getRuntimeMXBean().getStartTime();
         if (dedicated && startedMs > 0) o.addProperty("startupMs", startedMs - jvm);
         if (clientStartupMs > 0) o.addProperty("clientStartupMs", clientStartupMs);
+        if (clientStartupScreen != null && clientStartupMs > 0) {
+            o.addProperty("clientStartupDelayedBy", clientStartupScreen);
+            o.addProperty("clientStartupDelayedByMs", clientStartupScreenMs);
+        }
         if (clientFirstJoinMs > 0) o.addProperty("clientFirstJoinMs", clientFirstJoinMs);
         if (startedMs > 0) o.addProperty("worldLoadMs", startedMs - startingMs);
         JsonObject net = new JsonObject();
@@ -244,7 +251,9 @@ public final class ServerNumbers {
                 + "start-up ms %s, world load ms %s; bytes in window %s (server in %s, out %s; client in %s, out %s)",
             s.get("side").getAsString(), s.get("ticks"), s.get("tps"), s.get("msptAvg"), s.get("msptP50"), s.get("msptP99"), s.get("msptMax"),
             s.get("ticksOver50ms"), s.get("heapUsedMB"), s.has("heapUsedAfterGcMB") ? ", after GC " + s.get("heapUsedAfterGcMB") : "",
-            s.has("startupMs") ? s.get("startupMs") : s.get("clientStartupMs") + " (to first join " + s.get("clientFirstJoinMs") + ")",
+            s.has("startupMs") ? s.get("startupMs") : s.get("clientStartupMs") + " (to first join " + s.get("clientFirstJoinMs") + ")"
+                + (s.has("clientStartupDelayedBy") ? " [delayed: " + s.get("clientStartupDelayedBy").getAsString() + " was shown before the title screen, "
+                + s.get("clientStartupDelayedByMs") + " ms of the start-up; not comparable with a start-up without it]" : ""),
             s.get("worldLoadMs"), n.get("serverBytesInWindow"),
             n.get("serverBytesIn"), n.get("serverBytesOut"), n.get("clientBytesIn"), n.get("clientBytesOut"));
     }

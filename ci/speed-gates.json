@@ -1,5 +1,5 @@
 {
-  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame.",
+  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame. Package B: the fog-sections auto-off check (ci.fog-unconfirmed), translucent terrain by region (approx.translucent-regions), and fog-sections in the nether's environmental fog.",
   "gates": [
     {
       "setting": "approx.fog-sections",
@@ -46,6 +46,61 @@
       "value": "on",
       "min": 5,
       "reason": "the moving fly-through must also find fogged sections (19-26 a frame when measured)"
+    },
+    {
+      "setting": "ci.fog-unconfirmed",
+      "scene": "spawn",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "sectionsInFogPerFrame",
+      "value": "on",
+      "max": 0,
+      "reason": "with the fog end unconfirmed (as with a mod that replaces vanilla's fog code), fog-sections must switch itself off and leave nothing out"
+    },
+    {
+      "setting": "approx.translucent-regions",
+      "scene": "flythrough",
+      "runs": [
+        "speed-old"
+      ],
+      "metric": "drawCallsPerFrame",
+      "max": 0.95,
+      "reason": "translucent terrain drawn region by region must cut draw calls on the plain path (old GPU)"
+    },
+    {
+      "setting": "approx.translucent-regions",
+      "scene": "flythrough",
+      "runs": [
+        "speed-old"
+      ],
+      "metric": "frameMsAvg",
+      "max": 1.03,
+      "reason": "and must not make frames slower (3% for the moving fly-through's noise)"
+    },
+    {
+      "setting": "approx.fog-sections",
+      "scene": "nether",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "sectionsInFogPerFrame",
+      "value": "on",
+      "min": 50,
+      "reason": "package B: the nether's environmental fog (it ends at about half the render distance) must let fog-sections leave sections out above and below the eye (113 a frame when measured)"
+    },
+    {
+      "setting": "approx.fog-sections",
+      "scene": "nether",
+      "runs": [
+        "speed-old",
+        "speed-full"
+      ],
+      "metric": "terrainTrianglesPerFrame",
+      "max": 0.8,
+      "reason": "and must cut the terrain drawn (0.60-0.62 when measured). Not gated on frame time here: on CI occlusion already hides most fogged nether sections, so frame time moves by noise only (full run 45369287133, speed-old rounds 1.084 / 0.963 / 1.046)"
     }
   ]
 }

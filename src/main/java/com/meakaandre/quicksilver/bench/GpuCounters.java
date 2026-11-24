@@ -38,6 +38,7 @@ public final class GpuCounters {
     }
 
     public static void draw(Draw kind) {
+        if (StageProfile.active()) StageProfile.onDraw();
         if (enabled) {
             DRAWS[kind.ordinal()].increment();
             PHASE_DRAWS[phase.ordinal()].increment();

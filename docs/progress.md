@@ -27,7 +27,10 @@ The project stopped on 2026-11-17 and restarted with a smaller scope (design doc
 **Package A** (approximations and speed options): merged 2026-11-24, squash of branch `package-a` (branch full run
 45317393864 green; see "Package A" below, "Decisions for Andre" there).
 
-**Still to do, in order:**
+**Package B** (real-hardware fixes after R1): built on branch `package-b`, waiting for Andre's read of the report and
+the next chat's squash-merge (see "Package B" below, "Decisions for Andre" there).
+
+**Still to do, in order:** B (merge), R2 (laptop bench, `docs/laptop-bench.md`, "R2"),
 9 (settings screen), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
 judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
 
@@ -36,6 +39,206 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Package B: real-hardware fixes (branch `package-b`, not merged: the next chat squash-merges it)
+
+**Status:** built; last full run 45424033530 (`c1ce3a1`) **green**; independent review done and fixed (below). Waiting for
+Andre's read of the report; the next chat squash-merges it. R1's numbers: `docs/laptop-results/r1.md`.
+
+**Before package B's own work** (2026-11-24)
+- Package A merged as `1453dee`. Main's full run 45324605921 failed only `server-compare`: the saved-terrain cache
+  missed, both `server-chunks` groups uploaded a `base.json` to the same merged folder, the shorter overwrote the longer
+  (11 stray bytes), and the kill check found no base dump (vanilla's runs too). Fixed in `ci/server/chunks-run.sh` (only
+  the group running the kill scene publishes it; branch `fix-chunks-base` full run 45329594639 green), merged as `b3de28f`.
+- Main's full run 45337291458 (`b3de28f`) then failed only because `server (terralith, vanilla-a)` died in GitHub's
+  "Set up job" (action download timeout). Re-run once by `[rerun]` (below, attempt 2): green, `latest` rebuilt from `b3de28f`.
+- **Cleanup workflow** (`.github/workflows/cleanup.yml`): a push whose commit message contains `[cleanup]` deletes the
+  branches in `ci/delete-branches.txt` (names or globs) with GITHUB_TOKEN; never `main`, `p2-3b` or `test-pack`, never
+  tags or releases (`pack-snapshot` stays). Trigger it with an empty `[cleanup]` commit on the branch `cleanup`, which
+  Build ignores and the workflow deletes. Runs 45341686767 (34 branches) and 45349876146 (package A's and the old
+  push-test log branches). Each package deletes its own test branches and its `ci-logs-*` branches the same way.
+- **`[rerun]`** (same workflow, `actions: write`): re-runs the failed jobs of main's latest Build run, at most once per
+  run, and only when `ci/rerun-check.py` finds an infrastructure failure: a job that failed in GitHub's "Set up job" or
+  lost its runner, with every comparison failure explained by it (a missing run, or a line naming that job's suite or
+  run). A real failure (a test job failing in its own steps, an unexplained comparison line) is never re-run. Its report
+  (why it re-ran or not) goes to the run's summary and the `ci-logs-rerun` branch. Only failed jobs re-run: passing
+  Quicksilver jobs keep their results, so a real difference in them shows again.
+
+**Fixes, before and after** (CI: old-GPU = Intel's plain draw path on llvmpipe; full = indirect path; speed runs' A/B
+windows are on against off in the same session, medians of three rounds; frame times only compare within a run, since
+runners differ by up to ~20% between runs)
+
+1. **Nether gap.** Where the frame goes (stage profile, nether, before: run 45351034373): terrain solid 55% / 48%
+   (old-GPU / full), "other" (tick, frame graph, present) 23% / 33%, GUI 17% / 15%, everything else under 2%. Draws per
+   profiled frame (old-GPU): terrain solid 7, cutout 5, animation 3, GUI 1, particles 1, entity 1 (18.2). The occlusion
+   readback (290 B/frame on CI) and uploads (0.1 ms) are negligible once meshing is done. The big difference with
+   Sodium: Sodium's fog occlusion leaves out sections past the fog, and the nether's **environmental** fog ends at about
+   half the render distance (64 blocks at 8 chunks); package A's fog-sections only used the render-distance fog and
+   only below the eye. Now fog-sections reads the real fog end from vanilla's fog data (a hook on
+   `FogRenderer.updateBuffer`) and, in the nether (no sky; cleared with the fog colour), uses the environmental fog and
+   leaves out sections above the eye too. Nether, fog-sections on against off (runs 45364139066 and full run 45391087534): **113 sections left out a frame,
+   terrain triangles 0.62 / 0.60, frame time 0.97-1.00 / 0.98-0.99**, sections culled by occlusion 255 → 147 (fogged sections
+   go before occlusion; on CI most of them were already hidden behind walls, so the frame time moves little here; the
+   laptop's occlusion culled only 67% in R1). Picture: nether shots within their limit (old-GPU 0.0174% with a lava
+   spark vanilla's own pair also shows; over 8/255 only 1-2 other pixels).
+   The R1 nether was measured while its terrain was still loading (2471 sections meshed in the window), which also
+   explains "still frames drawn in full 81": those mesh changes were real (see "Tried and dropped").
+2. **Spawn gap.** Same cause in part (fog-sections, render-distance fog at spawn: package A's numbers hold, spawn on/off
+   frame time 0.936 old-GPU in run 45358498573), plus draws (3): translucent terrain region by region cut spawn's
+   translucent draws from 17 to 8.
+3. **Draw calls** (terrain draws per frame, CI old-GPU; before = main `b3de28f` run 45337291458, after = full run
+   45391087534; Sodium = CI's `bench-sodium`, its terrain multi-draws):
+
+   | scene | before | after | Sodium |
+   |---|---|---|---|
+   | spawn | 39.1 (translucent 17) | 30.1 (translucent 8) | 27 |
+   | flythrough | 56.5 (translucent 25.9) | 42.7 (translucent 8.3) | 37 |
+   | nether | 12.6 | 12.1 | 11 |
+   | water_glass | 14.0 | 14.0 | 14 |
+
+   Whole frame (old-GPU): spawn 49.1 → 41.8, flythrough 66.3 → 52.6, nether 23.5 → 22.3. Full profile (indirect path)
+   unchanged within its gate: spawn 14.5 → 14.4, flythrough 16.0 → 15.8. Fly-through on/off for
+   `approx.translucent-regions` alone: draws 0.753, frame time 0.999 (run 45358498573). Still a few draws above Sodium in
+   spawn and the fly-through: the rest is one draw per region for solid and one for cutout (Sodium the same) plus
+   region splits across arenas (below); see decision 11.
+4. **Upload spikes.** The slowest frame's upload in every CI fly-through was an arena buffer growing to 64 MB (32 MB
+   copied): 28.8 ms (old-GPU) / 41.8 ms (two-phase old-GPU), baseline run 45351034373. Now, on the plain path (Intel's): arenas of 16 MB (a
+   grow copies at most 8 MB), a grow happens ahead (an arena past three quarters of its buffer) in a frame that copies in nothing
+   else but the camera's sections, a hard cap of twice the byte and time budget per frame (overdue visible meshes go
+   first in the next frame instead of all at once), and on the plain path regions keep to one arena (a region's first
+   section of a layer goes only into an arena at most half full). After (full run 45391087534): slowest frame **7.5 ms / 6.8 ms**,
+   slowest grow 7.4 / 6.5 ms, no frame over the hard cap. Indirect-path runs (64 MB arenas, reported): full 9-15 ms,
+   Vulkan under 5 ms. New gate (`ci/upload-compare.py`, `ci/upload-gates.json`): no frame over
+   the hard cap, slowest frame upload at most 20 ms, fly-through, spawn and nether, every Quicksilver client run.
+5. **fog-sections made safe.** It culls only at a fog end it saw vanilla write for the shaders this frame or the one
+   before, with fog switched on, start before end, an opaque fog colour, no shader pack and no world border in reach;
+   otherwise it switches itself off (one log line per kind of reason) and back on when all hold again; the bench's
+   speed settings report its state. Gate: the speed runs' `ci.fog-unconfirmed` switch (CI only: the fog hook's values
+   are dropped, as if vanilla's fog set-up had not run, so the real "didn't run" path is tested) must leave 0 sections
+   out in spawn, both speed runs.
+6. **Bench.** `/quicksilver bench` sets "Reduce FPS when" to Minimized while it runs and puts it back (reported in its
+   `display:` line); its `server:` line says when a screen before the title screen (the first-run welcome screen)
+   delayed start-up and by how much; `docs/laptop-bench.md`: 1536 MiB heap on 8 GB machines, copy `options.txt` between
+   instances, "Reduce FPS when: Minimized", and R2 (three runs per instance in alternating order, plus a 4th "low-end
+   preset" instance with opaque leaves and far-detail 4).
+
+Left alone: server ticks over 50 ms in the fly-through (worldgen; vanilla, Sodium and Quicksilver all have them).
+
+**Tried and dropped**
+- **Still camera: count only mesh changes of visible sections.** Meant for R1's "still frames drawn in full 81". CI
+  kept the mesher busy with sections outside the view (2 a frame) and saw no still frame drawn in full with the old
+  rule either: vanilla only re-meshes sections in its visible list, so outside ones don't move the stamp. On the laptop
+  the nether was still loading its visible terrain while measuring; those changes were real. Dropped (and the CI switch).
+- **One smaller arena size for both paths:** 16 MB gave the indirect path (one draw per arena and layer) 3 more draws a
+  frame in spawn and the fly-through (full run 45369287133, over its gate of main + 3); 32 MB still 3.4 more in the
+  fly-through (45376901277) and a 16 MB copy took 20.4 ms once (two-phase old GPU). So the size follows the path: 16 MB
+  on the plain path, 64 MB (as before) on the indirect path.
+- **One draw for solid and cutout together** (cutout's alpha test on solid geometry): changes pixels wherever a
+  solid-layer texture has transparent texels (leaves with `option.opaque-leaves`, fast leaves). Not built.
+
+**Limits:** none changed. Every shot stayed under its approximation limit with the new fog culling and translucent
+order (quick runs; full run below).
+
+**Run time:** full runs 43-51 min (push to the last job, about 10 of it queued for runners); the speed runs are the longest jobs (~26 min).
+
+**Full runs:**
+- 45369287133 (`8311aef`, before the review): full-profile draws over main + 3 in spawn and the fly-through (16 MB arenas
+  on the indirect path); the nether frame-time gate on noise; server suite: a churn verify-run chunk and fly-over p99
+  (server code package B doesn't touch; passed in the next two runs).
+- 45376901277 (`18b2c53`, review fixes, 32 MB arenas): fly-through full-profile draws 16.47 (over 16.07); the bench-only
+  jar's runs produced nothing (a new call from its frame hook into the speed module, which it doesn't hold: fixed);
+  one 16 MB copy took 20.4 ms.
+- 45384154582 (`9231f62`, arena size by path): arenas made while the world loads (before the first terrain frame) took
+  64 MB on the plain path too: grows 30-36 ms (fixed: the device's own flag decides until a frame is drawn).
+- 45391087534 (`f61407c`): every client check green (pictures, draws, speed and upload gates); server suite: one churn
+  chunk's `LastUpdate` differed from vanilla's in one round (tick timing; server code unchanged by package B; it passed
+  in the two runs before).
+- 45398649180 (`2fc7353`, docs): every client check green; server suite: fly-over `saveAll` median ratio 1.011, not
+  below 1.00 (the same timing gate flaked in package A's runs).
+- 45406792163 (`053a562`, the same code): server suite green; client: `occlusion_corner`'s measure-old run (vanilla
+  stand-in, vanilla's own terrain) shot without its floor: its setup `fill` answered "No blocks were filled" (the chunk
+  wasn't loaded yet on that runner), a scene set-up race package B doesn't touch.
+- 45415352504 (`d26779f`, the same code): every client check green; server suite: fly-over `msptP99` median per-round
+  ratio 1.138, over 1.10 (as in 45369287133).
+- 45424033530 (`c1ce3a1`, the same code): **green**, 51 min.
+- Flakes seen (none in code package B touches; each passed in other runs of the same code): the server suite's timing
+  gates (fly-over `msptP99` twice, `saveAll` once, a churn chunk's `LastUpdate` once) and one scene set-up race.
+
+**Independent review:** a fresh agent, after full run 45369287133 (`8311aef`); what was done (`18b2c53`):
+- upload: in a grow frame and past the hard cap an overdue visible mesh could wait past 4b's 15-frame bound (and fail
+  its CI gate): overdue meshes go in again whatever the cap or a grow, meshes at 11 frames go first; the cap's count
+  left in index lists and forced meshes: taken out.
+- fog: the hook read the fog data at HEAD (a mod changing it inside `updateBuffer` was missed): now at TAIL; fog starts
+  not checked (start >= end is never opaque): checked; the environmental end could be a frame old if vanilla sets up fog
+  after the terrain is prepared: now only a value written during this frame, and only in the nether (underwater the
+  sky's dark disc below the horizon is not fully fog-coloured); the world border and end portals are drawn without fog:
+  fog-sections switches itself off with the border in reach (end portals noted, not handled); "hook never ran" read as
+  "debug toggle" at start-up (overflow): fixed; the CI switch skipped the real check: it now drops the hook's values;
+  reasons logged once per kind; Iris looked up once.
+- translucent: near glass drawn early with its region would hide a farther region's water (translucent writes depth):
+  sections within 64 blocks keep vanilla's exact order, drawn last; the CI check worked the order out with the
+  renderer's own code: now on its own.
+- CI: `rerun-check.py` missed the speed and upload failure sections and treated timeouts as infrastructure, and the
+  suite name "core" explained any line: fixed; the cleanup and rerun jobs ran on any branch whose commit message held
+  the marker (a squash-merge to main would have): now only on `cleanup`; `[a-z]*` passed the pattern guard; ci-logs
+  branches `[rerun]` reads were unprotected: fixed; the upload gate passed on a missing bench: fails now.
+- smaller: stale fog state, misplaced comments, the nether frame-time gate (replaced by triangles: on CI occlusion
+  already hides most fogged nether sections, so frame time moves by noise only), a stale gate note.
+- left as is: a mod that swaps the fog uniform buffer itself isn't detected; occlusion's culled share in the speed
+  windows counts only first-pass draws (noted in the code).
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **`approx.translucent-regions` is on by default** (plain draw path only: Intel and old GPUs). Translucent terrain
+   farther than 64 blocks is drawn region by region (regions in the order vanilla's back-to-front list first reaches
+   them, each region's sections in vanilla's order), as Sodium does, instead of breaking a draw at every region change;
+   sections within 64 blocks are drawn last in vanilla's exact order (vanilla's translucent terrain writes depth: near
+   glass drawn early with its region would hide a farther region's water; review). Only where translucent faces of two
+   far regions overlap on screen can the blend order differ; no shot moved. Distance: `NEAR_TRANSLUCENT` in
+   `terrain/TerrainRenderer.java`. CI's translucency check now checks this
+   grouped order. Off: `approx.translucent-regions=off` in `config/quicksilver.properties`. Alternative: keep vanilla's
+   exact order (off) and live with the extra draws.
+2. **fog-sections uses the nether's environmental fog, and there also sections above the eye.** The shader takes the
+   larger of the render-distance and environmental fog values, so a section past either end is the fog colour; the
+   nether's environmental fog ends at about half the render distance, and the nether has no sky (it is cleared with the
+   fog colour), so walls and ceiling past it go too. Only the value vanilla wrote during this frame, before the terrain
+   is prepared, with its start before its end. Not in the overworld (review: underwater, the sky's dark disc below the
+   horizon is not fully fog-coloured; rain and effects move the end). Revert to package A's rule: drop the nether block in
+   `SpeedTerrain.fogEndThisFrame`. Alternative: the environmental fog everywhere once each case is checked in game.
+3. **fog-sections switches itself off** (logged once per kind of reason, back on by itself) when: the fog hook isn't
+   applied or didn't run this frame or the one before (a mod drawing fog its own way), vanilla's debug fog toggle is off,
+   a fog's start isn't before its end, the fog colour isn't opaque, a shader pack is in use (Iris's public API; Iris
+   loaded but unreadable counts as in use), or the world border (drawn without fog) is within the render distance plus
+   two chunks. The hook reads the fog data at the end of `FogRenderer.updateBuffer`, after mods that change it on the
+   way in. Not covered: a mod that swaps the fog uniform buffer itself, and end portal faces (drawn without fog) behind
+   a fogged section. Alternative: switch off for the whole session at the first miss.
+4. **Terrain arenas are 16 MB on the plain path** (Intel and old GPUs; were 64), 64 MB on the indirect path as before.
+   On the plain path a grow copies at most 8 MB (the 64 MB grow, 32 MB copied, was the slowest upload in every
+   fly-through: 28-41 ms on CI, and most likely the laptop's 58 ms), and a region's first section of a layer goes only
+   into an arena at most half full (or a new one), so regions don't straddle arenas. The indirect path draws once per
+   arena and layer, so it keeps few big arenas and first fit; its grows still happen ahead in a frame of their own, but
+   can take as long as before (reported, not gated). The size is chosen when an arena is made, by the last frame's path.
+   Switch: `PLAIN_ARENA_BYTES`, `ARENA_BYTES`, `NEW_REGION_FILL` in `terrain/TerrainStore.java`.
+5. **Upload hard cap: twice the byte budget per frame** outside the camera's sections (the frame's first mesh always
+   goes in), and twice the time budget; visible meshes that have waited 11 frames go first, so they rarely reach 4b's
+   15-frame bound, where they still go in past budget, cap and grow (review: the bound and its CI gate hold). An arena
+   past three quarters of its buffer grows ahead, in a frame that copies in only the camera's sections and overdue
+   meshes. Switch: `UploadBudget.hardCap()` / `hardNanos()` / `DUE_WAIT_FRAMES`. Alternative: cap at the budget itself.
+6. **CI upload gate: 20 ms** for the slowest frame's whole terrain upload in fly-through, spawn and nether, in the
+   plain-path runs (old GPU, two-phase old GPU), plus no frame over the hard cap (`ci/upload-gates.json`); the other
+   runs are reported. 20 ms is above what one 16 MB grow takes on CI's software rasteriser and well under the baseline's 28-41 ms.
+7. **Every `/quicksilver bench` sets "Reduce FPS when" to Minimized while it runs** and puts it back afterwards (the
+   `display:` line says what it was). Alternative: refuse to start unless it is set (makes the user do it).
+8. **Welcome-screen note:** any screen shown before the first title screen (the first-run welcome/accessibility screen)
+   is reported as delaying start-up, with how long it stayed up. Alternative: name only the known welcome screen class.
+9. **R2 low-end preset:** `option.opaque-leaves=on` and `option.far-detail=4` in the 4th instance's
+   `config/quicksilver.properties` (docs/laptop-bench.md, "R2").
+10. **Dropped: the still camera's visible-only mesh-change rule** (see "Tried and dropped"). The R1 nether ran while its
+   terrain was still loading; those mesh changes were real, so redrawing was right. R2's three runs per instance
+   (alternating) will show whether the nether still meshes while measuring; a longer settle for that scene is the next
+   step if it does.
+11. **Draw calls still a few above Sodium's in spawn and the fly-through** (above). Next levers, not built here because
+    they change the vertex format or pixels: a 9th slot bit for bigger regions (from block light's precision), or one
+    draw for solid and cutout where a section's solid textures are fully opaque.
 
 ## Package A: approximations and speed options (merged, squash of `package-a`)
 

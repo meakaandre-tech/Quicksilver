@@ -46,6 +46,13 @@ final class SpeedBench {
         final int value;
         final boolean profile;
         JsonObject result;
+        /** Package B: which list entry this window measures (a switch may be listed twice, with two values). */
+        int entry = -1;
+
+        Window of(int entry) {
+            this.entry = entry;
+            return this;
+        }
 
         Window(String label, Speed.Setting setting, int value, boolean profile) {
             this.label = label;
@@ -83,13 +90,15 @@ final class SpeedBench {
         this.emit = scene.speedEmit == null ? List.of() : scene.speedEmit;
         queue.add(new Window("profile", null, 0, true));
         for (String entry : scene.speedAb) {
+            // package B: "profile" alone in the list asks for the stage profile only (no switch measured)
+            if (entry.equals("profile")) continue;
             String key = entry, val = null;
             int eq = entry.indexOf('=');
             if (eq > 0) {
                 key = entry.substring(0, eq);
                 val = entry.substring(eq + 1);
             }
-            Speed.Setting s = Speed.all().get(key);
+            Speed.Setting s = Speed.byKey(key);
             if (s == null) {
                 problems.add("unknown switch " + key);
                 continue;
@@ -102,11 +111,11 @@ final class SpeedBench {
                 continue;
             }
             int off = s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : 0;
-            tested.add(new Object[] {s, on, s.value()});
+            tested.add(new Object[] {s, on, s.value(), tested.size()});
             for (int r = 0; r < ROUNDS; r++) {
                 boolean onFirst = r % 2 == 1;
-                queue.add(new Window(onFirst ? "on" : "off", s, onFirst ? on : off, false));
-                queue.add(new Window(onFirst ? "off" : "on", s, onFirst ? off : on, false));
+                queue.add(new Window(onFirst ? "on" : "off", s, onFirst ? on : off, false).of(tested.size() - 1));
+                queue.add(new Window(onFirst ? "off" : "on", s, onFirst ? off : on, false).of(tested.size() - 1));
             }
             // back to its configured value before the next switch, so each switch is measured against the defaults
             queue.add(new Window("reset", s, s.value(), false));
@@ -116,7 +125,7 @@ final class SpeedBench {
         previousVsync = mc.options.enableVsync().get();
         mc.options.framerateLimit().set(260); // the game's "unlimited"
         mc.options.enableVsync().set(false);
-        previousInactivity = setInactivityLimit("MINIMIZED");
+        previousInactivity = BenchRun.setInactivityLimit("MINIMIZED");
         QuicksilverClient.LOG.info("QUICKSILVER SPEED START scene={} windows={} (frame limit and vsync off until it ends)", sceneId, queue.size());
     }
 
@@ -183,6 +192,7 @@ final class SpeedBench {
                 Speed.BLOCK_ENTITIES_HIDDEN.reset();
                 Speed.PARTICLES_DROPPED.reset();
                 Speed.TERRAIN_TRIANGLES.reset();
+                com.meakaandre.quicksilver.occlusion.OcclusionStats.speedReset();
                 Speed.counting = true;
                 if (current.profile) {
                     var caps = QuicksilverClient.capabilities();
@@ -268,6 +278,14 @@ final class SpeedBench {
         o.addProperty("entitiesHiddenPerFrame", r2(Speed.ENTITIES_HIDDEN.sum() / fr));
         o.addProperty("blockEntitiesHiddenPerFrame", r2(Speed.BLOCK_ENTITIES_HIDDEN.sum() / fr));
         o.addProperty("particlesDropped", Speed.PARTICLES_DROPPED.sum());
+        // package B: occlusion culling in the window
+        long[] oc = com.meakaandre.quicksilver.occlusion.OcclusionStats.speedCounts();
+        double of = Math.max(1, oc[0]);
+        o.addProperty("occlusionDrawnPerFrame", r2(oc[1] / of));
+        o.addProperty("occlusionCulledPerFrame", r2(oc[2] / of));
+        o.addProperty("occlusionCulledPct", oc[1] + oc[2] == 0 ? 0 : r2(100.0 * oc[2] / (oc[1] + oc[2])));
+        o.addProperty("stillFramesDrawnInFull", oc[3]);
+        o.addProperty("fogSections", com.meakaandre.quicksilver.speed.SpeedTerrain.fogState());
         return o;
     }
 
@@ -285,7 +303,7 @@ final class SpeedBench {
         if (previousVsync != null) mc.options.enableVsync().set(previousVsync);
         previousLimit = -1;
         previousVsync = null;
-        if (previousInactivity != null) setInactivityLimit(previousInactivity);
+        if (previousInactivity != null) BenchRun.setInactivityLimit(previousInactivity);
         previousInactivity = null;
     }
 
@@ -314,7 +332,7 @@ final class SpeedBench {
             JsonArray windows = new JsonArray();
             List<JsonObject> on = new ArrayList<>(), off = new ArrayList<>();
             for (Window w : done) {
-                if (w.setting != s) continue;
+                if (w.setting != s || w.entry != (int) t[3]) continue;
                 JsonObject wj = w.result.deepCopy();
                 wj.addProperty("state", w.label);
                 windows.add(wj);
@@ -325,7 +343,8 @@ final class SpeedBench {
             JsonObject sum = new JsonObject();
             for (String k : List.of("frameMsAvg", "frameMsP50", "fps", "low1pctFps", "drawCallsPerFrame", "uploadBytesPerFrame",
                 "terrainTrianglesPerFrame", "sectionsInFogPerFrame", "cutoutLayersSkippedPerFrame", "entitiesHiddenPerFrame",
-                "blockEntitiesHiddenPerFrame", "particlesDropped")) {
+                "blockEntitiesHiddenPerFrame", "particlesDropped", "occlusionDrawnPerFrame", "occlusionCulledPerFrame", "occlusionCulledPct",
+                "stillFramesDrawnInFull")) {
                 double a = median(off, k), b = median(on, k);
                 JsonObject m = new JsonObject();
                 m.addProperty("off", r2(a));
@@ -359,31 +378,6 @@ final class SpeedBench {
             QuicksilverClient.LOG.info("QUICKSILVER SPEED END scene={} json={} problems={}", sceneId, file, problems);
         } catch (Exception ex) {
             QuicksilverClient.LOG.error("Quicksilver speed bench could not write its report", ex);
-        }
-    }
-
-    /**
-     * The game's inactivity frame limit (no input for a while caps the frame rate; the bench gives no input) set to the
-     * given value (a constant's name, or a value saved before); returns the previous value, or null if the option isn't
-     * there. Reflection, so a game without the option only loses this step.
-     */
-    private static Object setInactivityLimit(Object value) {
-        try {
-            Object opts = Minecraft.getInstance().options;
-            Object option = opts.getClass().getMethod("inactivityFpsLimit").invoke(opts);
-            Object old = option.getClass().getMethod("get").invoke(option);
-            Object v = value;
-            if (value instanceof String name && old != null && old.getClass().isEnum()) {
-                v = null;
-                for (Object c : old.getClass().getEnumConstants()) if (((Enum<?>) c).name().equals(name)) v = c;
-                if (v == null) return null;
-            }
-            option.getClass().getMethod("set", Object.class).invoke(option, v);
-            QuicksilverClient.LOG.info("Quicksilver speed bench: inactivity frame limit {} (was {})", v, old);
-            return old;
-        } catch (Throwable t) {
-            QuicksilverClient.LOG.warn("Quicksilver speed bench: could not set the inactivity frame limit ({})", t.toString());
-            return null;
         }
     }
 

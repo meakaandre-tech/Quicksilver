@@ -28,6 +28,12 @@ public final class BenchRun {
     private long waitUntil;
     private int previousRenderDistance = -1;
     private Boolean previousImprovedTransparency;
+    /**
+     * Package B: the game's "Reduce FPS when" (inactivity frame limit) while a bench runs: set to Minimized, since the
+     * bench gives no input (R1: it could cap frame rates mid-bench), and put back afterwards. What it was, for the report.
+     */
+    private Object previousInactivity;
+    static volatile String inactivityNote = "not set";
     private long measureStart;
     private int nextStep;
     private double px, py, pz;
@@ -67,6 +73,8 @@ public final class BenchRun {
                 QuicksilverClient.LOG.info("Quicksilver bench: Improved Transparency set to {} for this scene (put back afterwards)", oit);
             }
         }
+        run.previousInactivity = setInactivityLimit("MINIMIZED");
+        inactivityNote = run.previousInactivity == null ? "could not be set (left as it was)" : "Minimized while measuring (was " + run.previousInactivity + ")";
         QuicksilverClient.LOG.info("QUICKSILVER BENCH START scene={} seconds={}", run.sceneId, seconds);
         say("Bench " + run.sceneId + ": setting up" + (scene == null ? "" : " (needs commands allowed)") + ", then " + seconds + " s of measuring.");
     }
@@ -228,9 +236,37 @@ public final class BenchRun {
     }
 
     private void restore(Minecraft mc) {
+        if (previousInactivity != null) setInactivityLimit(previousInactivity);
+        previousInactivity = null;
         if (previousRenderDistance > 0) mc.options.renderDistance().set(previousRenderDistance);
         if (previousImprovedTransparency != null) mc.options.improvedTransparency().set(previousImprovedTransparency);
         if (scene != null && scene.screen != null && mc.gui.screen() != null) mc.gui.setScreen(null);
+    }
+
+    /**
+     * The game's inactivity frame limit (no input for a while caps the frame rate; the bench gives no input) set to the
+     * given value (a constant's name, or a value saved before); returns the previous value, or null if the option isn't
+     * there. Reflection, so a game without the option only loses this step. (Here, not in SpeedBench: the bench-only jar
+     * runs every bench without loading the speed module.)
+     */
+    static Object setInactivityLimit(Object value) {
+        try {
+            Object opts = Minecraft.getInstance().options;
+            Object option = opts.getClass().getMethod("inactivityFpsLimit").invoke(opts);
+            Object old = option.getClass().getMethod("get").invoke(option);
+            Object v = value;
+            if (value instanceof String name && old != null && old.getClass().isEnum()) {
+                v = null;
+                for (Object c : old.getClass().getEnumConstants()) if (((Enum<?>) c).name().equals(name)) v = c;
+                if (v == null) return null;
+            }
+            option.getClass().getMethod("set", Object.class).invoke(option, v);
+            QuicksilverClient.LOG.info("Quicksilver bench: inactivity frame limit {} (was {})", v, old);
+            return old;
+        } catch (Throwable t) {
+            QuicksilverClient.LOG.warn("Quicksilver bench: could not set the inactivity frame limit ({})", t.toString());
+            return null;
+        }
     }
 
     static void say(String text) {
