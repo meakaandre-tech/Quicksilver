@@ -22,17 +22,22 @@ The project stopped on 2026-11-17 and restarted with a smaller scope (design doc
   MSPT gates against vanilla in the same run stay. Details: `docs/ci-limits.md`, "Package L".
 - SIFTEC is cancelled: no SIFTEC suite, pack or scenes in CI.
 
-**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, A, L; phase 2's P2-0 to P2-4.
+**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, A, B, L; phase 2's P2-0 to P2-4.
 
 **Package A** (approximations and speed options): merged 2026-11-24, squash of branch `package-a` (branch full run
 45317393864 green; see "Package A" below, "Decisions for Andre" there).
 
-**Package B** (real-hardware fixes after R1): merged (`837daa0`).
+**Package B** (real-hardware fixes after R1): merged 2026-11-25, squash of branch `package-b` (`837daa0`; branch full
+run 45424033530 green). Main's full run 45480710531 then failed only a perf-world check (fixed on branch
+`fix-perf-seeds`, merged as `1783d9e`; see "Package 9", "Before package 9's own work").
 
 **Main fix** (2026-11-25): main's water_glass_oit failure on Vulkan and package 9's flakes; see "Main fix" below.
 
-**Still to do, in order:** B (merge), R2 (laptop bench, `docs/laptop-bench.md`, "R2"),
-9 (settings screen), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
+**Package 9** (settings screen): squash-merged into main 2026-11-25 after the main fix (see "Package 9" below,
+"Decisions for Andre" there).
+
+**Still to do, in order:** R2 (laptop bench, `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two
+lines, which the file now reads as `preset=custom`, and `preset=low-end` turns on more), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
 judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
 
 **Cut:** 2c (GPU-driven culling), 7b (GUI batching), 10 (compat sign-off and its popular-mods test pack; branch
@@ -111,10 +116,205 @@ wait (old GPU, fly-through). Speed gates: spawn fog-sections frame time on/off 0
 0.944 (speed-full).
 Test branches (`t-oit-vk`, `t-oit-vk3`, `t-build`) and their log branches were deleted with `[cleanup]` (step 3).
 
-## Package B: real-hardware fixes (branch `package-b`, not merged: the next chat squash-merges it)
+## Package 9: settings screen (merged, squash of `package-9`)
 
-**Status:** built; last full run 45424033530 (`c1ce3a1`) **green**; independent review done and fixed (below). Waiting for
-Andre's read of the report; the next chat squash-merges it. R1's numbers: `docs/laptop-results/r1.md`.
+**Status:** merged 2026-11-25 (squash of `package-9`, rebased on the main fix); full run 45524429077 (`77fa429`, after the
+independent review and its fixes) **green**. Main's open failure at the time (fixed by the main fix, above):
+**Main was not green:** its latest full run 45524404385 (`966c4b5`, the flake fixes) failed one picture, core
+`water_glass_oit` on Vulkan (0.0964% over 8/255 against its 0.012% limit; every other profile 0.004-0.0055%). The 849
+pixels are in one patch at the bottom of the frame: two far snowy-terrain features vanilla-vk draws and quicksilver-vk
+doesn't (`compare/diff/core-water_glass_oit-vulkan.png`). It is a Quicksilver-only difference, so it is treated as a bug.
+It can't be put down to infrastructure (no `[rerun]`), and the limit was not raised. The code dates from package B.
+This shot passed in all of package B's 8 full runs, the fix branches' runs and package 9's run. Likely suspects:
+fog-sections' far edge on lavapipe, or a far section that wasn't meshed yet when the shot was taken (no upload was
+waiting). The next chat should look at it before merging package 9.
+
+**Before package 9's own work** (2026-11-25)
+- Package B squash-merged as `837daa0`. Main's full run 45480710531 failed only `server-compare`: core perf `mobs`,
+  Quicksilver round 7's saved world differed from vanilla's in 323 keys (every pen's mobs and grass) and held one extra
+  item entity in a cave at the area's edge. The harness seeded every entity's random from its UUID, and UUIDs come from
+  one pinned sequence in creation order, so one extra entity made while the world loaded moved every mob's UUID and
+  random by one. Not GitHub infrastructure, so no `[rerun]`. Fixed on branch `fix-perf-seeds`
+  (`ci/server/harness/.../Harness.java`, `reseed`): each entity's random from its type, its block and its rank there by
+  creation order; items, falling blocks and orbs present at tick 0 are logged (`CI ENTITY`). Branch full run 45490443350
+  green (all eight perf `mobs` worlds equal), merged as `1783d9e`; main's full run 45498721286 then failed only on the step-2 flakes (below). Where the stray item
+  came from is not known yet (the new log lines will show it next time).
+- `package-b` is **not** deleted yet: the brief deletes it once main is green, and main isn't yet (above). Its log
+  branches were already gone. Package 9's test branches (`fix-perf-seeds`, `fix-ci-flakes`, `p9-drive-test`) and every
+  `ci-logs-*` branch of those and of `package-9` were deleted with `[cleanup]` (run 45534477357); `package-9` stays.
+
+**What it adds**
+- **The options screen** (`settings/SettingsScreen`): vanilla's options-screen layout (an `OptionsSubScreen`: title,
+  a scrolling two-column list, Done), no new rendering. Rows: Preset; "Speed options (change the look)": opaque leaves,
+  simple water, far detail, entities, block entities, particles (distance), particle density; "Shortcuts you can't
+  see": fog culling (`approx.fog-sections`), fewer glass draws (`approx.translucent-regions`); "Modules (need a
+  restart)": block renderer, occlusion (auto, two-phase, still-camera, off), the Memory, Logic and Chunks modules and
+  each of their optimisations (read from the modules, so a new one shows up by itself). Every button has a one-line
+  tooltip saying what it does and whether it changes the look (and, for modules, that it needs a restart). Distances
+  are chosen from fixed steps (far detail off/2/3/4/6/8/12/16 chunks; entities off/16-128 blocks; block entities
+  off/12-64; particles off/8-32; density all/75/50/25/10%); a value from the file that isn't a step is added as one.
+- **Opens from** Video Settings (a "Quicksilver..." button at the end of its list: Fabric API's screen event, the list
+  made accessible in `quicksilver.classtweaker`), from Mod Menu if installed (`settings/ModMenuEntry`, entrypoint
+  `modmenu`; `suggests` in `fabric.mod.json`, compile-only from Modrinth's maven, never bundled) and with `/qs settings`.
+- **Presets** (`settings/Settings`): Low-end, Balanced (default), Quality; values below. The preset shown is the one
+  whose values every speed switch holds now, "Custom" if none, so a change made anywhere (screen, command, file) shows
+  Custom.
+- **Applies at once:** every speed switch, as before; opaque leaves and simple water re-mesh the world (no restart).
+  Module switches are saved at once and used after a restart.
+- **One config file, kept in sync:** the screen and `/qs speed <name> <value>` both write `config/quicksilver.properties`
+  (every speed switch, `preset=`, the module switches; other lines kept; written to a temporary file and moved into
+  place). `/qs speed` now saves (it was "until restart"). At start-up a `preset=` line is applied first and the file's
+  own switch lines go on top; measure runs still keep everything off and write nothing.
+
+**Preset values**
+
+| switch | Low-end | Balanced (default) | Quality |
+|---|---|---|---|
+| `approx.fog-sections` | on | on | off |
+| `approx.translucent-regions` | on | on | off |
+| `option.opaque-leaves` | on | off | off |
+| `option.simple-water` | on | off | off |
+| `option.far-detail` | 4 chunks | off | off |
+| `option.entity-distance` | 48 blocks | off | off |
+| `option.block-entity-distance` | 32 blocks | off | off |
+| `option.particle-distance` | 24 blocks | off | off |
+| `option.particle-density` | 50% | 100% | 100% |
+
+**CI**
+- **Preset runs** `preset-low-old`, `preset-balanced-old`, `preset-quality-old` (full mode; `[presets]` adds them to a
+  quick run): Quicksilver on the old-GPU profile (the laptop's plain path) with `preset=<preset>` in its config file and
+  the upload-queue wait, shots only (no bench, so no verify checks), in PRESET_SCENES (spawn, flythrough, water_glass, nether, mobs,
+  block_entities, particles, flat_plants). `ci/preset-compare.py` (`compare/presets.md`) compares each shot with
+  vanilla-old's: Balanced and Quality against today's approximation limits, Low-end against its own
+  (`ci/preset-limits.json`, `docs/ci-limits.md`, "Package 9"); and checks the preset was applied, no fallback, no crash,
+  no failed set-up.
+- **Screen test** (`settings/ScreenTest`, `-Dquicksilver.ci.screenTest`, in the balanced run after its scenes, with Mod
+  Menu 21.0.0 loaded, locked in `ci/pack-lock.txt`): the run types `/qs speed far-detail 6` then `/qs screentest`. Checks:
+  the command saved the file and the screen shows Custom; the Video Settings button and Mod Menu's factory open the
+  screen; each preset sets every switch, every button shows it, the file holds it and reads back to it; a change shows
+  Custom and is saved; opaque leaves and simple water re-mesh at once; a module switch is saved and asks for a restart;
+  every row's tooltip says whether it changes the look; GUI scales 1-3 laid out (every widget inside the window, no
+  overlaps, every label inside its button); scale 4 by size (at 1280x720 vanilla offers scale 3 at most; 4 needs a
+  1280x960 window: the 310-px rows fit 320). Then the screen at GUI scale 2 for the screenshot
+  (`runs/core-preset-balanced-old/settings/settings-screen.png` on the ci-logs branch; published, not compared).
+
+**Step 2: CI flakes.** Package B's full runs failed 5 of 8 times on checks it didn't touch. Why each was noisy, and the fix:
+- **Chunk timing gates** (`ci/server/compare-chunks.py`; fly-over save time and p99, save-all, churn): each gate was the
+  median of the per-round ratios, so it rested on one round. Fly-over save time is JFR samples (about 430 a run, so
+  about 5% noise a run on each side); fly-over p99 is a run's 12th-slowest tick, and about half of a run's slowest 1%
+  were the first 8 moves (ticks 0-56: the JIT compiling the chunk path, 10-46 ms in vanilla too). Fixes: the gated
+  number is now the geometric mean of the per-round ratios with the highest and lowest left out (from 5 rounds; the
+  churn's 3 rounds keep the median); the
+  fly-over's tick numbers leave out its first 64 ticks (it runs 1264, so 1200 are measured); the fly-over has 9 rounds
+  (was 7). Limits unchanged. Spread over the six runs whose logs exist (main, ci-light, p2-4, p2-4-save-gate, package-6,
+  test-pack; bootstrap sd = resampling the rounds):
+
+  | gate | limit | before: median of rounds, per run | bootstrap sd | after: trimmed geometric mean | bootstrap sd |
+  | flyover saveAll | < 1.00 | 0.938 0.920 0.933 0.936 0.928 0.976 (0.920-0.976) | 0.032 | 0.937 0.934 0.943 0.922 0.922 0.956 (0.922-0.956) | 0.026 |
+  | flyover msptP99 | <= 1.10 | 0.922 0.970 0.973 0.935 1.081 0.996 (0.922-1.081) | 0.050 | 0.901 0.981 0.954 0.970 0.969 0.921 (0.901-0.981) | 0.030 |
+  | save saveAllMs | <= 1.10 | 0.694 0.961 0.955 0.913 0.873 0.863 (0.694-0.961) | 0.086 | 0.774 0.950 0.883 0.914 0.894 0.872 (0.774-0.950) | 0.066 |
+  | churn saveAll | < 1.00 | 0.855 0.871 0.816 0.844 0.796 0.841 (0.796-0.871) | 0.057 | 0.833 0.890 0.793 0.799 0.802 0.861 (0.793-0.890) | 0.035 |
+  | churn msptAvg | <= 1.10 | 0.961 0.985 0.966 0.942 0.923 0.976 (0.923-0.985) | 0.027 | 0.953 0.982 0.978 0.940 0.937 0.968 (0.937-0.982) | 0.018 |
+
+  The flyover rows' "after" also leave out the warm-up. With 9 rounds the fly-over's spread drops by about another eighth.
+  The save-all tick (`core/save`) also gets eight more save-alls a round (ten, was two: one round's ratio was 2.12 in
+  main's run 45498721286), as P2-4's save-gate branch had measured (per-round 0.84-1.00 with twelve).
+
+- **Churn file check** (failed twice in B: a chunk's `LastUpdate` differed in one round, once in the verify run): a
+  chunk's last save was whichever save-all found it ready (a save still being serialised is skipped: background-thread
+  timing), so its saved `LastUpdate` moved between rounds. Now every window chunk is marked changed after the last tick
+  (`CiChunks.result`, as `Harness.markUnsaved` does for scripted areas), so the save as the server stops writes each at
+  the last tick; every save during the run is still compared at its tick.
+- **Scene set-up race** (occlusion_corner's floor missing in a measure run): `ci/drive.py` now reads the server's replies
+  to the set-up and sends it again while the server says the area isn't loaded, up to 60 s; retries are recorded (`setupRetries`) and a set-up that still fails
+  fails the scene in `ci/compare.py` (instead of a picture difference). The replies are read after the usual settle and
+  a retry removes every entity but players, then resends the whole set-up: a first version that waited for each
+  command's reply gave the OIT scenes' water time to flow (translucent_move_oit 31 draw calls a frame instead of 25;
+  test branch `p9-drive-test` without it: 25.27).
+- Nothing was made report-only.
+
+**Results after the fixes** (gated value, then the per-round ratios)
+
+| gate (limit) | flake branch full run 45518424419 | package-9 full run 45524429077 |
+|---|---|---|
+| fly-over save time (< 1.00) | 0.961 (0.82-1.05, 9 rounds) | 0.955 (0.85-1.09) |
+| fly-over p99 (<= 1.10) | 0.955 (0.84-1.16) | 0.956 (0.86-1.06) |
+| save-all tick (<= 1.10) | 0.837 (0.67-1.13, ten save-alls) | 0.831 (0.69-1.06) |
+| churn save time (< 1.00) | 0.851 (median of 3) | 0.856 |
+| churn MSPT (<= 1.10) | 0.937 | 0.963 |
+
+The flake fixes reached main first, through branch `fix-ci-flakes`. Its first full run, 45511522980, failed on things
+that have nothing to do with the fixes. It crossed midnight UTC, and the client-6 logs of three runs held a second
+session, which tripped the block-renderer session check. The plain-path fly-through's slowest upload frame took 32.6 ms
+against the 20 ms upload gate (package B's gate: one runner hiccup; its slowest arena grow took 6.7 ms). The
+fog-sections speed gate in spawn read 1.009 against <= 1.00 on speed-old. The second run, 45518424419, was green and was
+squash-merged as `966c4b5`. Package B's upload and speed gates may need the same treatment later. They are noted here,
+not changed.
+
+**Preset runs** (full run 45524429077; share of pixels over 8/255 against vanilla-old, with the limit)
+
+| shot | Low-end | Balanced | Quality |
+|---|---|---|---|
+| spawn | 17.96 (36.89; at least 1) | 0.062 (0.89) | 0.207 (0.89) |
+| flythrough | 4.40 (8.80) | 0.0011 (0.003) | 0.0011 (0.003) |
+| water_glass | 14.52 (29.04; at least 1) | 0.0049 (0.012) | 0.0049 (0.012) |
+| particles | 2.70 (5.41) | 0 (0.0008) | 0 (0.0008) |
+| flat_plants | 0.318 (0.637) | 0.0186 (0.046) | 0.0186 (0.046) |
+| mobs.far | 0.355 (0.711) | 0 (0.001) | 0 (0.001) |
+| nether, mobs, block_entities (4 shots) | within approximation limits | within | within |
+
+Screen test: every check passed (21). Screenshot: `docs/progress.md` can't hold it, so it was sent with the report
+(the run's copy was on `ci-logs-package-9`, deleted by the cleanup as the brief asks).
+
+**Limits:** no limit was raised or loosened. The only new limits are Low-end's own, in `ci/preset-limits.json`.
+
+**Run time:** package 9's full run 45524429077 took 61 min from push to its last job. It shared GitHub's ~20 runners with
+main's full run, which was started at the same minute. The flake branch's run 45518424419 ran mostly alone and took 44
+min. Package 9 adds three preset jobs of 12-13 min each (676 against 630 runner-minutes), so a full run on its own should
+take about 47 min. The fly-over job's 9 rounds take 4-5 min more than its 7 did.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **Low-end turns on every visible speed option:** R2's pair (opaque leaves, far detail 4) plus simple water, entities
+   48 blocks, block entities 32, particles 24, density 50%. Alternative: R2's pair only. Switch: `Settings` static block
+   (`settings/Settings.java`).
+2. **Quality turns both approximations off** (all fogged sections drawn, translucent terrain in vanilla's exact order).
+   Alternative: keep fog culling on in Quality (it is invisible). Switch: the Quality map in `Settings`.
+3. **Balanced is the default everywhere** (the brief); the design doc's "High on a dedicated GPU" is not done (no GPU
+   detection). Switch: the speed switches' defaults in `speed/Speed.java`.
+4. **The preset shown is worked out from the values** (no separate stored state): a change anywhere shows Custom
+   (saved as `preset=custom`), and setting the values back shows the preset again. At start-up a named `preset=` in the
+   file sets every speed switch; `custom` keeps the file's own lines (so a hand edit of a speed line needs
+   `preset=custom`). Alternative: file lines always win over the preset. Switch: `Settings.load()`.
+5. **`/qs speed` now saves to the file** (it was until restart), so command, screen and file never disagree.
+   Alternative: command until restart, screen saves. Switch: `Speed.setCommand`.
+6. **Module switches are in the screen**, including each optimisation of Memory, Logic and Chunks (not
+   `memory.bench-buffers`, the bench's own: file only), saved at once and used after a restart (the section's header
+   then says so); presets don't touch them. A row's tooltip says when FerriteCore, Lithium or C2ME keeps its module off.
+   Alternative: whole-module switches only. Switch: `Settings.moduleSwitches()`.
+7. **The Video Settings button is at the end of its list** (added after the screen is built, no mixin). Alternative: a
+   mixin to put it first.
+8. **Mod Menu:** compile-only `maven.modrinth:modmenu:21.0.0` (Modrinth's maven); CI loads Mod Menu 21.0.0 in the
+   balanced preset run only (pack set `modmenu`). Alternative: a hand-written interface stub instead of the maven jar.
+9. **GUI scale 4 is checked by size**: at 1280x720 the game offers scale 3 at most. Alternative: a second window size in
+   CI (1280x960) for a real scale-4 check.
+10. **The screenshot is published, not compared** (the world shows behind the screen; the layout is checked by the
+    test instead). Alternative: a stored reference with a limit.
+11. **Preset runs:** old-GPU profile only, 8 scenes, shots only (no bench), to keep the full run under an hour.
+    Alternative: every core scene, or each preset in every profile.
+12. **Low-end limits:** twice the largest Low-end difference seen in quick runs 45487395025 and 45511557797 (against vanilla-a; the full run checks them against vanilla-old), never below the shot's approximation
+    limit (`ci/preset-limits.json`). They catch a badly broken Low-end, not small changes; Balanced and Quality keep
+    today's limits. Alternative: references of the Low-end pictures instead of vanilla's.
+13. **Chunk timing gates use the trimmed geometric mean of the per-round ratios** (median still reported), the fly-over
+    leaves out its first 64 ticks and has 9 rounds. Switch: `gate_ratio` / `WARMUP_TICKS` in
+    `ci/server/compare-chunks.py`, `ci/server/chunks-core.txt`.
+14. **The harness re-seeds entities by type, block and rank, not UUID** (merged to main for the perf-world failure).
+    Switch back: `Harness.reseed`.
+15. **Tooltips and captions are English text in code** (no language file). Alternative: `en_us.json` keys.
+
+## Package B: real-hardware fixes (merged, squash of `package-b`)
+
+**Status:** merged 2026-11-25 as `837daa0` (squash of `package-b`); last branch full run 45424033530 (`c1ce3a1`) green;
+independent review done and fixed (below). R1's numbers: `docs/laptop-results/r1.md`.
 
 **Before package B's own work** (2026-11-24)
 - Package A merged as `1453dee`. Main's full run 45324605921 failed only `server-compare`: the saved-terrain cache

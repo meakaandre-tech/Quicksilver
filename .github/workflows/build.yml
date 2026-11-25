@@ -49,7 +49,7 @@ jobs:
           # (SIFTEC is cancelled).
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":0},{"suite":"core","run":"speed-full","shard":0},{"suite":"create","run":"quicksilver-smoke","shard":0}]}'
+            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":0},{"suite":"core","run":"speed-full","shard":0},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0}]}'
             server_suites='["core","terralith"]'
           else
             matrix='{"suite":["core"],"run":["quicksilver-old","quicksilver-2p-old","vanilla-a","vanilla-b"],"shard":[1,2]}'
@@ -68,6 +68,10 @@ jobs:
             case "$MESSAGE" in *"[create]"*)
               matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).append({"suite":"create","run":"quicksilver-smoke","shard":0}); print(json.dumps(m,separators=(",",":")))');;
             esac
+            # package 9: [presets] adds the three preset runs (ci/preset-compare.py; the balanced one runs the options screen's test)
+            case "$MESSAGE" in *"[presets]"*)
+              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"core","run":"preset-%s-old" % p,"shard":0} for p in ("low","balanced","quality")]); print(json.dumps(m,separators=(",",":")))');;
+            esac
             # phase 2's server suite in quick mode: core only (Andre, 2026-10-29); Terralith in full mode, or with
             # [terralith] in the commit message (P2-1)
             suites='"core"'
@@ -75,7 +79,7 @@ jobs:
             server_suites="[$suites]"
           fi
           # package A: the matrix's speed and smoke runs, so their checks fail on a run that produced nothing
-          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke"))))')" >> "$GITHUB_OUTPUT"
+          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke","preset-"))))')" >> "$GITHUB_OUTPUT"
           echo "server_suites=$server_suites" >> "$GITHUB_OUTPUT"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
@@ -305,6 +309,8 @@ jobs:
           BENCH_SECONDS: "20"
           # the bench-only runs (package 4b) bench these scenes only
           BENCH_SCENES: "spawn flythrough water_glass nether"
+          # the preset runs (package 9) shoot these scenes only
+          PRESET_SCENES: "spawn flythrough water_glass nether mobs block_entities particles flat_plants"
         run: |
           chmod +x gradlew
           if [ -f core-server.tar ]; then tar xf core-server.tar; fi
@@ -359,7 +365,11 @@ jobs:
           python3 -I ci/upload-compare.py /tmp/res /tmp/ci/compare > /dev/null
           up=$?
           cat /tmp/ci/compare/upload.md >> "$GITHUB_STEP_SUMMARY"
-          echo "status=$(( st || p2 || sp || cs || up ))" >> "$GITHUB_OUTPUT"
+          # package 9: the preset runs and the options screen's test
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 ci/preset-compare.py /tmp/res /tmp/ci/compare > /dev/null
+          pr=$?
+          cat /tmp/ci/compare/presets.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$(( st || p2 || sp || cs || up || pr ))" >> "$GITHUB_OUTPUT"
       - name: Publish logs, bench results and screenshots to the branch's ci-logs-<branch> branch
         if: always()
         shell: bash

@@ -1,0 +1,55 @@
+{
+ "_note": "Package 9: per shot, the share of the frame (%) whose pixels may differ from vanilla's (old-GPU) by more than 8/255 in the Low-end preset run (preset-low-old), which changes the look on purpose (opaque leaves, simple water, far detail 4, entity 48 / block entity 32 / particle 24 blocks, particle density 50%). Set to twice the largest difference seen in the runs named in docs/ci-limits.md, 'Package 9' (rounded up to 0.0005%), and never below the shot's approximation limit (ci/approx-limits.json: where Low-end changes nothing in a shot, vanilla's own noise decides). These catch a Low-end preset that draws far more differently than it should (a broken option, a missing layer), not small changes: the Balanced and Quality runs keep today's approximation limits (ci/approx-limits.json).",
+ "samples": {
+  "45487395025": {
+   "block_entities.chest_open": 0.0031,
+   "block_entities.closed": 0.013,
+   "block_entities": 0.0081,
+   "block_entities.sign_edit": 0.0138,
+   "flat_plants": 0.3184,
+   "flythrough": 4.2868,
+   "mobs.far": 0.3554,
+   "mobs": 0.0,
+   "nether": 0.0003,
+   "particles.bare": 0.0,
+   "particles": 2.7045,
+   "spawn": 18.4448,
+   "water_glass": 14.5195
+  },
+  "45511557797": {
+   "block_entities.chest_open": 0.0127,
+   "block_entities.closed": 0.009,
+   "block_entities": 0.0015,
+   "block_entities.sign_edit": 0.0065,
+   "flat_plants": 0.3184,
+   "flythrough": 4.4021,
+   "mobs.far": 0.3554,
+   "mobs": 0.0,
+   "nether": 0.0003,
+   "particles.bare": 0.0,
+   "particles": 2.7045,
+   "spawn": 18.1035,
+   "water_glass": 14.5189
+  }
+ },
+ "low-end": {
+  "block_entities": 0.049,
+  "block_entities.chest_open": 0.0455,
+  "block_entities.closed": 0.049,
+  "block_entities.sign_edit": 0.0515,
+  "flat_plants": 0.637,
+  "flythrough": 8.8045,
+  "mobs": 0.001,
+  "mobs.far": 0.711,
+  "nether": 0.0715,
+  "particles": 5.409,
+  "particles.bare": 0.001,
+  "spawn": 36.89,
+  "water_glass": 29.039
+ },
+ "low-end-min": {
+  "spawn": 1.0,
+  "water_glass": 1.0
+ },
+ "_note_min": "low-end-min: a Low-end shot under this share fails: the visible options didn't change the picture (opaque leaves and far detail in spawn, simple water in water_glass; seen 18% and 15%)."
+}

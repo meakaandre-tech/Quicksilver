@@ -23,6 +23,32 @@ package 0 merges; from then on a limit is never raised and a baseline only goes 
 - **Client sessions** (`ci/client-run.sh`): each session's game must have exited (60 s, then killed) before its log is
   read and the next session starts; rolled log parts are read in the order they were written.
 
+## Package 9: preset runs, the screen test, flake fixes (2026-11-25)
+
+- **Approximation limits:** unchanged. The Balanced and Quality preset runs (`preset-balanced-old`,
+  `preset-quality-old`) are gated on today's approximation limits (`ci/approx-limits.json`) against vanilla's old-GPU
+  shots (vanilla-a in a quick run).
+- **Low-end limits** (`ci/preset-limits.json`, new): the Low-end preset changes the look on purpose (opaque leaves,
+  simple water, far detail 4, entity / block entity / particle distances, particle density 50%), so its shots get their
+  own limit: twice the largest Low-end difference seen in quick runs 45487395025 and 45511557797 (against vanilla-a; the full run checks them against vanilla-old) (rounded up to 0.0005%), never below the shot's
+  approximation limit. Largest values: spawn ~18% (opaque leaves, far detail), water_glass ~15% (simple water),
+  flythrough ~4%, particles ~3%. They catch a Low-end preset that draws far more differently than it should; small
+  regressions are caught by the Balanced and Quality runs and the Quicksilver runs. A lower bound too (`low-end-min`):
+  spawn and water_glass must differ by at least 1%, or the Low-end options didn't apply.
+- **Screen test** (`ci/preset-compare.py`): every check of `settings/ScreenTest` must pass, END with failed=0, the
+  screenshot must exist, Mod Menu must be loaded (pack set `modmenu`, locked).
+- **Chunk timing gates** (`ci/server/compare-chunks.py`): same limits; the gated number is now the geometric mean of the
+  per-round ratios with the highest and lowest left out (5 rounds or more; the median below 5, as before), the median
+  still reported. The fly-over runs 1264 ticks and its tick numbers (MSPT, p99, slowest, over 50 ms) leave out the first 64
+  (warm-up); 9 rounds (was 7). Spreads before and after: `docs/progress.md`, "Package 9".
+- **Chunk scenes' saved files:** every window chunk is marked changed after the last tick, so the final save is at the
+  last tick in every run (`CiChunks.result`); the per-save comparison is unchanged.
+- **Scene set-up** (`ci/drive.py`): after the usual settle the server's replies are read; if one says an area isn't
+  loaded, every entity but players is removed and the whole set-up is sent again (up to 60 s); a set-up that still fails
+  fails its scene in `ci/compare.py`.
+- **Harness** (merged to main first, `fix-perf-seeds`): entity randoms at tick 0 are seeded from type, block and rank, not
+  the UUID.
+
 ## Package B: real-hardware fixes (2026-11-24)
 
 - **Approximation limits:** unchanged. fog-sections now also uses the environmental fog (and in the nether sections above

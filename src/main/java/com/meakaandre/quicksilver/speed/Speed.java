@@ -27,7 +27,8 @@ import net.minecraft.network.chat.Component;
  * notice in play and may be on by default where it was measured to buy speed; an <b>option</b> ({@code option.*})
  * visibly simplifies the picture and is always off by default. Each is a line in {@code config/quicksilver.properties}
  * (read at start-up) and can be switched in game with {@code /quicksilver speed <name> on|off|<number>} (also
- * {@code /qs}); {@code /qs speed} lists them. The settings screen is package 9's.
+ * {@code /qs}); {@code /qs speed} lists them. Package 9: the options screen ({@code settings/SettingsScreen}) shows the same
+ * switches with presets; the screen and the command both save the file ({@code settings/Settings#save}).
  *
  * <p>In CI's measure runs (Quicksilver loaded as a vanilla stand-in) every one stays off and can't be switched on.
  */
@@ -208,9 +209,67 @@ public final class Speed {
         QuicksilverClient.LOG.info("Quicksilver speed: {} = {}", s.key, show(s));
         if (s.remesh) {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.levelExtractor != null) mc.levelExtractor.allChanged();
+            if (mc.levelExtractor != null) {
+                mc.levelExtractor.allChanged();
+                REMESHES.increment();
+            }
         }
         return null;
+    }
+
+    /** Package 9: how many times a switch re-meshed the world (the settings screen's CI test checks it). */
+    public static final LongAdder REMESHES = new LongAdder();
+
+    /**
+     * Package 9: sets several switches at once (a preset), re-meshing the world once if any changed switch needs it.
+     * Returns why not, or null; nothing changes if any value is out of range.
+     */
+    public static String setAll(Map<String, Integer> values) {
+        if (locked) return "switches stay off in a measure run";
+        for (Map.Entry<String, Integer> e : values.entrySet()) {
+            Setting s = ALL.get(e.getKey());
+            if (s == null) return "no switch called " + e.getKey();
+            int value = e.getValue();
+            if (value == 0 && s.key.equals(PARTICLE_DENSITY.key)) return "particle density takes 1-100";
+            boolean offValue = value == 0 || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
+            if (!offValue && (value < s.min || value > s.max)) return s.key + " takes " + s.min + "-" + s.max;
+        }
+        boolean remesh = false;
+        StringBuilder log = new StringBuilder();
+        for (Map.Entry<String, Integer> e : values.entrySet()) {
+            Setting s = ALL.get(e.getKey());
+            if (s.value == e.getValue()) continue;
+            s.value = e.getValue();
+            remesh |= s.remesh;
+            if (log.length() > 0) log.append(", ");
+            log.append(s.key).append('=').append(show(s));
+        }
+        if (log.length() > 0) QuicksilverClient.LOG.info("Quicksilver speed: {}", log);
+        if (remesh) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc != null && mc.levelExtractor != null) {
+                mc.levelExtractor.allChanged();
+                REMESHES.increment();
+            }
+        }
+        return null;
+    }
+
+    /** Package 9: a switch's value as written in the config file (on/off, or the number; parse reads it back). */
+    public static String fileValue(Setting s) {
+        if (s.bool()) return s.on() ? "on" : "off";
+        if (s.key.equals(PARTICLE_DENSITY.key)) return String.valueOf(s.value);
+        return s.on() ? String.valueOf(s.value) : "off";
+    }
+
+    /** Package 9: the value a switch would take from this text (the screen's and the command's parser), or null. */
+    public static Integer parseValue(Setting s, String v) {
+        return parse(s, v);
+    }
+
+    /** Package 9: whether the switches can be changed (false in CI's measure runs). */
+    public static boolean locked() {
+        return locked;
     }
 
     // ---- checks used by the modules (cheap: called per section, entity or particle)
@@ -337,7 +396,10 @@ public final class Speed {
             src.sendError(Component.literal("[Quicksilver] " + s.key + ": " + why + "."));
             return 0;
         }
-        src.sendFeedback(Component.literal("[Quicksilver] " + s.key + " = " + show(s) + " (until restart; put it in config/quicksilver.properties to keep it)."));
+        // package 9: saved, so the file and the options screen show the same as the command
+        boolean saved = com.meakaandre.quicksilver.settings.Settings.save();
+        src.sendFeedback(Component.literal("[Quicksilver] " + s.key + " = " + show(s) + (saved ? " (saved; preset: "
+            + com.meakaandre.quicksilver.settings.Settings.current().id + ")." : " (not saved: see the log).")));
         return 1;
     }
 

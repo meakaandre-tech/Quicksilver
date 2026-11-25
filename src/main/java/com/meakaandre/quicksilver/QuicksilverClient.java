@@ -43,6 +43,23 @@ public final class QuicksilverClient implements ClientModInitializer {
         // package A: approximations and speed options (config, /quicksilver speed)
         com.meakaandre.quicksilver.speed.Speed.load();
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> com.meakaandre.quicksilver.speed.Speed.register(dispatcher));
+        // package 9: the options screen (Video Settings > Quicksilver..., Mod Menu, /qs settings), presets, the config file
+        com.meakaandre.quicksilver.settings.Settings.load();
+        com.meakaandre.quicksilver.settings.VideoSettingsButton.register();
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> {
+            for (String name : new String[] {"quicksilver", "qs"}) {
+                dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal(name).then(
+                    net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("settings").executes(c -> {
+                        com.meakaandre.quicksilver.settings.VideoSettingsButton.openNextTick = true;
+                        return 1;
+                    })));
+            }
+        });
+        ClientTickEvents.END_CLIENT_TICK.register(com.meakaandre.quicksilver.settings.VideoSettingsButton::tick);
+        if (Boolean.getBoolean("quicksilver.ci.screenTest")) {
+            ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> com.meakaandre.quicksilver.settings.ScreenTest.register(dispatcher));
+            ClientTickEvents.END_CLIENT_TICK.register(com.meakaandre.quicksilver.settings.ScreenTest::tick);
+        }
         // package 4c: server-aware meshing threads (listens to the integrated server's ticks)
         com.meakaandre.quicksilver.mesher.ServerAware.init();
         // CI: the renderer's self-test, once in a world (package 4)

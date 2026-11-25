@@ -48,6 +48,12 @@ public final class Logic {
     private Logic() {
     }
 
+    /** Package 9: the optimisations (id to what each does), for the options screen's switches. */
+    public static synchronized java.util.Map<String, String> optimisations() {
+        load();
+        return java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(OPTIMISATIONS));
+    }
+
     /** Reads the switches (once; the mixin plugin calls this before any of the module's mixins apply). */
     static synchronized void load() {
         if (loaded) return;

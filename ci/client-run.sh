@@ -30,7 +30,14 @@ loader=$(grep '^loader_version' gradle.properties | sed 's/.*= *//')
 fapi=$(grep '^fabric_version' gradle.properties | sed 's/.*= *//')
 suitefile=src/main/resources/quicksilver/scenes/$SUITE.json
 
-case "$RUN" in quicksilver-*|measure-*|speed-*) qs=1;; *) qs=0;; esac
+case "$RUN" in quicksilver-*|measure-*|speed-*|preset-*) qs=1;; *) qs=0;; esac
+# package 9: preset-low-old / preset-balanced-old / preset-quality-old: Quicksilver on the old-GPU profile (the laptop's
+# plain path) with "preset=<preset>" in its config file, in PRESET_SCENES only, shots only (no bench, so none of the
+# verify* checks, whose results go to the bench: only the upload-queue log the driver waits on); ci/preset-compare.py
+# compares the shots with vanilla-old's. The balanced run also runs the
+# options screen's test after its scenes (settings/ScreenTest, with Mod Menu loaded) and takes its screenshot.
+preset=""
+case "$RUN" in preset-*) preset=${RUN#preset-}; preset=${preset%-old}; [ "$preset" = low ] && preset=low-end;; esac
 # package A: speed-old / speed-full run Quicksilver with its defaults and the speed bench (bench/SpeedBench: a stage
 # profile, then each scene's "speedAb" switches off against on, frame limit and vsync off) in the scenes that list
 # switches, in the old-GPU or full profile; no CI checks (verify*) that would slow the frames; not gated on pictures
@@ -49,7 +56,7 @@ esac
 extra_args=""
 client_jvm=""
 case "$RUN" in *-vk) extra_args="--graphicsBackend vulkan"; echo "Vulkan profile: --graphicsBackend vulkan on lavapipe";; esac
-case "$RUN" in quicksilver-old|quicksilver-2p-old|measure-old|speed-old) client_jvm="-Dquicksilver.debug.forceIntelMdiIssue=true"; echo "old-GPU Quicksilver run: $client_jvm";; esac
+case "$RUN" in quicksilver-old|quicksilver-2p-old|measure-old|speed-old|preset-*-old) client_jvm="-Dquicksilver.debug.forceIntelMdiIssue=true"; echo "old-GPU Quicksilver run: $client_jvm";; esac
 # package 2b (Andre, 2026-11-02): one more old-GPU run with occlusion culling forced to two-phase (auto is still-camera
 # on that path), so the laptop's plain path is tested with the CPU waiting for the GPU too
 case "$RUN" in quicksilver-2p-old) client_jvm="$client_jvm -Dquicksilver.occlusion=two-phase"; echo "two-phase occlusion run: $client_jvm";; esac
@@ -65,6 +72,10 @@ if [ $speed = 1 ]; then
 elif [ $measure = 1 ]; then
   client_jvm="$client_jvm -Dquicksilver.ci.measureOnly=true"
   echo "measure run JVM properties:$client_jvm"
+elif [ -n "$preset" ]; then
+  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true"
+  [ "$preset" = balanced ] && client_jvm="$client_jvm -Dquicksilver.ci.screenTest=true"
+  echo "preset run JVM properties:$client_jvm"
 elif [ $qs = 1 ]; then
   # package 8: the animation module logs each animated sprite's first use outside terrain, with where it came from
   # package 4b: the terrain upload budget logs when meshes wait for a later frame and when it has caught up, so
@@ -155,6 +166,11 @@ if [ $benchonly = 1 ]; then
     cp /tmp/sodium-check/sodium.jar run/mods/
   fi
 fi
+# package 9: Mod Menu in the balanced preset run (the options screen's test opens the screen through Mod Menu's factory)
+if [ "$preset" = balanced ]; then
+  if PACK_REPORT="$OUT/pack-sha256-modmenu.txt" bash ci/pack-fetch.sh modmenu /tmp/modmenu; then cp /tmp/modmenu/*.jar run/mods/
+  else echo "Mod Menu: not fetched or not as locked (see above); the screen test skips it"; fi
+fi
 # every run, vanilla and Quicksilver alike: CI's lightmap pin (ci/pin-mod), which holds the block-light flicker still
 if [ -f ci-pin/ci-pin.jar ]; then cp ci-pin/ci-pin.jar run/mods/; else echo "ci-pin.jar missing"; exit 1; fi
 ls -l run/mods
@@ -199,6 +215,12 @@ for g in $groups; do
     ids=$(echo $keep)
     if [ -z "$ids" ]; then echo "session $n: no scene with speedAb, not started"; continue; fi
   fi
+  if [ -n "$preset" ]; then
+    keep=""
+    for id in $ids; do case " ${PRESET_SCENES:-spawn flythrough water_glass nether mobs block_entities particles flat_plants} " in *" $id "*) keep="$keep $id";; esac; done
+    ids=$(echo $keep)
+    if [ -z "$ids" ]; then echo "session $n: no scene of PRESET_SCENES, not started"; continue; fi
+  fi
   if [ $benchonly = 1 ]; then
     keep=""
     for id in $ids; do case " $BENCH_SCENES " in *" $id "*) keep="$keep $id";; esac; done
@@ -220,6 +242,7 @@ for g in $groups; do
   # package 5: "flywheelConfig" entries (flywheel.<key>=<value>) go to Flywheel's client config (Create Fly's
   # run/config/flywheel-client.json), e.g. its backend forced to instancing; the file is removed for every other session
   mkdir -p run/config; rm -f run/config/quicksilver.properties run/config/flywheel-client.json
+  [ -n "$preset" ] && echo "preset=$preset" > run/config/quicksilver.properties
   if [ "$opts" != "-" ]; then
     for kv in $(echo "$opts" | tr ',' ' '); do
       case "$kv" in
@@ -250,10 +273,29 @@ for g in $groups; do
     echo "op @a" >&3
     sleep 40
     xdotool mousemove 640 360
-    python3 -I ci/drive.py "$suitefile" server/in.fifo "$OUT" run/logs/latest.log "$([ $qs = 1 ] || [ $benchonly = 1 ] && echo quicksilver || echo vanilla)" "$BENCH_SECONDS" $ids
+    python3 -I ci/drive.py "$suitefile" server/in.fifo "$OUT" run/logs/latest.log "$([ -z "$preset" ] && { [ $qs = 1 ] || [ $benchonly = 1 ]; } && echo quicksilver || echo vanilla)" "$BENCH_SECONDS" $ids
+    last_session=$n
   else
     echo "client did not join (session $n)"
     import -window root "$OUT/no-join-$n.png"
+  fi
+  # package 9: the options screen's test, in the balanced preset run's first session that ran (settings/ScreenTest): the command
+  # first (the test checks it saved the file and the screen shows Custom), then the test, its screenshot at GUI scale 2
+  if [ "$preset" = balanced ] && [ "${last_session:-}" = "$n" ] && [ -z "${screen_done:-}" ]; then
+    screen_done=1
+    chat9() { xdotool key slash; sleep 1.5; xdotool type --delay 40 "$1"; sleep 0.5; xdotool key Return; sleep 2; }
+    start=$(stat -c %s run/logs/latest.log)
+    chat9 "qs speed far-detail 6"
+    chat9 "qs screentest"
+    shot=0
+    for i in $(seq 1 120); do
+      sleep 2
+      if [ $shot = 0 ] && tail -c +"$start" run/logs/latest.log | grep -q 'QUICKSILVER SCREEN TEST SHOT'; then
+        sleep 4; xdotool mousemove 1 1; sleep 2; mkdir -p "$OUT/settings"; import -window root "$OUT/settings/settings-screen.png"; shot=1
+      fi
+      tail -c +"$start" run/logs/latest.log | grep -q 'QUICKSILVER SCREEN TEST END' && break
+    done
+    echo "screen test: $(tail -c +"$start" run/logs/latest.log | grep -o 'QUICKSILVER SCREEN TEST END.*' | tail -1) (shot taken: $shot)"
   fi
   # the session's game must be gone before its log is read and the next session starts: a game still shutting down
   # (pkill only asks) kept writing run/logs/latest.log by path, and run 45511522980's client-6.log, which crossed midnight
