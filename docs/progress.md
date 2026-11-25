@@ -27,8 +27,9 @@ The project stopped on 2026-11-17 and restarted with a smaller scope (design doc
 **Package A** (approximations and speed options): merged 2026-11-24, squash of branch `package-a` (branch full run
 45317393864 green; see "Package A" below, "Decisions for Andre" there).
 
-**Package B** (real-hardware fixes after R1): built on branch `package-b`, waiting for Andre's read of the report and
-the next chat's squash-merge (see "Package B" below, "Decisions for Andre" there).
+**Package B** (real-hardware fixes after R1): merged (`837daa0`).
+
+**Main fix** (2026-11-25): main's water_glass_oit failure on Vulkan and package 9's flakes; see "Main fix" below.
 
 **Still to do, in order:** B (merge), R2 (laptop bench, `docs/laptop-bench.md`, "R2"),
 9 (settings screen), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
@@ -39,6 +40,76 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Main fix (2026-11-25): water_glass_oit on Vulkan, package 9's flakes (branch `fix-main`)
+
+**Status:** merged to main as a squash of branch `fix-main` (branch full run 45556522218 green, 50 min).
+
+**water_glass_oit on Vulkan** (main's run 45524404385, `966c4b5`: 0.0964% over 8/255 against its 0.012% limit). The
+849 pixels are one patch at the bottom of the frame, below the platform's front edge: part of the far snowy terrain
+about 125 blocks down and away, which vanilla-vk drew and quicksilver-vk didn't. Every other run of that CI run (nine
+profiles and measure runs) is within 3 pixels of vanilla-vk there, `measure-vk` (Quicksilver loaded as a vanilla
+stand-in, on Vulkan) included, so it is a Quicksilver-only difference.
+- **Not reproduced** in 31 more shots of the scene on Vulkan: 6 with the session's bench (test branch `t-oit-vk`, run
+  45543661174), 15 back to back in one session, 5 of them with occlusion off (run 45547671486), and 10 copies of the
+  failing job's whole shard-2 session in parallel (`t-oit-vk3`, run 45549835121). All within 0.0061% of vanilla-vk.
+- **Package B's suspects, each ruled out by data from the failing run itself:**
+  - fog-sections: off for this scene in every run. The camera (y 210.6) is above the clouds, where the test switches
+    itself off (`SpeedTerrain.fogEndThisFrame`; the probe logged `fogEnd 0` for every frame of the scene), so none of
+    B's fog changes run there.
+  - translucent per-region grouping: plain draw path only (Intel and old GPUs); Vulkan draws on the indirect path.
+  - upload cap and arenas: no mesh waited for an upload after F3+A (one "waiting (51 meshes)" line, caught up the same
+    second); Vulkan keeps the 64 MB arenas package B didn't change.
+- **Not occlusion culling either:** its CI check, which draws every culled section against the frame's depth every
+  fourth frame of the whole session, found no visible pixel (`checkPixelsSinceStart 0`).
+- **What is left:** a section that wasn't drawn yet when the shot was kept. After the shot the same session drew the
+  view exactly as the other runs do (bench: 141 sections visible, 53 drawn, 88 hidden by occlusion, as shard 1's
+  water_glass in the same run). In CI's Quicksilver runs the mesher check meshes every section twice (Quicksilver's
+  mesher and vanilla's compiler, 13.7 ms more per section in that session), so after F3+A the last sections come later
+  than in a vanilla run; and the shot waited only for uploads, not for meshing, and only before its first capture. A
+  late far section is 0.1% of the picture, under the steady check's 1%.
+- **Fix:** Quicksilver's CI runs log when visible sections wait for a mesh ("Quicksilver meshing: waiting" / "caught
+  up", like the upload lines), and the screenshot waits for both before each capture; a pair of captures with a mesh
+  or upload waiting between them is not steady, whatever the pixels say. Vanilla's runs log nothing and don't wait. A
+  section that never arrives still fails (the wait times out). For any future picture failure, the report now names
+  the terrain's state when the shot was kept (`Quicksilver terrain state:` lines: visible, in fog, occluded, waiting
+  for a mesh) next to the failure. Limits unchanged; the scene's settle time unchanged.
+
+**Package 9's flakes**
+- **Upload gate (20 ms; one 32.6 ms frame in run 45511522980 whose slowest arena grow took 6.7 ms).** The gate now
+  takes the slowest frame's upload less the time the render thread waited for a CPU (Linux's `schedstat`: runnable but
+  not running) or stood in a stop-the-world GC pause during it (`uploadMsMaxLessCpuWait`); the wall-clock slowest frame
+  and that frame's wait are reported next to it. A slow copy, a slow grow or a driver stall (blocked, not runnable) still
+  counts. Limit unchanged.
+- **fog-sections speed gate (spawn frame time 1.009 against <= 1.00 on speed-old).** The gated switches
+  (approximations and CI switches) are now measured over five rounds (options keep three), and their on/off is the
+  geometric mean of the rounds' ratios without the highest and lowest (package 9's rule for the chunk gates); the report
+  lists every round's ratio. Limit unchanged.
+- **Logs crossing midnight UTC** (run 45511522980: three runs' `client-6.log` held session 5's lines). Session 5's game
+  was killed at 23:59:23 and session 6 started 11 s later, before midnight; the old game could still be exiting and
+  writing `logs/latest.log` by path when the date rolled over. Now each session waits for its game to exit (up to 60 s,
+  then kills it outright, then waits for its launcher), checks no game runs before the next starts, clears every log
+  file, and orders rolled log parts by when they were written.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **water_glass_oit's cause is not proven.** 31 replays didn't fail; the data rules out package B's features and
+   occlusion and leaves a section that was late for the shot. The fix makes Quicksilver's shots wait for meshing as they
+   already waited for uploads, and names the terrain's state at any future failed shot. Alternative: keep replaying
+   until it fails with the new state lines (the next failure, if any, will say which). Switch: `wait_uploads` and
+   `steady_shot` in `ci/drive.py` (the "meshing" lines), `UploadBudget.meshWait`.
+2. **Upload gate on the slowest frame less its CPU wait and GC pauses** (20 ms unchanged). Alternatives: gate the
+   second-slowest frame, or the wall-clock time with retries. Switch: `gated_ms` in `ci/upload-compare.py`.
+3. **Gated speed switches over five rounds, trimmed geometric mean** (options keep three rounds and the median; adds
+   about a minute to each speed run). Alternative: five rounds for every switch. Switch: `SpeedBench.GATED_ROUNDS`,
+   `SpeedBench.rounds`, `SpeedBench.onOverOff`.
+4. **A session's game gets 60 s to exit, then is killed.** Alternative: a longer wait. Switch: `ci/client-run.sh`.
+
+**Runs:** branch full run 45556522218 (`fix-main`): green, 50 min (48 jobs; about 15 of it waiting for runners).
+water_glass_oit on Vulkan 0.0043%; the shots waited for no mesh (every visible section was meshed by then: the meshing
+lines logged 72-81 waits a run, all over before their shots). Upload gate: slowest frame 7.42 ms wall, 7.41 ms less CPU
+wait (old GPU, fly-through). Speed gates: spawn fog-sections frame time on/off 0.930 (rounds 0.884-0.959, speed-old) and
+0.944 (speed-full).
+Test branches (`t-oit-vk`, `t-oit-vk3`, `t-build`) and their log branches were deleted with `[cleanup]` (step 3).
 
 ## Package B: real-hardware fixes (branch `package-b`, not merged: the next chat squash-merges it)
 

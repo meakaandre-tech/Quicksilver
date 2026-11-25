@@ -4,7 +4,7 @@
 usage: speed-compare.py RESULTS_DIR REPORT_DIR
 
 Reads every speed run's speed/*.json (written by the mod's speed bench, bench/SpeedBench: a stage profile per scene, then
-each listed switch off against on in three rounds), writes REPORT_DIR/speed.md and REPORT_DIR/speed.json, and checks the
+each listed switch off against on: three rounds for an option, five for a gated approximation or CI switch), writes REPORT_DIR/speed.md and REPORT_DIR/speed.json, and checks the
 gates in ci/speed-gates.json: each default-on approximation must still remove work and must not make frames slower, so
 it can't silently stop helping. Exit status 1 on a failed gate, a missing speed run (full mode) or a speed bench problem.
 
@@ -30,8 +30,10 @@ def main():
     lines.append("# Speed runs (package A)\n")
     lines.append("Each speed run plays the scenes with a `speedAb` list once more, with Quicksilver's defaults, the frame limit"
                  " and vsync off: first a stage profile (where frame time goes, the GPU waited for at each stage), then each"
-                 " switch off against on, three rounds of five seconds a side (off-on, on-off, off-on), in the same session."
-                 " Medians over the rounds; on/off below 1 means the switch made it smaller.\n")
+                 " switch off against on, rounds of five seconds a side (off-on, on-off, off-on, ...), in the same session: three for an"
+                 " option, five for an approximation or CI switch (the gated ones). Each side: the median over the rounds; on/off:"
+                 " from the rounds' own ratios, with five rounds their geometric mean without the highest and lowest, with three"
+                 " their median. On/off below 1 means the switch made it smaller.\n")
     found = False
     for run in SPEED_RUNS:
         d = os.path.join(res, f"core-{run}")
@@ -116,7 +118,9 @@ def main():
                 if "min" in g and v < g["min"]:
                     ok = False
                 lim = ("<= %s" % g["max"]) if "max" in g else (">= %s" % g["min"])
-                lines.append(f"| {g['setting']} | {g['scene']} | {run} | {g['metric']}{' (on)' if g.get('value') == 'on' else ' on/off'} | {v} | {lim} | {'ok' if ok else '**FAIL**'} |")
+                rr = m.get("roundRatios")
+                rounds = f" (rounds {', '.join(str(x) for x in rr)})" if rr and g.get("value") != "on" else ""
+                lines.append(f"| {g['setting']} | {g['scene']} | {run} | {g['metric']}{' (on)' if g.get('value') == 'on' else ' on/off'} | {v}{rounds} | {lim} | {'ok' if ok else '**FAIL**'} |")
                 if not ok:
                     failures.append(f"speed gate {g['setting']} {g['scene']} {run}: {g['metric']} {v} not {lim} ({g['reason']})")
         lines.append("")

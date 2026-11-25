@@ -464,6 +464,8 @@ public final class TerrainStore {
                 return;
             }
             long t0 = System.nanoTime();
+            long w0 = com.meakaandre.quicksilver.bench.GpuCounters.enabled ? CpuWait.nanos() : -1;
+            long gc0 = w0 >= 0 ? CpuWait.gcPauseMillis() : 0;
             List<Staged> all = new ArrayList<>(STAGED);
             STAGED.clear();
             // one group per mesh: its layers, then its new index lists, in staging order; index lists for meshes
@@ -618,7 +620,9 @@ public final class TerrainStore {
             // what waits goes back in staging order (new meshes staged later come after it)
             for (Staged s : all) if (left.contains(s)) STAGED.add(s);
             UploadBudget.forced(forced, staged);
-            UploadBudget.frame(bytes, meshes, exempt, groupsWaiting(), budget, System.nanoTime() - t0);
+            long wall = System.nanoTime() - t0;
+            UploadBudget.cpuWait(w0 < 0 ? -1 : CpuWait.between(w0, CpuWait.nanos()) + (CpuWait.gcPauseMillis() - gc0) * 1_000_000L, wall);
+            UploadBudget.frame(bytes, meshes, exempt, groupsWaiting(), budget, wall);
             // what the hard cap governs: the frame's bytes outside the camera's sections, the index lists and forced meshes
             UploadBudget.frameDetail(bytes - exemptBytes - looseBytes - forcedBytes, meshNanosMax, cap, firstMeshBytes);
             uploaded(done);

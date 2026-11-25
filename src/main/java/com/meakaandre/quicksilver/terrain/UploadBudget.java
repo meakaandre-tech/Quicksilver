@@ -158,6 +158,32 @@ public final class UploadBudget {
     static final boolean DEBUG_LOG = Boolean.getBoolean("quicksilver.debug.logUploadQueue");
     private static boolean wasWaiting;
 
+    private static boolean wasUnmeshed;
+    private static String lastState = "";
+    private static long lastStateAt;
+
+    /**
+     * Debug (CI, main fix 2026-11-25): one log line each time visible sections start waiting for their first mesh (vanilla's
+     * "not compiled yet" mesh: new sections, and every section after F3+A) and each time none waits again, so CI's screenshots also wait for meshing: in CI's
+     * Quicksilver runs the mesher check meshes every section twice (Quicksilver's mesher and vanilla's compiler, to
+     * compare them), so after F3+A the last sections can come later than in a vanilla run. Also the terrain's state
+     * (visible, left out by fog, left out by occlusion, waiting for a mesh) when it changes, at most twice a second, so
+     * a picture failure can be matched to what was drawn when the shot was taken.
+     */
+    static void meshWait(int unmeshed, int visible, int fogged, int culled) {
+        if ((unmeshed > 0) != wasUnmeshed) {
+            wasUnmeshed = unmeshed > 0;
+            com.meakaandre.quicksilver.QuicksilverClient.LOG.info(wasUnmeshed ? "Quicksilver meshing: waiting ({} visible sections)" : "Quicksilver meshing: caught up", unmeshed);
+        }
+        String state = visible + " visible, " + fogged + " in fog, " + culled + " occluded, " + unmeshed + " waiting for a mesh";
+        long now = System.nanoTime();
+        if (!state.equals(lastState) && now - lastStateAt > 500_000_000L) {
+            lastState = state;
+            lastStateAt = now;
+            com.meakaandre.quicksilver.QuicksilverClient.LOG.info("Quicksilver terrain state: {}", state);
+        }
+    }
+
     /** One frame's upload, for the bench: bytes and meshes put in, exempt ones among them, meshes left waiting. */
     /** Meshes put in past the budget because a visible section had waited too long, and bytes staged this frame. */
     static void forced(int meshes, long stagedBytes) {
@@ -187,6 +213,20 @@ public final class UploadBudget {
         windowBudgetSum += Math.min(budget, Long.MAX_VALUE / 4);
         windowNanos += nanos;
         windowMaxNanos = Math.max(windowMaxNanos, nanos);
+    }
+
+    // CI flakes (2026-11-25): each frame's upload less the time its thread waited for a CPU (CpuWait)
+    private static long windowMaxNanosLessWait, windowWaitAtMax, windowFramesWaitKnown;
+
+    /** The frame's run-queue wait during its upload (ns; -1 unknown) and its wall time; call before {@link #frame}. */
+    static void cpuWait(long waitNanos, long wallNanos) {
+        if (!GpuCounters.enabled) return;
+        long less = waitNanos < 0 ? wallNanos : Math.max(0, wallNanos - waitNanos);
+        if (waitNanos >= 0) windowFramesWaitKnown++;
+        if (less > windowMaxNanosLessWait) {
+            windowMaxNanosLessWait = less;
+            windowWaitAtMax = Math.max(0, waitNanos);
+        }
     }
 
     // package B: the worst frame in detail (bytes without the camera's sections, the slowest single mesh, arena grows)
@@ -220,6 +260,7 @@ public final class UploadBudget {
     static void startWindow() {
         windowMaxNonExemptBytes = windowMaxMeshNanos = windowGrows = windowGrowNanosMax = windowGrowBytesMax = windowPreGrows = windowMaxCap = 0;
         windowOverCapFrames = 0;
+        windowMaxNanosLessWait = windowWaitAtMax = windowFramesWaitKnown = 0;
         windowFrames = windowBytes = windowMaxBytes = windowMeshes = windowExempt = windowWaitingSum = windowWaitingMax = 0;
         windowFramesHolding = windowBudgetSum = windowNanos = windowMaxNanos = 0;
         windowVisibleWaitMax = windowVisibleWaited = windowForced = windowStagedMaxBytes = 0;
@@ -246,6 +287,10 @@ public final class UploadBudget {
         o.addProperty("stagedMBMax", round(windowStagedMaxBytes / 1048576.0));
         o.addProperty("uploadMsAvg", round(windowNanos / 1e6 / f));
         o.addProperty("uploadMsMax", round(windowMaxNanos / 1e6));
+        // the slowest frame once the time its thread waited for a CPU (the OS running other work) or stood in a GC pause is left out; what CI gates
+        o.addProperty("uploadMsMaxLessCpuWait", round(windowMaxNanosLessWait / 1e6));
+        o.addProperty("cpuWaitMsInThatFrame", round(windowWaitAtMax / 1e6));
+        o.addProperty("framesWithCpuWaitKnown", windowFramesWaitKnown);
         o.addProperty("maxBytesUnderHardCap", windowMaxNonExemptBytes);
         o.addProperty("slowestMeshMs", round(windowMaxMeshNanos / 1e6));
         o.addProperty("arenaGrows", windowGrows);

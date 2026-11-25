@@ -3,6 +3,26 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Main fix (2026-11-25)
+
+- **Limits:** none changed.
+- **Screenshots wait for meshing too** (`ci/drive.py`, Quicksilver runs only): besides "Quicksilver uploads:", the client
+  logs "Quicksilver meshing: waiting (N visible sections)" / "caught up" (visible sections still on vanilla's
+  not-compiled mesh, as after F3+A), and the shot waits for both before each capture; a pair of captures with a mesh or
+  upload waiting between them is not steady. Vanilla's runs log nothing. Why: CI's mesher check meshes every section
+  twice in Quicksilver's runs (`docs/progress.md`, "Main fix").
+- **Terrain state at a failed shot:** a Quicksilver picture failure names the client's last "Quicksilver terrain state"
+  line (visible sections, in fog, occluded, waiting for a mesh) before the shot was kept (`shotStart` / `shotEnd` in the
+  drive files).
+- **Upload gate** (`ci/upload-compare.py`): gates `uploadMsMaxLessCpuWait`, the slowest frame's upload less the render
+  thread's wait for a CPU (Linux `schedstat`) and stop-the-world GC pauses during it; the wall-clock `uploadMsMax` and
+  that frame's wait are reported. Still 20 ms.
+- **Speed gates** (`ci/speed-compare.py`, `bench/SpeedBench`): approximations and CI switches over five rounds (options
+  three); on/off is the geometric mean of the rounds' ratios without the highest and lowest (with fewer than five
+  rounds, the median, as before). Each gate line lists the rounds' ratios. Limits unchanged.
+- **Client sessions** (`ci/client-run.sh`): each session's game must have exited (60 s, then killed) before its log is
+  read and the next session starts; rolled log parts are read in the order they were written.
+
 ## Package B: real-hardware fixes (2026-11-24)
 
 - **Approximation limits:** unchanged. fog-sections now also uses the environmental fog (and in the nether sections above

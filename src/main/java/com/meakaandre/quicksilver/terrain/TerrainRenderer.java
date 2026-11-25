@@ -310,8 +310,10 @@ public final class TerrainRenderer {
         AUDIT_LAYERS.clear();
         synchronized (TerrainStore.LOCK) {
             TerrainStore.closePending();
+            int unmeshed = 0;
             for (SectionRenderDispatcher.RenderSection section : visible) {
                 SectionMesh mesh = section.getSectionMesh();
+                if (UploadBudget.DEBUG_LOG && mesh == CompiledSectionMesh.UNCOMPILED) unmeshed++;
                 TerrainStore.Entry[] es = TerrainStore.ENTRIES.get(mesh);
                 if (audit) audited += audit(mesh, es);
                 TerrainStore.Entry tl = es == null ? null : es[TerrainStore.TRANSLUCENT];
@@ -411,6 +413,7 @@ public final class TerrainRenderer {
                     TL_INSTANCES.add(instance);
                 }
             }
+            if (UploadBudget.DEBUG_LOG) UploadBudget.meshWait(unmeshed, visible.size(), FOGGED.size(), CULLED.size());
             if (!PENDING.isEmpty()) emitPending(audit);
             if (skipBackFaces) checkDrawLimits(device);
             buildTranslucentRuns(plain);

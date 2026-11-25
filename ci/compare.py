@@ -192,6 +192,30 @@ def lod_check(name, scenes, runs, rep, sd, failures, lines):
         lines.extend(rows)
 
 
+def terrain_at_shot(run_dir, sid):
+    """Main fix (2026-11-25): for a picture failure, the Quicksilver client's last terrain state line (visible sections,
+    left out by fog or occlusion, waiting for a mesh) before the shot was kept, from the drive file's shot time."""
+    try:
+        end = None
+        for f in glob.glob(os.path.join(run_dir, "drive-*.json")):
+            for e in json.load(open(f)):
+                if e.get("scene") == sid and e.get("shotEnd"):
+                    end = e["shotEnd"]
+        if end is None:
+            return ""
+        last = None
+        for f in sorted(glob.glob(os.path.join(run_dir, "client-*.log"))):
+            if os.path.basename(f).startswith("client-gradle"):
+                continue
+            for line in open(f, errors="replace"):
+                m = re.match(r"\[(\d\d:\d\d:\d\d)\]", line)
+                if m and "Quicksilver terrain state:" in line and m.group(1) <= end:
+                    last = line.strip().split("Quicksilver terrain state: ", 1)[1] + " (at " + m.group(1) + ", shot kept " + end + ")"
+        return f"; terrain at the shot: {last}" if last else ""
+    except Exception as ex:
+        return f"; terrain at the shot: unknown ({ex})"
+
+
 def bench_results(run_dir):
     out = {}
     for f in sorted(glob.glob(os.path.join(run_dir, "bench", "*.json"))):
@@ -908,7 +932,8 @@ def main():
                     elif sid not in approx.get(name, {}):
                         failures.append(f"{name}/{sid}: no approximation limit in ci/approx-limits.json")
                     elif dv["pct"] > qlimit:
-                        failures.append(f"{name}/{sid}: {prof} differs from vanilla on {dv['pct']}% of pixels (approximation limit {qlimit}%)")
+                        failures.append(f"{name}/{sid}: {prof} differs from vanilla on {dv['pct']}% of pixels (approximation limit {qlimit}%)"
+                                        + terrain_at_shot(runs.get(PAIRS[prof][0], ""), sid))
                 fmt = lambda d, p=None: f"skipped ({sc.get('ciSkipReason', 'ciSkipRuns')})" if p in skipped_profiles else ("missing" if d is None else f"{d['pct']}")
                 lines.append(f"| {sid} | {fmt(noise)} | {limit} | {alimit} | " + " | ".join(fmt(row[p], p) for p in PAIRS) + " |")
                 # reported only (package L): pixels over 2/255 where every vanilla run agrees exactly

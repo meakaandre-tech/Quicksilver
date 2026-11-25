@@ -230,7 +230,9 @@ for g in $groups; do
     done
     echo "session $n client options: $opts"
   fi
-  rm -f run/logs/latest.log run/logs/*.log.gz
+  # no game of an earlier session may still be running (see the wait after each session)
+  if pgrep -f KnotClient >/dev/null; then echo "session $n: a game is still running before the start, killed"; pkill -9 -f KnotClient; sleep 2; fi
+  rm -f run/logs/latest.log run/logs/*.log.gz run/logs/*.log
   : > "$OUT/joined-$n.txt"
   before=$(grep -c 'joined the game' server/server.log)
   # --username (package 7): the dev launcher otherwise names the player Player<random digits>, and the offline UUID
@@ -238,6 +240,7 @@ for g in $groups; do
   # Company" on the HUB and MAM screens) differed between runs; one fixed name in every run
   (env -u CI JAVA_TOOL_OPTIONS="${client_jvm# }" timeout 2400 ./gradlew runClient --no-daemon -Dorg.gradle.console=plain -x compileJava -x processResources -x classes \
      --args="--quickPlayMultiplayer localhost --width 1280 --height 720 --username QuicksilverCI $extra_args" > "$OUT/client-gradle-$n.log" 2>&1; echo "EXIT $?" >> "$OUT/client-gradle-$n.log") &
+  client_pid=$!
   for i in $(seq 1 150); do
     now=$(grep -c 'joined the game' server/server.log)
     if [ "$now" -gt "$before" ] || grep -q '^EXIT' "$OUT/client-gradle-$n.log"; then break; fi
@@ -252,12 +255,21 @@ for g in $groups; do
     echo "client did not join (session $n)"
     import -window root "$OUT/no-join-$n.png"
   fi
-  pkill -f KnotClient; sleep 8
+  # the session's game must be gone before its log is read and the next session starts: a game still shutting down
+  # (pkill only asks) kept writing run/logs/latest.log by path, and run 45511522980's client-6.log, which crossed midnight
+  # UTC while session 5's game was still exiting, held session 5's lines (its log rolled over into the next session's
+  # file). Wait up to 60 s for it to exit, then kill it outright; then the Gradle launcher.
+  pkill -f KnotClient
+  for i in $(seq 1 60); do pgrep -f KnotClient >/dev/null || break; sleep 1; done
+  if pgrep -f KnotClient >/dev/null; then echo "session $n: the game did not exit within 60 s, killed"; pkill -9 -f KnotClient; sleep 2; fi
+  for i in $(seq 1 30); do kill -0 "$client_pid" 2>/dev/null || break; sleep 1; done
+  sleep 2
   # the game rolls latest.log over at midnight (UTC on the runners) into a dated .log.gz: keep the session's rolled
   # parts in front of it, so client-$n.log is the whole session (run 40605316942 crossed midnight and lost them)
   # (one session is one game start: only the text from its last "Loading Minecraft" line on, since the game may also
   # archive a previous session's log into a .log.gz when it starts)
-  { for z in $(ls run/logs/*.log.gz 2>/dev/null | sort); do zcat "$z"; done; cat run/logs/latest.log 2>/dev/null; } \
+  # rolled parts in the order they were written (oldest first), not by name
+  { for z in $(ls -tr run/logs/*.log.gz 2>/dev/null); do zcat "$z"; done; cat run/logs/latest.log 2>/dev/null; } \
     | awk '/Loading Minecraft .* with Fabric Loader/ {n++} {l[NR]=$0; s[NR]=n} END {for (i=1;i<=NR;i++) if (s[i]==n) print l[i]}' > "$OUT/client-$n.log"
   cp -r run/crash-reports "$OUT/client-crash-reports$sfx" 2>/dev/null
 done

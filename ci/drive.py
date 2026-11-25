@@ -53,7 +53,9 @@ WAITS = []
 def wait_uploads(timeout=120):
     """Package 4b: Quicksilver's terrain uploads go under a per-frame budget, so after F3+A a section can wait a few
     frames for its mesh. In Quicksilver runs (quicksilver.debug.logUploadQueue) the client logs "Quicksilver uploads:
-    waiting" and "... caught up"; wait until the last such line is "caught up". Runs without the line (vanilla, measure
+    waiting" and "... caught up"; wait until the last such line is "caught up" (and the same for "Quicksilver meshing:",
+    visible sections not meshed yet: CI's mesher check meshes every section twice, so meshing can trail vanilla's, main
+    fix 2026-11-25). Runs without the line (vanilla, measure
     runs, the bench-only jar) don't wait. Returns the seconds waited, -1 on a timeout. It only sees waits already
     logged: meshes that F3+A has not staged yet are left to steady_shot's own check, as in every run."""
     if LATEST is None or not os.path.exists(LATEST):
@@ -66,10 +68,21 @@ def wait_uploads(timeout=120):
         with open(LATEST, errors="replace") as f:
             text = f.read()
         w, c = text.rfind("Quicksilver uploads: waiting"), text.rfind("Quicksilver uploads: caught up")
-        if w < 0 or c > w:
+        # main fix (2026-11-25): and for meshing (visible sections not meshed yet), the same way
+        mw, mc = text.rfind("Quicksilver meshing: waiting"), text.rfind("Quicksilver meshing: caught up")
+        if (w < 0 or c > w) and (mw < 0 or mc > mw):
             return round(time.time() - t0, 1)
         time.sleep(1)
     return -1
+
+
+def waits_logged():
+    """How many times Quicksilver has logged a mesh or an upload waiting (0 in runs that log none)."""
+    if LATEST is None or not os.path.exists(LATEST):
+        return 0
+    with open(LATEST, errors="replace") as f:
+        text = f.read()
+    return text.count("Quicksilver uploads: waiting") + text.count("Quicksilver meshing: waiting")
 
 
 def steady_shot(path, tries=12, gap=4.0, pct=1.0):
@@ -80,10 +93,21 @@ def steady_shot(path, tries=12, gap=4.0, pct=1.0):
     from PIL import Image
     WAITS.append(wait_uploads())
     tmp = path + ".prev.png"
+    seen = waits_logged()
     capture(tmp)
     for i in range(tries):
         time.sleep(gap)
+        # main fix (2026-11-25): Quicksilver caught up again before the kept capture too, and a mesh or upload that
+        # waited between the two captures makes the pair unsteady whatever the pixels say (a far section is a small
+        # share of the picture); vanilla's runs log nothing and never wait
+        late = wait_uploads()
+        now = waits_logged()
         capture(path)
+        if now != seen:
+            seen = now
+            WAITS.append(late)
+            os.replace(path, tmp)
+            continue
         try:
             a = np.asarray(Image.open(tmp).convert("RGB"), dtype=np.int16)
             b = np.asarray(Image.open(path).convert("RGB"), dtype=np.int16)
@@ -224,7 +248,9 @@ def main():
             time.sleep(1)
         WAITS.clear()
         shot = os.path.join(out, "shots", sid + ".png")
+        entry["shotStart"] = time.strftime("%H:%M:%S", time.gmtime())
         entry["steadyAfter"] = steady_shot(shot)
+        entry["shotEnd"] = time.strftime("%H:%M:%S", time.gmtime())
         entry["shot"] = os.path.exists(shot)
         # extra fixed points (package 2): commands to the server, then a screenshot named <scene>.<name>, the same in
         # every run; the Quicksilver bench afterwards sets the scene up again from scratch

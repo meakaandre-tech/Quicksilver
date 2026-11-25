@@ -25,11 +25,14 @@ import net.minecraft.client.Minecraft;
  * <ol>
  * <li>a <b>profile</b> window: where the frame's time goes by stage ({@link StageProfile}), every switch at its
  * default;</li>
- * <li>for each listed switch, <b>A/B windows</b>: three rounds of the switch off and on, in the order off-on, on-off,
- * off-on (so a slow drift in the runner's speed cancels out), each window after the camera's path restarts and (for a
- * switch that changes meshes) after the world has meshed again. Frame times, draws, upload bytes, terrain triangles and
- * what the switch itself left out are recorded per window; the summary gives each side's median over the rounds and,
- * as on/off, the median of the rounds' own ratios.</li>
+ * <li>for each listed switch, <b>A/B windows</b>: rounds of the switch off and on, in the order off-on, on-off,
+ * off-on, ... (so a slow drift in the runner's speed cancels out), each window after the camera's path restarts and (for a
+ * switch that changes meshes) after the world has meshed again. Three rounds for an option, five for an approximation
+ * or a CI switch (the ones CI gates). Frame times, draws, upload bytes, terrain triangles and what the switch itself left
+ * out are recorded per window; the summary gives each side's median over the rounds and, as on/off, from the rounds'
+ * own ratios: with five or more rounds their geometric mean with the highest and lowest left out (one noisy round on a
+ * shared runner moved the median of three past its gate: spawn's fog-sections frame time 1.009 in run 45511522980,
+ * 0.92-0.94 in every other run), with fewer their median.</li>
  * </ol>
  * Everything runs in the same session on the same machine, so on and off are compared like for like. The results go to
  * {@code quicksilver/bench/speed/<time>-<scene>.json}; {@code ci/speed-compare.py} reads and gates them. Afterwards every
@@ -38,7 +41,12 @@ import net.minecraft.client.Minecraft;
 final class SpeedBench {
     static final boolean ENABLED = Boolean.getBoolean("quicksilver.ci.speed");
     static final double PROFILE_SECONDS = 8, AB_SECONDS = 5, WARM_SECONDS = 2;
-    static final int ROUNDS = 3;
+    static final int ROUNDS = 3, GATED_ROUNDS = 5;
+
+    /** Rounds for a switch: five for the ones CI gates (approximations and CI switches), three for options. */
+    static int rounds(Speed.Setting s) {
+        return s.approximation || s.key.startsWith("ci.") ? GATED_ROUNDS : ROUNDS;
+    }
 
     private static final class Window {
         final String label;
@@ -112,7 +120,7 @@ final class SpeedBench {
             }
             int off = s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : 0;
             tested.add(new Object[] {s, on, s.value(), tested.size()});
-            for (int r = 0; r < ROUNDS; r++) {
+            for (int r = 0, n = rounds(s); r < n; r++) {
                 boolean onFirst = r % 2 == 1;
                 queue.add(new Window(onFirst ? "on" : "off", s, onFirst ? on : off, false).of(tested.size() - 1));
                 queue.add(new Window(onFirst ? "off" : "on", s, onFirst ? off : on, false).of(tested.size() - 1));
@@ -314,6 +322,7 @@ final class SpeedBench {
         out.addProperty("scene", sceneId);
         out.addProperty("time", LocalDateTime.now().toString());
         out.addProperty("rounds", ROUNDS);
+        out.addProperty("gatedRounds", GATED_ROUNDS);
         out.addProperty("abSeconds", AB_SECONDS);
         var caps = QuicksilverClient.capabilities();
         out.addProperty("capabilities", caps == null ? "not probed" : caps.describe());
@@ -329,6 +338,7 @@ final class SpeedBench {
             e.addProperty("setting", s.key);
             e.addProperty("approximation", s.approximation);
             e.addProperty("onValue", (int) t[1]);
+            e.addProperty("rounds", rounds(s));
             JsonArray windows = new JsonArray();
             List<JsonObject> on = new ArrayList<>(), off = new ArrayList<>();
             for (Window w : done) {
@@ -357,9 +367,11 @@ final class SpeedBench {
                     ratios[r] = x == 0 ? (y == 0 ? 1.0 : 0.0) : y / x;
                 }
                 Arrays.sort(ratios);
-                double ratio = ratios.length == 0 ? 1.0 : ratios.length % 2 == 1 ? ratios[ratios.length / 2]
-                    : (ratios[ratios.length / 2 - 1] + ratios[ratios.length / 2]) / 2;
+                double ratio = onOverOff(ratios);
                 m.addProperty("onOverOff", Math.round(ratio * 10000) / 10000.0);
+                JsonArray per = new JsonArray();
+                for (double v : ratios) per.add(Math.round(v * 10000) / 10000.0);
+                m.add("roundRatios", per);
                 sum.add(k, m);
             }
             e.add("medians", sum);
@@ -379,6 +391,25 @@ final class SpeedBench {
         } catch (Exception ex) {
             QuicksilverClient.LOG.error("Quicksilver speed bench could not write its report", ex);
         }
+    }
+
+    /**
+     * on/off from the rounds' own ratios (sorted): from five rounds on, the geometric mean without the highest and the
+     * lowest (the chunk gates' rule, package 9); with fewer, the median. A zero ratio (the switch removed all of it)
+     * makes that mean zero, as it should.
+     */
+    static double onOverOff(double[] ratios) {
+        int n = ratios.length;
+        if (n == 0) return 1.0;
+        if (n >= 5) {
+            double logSum = 0;
+            for (int i = 1; i < n - 1; i++) {
+                if (ratios[i] <= 0) return 0;
+                logSum += Math.log(ratios[i]);
+            }
+            return Math.exp(logSum / (n - 2));
+        }
+        return n % 2 == 1 ? ratios[n / 2] : (ratios[n / 2 - 1] + ratios[n / 2]) / 2;
     }
 
     private static double median(List<JsonObject> l, String k) {
