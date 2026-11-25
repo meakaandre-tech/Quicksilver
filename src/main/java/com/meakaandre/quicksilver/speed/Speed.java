@@ -99,6 +99,13 @@ public final class Speed {
         "particles that start beyond this many blocks from the camera are not made"));
     public static final Setting PARTICLE_DENSITY = add(new Setting("option.particle-density", false, false, 100, 1, 100, "%",
         "only this share of new particles is made (100: all)"));
+    /**
+     * Package 13: dynamic lights (design doc, "Dynamic lights"): 0 off, 1 Fast (the nearest 8 lights, terrain only), 2
+     * Fancy (the nearest 32, terrain plus entities and block entities). Off by default and in every preset; it adds light,
+     * so it is listed with the options (it changes the picture). {@code lights/DynamicLights}.
+     */
+    public static final Setting DYNAMIC_LIGHTS = add(new Setting("option.dynamic-lights", false, false, 0, 0, 2, "",
+        "held and dropped light sources, burning and glowing mobs and lit projectiles light the world around them (fast: nearest 8, terrain; fancy: nearest 32, terrain, entities and block entities)"));
 
     // ---- CI only (not listed, not in the config file): checks the speed bench can switch like the others
 
@@ -178,6 +185,10 @@ public final class Speed {
     }
 
     static Integer parse(Setting s, String v) {
+        if (s.key.equals("option.dynamic-lights")) {
+            if (v.equalsIgnoreCase("fast") || v.equalsIgnoreCase("on")) return 1;
+            if (v.equalsIgnoreCase("fancy")) return 2;
+        }
         if (v.equalsIgnoreCase("on") || v.equalsIgnoreCase("true")) return s.bool() ? 1 : null;
         if (v.equalsIgnoreCase("off") || v.equalsIgnoreCase("false")) return s.key.equals(PARTICLE_DENSITY.key) ? 100 : 0;
         try {
@@ -191,6 +202,7 @@ public final class Speed {
     }
 
     public static String show(Setting s) {
+        if (s.key.equals("option.dynamic-lights")) return s.value == 1 ? "fast" : s.value == 2 ? "fancy" : "off";
         if (s.bool()) return s.on() ? "on" : "off";
         if (s.key.equals(PARTICLE_DENSITY.key)) return s.value + "%";
         return s.on() ? s.value + " " + s.unit : "off";
@@ -257,6 +269,7 @@ public final class Speed {
 
     /** Package 9: a switch's value as written in the config file (on/off, or the number; parse reads it back). */
     public static String fileValue(Setting s) {
+        if (s.key.equals("option.dynamic-lights")) return show(s);
         if (s.bool()) return s.on() ? "on" : "off";
         if (s.key.equals(PARTICLE_DENSITY.key)) return String.valueOf(s.value);
         return s.on() ? String.valueOf(s.value) : "off";
@@ -350,6 +363,8 @@ public final class Speed {
                     .suggests((c, b) -> {
                         b.suggest("on");
                         b.suggest("off");
+                        b.suggest("fast");
+                        b.suggest("fancy");
                         return b.buildFuture();
                     })
                     .executes(c -> setCommand(c.getSource(), StringArgumentType.getString(c, "name"), StringArgumentType.getString(c, "value")))));

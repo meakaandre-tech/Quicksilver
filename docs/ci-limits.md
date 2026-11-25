@@ -3,6 +3,23 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package 13: dynamic lights (2026-11-25)
+
+- **Limits:** none of today's changed; dynamic lights are off by default, so every existing shot is the normal picture.
+- **New scene `core/lights`** (shard 1): its own shot (lights off) against vanilla, approximation limit 0.001% and noise
+  limit 0.25% (every sample 0.0 in full run 45592666729: the rule's floors). Count baselines from that run.
+- **Light shots** (`ciLightShots`, Quicksilver client runs only; `ci/drive.py`, `light_check` in `ci/compare.py`): six
+  shots with lights on (`all_fast`, `all_fancy`, `torch`, `mob`, `lantern`, `arrow`), each against its stored reference
+  `ci/references/core/lights.<name>.png` (Quicksilver old-GPU, run 45592666729) with the limit in `ci/light-limits.json`
+  (0.001% each: twice the largest other-profile sample, 0.0002%, at least 0.001%). Each must differ from its `_unlit`
+  pair (same view, lights off, taken just before) by at least 0.5%; `all_fancy` from `all_fast` by at least 0.05%; the log
+  must show terrain drawn lit and the bench the frame and reload hooks. A missing reference fails and the shot goes to
+  the report's new-references folder. Only one run's samples (the rule asks for three): see `docs/progress.md`,
+  "Package 13".
+- **Pin:** dropped items in the lights hall don't spin or bob (`ItemSpinMixin`), in every CI client run.
+- **Speed gate:** `option.dynamic-lights=1` (Fast), lights scene, speed-old, frame time on/off at most 1.05 (measured
+  1.000 and 1.008); five rounds, trimmed geometric mean. Fancy and speed-full reported.
+
 ## Main fix (2026-11-25)
 
 - **Limits:** none changed.

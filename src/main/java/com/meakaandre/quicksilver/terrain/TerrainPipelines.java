@@ -42,14 +42,22 @@ final class TerrainPipelines {
     /** std140: ivec4 origin, then 64 vec4 of fade-in values (256 sections). */
     static final int REGION_UBO_BYTES = 16 + 64 * 16;
 
+    /** Package 13: the dynamic lights' block (lit pipelines only); see {@link TerrainLights}. */
+    static final BindGroupLayout LIGHTS = BindGroupLayout.builder().withUniform("QsLights", UniformType.UNIFORM_BUFFER).build();
+
     /** [plain ? 1 : 0][cutout ? 1 : 0]. */
     private static final RenderPipeline[][] PIPELINES = new RenderPipeline[2][2];
+    /** Package 13: the same with dynamic lights, [plain ? 1 : 0][cutout ? 1 : 0]. */
+    private static final RenderPipeline[][] LIT = new RenderPipeline[2][2];
     /** [plain ? 1 : 0]. */
     private static final RenderPipeline[] WIREFRAME = new RenderPipeline[2];
 
     static {
         for (int p = 0; p < 2; p++) {
-            for (int c = 0; c < 2; c++) PIPELINES[p][c] = build(p == 1, c == 1, false);
+            for (int c = 0; c < 2; c++) {
+                PIPELINES[p][c] = build(p == 1, c == 1, false);
+                LIT[p][c] = build(p == 1, c == 1, false, false, true);
+            }
             WIREFRAME[p] = build(p == 1, false, true);
         }
     }
@@ -58,8 +66,15 @@ final class TerrainPipelines {
         return PIPELINES[plain ? 1 : 0][cutout ? 1 : 0];
     }
 
+    /** Package 13: the solid or cutout pipeline for this frame: the lit one while dynamic lights draw (then bind the block). */
+    static RenderPipeline pipeline(boolean plain, boolean cutout, boolean lit) {
+        return (lit ? LIT : PIPELINES)[plain ? 1 : 0][cutout ? 1 : 0];
+    }
+
     /** Translucent pipelines: [mode][plain ? 1 : 0]; mode 0 classic, 1 + stage ordinal for Improved Transparency. */
     private static RenderPipeline[][] translucent;
+    /** Package 13: the same with dynamic lights; null where the stage has no lightmap (coverage only: nothing to light). */
+    private static RenderPipeline[][] translucentLit;
     private static String translucentProblem;
 
     /** Mode of a translucent draw: {@link #CLASSIC}, or {@code 1 + OitStage.ordinal()}. */
@@ -69,15 +84,19 @@ final class TerrainPipelines {
         if (translucent != null || translucentProblem != null) return translucentProblem;
         try {
             OitStage[] stages = OitStage.values();
-            RenderPipeline[][] t = new RenderPipeline[1 + stages.length][2];
+            RenderPipeline[][] t = new RenderPipeline[1 + stages.length][2], tl = new RenderPipeline[1 + stages.length][2];
             for (int p = 0; p < 2; p++) {
-                t[CLASSIC][p] = derive(ChunkSectionLayer.TRANSLUCENT.pipeline(true), "translucent", p == 1);
+                t[CLASSIC][p] = derive(ChunkSectionLayer.TRANSLUCENT.pipeline(true), "translucent", p == 1, false);
+                tl[CLASSIC][p] = derive(ChunkSectionLayer.TRANSLUCENT.pipeline(true), "translucent", p == 1, true);
                 for (OitStage st : stages) {
-                    t[1 + st.ordinal()][p] = derive(RenderPipelines.OIT_TERRAIN_MULTIDRAW.getPipeline(st),
-                        "oit_" + st.name().toLowerCase(java.util.Locale.ROOT), p == 1);
+                    String n = "oit_" + st.name().toLowerCase(java.util.Locale.ROOT);
+                    RenderPipeline v = RenderPipelines.OIT_TERRAIN_MULTIDRAW.getPipeline(st);
+                    t[1 + st.ordinal()][p] = derive(v, n, p == 1, false);
+                    tl[1 + st.ordinal()][p] = v != null && v.getShaderDefines().flags().contains("OIT_ALPHA_ONLY") ? null : derive(v, n, p == 1, true);
                 }
             }
             translucent = t;
+            translucentLit = tl;
             return null;
         } catch (Throwable e) {
             translucentProblem = "the game's translucent terrain pipelines are not what Quicksilver builds on: " + e;
@@ -89,7 +108,7 @@ final class TerrainPipelines {
      * Quicksilver's version of one of the game's multi-draw terrain pipelines: everything as the game has it, but
      * Quicksilver's vertex shader and vertex layout, and on the plain path no instance stream but the region block.
      */
-    private static RenderPipeline derive(RenderPipeline v, String name, boolean plain) {
+    private static RenderPipeline derive(RenderPipeline v, String name, boolean plain, boolean lit) {
         if (v == null) throw new IllegalStateException("no pipeline for " + name);
         if (!v.getShaderDefines().flags().contains("MULTIDRAW_TERRAIN")) throw new IllegalStateException(v.getLocation() + " is not a multi-draw terrain pipeline");
         if (!DefaultVertexFormat.BLOCK.equals(v.getVertexFormatBinding(0)) || !DefaultVertexFormat.CHUNK_DATA_INSTANCED.equals(v.getVertexFormatBinding(1))) {
@@ -101,7 +120,7 @@ final class TerrainPipelines {
         RenderPipeline.Snippet defines = new RenderPipeline.Snippet(Map.of(), Optional.of(v.getShaderDefines()), Optional.empty(),
             new ColorTargetState[0], 0, Optional.empty(), Optional.empty(), Optional.empty(), new VertexFormat[0], Optional.empty(), 0);
         RenderPipeline.Builder b = RenderPipeline.builder(defines)
-            .withLocation(Identifier.fromNamespaceAndPath("quicksilver", "pipeline/terrain_" + name + (plain ? "_plain" : "_instanced")))
+            .withLocation(Identifier.fromNamespaceAndPath("quicksilver", "pipeline/terrain_" + name + (plain ? "_plain" : "_instanced") + (lit ? "_lit" : "")))
             .withVertexShader(Identifier.fromNamespaceAndPath("quicksilver", "core/terrain"))
             .withFragmentShader(fragment)
             .withVertexBinding(0, CompactVertex.FORMAT)
@@ -118,6 +137,7 @@ final class TerrainPipelines {
         }
         if (plain) b.withShaderDefine("QUICKSILVER_PLAIN").withBindGroupLayout(REGION);
         else b.withVertexBinding(1, DefaultVertexFormat.CHUNK_DATA_INSTANCED);
+        if (lit) b.withShaderDefine("QUICKSILVER_DYNLIGHTS").withBindGroupLayout(LIGHTS);
         return b.build();
     }
 
@@ -125,6 +145,15 @@ final class TerrainPipelines {
     static RenderPipeline translucent(int mode, boolean plain) {
         if (buildTranslucent() != null) return null;
         return translucent[mode][plain ? 1 : 0];
+    }
+
+    /**
+     * Package 13: the lit translucent pipeline for a draw mode, or null where that mode has none (Improved
+     * Transparency's coverage-only stages: no lightmap, nothing to light); then draw with {@link #translucent}.
+     */
+    static RenderPipeline translucentLit(int mode, boolean plain) {
+        if (buildTranslucent() != null) return null;
+        return translucentLit[mode][plain ? 1 : 0];
     }
 
     /**
@@ -171,7 +200,11 @@ final class TerrainPipelines {
     }
 
     private static RenderPipeline build(boolean plain, boolean cutout, boolean wireframe, boolean check) {
-        String name = (plain ? "plain" : "instanced") + (wireframe ? "_wireframe" : cutout ? "_cutout" : "_solid") + (check ? "_check" : "");
+        return build(plain, cutout, wireframe, check, false);
+    }
+
+    private static RenderPipeline build(boolean plain, boolean cutout, boolean wireframe, boolean check, boolean lit) {
+        String name = (plain ? "plain" : "instanced") + (wireframe ? "_wireframe" : cutout ? "_cutout" : "_solid") + (check ? "_check" : "") + (lit ? "_lit" : "");
         RenderPipeline.Builder b = RenderPipeline.builder()
             .withLocation(Identifier.fromNamespaceAndPath("quicksilver", "pipeline/terrain_" + name))
             .withVertexShader(Identifier.fromNamespaceAndPath("quicksilver", "core/terrain"))
@@ -196,6 +229,7 @@ final class TerrainPipelines {
         }
         if (cutout) b.withShaderDefine("ALPHA_CUTOUT", 0.5f);
         if (wireframe) b.withPolygonMode(PolygonMode.WIREFRAME);
+        if (lit) b.withShaderDefine("QUICKSILVER_DYNLIGHTS").withBindGroupLayout(LIGHTS);
         return b.build();
     }
 
@@ -206,6 +240,25 @@ final class TerrainPipelines {
         List<RenderPipeline> all = new ArrayList<>(java.util.Arrays.stream(PIPELINES).flatMap(java.util.Arrays::stream).toList());
         all.addAll(java.util.Arrays.stream(translucent).flatMap(java.util.Arrays::stream).toList());
         if (Boolean.getBoolean("quicksilver.debug.verifyOcclusion")) all.addAll(java.util.Arrays.stream(checkPipelines()).flatMap(java.util.Arrays::stream).toList());
+        for (RenderPipeline p : all) {
+            try {
+                if (RenderSystem.getCompiledPipelineNullable(p) == null) return "pipeline " + p.getLocation() + " did not compile";
+            } catch (Throwable t) {
+                return "pipeline " + p.getLocation() + " did not compile: " + t;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Package 13: compiles the lit pipelines (the first time dynamic lights draw, and after a resource reload); the
+     * problem, or null. A lit pipeline that doesn't compile switches dynamic lights off for terrain only.
+     */
+    static String compileLit() {
+        String problem = buildTranslucent();
+        if (problem != null) return problem;
+        List<RenderPipeline> all = new ArrayList<>(java.util.Arrays.stream(LIT).flatMap(java.util.Arrays::stream).toList());
+        for (RenderPipeline[] row : translucentLit) for (RenderPipeline p : row) if (p != null) all.add(p);
         for (RenderPipeline p : all) {
             try {
                 if (RenderSystem.getCompiledPipelineNullable(p) == null) return "pipeline " + p.getLocation() + " did not compile";

@@ -281,6 +281,37 @@ def main():
                 xdo("key", "d")
                 xdo("keyup", "F3")
                 time.sleep(1)
+        # package 13: dynamic lights shots, Quicksilver client runs only (not the measure runs: their switches stay off).
+        # Each sends its commands to the server, switches the lights on at its level with the client command, takes the
+        # shot <scene>.<name>; the setting goes back off after the scene's last one. compare.py checks them against the
+        # stored references in ci/references (lights have no vanilla picture to match).
+        if mode == "quicksilver" and os.environ.get("RUN", "").startswith("quicksilver") and sc.get("ciLightShots"):
+            for extra in sc["ciLightShots"]:
+                for cmd in extra["commands"]:
+                    send(cmd)
+                # the same view with the lights off first (what the lit shot must differ from)
+                chat("quicksilver speed option.dynamic-lights off")
+                time.sleep(2)
+                xdo("keydown", "F3")
+                xdo("key", "d")
+                xdo("keyup", "F3")
+                time.sleep(2)
+                p = os.path.join(out, "shots", sid + "." + extra["name"] + "_unlit.png")
+                entry.setdefault("lightShots", {})[extra["name"] + "_unlit"] = steady_shot(p)
+                chat("quicksilver speed option.dynamic-lights " + extra["level"])
+                time.sleep(2)
+                xdo("keydown", "F3")
+                xdo("key", "d")
+                xdo("keyup", "F3")
+                time.sleep(2)
+                p = os.path.join(out, "shots", sid + "." + extra["name"] + ".png")
+                entry.setdefault("lightShots", {})[extra["name"]] = steady_shot(p)
+            chat("quicksilver speed option.dynamic-lights off")
+            time.sleep(2)
+            xdo("keydown", "F3")
+            xdo("key", "d")
+            xdo("keyup", "F3")
+            time.sleep(1)
         # seconds each shot waited for Quicksilver's upload queue; -1: timed out (compare.py fails on it)
         entry["uploadWaits"] = list(WAITS)
         if screen:

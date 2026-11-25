@@ -38,6 +38,7 @@ public final class SettingsScreen extends OptionsSubScreen {
         TEXT.put(Speed.BLOCK_ENTITY_DISTANCE.key, new String[] {"Block entities", "Chests, signs, banners and heads beyond this distance aren't drawn. Changes the look."});
         TEXT.put(Speed.PARTICLE_DISTANCE.key, new String[] {"Particles", "Particles that start beyond this distance aren't made. Changes the look."});
         TEXT.put(Speed.PARTICLE_DENSITY.key, new String[] {"Particle density", "Makes only this share of new particles. Changes the look."});
+        TEXT.put(Speed.DYNAMIC_LIGHTS.key, new String[] {"Dynamic lights", "Torches and lanterns you hold or drop, burning mobs and lit arrows light up what's around them. Fast: the 8 nearest, on blocks. Fancy: the 32 nearest, on mobs and chests too. Changes the look."});
         TEXT.put(Speed.FOG_SECTIONS.key, new String[] {"Fog culling", "Skips terrain that is wholly hidden in the distance fog. Doesn't change the look."});
         TEXT.put(Speed.TRANSLUCENT_REGIONS.key, new String[] {"Fewer glass draws", "Draws water, glass and ice in fewer batches on Intel and older GPUs. Doesn't change the look."});
         TEXT.put("block-renderer", new String[] {"Block renderer", "Quicksilver's block and item renderer; off uses vanilla's. Doesn't change the look. Needs a restart."});
@@ -65,7 +66,8 @@ public final class SettingsScreen extends OptionsSubScreen {
         Speed.ENTITY_DISTANCE.key, new int[] {0, 16, 24, 32, 48, 64, 96, 128},
         Speed.BLOCK_ENTITY_DISTANCE.key, new int[] {0, 12, 16, 24, 32, 48, 64},
         Speed.PARTICLE_DISTANCE.key, new int[] {0, 8, 12, 16, 24, 32},
-        Speed.PARTICLE_DENSITY.key, new int[] {100, 75, 50, 25, 10});
+        Speed.PARTICLE_DENSITY.key, new int[] {100, 75, 50, 25, 10},
+        Speed.DYNAMIC_LIGHTS.key, new int[] {0, 1, 2});
 
     private CycleButton<Preset> presetButton;
     private final Map<String, CycleButton<Integer>> speedButtons = new LinkedHashMap<>();
@@ -101,9 +103,15 @@ public final class SettingsScreen extends OptionsSubScreen {
         made.add(presetButton);
         this.list.addBig(presetButton);
 
-        this.list.addHeader(Component.literal("Speed options (change the look)"));
+        // package 13: lighting (dynamic lights; off in every preset)
+        this.list.addHeader(Component.literal("Lighting"));
         List<AbstractWidget> row = new ArrayList<>();
-        for (Speed.Setting s : Speed.all().values()) if (!s.approximation) row.add(speedButton(s, locked));
+        row.add(speedButton(Speed.DYNAMIC_LIGHTS, locked));
+        addRows(row);
+
+        this.list.addHeader(Component.literal("Speed options (change the look)"));
+        row = new ArrayList<>();
+        for (Speed.Setting s : Speed.all().values()) if (!s.approximation && s != Speed.DYNAMIC_LIGHTS) row.add(speedButton(s, locked));
         addRows(row);
 
         this.list.addHeader(Component.literal("Shortcuts you can't see"));
@@ -134,6 +142,7 @@ public final class SettingsScreen extends OptionsSubScreen {
     }
 
     static String show(Speed.Setting s, int v) {
+        if (s == Speed.DYNAMIC_LIGHTS) return v == 1 ? "Fast" : v == 2 ? "Fancy" : "Off";
         if (s.max == 1) return v != 0 ? "On" : "Off";
         if (s.key.equals(Speed.PARTICLE_DENSITY.key)) return v >= 100 ? "All" : v + "%";
         if (v == 0) return "Off";

@@ -35,6 +35,29 @@ layout(location = 3) in ivec3 ChunkPosition;
 layout(location = 4) in float ChunkVisibility;
 #endif
 
+#if defined(QUICKSILVER_DYNLIGHTS) && !defined(OIT_ALPHA_ONLY)
+// package 13: dynamic lights (only in the lit pipelines, drawn while the setting is on and a light is near). The box
+// (camera-relative) where any light reaches, the light count in its first w, then each light: camera-relative position
+// and level. A light of level L gives L - d at distance d, as block light falls off by one a block.
+layout(std140) uniform QsLights {
+    vec4 qsLightBoxMin;
+    vec4 qsLightBoxMax;
+    vec4 qsLight[32];
+};
+
+// the brightest dynamic light at a camera-relative point, in the vertex's block-light units (16 a level, 0-240)
+int qsDynamicLight(vec3 p) {
+    int n = int(qsLightBoxMin.w);
+    if (n == 0 || any(lessThan(p, qsLightBoxMin.xyz)) || any(greaterThan(p, qsLightBoxMax.xyz))) return 0;
+    float best = 0.0;
+    for (int i = 0; i < n; i++) {
+        vec4 l = qsLight[i];
+        best = max(best, l.w - distance(p, l.xyz));
+    }
+    return int(min(best, 15.0) * 16.0);
+}
+#endif
+
 layout(location = 0) out float qsEyeDistance;
 layout(location = 1) out float qsColumnDistance;
 layout(location = 2) out vec4 qsLitTint;
@@ -75,6 +98,10 @@ void main() {
 #ifdef OIT_ALPHA_ONLY
     qsLitTint = tint;
 #else
+#ifdef QUICKSILVER_DYNLIGHTS
+    // package 13: never darker than the vertex's own block light
+    lightPair.x = max(lightPair.x, qsDynamicLight(eye));
+#endif
     qsLitTint = tint * sample_lightmap(Sampler2, lightPair);
 #endif
     qsTexel = texel;

@@ -43,9 +43,9 @@ final class SpeedBench {
     static final double PROFILE_SECONDS = 8, AB_SECONDS = 5, WARM_SECONDS = 2;
     static final int ROUNDS = 3, GATED_ROUNDS = 5;
 
-    /** Rounds for a switch: five for the ones CI gates (approximations and CI switches), three for options. */
+    /** Rounds for a switch: five for the ones CI gates (approximations, CI switches, dynamic lights' cost), three for other options. */
     static int rounds(Speed.Setting s) {
-        return s.approximation || s.key.startsWith("ci.") ? GATED_ROUNDS : ROUNDS;
+        return s.approximation || s.key.startsWith("ci.") || s == Speed.DYNAMIC_LIGHTS ? GATED_ROUNDS : ROUNDS;
     }
 
     private static final class Window {

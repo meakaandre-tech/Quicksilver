@@ -1058,6 +1058,80 @@
           ]
         }
       ]
+    },
+    {
+      "id": "lights",
+      "title": "Dynamic lights (package 13): a sealed dark stone hall with a held torch, a burning cow, a dropped lantern and a burning arrow, with an armor stand and a chest near the camera (lit only by Fancy); the lights setting is off by default, so this shot is the normal picture",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "speedAb": [
+        "option.dynamic-lights=1",
+        "option.dynamic-lights=2"
+      ],
+      "ciLightShots": [
+        {
+          "name": "all_fast",
+          "level": "fast",
+          "commands": []
+        },
+        {
+          "name": "all_fancy",
+          "level": "fancy",
+          "commands": []
+        },
+        {
+          "name": "torch",
+          "level": "fast",
+          "commands": [
+            "tp @e[type=!minecraft:player,type=!minecraft:armor_stand,x=3090,y=195,z=-2025,dx=30,dy=12,dz=35] 3105.5 -200 -2005.5"
+          ]
+        },
+        {
+          "name": "mob",
+          "level": "fancy",
+          "commands": [
+            "item replace entity @a weapon.mainhand with minecraft:air",
+            "summon minecraft:cow 3105.5 196 -2006.5 {Fire:32767s,Invulnerable:1b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f]}"
+          ]
+        },
+        {
+          "name": "lantern",
+          "level": "fast",
+          "commands": [
+            "tp @e[type=!minecraft:player,type=!minecraft:armor_stand,x=3090,y=195,z=-2025,dx=30,dy=12,dz=35] 3105.5 -200 -2005.5",
+            "summon minecraft:item 3098.5 196.25 -2001.5 {Item:{id:\"minecraft:lantern\",count:1},NoGravity:1b,PickupDelay:32767,Age:-32768s,Motion:[0d,0d,0d]}"
+          ]
+        },
+        {
+          "name": "arrow",
+          "level": "fast",
+          "commands": [
+            "tp @e[type=!minecraft:player,type=!minecraft:armor_stand,x=3090,y=195,z=-2025,dx=30,dy=12,dz=35] 3105.5 -200 -2005.5",
+            "summon minecraft:arrow 3112.5 197.5 -2010.5 {Fire:32767s,NoGravity:1b,Motion:[0d,0d,0d],pickup:0b,Rotation:[90f,0f]}"
+          ]
+        }
+      ],
+      "ciNoteLights": "package 13: the scene's own shot has the setting off (Quicksilver against vanilla, as every shot); the ciLightShots (Quicksilver client runs only) switch dynamic lights on with /quicksilver speed option.dynamic-lights fast|fancy after their commands, take the shot lights.<name> and compare it with ci/references/core/lights.<name>.png (ci/light-limits.json); the setting goes back off after the last. all_*: every light source; torch: only the held torch; mob: only the burning cow (fancy: it is lit too; a cow, since the CI server is on peaceful); lantern: only the dropped lantern; arrow: only a burning arrow.",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 3105.5 197 -1993.5 180 18",
+        "#wait 6",
+        "fill 3090 195 -2025 3120 207 -1990 minecraft:stone hollow",
+        "fill 3091 196 -2024 3119 206 -1991 minecraft:air",
+        "tp @e[type=!minecraft:player,x=3090,y=195,z=-2025,dx=30,dy=12,dz=35] 3105.5 -200 -2005.5",
+        "fill 3091 195 -2024 3119 195 -1991 minecraft:cobblestone",
+        "fill 3094 196 -2021 3096 198 -2019 minecraft:polished_andesite",
+        "fill 3114 196 -2015 3116 197 -2013 minecraft:oak_planks",
+        "gamemode creative @a",
+        "clear @a",
+        "item replace entity @a weapon.mainhand with minecraft:torch",
+        "summon minecraft:armor_stand 3102.5 196 -1999.5 {NoGravity:1b,Invulnerable:1b,Rotation:[150f,0f]}",
+        "setblock 3108 196 -1998 minecraft:chest[facing=west]",
+        "summon minecraft:cow 3105.5 196 -2006.5 {Fire:32767s,Invulnerable:1b,NoAI:1b,Silent:1b,PersistenceRequired:1b,Rotation:[180f,0f]}",
+        "summon minecraft:item 3098.5 196.25 -2001.5 {Item:{id:\"minecraft:lantern\",count:1},NoGravity:1b,PickupDelay:32767,Age:-32768s,Motion:[0d,0d,0d]}",
+        "summon minecraft:arrow 3112.5 197.5 -2010.5 {Fire:32767s,NoGravity:1b,Motion:[0d,0d,0d],pickup:0b,Rotation:[90f,0f]}",
+        "execute in minecraft:overworld run tp @a 3105.5 197 -1993.5 180 18",
+        "#wait 2"
+      ]
     }
   ]
 }

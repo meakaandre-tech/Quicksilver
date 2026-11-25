@@ -215,6 +215,81 @@ def terrain_at_shot(run_dir, sid):
     except Exception as ex:
         return f"; terrain at the shot: unknown ({ex})"
 
+def light_check(name, scenes, runs, rep, sd, failures, lines):
+    """Package 13: dynamic lights shots ("ciLightShots", Quicksilver client runs only) against their stored references
+    (ci/references/<suite>/<shot>.png) with the limits in ci/light-limits.json (share of pixels over 8/255, as the
+    picture check). Each lit shot must also differ from the same run's shot of the same view with the lights off (<shot>_unlit, taken
+    just before) by at least LIGHT_MIN_PCT
+    (the lights did something), and the client log must show the lights drawn on terrain. A missing reference fails and
+    the shot is copied to the report's new-references folder (docs/ci-limits.md, "Package 13")."""
+    limits = json.load(open("ci/light-limits.json")) if os.path.exists("ci/light-limits.json") else {}
+    rows = []
+    for sc in scenes:
+        if sc.get("skip") or not sc.get("ciLightShots"):
+            continue
+        for prof, (b, v) in PAIRS.items():
+            if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
+                continue
+            t = logs(runs[b])
+            if "Quicksilver dynamic lights: terrain drawn lit" not in t:
+                failures.append(f"{name}/{sc['id']}: dynamic lights never drew terrain lit in {prof} (no 'terrain drawn lit' line); the light shots tested nothing")
+            if "Quicksilver dynamic lights failed" in t or "Quicksilver dynamic lights: terrain stays unlit" in t:
+                failures.append(f"{name}/{sc['id']}: dynamic lights failed in {prof} (see client log)")
+            # Fancy's object hooks are optional mixins: the bench says whether they ran
+            bench = sorted(glob.glob(os.path.join(runs[b], "bench", f"*-{sc['id']}.json")))
+            dl = (json.load(open(bench[-1])).get("dynamicLights") or {}) if bench else {}
+            if not dl.get("extractHookSeen") or not dl.get("reloadHookSeen"):
+                failures.append(f"{name}/{sc['id']}: dynamic lights' frame or reload hook never ran in {prof} (bench: {dl or 'no bench'})")
+            names = {x["name"] for x in sc["ciLightShots"]}
+            if {"all_fast", "all_fancy"} <= names:
+                ff = diff(os.path.join(runs[b], "shots", sc["id"] + ".all_fancy.png"), os.path.join(runs[b], "shots", sc["id"] + ".all_fast.png"))
+                if ff is not None and ff["pct"] < FANCY_MIN_PCT:
+                    failures.append(f"{name}/{sc['id']}: {prof} Fancy differs from Fast on only {ff['pct']}% of pixels (at least {FANCY_MIN_PCT}%): entities and block entities were not lit")
+                sd.setdefault("lights", {}).setdefault("fancyOverFast", {})[prof] = ff
+        for extra in sc["ciLightShots"]:
+            shot_id = sc["id"] + "." + extra["name"]
+            ref = os.path.join("ci", "references", name, shot_id + ".png")
+            limit = limits.get(name, {}).get(shot_id)
+            res = sd.setdefault("lights", {}).setdefault(shot_id, {})
+            for prof, (b, v) in PAIRS.items():
+                if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
+                    continue
+                got = os.path.join(runs[b], "shots", shot_id + ".png")
+                if not os.path.exists(got):
+                    failures.append(f"{name}/{shot_id}: no {prof} light screenshot")
+                    continue
+                unlit_path = os.path.join(runs[b], "shots", shot_id + "_unlit.png")
+                unlit = diff(got, unlit_path)
+                if unlit is None:
+                    failures.append(f"{name}/{shot_id}: no {prof} unlit shot of the same view")
+                if unlit is not None and unlit["pct"] < LIGHT_MIN_PCT:
+                    failures.append(f"{name}/{shot_id}: {prof} differs from its unlit shot on only {unlit['pct']}% of pixels (at least {LIGHT_MIN_PCT}%): the light did not show")
+                if not os.path.exists(ref):
+                    os.makedirs(os.path.join(rep, "new-references", name), exist_ok=True)
+                    shutil.copy(got, os.path.join(rep, "new-references", name, f"{shot_id}-{prof}.png"))
+                    failures.append(f"{name}/{shot_id}: no stored reference in {ref} (this run's shot is in new-references for review)")
+                    res[prof] = {"reference": None, "unlit": unlit}
+                    rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | missing | {limit} | {unlit['pct'] if unlit else ''} |")
+                    continue
+                d = diff(got, ref, os.path.join(rep, "diff", f"{name}-{shot_id}-{prof}-reference.png"))
+                res[prof] = {"reference": d, "unlit": unlit}
+                if limit is None:
+                    failures.append(f"{name}/{shot_id}: no light limit in ci/light-limits.json")
+                elif d["pct"] > limit:
+                    failures.append(f"{name}/{shot_id}: {prof} differs from its stored reference on {d['pct']}% of pixels (limit {limit}%)")
+                rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | {d['pct']} | {limit} | {unlit['pct'] if unlit else ''} |")
+    if rows:
+        lines.append("")
+        lines.append("Dynamic lights (on) against their stored references, % of pixels over 8/255; last column: against the same run's unlit shot of the view (at least " + str(LIGHT_MIN_PCT) + "%):\n")
+        lines.append("| shot | profile | reference % | limit % | unlit % |")
+        lines.append("|---|---|---|---|---|")
+        lines.extend(rows)
+
+
+LIGHT_MIN_PCT = 0.5
+# Fancy against Fast, same view: the armor stand, the chest, the lantern and the arrow lit too
+FANCY_MIN_PCT = 0.05
+
 
 def bench_results(run_dir):
     out = {}
@@ -957,6 +1032,7 @@ def main():
         lines.append("|---|---|" + "---|" * len(PAIRS))
         lines.extend(strict_lines)
         lod_check(name, scenes, runs, rep, sd, failures, lines)
+        light_check(name, scenes, runs, rep, sd, failures, lines)
         lines.append("")
         if not QUICK:
             lines.append("Measure runs (Quicksilver loaded, every module off) against vanilla's run of the same profile: % of pixels over"

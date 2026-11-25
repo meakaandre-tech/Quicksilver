@@ -275,6 +275,8 @@ public final class TerrainRenderer {
         String broken = TerrainPipelines.compileAll();
         if (broken != null) throw new IllegalStateException(broken);
         GpuDevice device = RenderSystem.getDevice();
+        // package 13: this frame's dynamic lights (lit pipelines and their block while any is near)
+        TerrainLights.prepare(device, net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
         path = indirect ? Path.INDIRECT : plainPath(device.getDeviceInfo());
         boolean plain = path != Path.INDIRECT;
         for (List<ArenaDraws> l : FRAME) l.clear();
@@ -864,13 +866,15 @@ public final class TerrainRenderer {
             {
                 List<ArenaDraws> list = FRAME[li];
                 CompiledRenderPipeline pipeline;
+                boolean lit = !wireframe && TerrainLights.on();
                 if (wireframe) {
                     pipeline = TerrainPipelines.wireframe(plain);
                 } else {
-                    pipeline = TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1));
+                    pipeline = TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1, lit));
                 }
                 if (pipeline == null) return;
                 pass.setPipeline(pipeline);
+                if (lit) TerrainLights.bind(pass);
                 pass.setIndexBuffer(indexBuffer, quads.type());
                 draws += plain ? drawPlain(pass, list) : drawIndirect(pass, list);
                 for (ArenaDraws ad : list) sectionLayers += ad.sectionLayers;
@@ -911,19 +915,24 @@ public final class TerrainRenderer {
             int maxIndirect = Math.max(1, RenderSystem.getDevice().getDeviceInfo().limits().maxDrawIndirectDrawCount());
             CompiledRenderPipeline current = null;
             int draws = 0, sectionLayers = 0;
+            boolean tlit;
             for (TRun run : TRUNS) {
                 CompiledRenderPipeline pipeline;
                 if (mode == -1) {
                     pipeline = TerrainPipelines.wireframe(plain);
                     if (pipeline == null) continue;
+                    tlit = false;
                 } else {
-                    RenderPipeline p = TerrainPipelines.translucent(mode, plain);
+                    RenderPipeline p = TerrainLights.on() ? TerrainPipelines.translucentLit(mode, plain) : null;
+                    tlit = p != null;
+                    if (p == null) p = TerrainPipelines.translucent(mode, plain);
                     if (p == null) throw new IllegalStateException("no translucent pipeline");
                     pipeline = TerrainPipelines.compiled(p);
                 }
                 if (pipeline != current) {
                     pass.setPipeline(pipeline);
                     current = pipeline;
+                    if (tlit) TerrainLights.bind(pass);
                 }
                 pass.setVertexBuffer(0, run.arena.buffer.slice());
                 pass.setIndexBuffer(run.arena.buffer, run.type);
@@ -1309,7 +1318,9 @@ public final class TerrainRenderer {
         for (int li = 0; li < 2; li++) {
             List<ArenaDraws> list = FRAME2[li];
             if (list.isEmpty()) continue;
-            pass.setPipeline(TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1)));
+            boolean lit = TerrainLights.on();
+            pass.setPipeline(TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1, lit)));
+            if (lit) TerrainLights.bind(pass);
             pass.setIndexBuffer(indexBuffer, quads.type());
             if (plain) {
                 draws += drawPlain(pass, list);
@@ -1379,8 +1390,13 @@ public final class TerrainRenderer {
             CompiledRenderPipeline pipeline = check ? TerrainPipelines.check(plain, li == 1) : wireframe ? TerrainPipelines.wireframe(plain) : null;
             // CI's check must never pass by drawing nothing; a missing wireframe pipeline draws what was left out normally
             if (check && pipeline == null) throw new IllegalStateException("the occlusion check pipeline did not compile");
-            if (pipeline == null) pipeline = TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1));
+            boolean lit = false;
+            if (pipeline == null) {
+                lit = TerrainLights.on();
+                pipeline = TerrainPipelines.compiled(TerrainPipelines.pipeline(plain, li == 1, lit));
+            }
             pass.setPipeline(pipeline);
+            if (lit) TerrainLights.bind(pass);
             pass.setIndexBuffer(indexBuffer, quads.type());
             if (!plain) pass.setVertexBuffer(1, instanceSlice);
             for (int i = 0; i < lates.size(); i++) {

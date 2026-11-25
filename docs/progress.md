@@ -22,7 +22,7 @@ The project stopped on 2026-11-17 and restarted with a smaller scope (design doc
   MSPT gates against vanilla in the same run stay. Details: `docs/ci-limits.md`, "Package L".
 - SIFTEC is cancelled: no SIFTEC suite, pack or scenes in CI.
 
-**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, A, B, L; phase 2's P2-0 to P2-4.
+**Done:** packages 0-5, 2b, 4b, 4c, 6, 7a, 8, 9, 13, A, B, L, the main fix; phase 2's P2-0 to P2-4.
 
 **Package A** (approximations and speed options): merged 2026-11-24, squash of branch `package-a` (branch full run
 45317393864 green; see "Package A" below, "Decisions for Andre" there).
@@ -31,13 +31,19 @@ The project stopped on 2026-11-17 and restarted with a smaller scope (design doc
 run 45424033530 green). Main's full run 45480710531 then failed only a perf-world check (fixed on branch
 `fix-perf-seeds`, merged as `1783d9e`; see "Package 9", "Before package 9's own work").
 
-**Main fix** (2026-11-25): main's water_glass_oit failure on Vulkan and package 9's flakes; see "Main fix" below.
+**Main fix** (2026-11-25): main's water_glass_oit failure on Vulkan and package 9's flakes; merged; see "Main fix" below.
+
+**Package 13** (dynamic lights): squash-merged into main 2026-11-26 (branch full run 45609305464 green; see "Package
+13" below, "Decisions for Andre" there).
+
+**Branch cleanup** (2026-11-25, run 45587626867): every merged or finished branch and their log branches deleted; kept
+`main`, `p2-3b`, `test-pack`, `package-13` and the log branches CI reads or whose branch remains.
 
 **Package 9** (settings screen): squash-merged into main 2026-11-25 after the main fix (see "Package 9" below,
 "Decisions for Andre" there).
 
 **Still to do, in order:** R2 (laptop bench, `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two
-lines, which the file now reads as `preset=custom`, and `preset=low-end` turns on more), 13 (dynamic lights, off by default), 11 (pixel art look, natural palette only), 12 (far terrain,
+lines, which the file now reads as `preset=custom`, and `preset=low-end` turns on more), 11 (pixel art look, natural palette only), 12 (far terrain,
 judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
 
 **Cut:** 2c (GPU-driven culling), 7b (GUI batching), 10 (compat sign-off and its popular-mods test pack; branch
@@ -45,6 +51,141 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Package 13: dynamic lights (merged, squash of `package-13`)
+
+**Status:** merged 2026-11-26 (squash of `package-13`, which was already on main's head `69ba515`, so no rebase was needed); final branch full run 45609305464 (`9d6c4f4`) **green**, 54 min; independent review done and fixed.
+
+**What it adds** (design doc, "Dynamic lights"; the idea of LambDynamicLights, none of its code)
+- **A lighting setting, off by default:** `option.dynamic-lights` = off, fast (the nearest 8 lights, terrain only) or
+  fancy (the nearest 32, terrain plus entities and block entities). In `config/quicksilver.properties`, in `/qs speed`
+  (`/qs speed option.dynamic-lights fast`) and on the options screen's new **Lighting** row (Off / Fast / Fancy, with a
+  tooltip). Off in every preset (`settings/Settings`).
+- **What gives light** (`lights/DynamicLights.light`): a held item in either hand (players and mobs), a dropped item, a
+  burning entity (15: mobs, burning arrows, anything on fire), and entity types listed in a data file (blazes 10,
+  magma cubes 8, glow squids 6, allays 6, fireballs 15, small fireballs (fire charges) 14, dragon fireballs 10,
+  spectral arrows 8, experience orbs 6). A spectator gives none.
+- **Light levels** (`lights/LightData`): an item gives the light of the block it places (vanilla's own value: a torch
+  14, a lantern 15, glowstone 15, a soul torch 10...), unless a data file says otherwise; items that place no block are
+  listed (lava bucket 15, blaze rod 10, glowstone dust 8, ...). Data files: `assets/<namespace>/quicksilver/dynamic_lights/*.json`
+  in any mod or resource pack (`{"items": {...}, "entities": {...}}`, levels 0-15), read on every resource reload;
+  unknown ids are skipped, so a mod's torch needs only a JSON file. Quicksilver's own: `assets/quicksilver/quicksilver/dynamic_lights/minecraft.json`.
+- **How** (render thread, once a frame): the light-giving entities within 64 blocks of the camera are found (their
+  interpolated positions; a held item at 0.6 of the holder's height, anything else at its middle), the nearest 8 or 32
+  kept, and their camera-relative positions and levels written to one 544-byte uniform block. Terrain is then drawn with
+  lit copies of Quicksilver's terrain pipelines (`QUICKSILVER_DYNLIGHTS`: the same shaders and states plus that block);
+  the vertex shader takes the larger of a vertex's own block light and the brightest dynamic light at it (level minus
+  distance in blocks, as block light falls off), before the lightmap lookup. A box around every light's reach is tested
+  first, so a vertex out of reach costs one test. No chunk is re-meshed when a light moves. Solid, cutout and
+  translucent terrain (classic and Improved Transparency's lit stage) take it, on both draw paths, on OpenGL 3.3 and
+  Vulkan. Fancy also raises each entity's and block entity's light value (the one their shaders look the lightmap up
+  with) by the same rule at its middle (`mixin/lights`).
+- **With it off nothing changes:** the unlit pipelines are drawn, no light value is touched, and nothing is collected.
+  The lit pipelines are compiled the first time lights draw; if one doesn't compile, terrain stays unlit for the
+  session (one log line) and nothing else changes.
+- **Bench:** a `dynamicLights` section (state, lights per frame, candidates, collection time, entities and block
+  entities lit per frame, data files).
+
+**CI**
+- **With it off** (every existing shot and the new scene's own shot): today's limits, against vanilla.
+- **New scene `core/lights`** (shard 1): a sealed dark stone hall with a held torch, a burning cow (the CI server is on
+  peaceful, so no zombie), a dropped lantern and a burning arrow, and an armor stand and a chest near the camera that
+  only Fancy lights. Its own shot has the setting off (the normal picture, against vanilla). Then, in Quicksilver's
+  client runs only, six shots with lights on (`ciLightShots`, `ci/drive.py`): `all_fast`, `all_fancy` (every source),
+  `torch` (only the held torch, fast), `mob` (only the burning cow, fancy), `lantern` (only the dropped
+  lantern, fast) and `arrow` (only the burning arrow, fast). Each is compared with a stored Quicksilver reference
+  (`ci/references/core/lights.<name>.png`, `ci/light-limits.json`, `light_check` in `ci/compare.py`) and must differ from
+  the same view with the lights off (`<name>_unlit`, taken just before) by at least 0.5% (the light showed). Also: the
+  client log shows terrain drawn lit, the bench shows the frame and reload hooks ran, and `all_fancy` differs from
+  `all_fast` by at least 0.05% (Fancy lit the armor stand, the chest and the items). Entities that left the hall between
+  shots are moved away (no loot drops).
+- **References and limits** (the documented rule, as far entity LOD's): the references are Quicksilver's old-GPU shots of full run 45592666729 (looked at: Fast lights the floor and
+  walls only, Fancy also the armor stand, chest, cow and items). In that run the other three profiles were within
+  0.0002% of them (Vulkan; full and two-phase 0.0); every light shot differs from its unlit pair by 24.6-75.3%. Limits
+  0.001% each (twice the largest sample, at least 0.001%), far under the smallest thing to catch (a missing light changes
+  tens of percent; a wrong falloff thousands of pixels). The scene's own shot: every profile and measure run 0.0% from
+  vanilla, vanilla a/b 0.0: approximation limit 0.001%, noise limit 0.25% (the rule's floor). Count baselines from that
+  run. Deviation: the rule asks for samples from three full runs; these are from one (runs 1 and 2 had a zombie that
+  peaceful removed, and run 2 was cancelled for the review fixes); the final run checks them.
+- **Pin:** a dropped item's spin and bob are held at rest in the lights hall in every CI client run (`ItemSpinMixin`),
+  as package 8 pinned the banners and chickens.
+- **Speed gate:** `option.dynamic-lights=1` (Fast) in the lights scene on speed-old (the old-GPU profile: Intel's plain path),
+  frame time on/off at most **1.05**; Fancy and speed-full are reported. Measured 1.000 (run 45573754150) and 1.008
+  (45592666729). 1.05 leaves room for the runner's round-to-round noise (one round 1.042) and catches a real cost (a
+  shader that lights every vertex, or a per-frame stall).
+
+**Cost of Fast and Fancy** (speed runs, lights scene, on/off of frame time, trimmed geometric mean of five rounds)
+| run | Fast | Fancy |
+|---|---|---|
+| speed-old (old GPU), 45573754150 | 1.000 (15.23 → 15.37 ms) | 1.015 |
+| speed-old (old GPU), 45592666729 | 1.008 (10.67 → 10.69 ms) | 1.007 |
+| speed-full (indirect path), 45573754150 | 1.010 | 1.011 |
+| speed-full (indirect path), 45592666729 | 1.021 | 1.024 |
+| speed-old (old GPU), 45601639737 | 1.003 (15.22 → 15.40 ms) | 1.007 |
+| speed-full (indirect path), 45601639737 | 0.971 | 1.020 |
+| speed-old (old GPU), 45609305464 | 1.003 (21.36 → 21.70 ms) | 1.005 |
+| speed-full (indirect path), 45609305464 | 1.006 | 0.998 |
+
+So about 0-1% on the old-GPU path and 1-2% on the full path, with every light in view; draw calls unchanged (the lit
+pipelines replace the unlit ones, no extra draws). Collecting the lights: well under 0.1 ms a frame. The scene is
+small (one hall); in a large view the cost per vertex outside every light's reach is one box test.
+
+**Limits:** none of today's changed. New: `lights` (approximation 0.001%, noise 0.25%), `ci/light-limits.json` (0.001% for each light shot), the Fast speed gate (1.05).
+
+**Run time:** full runs 49-54 min from push to the last job (the final one 54 min, 52 jobs; part of it waiting for
+runners). The lights scene adds about 2-3 min to each Quicksilver client job (six light shots and their unlit pairs) and
+about 2 min to each speed run (Fast and Fancy over five rounds).
+
+**Runs:**
+- 45573754150 (first run): the light shots and the setting worked on every profile (OpenGL 3.3, full, Vulkan,
+  two-phase); failed only on what a new scene lacks (limits, references, baselines) and on the zombie, which the
+  peaceful server removed (so the mob shot showed nothing).
+- 45588088543: cancelled (the review fixes changed the scene).
+- 45592666729 (review fixes): failed only on the missing limits, references and baselines, which were taken from it.
+- 45601639737 (references, limits, docs): every client check green (pictures, light shots against their references:
+  at most 0.0002%, Fancy and hook checks, draw calls and memory, speed gates incl. Fast 1.003, upload gate); failed only
+  the server suite's fly-over `saveAll` timing gate (trimmed geometric mean 1.026, not below 1.00; 0.92-0.96 in the main
+  fix's and package 9's runs). Package 13 changes no server code (its mixins are client-only), so it is that gate's noise;
+  not changed here, noted for Andre.
+- 45609305464 (`9d6c4f4`, docs): **green**, 54 min. Light shots at most 0.0002% from their references (Vulkan); Fast on
+  speed-old 1.003, Fancy 1.005; speed-full 1.006 / 0.998.
+
+**Independent review:** a fresh agent reviewed the branch after run 45573754150. Fixed (`Package 13: review fixes`):
+  the light shots killed the cow, which dropped random loot (entities are now moved away); the mob shot couldn't show
+  Fancy's object lighting (an armor stand and a chest added, Fancy-vs-Fast and hook checks added); lit pipelines were
+  compiled only once (now every lit frame, so a resource reload recompiles them before the pass); light positions used
+  the camera of whichever hook ran first (now made camera-relative when the light block is written); one bad data value
+  dropped the rest of its file (now one entry); `on` accepted as Fast; a pause after the last F3+D. Checked by the
+  reviewer without findings: the uniform block layout, the block bound after every lit pipeline on every draw path, off
+  costs nothing, presets and the screen test, the bench jar, the pin, clean room. Left as nits: the candidate sort
+  allocates a comparator a frame; data files are read even with lights off; glowing-effect mobs and fireworks give no
+  light.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **Entities and block entities take the light through their light value** (once per object, at its middle), not per
+   vertex in their shaders: no vanilla shader is replaced, and it costs one sum per object. A big mob lit from one side
+   is lit evenly. Alternative: per-vertex light in replaced entity shaders. Switch: `mixin/lights`, `DynamicLights.raise`.
+2. **Falloff: level minus straight-line distance**, per terrain vertex, never darker than the block light; sky light
+   untouched. Alternative: per-block (meshed) light like LambDynamicLights, which re-meshes. Switch: `qsDynamicLight` in
+   `terrain.vsh`, `DynamicLights.at`.
+3. **Light sources:** held items (both hands), dropped items, anything burning (15), and the data file's entity types.
+   Not: items in item frames, armour, a light underwater going out. Alternative: more sources by data file. Switch:
+   `DynamicLights.light`, `minecraft.json`.
+4. **Data-file defaults** for items without a block and for glowing mobs (lava bucket 15, blaze rod 10, glowstone dust 8,
+   blaze 10, magma cube 8, glow squid 6, allay 6, fire charge entity 14...). Switch: `minecraft.json`.
+5. **Off in every preset;** turning it on makes the preset show Custom. Alternative: leave presets out of lighting.
+   Switch: the Low-end map and `Speed.DYNAMIC_LIGHTS`'s default in `settings/Settings`.
+6. **Candidates within 64 blocks** of the camera, nearest first. Switch: `DynamicLights.RANGE`.
+7. **The first-person hand takes the light only at Fancy** (it is drawn with the player's light value, which Fancy
+   raises). Alternative: light the hand at Fast too.
+8. **The lights scene's own shot is gated against vanilla** like every shot (torch in hand, burning cow, lantern, arrow,
+   armor stand, chest; lights off). A burning cow, not a zombie: the CI server is on peaceful.
+9. **Light goes through walls** (straight-line distance, no block test), as the design's shader approach implies.
+   Alternative: sample block light along the way (costly).
+10. **Speed gate: Fast at most 1.05 of frame time on speed-old** (measured 1.000-1.008). Alternative: 1.03 (tighter,
+    nearer the runner's round-to-round noise). Switch: `ci/speed-gates.json`.
+11. **The fly-over `saveAll` server gate flaked once** (1.026 in run 45601639737; package 13 changes no server code).
+    Left as is. Alternative: more fly-over rounds, by package 9's rule. Switch: `ci/server/compare-chunks.py`.
 
 ## Main fix (2026-11-25): water_glass_oit on Vulkan, package 9's flakes (branch `fix-main`)
 

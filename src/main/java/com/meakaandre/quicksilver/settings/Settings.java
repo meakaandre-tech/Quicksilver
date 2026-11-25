@@ -72,6 +72,8 @@ public final class Settings {
         low.put(Speed.BLOCK_ENTITY_DISTANCE.key, 32);
         low.put(Speed.PARTICLE_DISTANCE.key, 24);
         low.put(Speed.PARTICLE_DENSITY.key, 50);
+        // package 13: dynamic lights are off in every preset (Balanced and Quality take the default, off)
+        low.put(Speed.DYNAMIC_LIGHTS.key, 0);
         PRESETS.put(Preset.LOW_END, low);
         // Balanced (the default): the invisible approximations only, every visible option off (Quicksilver's defaults)
         Map<String, Integer> balanced = new LinkedHashMap<>();

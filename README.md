@@ -21,6 +21,12 @@ the revealed ones drawn in the same frame; the CPU waits briefly for the GPU eac
 culls only while the view stays exactly the same), off; auto picks two-phase where the game trusts the driver with
 multi-draw indirect and still-camera elsewhere (Intel integrated graphics, old GPUs).
 
+- **Dynamic lights** (off by default): `option.dynamic-lights=fast|fancy` in `config/quicksilver.properties`, the options
+  screen's Lighting row or `/qs speed option.dynamic-lights fast`. Held and dropped light sources (torches, lanterns,
+  glowstone, lava buckets...), burning and glowing mobs and lit projectiles light the world around them as they move.
+  Fast: the 8 nearest lights, on terrain; Fancy: the 32 nearest, also on mobs and block entities. Light levels come from
+  vanilla's own block light values plus data files (`assets/<namespace>/quicksilver/dynamic_lights/*.json`, see
+  Quicksilver's own `minecraft.json`), so a mod or resource pack can add its items and entities without code.
 - `/quicksilver bench [scene] [seconds]` (or `/qs bench ...`) measures frame rate, frame times, draw calls, uploads and memory, and writes
   the results to `latest.log` and `<game dir>/quicksilver/bench/`. With no scene (or `here`) it measures where you
   stand; scenes set up a fixed view and need commands allowed (single player with cheats on, or op). The scene list
