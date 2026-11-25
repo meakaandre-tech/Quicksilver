@@ -32,7 +32,7 @@ MEASURING = False
 # differ in about a thousand chunks' LastUpdate and pending ticks), so its files are reported, not gated. Entity files are
 # reported only (entities move between saves in vanilla's own rounds too)
 EXACT_FILES = ("save", "churn")
-# P2-4's time gates: the median of the per-round ratios (Quicksilver / vanilla, same round) of a measure. "faster": below
+# P2-4's time gates: the trimmed geometric mean (gate_ratio; the median until package 9) of the per-round ratios (Quicksilver / vanilla, same round) of a measure. "faster": below
 # the limit; "no-regression": at most the limit. Save time on the server thread must be down where chunks are saved
 # (the fly-over's unloads, the churn's save-all every 5 ticks), the save-all tick not up (the save spike: the three plain
 # save-alls of the save scene, no-regression since 2026-11-23; the game's autosave is the same save, once per run, and reported); the fly-over's p99 and
@@ -51,6 +51,27 @@ GATES = {
     # save every 5) must not get slower for it
     ("churn", "msptAvg"): ("no-regression", 1.10),
 }
+
+
+# package 9 (flake fixes, docs/ci-limits.md "Package 9"): the fly-over's first ticks are the JIT compiling the chunk
+# path (its first eight moves took 10-46 ms in every run, vanilla's too, about half of a round's slowest 1%), so its tick
+# numbers (average, p99, slowest, over 50 ms, slowest ticks) leave out the first WARMUP_TICKS ticks; the scene runs that
+# many ticks more, so 1200 are still measured. The JFR numbers (ms per tick) keep the whole run.
+WARMUP_TICKS = {"flyover": 64}
+
+
+def gate_ratio(ratios):
+    """Package 9: the gated statistic of a measure's paired per-round ratios (Quicksilver / vanilla of the same round):
+    their geometric mean with the highest and the lowest left out (from 5 rounds; below 5, the median as before). The
+    median of 7 used only the middle round and moved by 0.05-0.07 between runs of the same code (fly-over save time: JFR
+    samples, about 430 a run; p99: a run's 12th slowest tick); the trimmed mean uses every round but the two extremes,
+    so one stray round still can't decide it. The median stays in the report."""
+    xs = sorted(x for x in ratios if x is not None and x > 0)
+    if not xs:
+        return None
+    if len(xs) < 5:
+        return statistics.median(xs)
+    return statistics.geometric_mean(xs[1:-1])
 
 
 def load(path):
@@ -84,8 +105,25 @@ def rounds_of(scene_dir):
     return out
 
 
-def numbers(d):
+def numbers(d, scene=None):
     r = load(os.path.join(d, "ci-harness-result.json")) or {}
+    w = WARMUP_TICKS.get(scene, 0)
+    if w and r.get("msptAvg") is not None:
+        t = load(os.path.join(d, "ticks.json")) or []
+        if len(t) <= w:
+            r = dict(r)
+            r["error"] = (r.get("error") or "") + " ticks.json missing or shorter than the warm-up: tick numbers not comparable"
+        else:
+            m = t[w:]
+            s = sorted(m)
+            r = dict(r)
+            # the harness's own definitions (Harness.java), over the ticks after the warm-up
+            r["msptAvg"] = sum(m) / len(m)
+            r["msptP99"] = s[min(len(s) - 1, -(-len(s) * 99 // 100) - 1)]
+            r["msptMax"] = s[-1]
+            r["ticksOver50ms"] = sum(1 for x in m if x > 50)
+            r["slowTicks"] = sorted(({"tick": i + w, "ms": x} for i, x in enumerate(m)), key=lambda e: -e["ms"])[:8]
+            r["warmupTicks"] = w
     j = load(os.path.join(d, "jfr.json")) or {}
     autos = [a for a in r.get("autosaves", []) if a.get("stage") == "RUNNING"]
     return {
@@ -379,7 +417,7 @@ def main(results, report_dir):
             rs = rounds_of(scene_dir)
             if not rs:
                 continue
-            nums = {k: numbers(v) for k, v in rs.items()}
+            nums = {k: numbers(v, scene) for k, v in rs.items()}
             n_rounds = sorted({r for _, r in rs})
             lines.append("## %s / %s\n" % (suite, scene))
             lines.append("| round | side | finished | mspt avg | p99 | max | over 50 ms | load ms/tick (in tick) | save ms/tick (in tick) | autosave ms/tick | autosave ticks (ms) | slowest ticks |")
@@ -405,8 +443,10 @@ def main(results, report_dir):
             lines.append("")
             # medians and per-round ratios
             summary = {}
-            lines.append("| measure | vanilla median | Quicksilver median | Quicksilver / vanilla, median of rounds (range) |")
-            lines.append("|---|---|---|---|")
+            if WARMUP_TICKS.get(scene):
+                lines.append("Tick numbers (MSPT, p99, slowest, over 50 ms) leave out the first %d ticks (warm-up); JFR ms per tick is the whole run.\n" % WARMUP_TICKS[scene])
+            lines.append("| measure | vanilla median | Quicksilver median | Quicksilver / vanilla, median of rounds (range) | gated: trimmed geometric mean of rounds |")
+            lines.append("|---|---|---|---|---|")
             for m, label in (("msptAvg", "MSPT average"), ("msptP99", "MSPT p99"), ("msptMax", "slowest tick (ms)"),
                              ("over50", "ticks over 50 ms"), ("loadAll", "chunk load, ms per tick (server thread)"),
                              ("loadInTick", "  of it in the tick"), ("saveAll", "chunk save, ms per tick (server thread)"),
@@ -421,10 +461,12 @@ def main(results, report_dir):
                     b = nums.get(("quicksilver", r), {}).get(m)
                     if a and b is not None:
                         ratios.append(b / a)
-                summary[m] = {"vanilla": med(v), "quicksilver": med(q), "ratio": med(ratios),
+                summary[m] = {"vanilla": med(v), "quicksilver": med(q), "ratio": med(ratios), "gate": gate_ratio(ratios),
+                              "ratios": ratios,
                               "ratioMin": min(ratios) if ratios else None, "ratioMax": max(ratios) if ratios else None}
-                lines.append("| %s | %s | %s | %s (%s to %s) |" % (label, fmt(med(v)), fmt(med(q)), fmt(med(ratios)),
-                                                                   fmt(summary[m]["ratioMin"], 2), fmt(summary[m]["ratioMax"], 2)))
+                lines.append("| %s | %s | %s | %s (%s to %s) | %s |" % (label, fmt(med(v)), fmt(med(q)), fmt(med(ratios)),
+                                                                   fmt(summary[m]["ratioMin"], 2), fmt(summary[m]["ratioMax"], 2),
+                                                                   fmt(summary[m]["gate"])))
             lines.append("")
             # where the server thread's chunk time goes (round 1 of each side)
             for side in ("vanilla", "quicksilver"):
@@ -578,13 +620,13 @@ def main(results, report_dir):
             for (gs, gm), (kind, limit) in GATES.items():
                 if gs != scene or suite != "core":
                     continue
-                ratio = (summary.get(gm) or {}).get("ratio")
+                ratio = (summary.get(gm) or {}).get("gate")
                 if ratio is None:
                     fails.append("%s/%s: no %s ratio to gate" % (suite, scene, gm))
                 elif kind == "faster" and not ratio < limit:
-                    fails.append("%s/%s: %s, median per-round ratio to vanilla %.3f, not below %.2f" % (suite, scene, gm, ratio, limit))
+                    fails.append("%s/%s: %s, trimmed geometric mean of the per-round ratios to vanilla %.3f, not below %.2f" % (suite, scene, gm, ratio, limit))
                 elif kind == "no-regression" and ratio > limit:
-                    fails.append("%s/%s: %s, median per-round ratio to vanilla %.3f, over %.2f (a regression)" % (suite, scene, gm, ratio, limit))
+                    fails.append("%s/%s: %s, trimmed geometric mean of the per-round ratios to vanilla %.3f, over %.2f (a regression)" % (suite, scene, gm, ratio, limit))
             out["%s/%s" % (suite, scene)] = {"summary": summary, "files": files}
     for sdir in suites:
         kill_check(sdir, lines, out, fails)

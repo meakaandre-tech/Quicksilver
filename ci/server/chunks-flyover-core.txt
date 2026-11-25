@@ -4,10 +4,11 @@
 # square of 16 chunks a side, at the game's normal tick rate (not sprinting), so the server has its usual time between
 # ticks for chunk work. A chunk leaving the window is marked changed (as one a player has been near is), so it is saved
 # as it unloads. Nothing ticks in the window (no simulation ticket), so a tick's time is chunk loading, saving and
-# unloading.
+# unloading. Package 9: 1264 ticks, the first 64 (the JIT warming up the chunk path) left out of the tick numbers
+# (ci/server/compare-chunks.py, WARMUP_TICKS).
 window minecraft:overworld -8 -8 12
 fly 8 +x16 +z16 -x16 -z16
 dirty-on-leave
 cmd gamerule spawn_mobs false
 cmd gamerule random_tick_speed 0
-ticks 1200
+ticks 1264

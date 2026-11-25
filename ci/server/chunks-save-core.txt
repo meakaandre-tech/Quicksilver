@@ -2,6 +2,8 @@
 # chunks within 12 of chunk 0,0 loaded (CiChunks' window, not moving, not ticking); every one marked changed and the
 # world saved with save-all at ticks 100, 400 and 700 (the last with flush); marked changed again every 250 ticks from
 # 4000, so the game's own autosave (every 6000 ticks from start-up, near the run's tick 5500) has the window to save.
+# Package 9 (flake fix): eight more plain save-alls of the whole window (ticks 1000-3100), so the gated save-all tick is
+# the mean of ten save-alls a round, not two (one save-all tick moved by up to 2x between rounds on the same code).
 window minecraft:overworld 0 0 12
 cmd gamerule spawn_mobs false
 cmd gamerule random_tick_speed 0
@@ -11,6 +13,22 @@ dirty-at 400
 at 400 save-all
 dirty-at 700
 at 700 save-all flush
+dirty-at 1000
+at 1000 save-all
+dirty-at 1300
+at 1300 save-all
+dirty-at 1600
+at 1600 save-all
+dirty-at 1900
+at 1900 save-all
+dirty-at 2200
+at 2200 save-all
+dirty-at 2500
+at 2500 save-all
+dirty-at 2800
+at 2800 save-all
+dirty-at 3100
+at 3100 save-all
 dirty-at 4000
 dirty-at 4250
 dirty-at 4500

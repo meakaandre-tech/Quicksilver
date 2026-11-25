@@ -14,6 +14,34 @@ import sys
 import time
 
 
+# package 9 (flake fix): after a scene's set-up, the server's log is read for a command answering that its area isn't
+# loaded (the server hadn't loaded or generated those chunks yet: package B's full run 45406792163, occlusion_corner's
+# floor missing in one measure run); if one did, every entity but players is removed and the whole set-up is sent again and settles again (the same 0.3 s between
+# commands and the same settle as always, so a set-up that worked keeps its timing), for up to SETUP_RETRY_SECONDS. Retries are
+# recorded (drive-*.json "setupRetries"); a set-up still failing ("setupFailed") fails the scene in ci/compare.py. A first
+# version waited for each command's reply before the next: the extra seconds between commands let the OIT scenes' water
+# flow before its glass was placed (translucent_move_oit drew 31 draw calls a frame instead of 25).
+NOT_LOADED = ("not loaded", "isn't loaded", "is not loaded")
+SETUP_RETRY_SECONDS = 60
+SERVER_LOG = None
+
+
+def log_size():
+    return os.path.getsize(SERVER_LOG) if SERVER_LOG and os.path.exists(SERVER_LOG) else 0
+
+
+def not_loaded_replies(start):
+    """The server's replies since byte `start` of its log that say an area isn't loaded."""
+    if not SERVER_LOG:
+        return []
+    try:
+        with open(SERVER_LOG, errors="replace") as f:
+            f.seek(start)
+            return [l.split("]: ", 1)[-1] for l in f.read().splitlines() if "[Server thread/" in l and any(k in l for k in NOT_LOADED)]
+    except OSError:
+        return []
+
+
 def capture(path):
     subprocess.run(["import", "-window", "root", path], check=False)
 
@@ -80,7 +108,10 @@ def main():
     scenes = {s["id"]: s for s in suite["scenes"]}
     os.makedirs(os.path.join(out, "shots"), exist_ok=True)
     console = open(fifo, "w", buffering=1)
+    global SERVER_LOG
+    SERVER_LOG = os.path.join(os.path.dirname(fifo), "server.log")
     summary = []
+    setup_log = {"retries": [], "failed": []}
 
     def send(cmd):
         if cmd.startswith("#wait "):
@@ -140,9 +171,29 @@ def main():
             xdo("key", "d")
             xdo("keyup", "F3")
             time.sleep(1)
-        for cmd in suite["preamble"] + sc["setup"]:
-            send(cmd)
-        time.sleep(sc.get("settleSeconds", 20))
+        setup_log["retries"], setup_log["failed"] = [], []
+        t0 = time.time()
+        while True:
+            start = log_size()
+            for cmd in suite["preamble"] + sc["setup"]:
+                send(cmd)
+            # the same settle as always; the replies are read after it, so a set-up that worked keeps its old timing
+            time.sleep(sc.get("settleSeconds", 20))
+            bad = not_loaded_replies(start)
+            if not bad:
+                break
+            if time.time() - t0 > SETUP_RETRY_SECONDS:
+                setup_log["failed"] += [{"command": "(set-up)", "reply": r} for r in bad[:3]]
+                print(f"  set-up still answered 'not loaded' after {SETUP_RETRY_SECONDS} s: {bad[0]}", flush=True)
+                break
+            setup_log["retries"].append({"reply": bad[0], "after": round(time.time() - t0, 1)})
+            print(f"  set-up answered '{bad[0]}': sending it again", flush=True)
+            # the set-up's summons were made once already: every entity but players goes first, so a resend can't double them
+            send("kill @e[type=!minecraft:player]")
+        if setup_log["retries"]:
+            entry["setupRetries"] = list(setup_log["retries"])
+        if setup_log["failed"]:
+            entry["setupFailed"] = list(setup_log["failed"])
         screen = sc.get("screen")
         if screen and screen.get("ciKey"):
             xdo("key", screen["ciKey"])

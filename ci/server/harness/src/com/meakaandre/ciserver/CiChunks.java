@@ -323,6 +323,22 @@ public final class CiChunks {
         o.addProperty("windowNotFullAtEnd", missing);
         o.addProperty("endCentre", cx + "," + cz);
         recording = false;
+        // package 9 (flake fix): every window chunk marked changed after the last tick, so the save as the server stops
+        // writes each as it is at the last tick (as Harness.markUnsaved does for the scripted areas). Without it a chunk's
+        // last save is whichever save-all found it ready (a save still being serialised is skipped: background thread
+        // timing), so its saved LastUpdate moved between rounds (package B's churn failures in 45369287133 and
+        // 45391087534). Every save during the run is still compared at its tick (chunkWrites, recorded until here).
+        int resaved = 0;
+        for (int z = cz - radius; z <= cz + radius; z++) {
+            for (int x = cx - radius; x <= cx + radius; x++) {
+                LevelChunk c = level.getChunkSource().getChunkNow(x, z);
+                if (c == null) continue;
+                c.markUnsaved();
+                resaved++;
+            }
+        }
+        o.addProperty("resavedAtEnd", resaved);
+        Harness.LOG.info("CI CHUNKS end: {} window chunks marked to be saved as they are now", resaved);
         JsonObject w = new JsonObject();
         int n = 0;
         for (var e : new java.util.TreeMap<>(writes).entrySet()) {

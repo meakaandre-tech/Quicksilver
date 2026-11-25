@@ -1,6 +1,6 @@
 #!/bin/bash
 # The chunk scenes (phase 2, P2-4): chunk loading and saving on the server thread, vanilla against Quicksilver on ONE
-# runner, alternating as the perf job does (ci/server/perf-run.sh): rounds 1-7, vanilla first in odd rounds,
+# runner, alternating as the perf job does (ci/server/perf-run.sh): rounds 1-N (ci/server/chunks-<suite>.txt), vanilla first in odd rounds,
 # Quicksilver first in even ones. Every round records Java Flight Recorder (Java and native samples of every thread
 # every millisecond, allocation samples), summarised by ci/server/chunks-jfr.py over the run's ticks only; and its saved
 # world as hashes (ci/server/regiondump.py, against the saved terrain it started from).
@@ -15,7 +15,7 @@ set +e
 root=$PWD
 SUITE=${SUITE:-core}
 OUT=${OUT:-/tmp/sout/$SUITE-chunks}
-ROUNDS=${ROUNDS:-7}
+ROUNDS=${ROUNDS:-9}  # package 9: the fly-over has 9 rounds (ci/server/chunks-core.txt); the others keep theirs
 mkdir -p "$OUT"
 log=chunks.txt; [ -n "${SCENES:-}" ] && log="chunks-${SCENES%% *}.txt"
 exec > >(tee "$OUT/$log") 2>&1

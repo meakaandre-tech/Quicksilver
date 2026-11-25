@@ -255,6 +255,16 @@ def drive_upload_timeouts(run_dir):
     return out
 
 
+def drive_setup_failures(run_dir):
+    """Package 9: scenes whose setup command still found its area not loaded after the driver's retries (ci/drive.py)."""
+    out = []
+    for f in glob.glob(os.path.join(run_dir, "drive-*.json")):
+        for e in json.load(open(f)):
+            for x in e.get("setupFailed") or []:
+                out.append((e["scene"], x.get("command", "")[:80], x.get("reply", "")[:120]))
+    return out
+
+
 def drive_skips(run_dir):
     out = {}
     for f in glob.glob(os.path.join(run_dir, "drive-*.json")):
@@ -474,6 +484,8 @@ def main():
         for r, d in runs.items():
             for sid in drive_upload_timeouts(d):
                 failures.append(f"{name}/{r}/{sid}: a screenshot was taken while Quicksilver's terrain uploads were still waiting (the wait timed out)")
+            for sid, cmd, reply in drive_setup_failures(d):
+                failures.append(f"{name}/{r}/{sid}: scene set-up failed: '{cmd}' still answered '{reply}' after the driver's retries (the server hadn't loaded the area)")
             t = logs(d)
             # phase 2, P2-1: the Memory module fully on in every Quicksilver run (its integrated server logs the status
             # line), off in the measure runs (vanilla's stand-in)
