@@ -7,8 +7,8 @@
 # Starts the suite's server (core: a plain Fabric server with Fabric API, seed 12345, the core-world job's world), then
 # one dev client per session (render distance, client options and shard of the suite's scenes), drives the scenes
 # (ci/drive.py), and leaves everything in $OUT.
-# SHARD (package L): 1 or 2 runs only the sessions of that shard (scene key "ciShard", default 1), so one run's scenes are
-# split over two jobs; every run, vanilla and Quicksilver alike, is split the same way. Unset or 0: every session.
+# SHARD (package L): 1, 2 or 3 (run-time fix, 2026-11-26) runs only the sessions of that shard (scene key "ciShard",
+# default 1), so one run's scenes are split over three jobs (the speed runs: two, by "ciSpeedShard"); every run, vanilla and Quicksilver alike, is split the same way. Unset or 0: every session.
 # Sessions keep one numbering over both shards (client-<n>.log), so the two jobs' files never collide. Quicksilver runs put the built jar in the client's and
 # the server's mods; vanilla runs have no Quicksilver anywhere (the dev classpath's own copy is emptied out first).
 # old runs hide multi-draw indirect and buffer storage and force GL down to vanilla's minimum (3.3); the Quicksilver old
@@ -206,11 +206,17 @@ for g in $groups; do
   n=$((n+1))
   shard=${g%%|*}; g=${g#*|}
   rd=${g%%|*}; rest=${g#*|}; opts=${rest%%|*}; ids=$(echo "${rest#*|}" | tr ',' ' ')
-  if [ "$SHARD" -gt 0 ] && [ "$shard" != "$SHARD" ]; then echo "session $n: shard $shard, not this job's"; continue; fi
+  # run-time fix (2026-11-26): the speed runs are split over two jobs by the scene key "ciSpeedShard" (default 1), not by
+  # "ciShard", so each speed job plays its own scenes whole (every scene's on/off rounds stay on one runner); a session
+  # of speed shard 2 writes its files as session n+20, so the two jobs' files never collide
+  ln=$n
+  if [ $speed = 1 ]; then
+    if [ "$SHARD" -gt 1 ]; then ln=$((n+20)); fi
+  elif [ "$SHARD" -gt 0 ] && [ "$shard" != "$SHARD" ]; then echo "session $n: shard $shard, not this job's"; continue; fi
   if [ $speed = 1 ]; then
     keep=""
     for id in $ids; do
-      python3 -c "import json,sys; s=[x for x in json.load(open('$suitefile'))['scenes'] if x['id']=='$id']; sys.exit(0 if s and s[0].get('speedAb') else 1)" && keep="$keep $id"
+      python3 -c "import json,sys; s=[x for x in json.load(open('$suitefile'))['scenes'] if x['id']=='$id']; sys.exit(0 if s and s[0].get('speedAb') and ($SHARD == 0 or s[0].get('ciSpeedShard', 1) == $SHARD) else 1)" && keep="$keep $id"
     done
     ids=$(echo $keep)
     if [ -z "$ids" ]; then echo "session $n: no scene with speedAb, not started"; continue; fi
@@ -256,17 +262,17 @@ for g in $groups; do
   # no game of an earlier session may still be running (see the wait after each session)
   if pgrep -f KnotClient >/dev/null; then echo "session $n: a game is still running before the start, killed"; pkill -9 -f KnotClient; sleep 2; fi
   rm -f run/logs/latest.log run/logs/*.log.gz run/logs/*.log
-  : > "$OUT/joined-$n.txt"
+  : > "$OUT/joined-$ln.txt"
   before=$(grep -c 'joined the game' server/server.log)
   # --username (package 7): the dev launcher otherwise names the player Player<random digits>, and the offline UUID
   # made from the name picks the default skin, so the first-person arm and SIFTEC's company name ("<player>'s
   # Company" on the HUB and MAM screens) differed between runs; one fixed name in every run
   (env -u CI JAVA_TOOL_OPTIONS="${client_jvm# }" timeout 2400 ./gradlew runClient --no-daemon -Dorg.gradle.console=plain -x compileJava -x processResources -x classes \
-     --args="--quickPlayMultiplayer localhost --width 1280 --height 720 --username QuicksilverCI $extra_args" > "$OUT/client-gradle-$n.log" 2>&1; echo "EXIT $?" >> "$OUT/client-gradle-$n.log") &
+     --args="--quickPlayMultiplayer localhost --width 1280 --height 720 --username QuicksilverCI $extra_args" > "$OUT/client-gradle-$ln.log" 2>&1; echo "EXIT $?" >> "$OUT/client-gradle-$ln.log") &
   client_pid=$!
   for i in $(seq 1 150); do
     now=$(grep -c 'joined the game' server/server.log)
-    if [ "$now" -gt "$before" ] || grep -q '^EXIT' "$OUT/client-gradle-$n.log"; then break; fi
+    if [ "$now" -gt "$before" ] || grep -q '^EXIT' "$OUT/client-gradle-$ln.log"; then break; fi
     sleep 5
   done
   if [ "$(grep -c 'joined the game' server/server.log)" -gt "$before" ]; then
@@ -277,7 +283,7 @@ for g in $groups; do
     last_session=$n
   else
     echo "client did not join (session $n)"
-    import -window root "$OUT/no-join-$n.png"
+    import -window root "$OUT/no-join-$ln.png"
   fi
   # package 9: the options screen's test, in the balanced preset run's first session that ran (settings/ScreenTest): the command
   # first (the test checks it saved the file and the screen shows Custom), then the test, its screenshot at GUI scale 2
@@ -312,7 +318,7 @@ for g in $groups; do
   # archive a previous session's log into a .log.gz when it starts)
   # rolled parts in the order they were written (oldest first), not by name
   { for z in $(ls -tr run/logs/*.log.gz 2>/dev/null); do zcat "$z"; done; cat run/logs/latest.log 2>/dev/null; } \
-    | awk '/Loading Minecraft .* with Fabric Loader/ {n++} {l[NR]=$0; s[NR]=n} END {for (i=1;i<=NR;i++) if (s[i]==n) print l[i]}' > "$OUT/client-$n.log"
+    | awk '/Loading Minecraft .* with Fabric Loader/ {n++} {l[NR]=$0; s[NR]=n} END {for (i=1;i<=NR;i++) if (s[i]==n) print l[i]}' > "$OUT/client-$ln.log"
   cp -r run/crash-reports "$OUT/client-crash-reports$sfx" 2>/dev/null
 done
 mkdir -p "$OUT/bench" && cp run/quicksilver/bench/*.json "$OUT/bench/" 2>/dev/null

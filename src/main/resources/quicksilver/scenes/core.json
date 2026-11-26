@@ -14,7 +14,7 @@
   "scenes": [
     {
       "id": "spawn",
-      "ciPixelShots": [{"name": "pixel", "resize": true}, {"name": "pixel_outline", "commands": ["execute in minecraft:overworld run tp @a 4000.5 236 -1993.5 180 60", "#wait 6", "fill 3976 229 -2024 4024 229 -1976 minecraft:stone", "fill 3976 230 -2024 4024 242 -1976 minecraft:air", "setblock 4000 230 -1997 minecraft:gold_block", "execute in minecraft:overworld run tp @a 4000.5 236 -1993.5 180 60", "#wait 3"]}],
+      "ciPixelShots": [{"name": "pixel", "resize": true}, {"name": "pixel_outline", "commands": ["execute in minecraft:overworld run tp @a 4000.5 236 -1993.5 180 60", "#wait 6", "fill 3976 229 -2024 4024 229 -1976 minecraft:stone", "fill 3976 230 -2024 4024 242 -1976 minecraft:air", "setblock 4000 230 -1997 minecraft:gold_block", "execute in minecraft:overworld run tp @a 4000.5 236 -1993.5 180 60", "#wait 3"]}, {"name": "pixel_island", "commands": ["execute in minecraft:overworld run tp @a 4400.5 306 -1983.5 180 15", "#wait 6", "gamerule random_tick_speed 0", "fill 4378 296 -2022 4422 305 -1978 minecraft:air", "fill 4378 306 -2022 4422 318 -1978 minecraft:air", "tp @e[type=!minecraft:player,x=4378,y=296,z=-2022,dx=44,dy=22,dz=44] 4400.5 -200 -2000.5", "fill 4380 299 -2020 4420 299 -1980 minecraft:dirt", "fill 4380 300 -2020 4420 300 -1980 minecraft:grass_block", "fill 4385 300 -2012 4392 300 -2006 minecraft:sand", "fill 4404 301 -2014 4410 303 -2008 minecraft:stone", "fill 4405 304 -2013 4409 304 -2009 minecraft:cobblestone", "fill 4393 304 -2006 4397 305 -2002 minecraft:oak_leaves[persistent=true]", "fill 4394 306 -2005 4396 306 -2003 minecraft:oak_leaves[persistent=true]", "fill 4395 301 -2004 4395 305 -2004 minecraft:oak_log", "fill 4386 301 -1996 4389 301 -1996 minecraft:poppy", "fill 4390 301 -1996 4392 301 -1996 minecraft:dandelion", "fill 4412 301 -2000 4418 304 -2000 minecraft:bricks", "fill 4381 301 -2019 4384 301 -2016 minecraft:oak_planks", "execute in minecraft:overworld run tp @a 4400.5 306 -1983.5 180 15", "#wait 3"], "after": ["gamerule random_tick_speed 3"]}],
       "ciNotePixel": "package 11: the scene's own shot is the Normal look (against vanilla, as every shot); the ciPixelShots (Quicksilver client runs only) switch the look to pixel art with /quicksilver speed option.look pixel-art after their commands, take the shot <scene>.<name>, switch it back to Normal, and compare it with ci/references/core/<scene>.<name>.png (ci/pixel-art-limits.json); spawn.pixel resizes the window first, spawn.pixel_outline is a flat stone floor with one gold block on it (the outline check)",
       "speedAb": ["approx.fog-sections", "ci.fog-unconfirmed", "option.opaque-leaves", "option.far-detail=4", "option.particle-distance=24", "option.particle-density=50", "option.look=1"],
       "speedEmit": ["particle minecraft:end_rod 96.5 158 -5 8 3 8 0.01 300 force @a"],
@@ -49,6 +49,7 @@
     },
     {
       "id": "water_glass",
+      "ciSpeedShard": 2,
       "ciPixelShots": [{"name": "pixel"}],
       "speedAb": ["option.simple-water"],
       "ciVanillaDrawGate": "median",
@@ -73,6 +74,7 @@
     },
     {
       "id": "nether",
+      "ciSpeedShard": 2,
       "ciPixelShots": [{"name": "pixel"}],
       "speedAb": ["approx.fog-sections"],
       "speedNote": "Package B: the stage profile for the nether gap with Sodium (R1), and fog-sections off against on (the nether's thick environmental fog).",
@@ -87,6 +89,7 @@
     },
     {
       "id": "mobs",
+      "ciSpeedShard": 2,
       "ciPixelShots": [{"name": "pixel"}],
       "speedAb": ["option.entity-distance=16"],
       "ciVanillaDrawGate": "median",
@@ -204,11 +207,12 @@
     },
     {
       "id": "occlusion",
+      "ciShard": 3,
       "title": "Mobs, chests, a banner and signs behind a stone wall and under a stone floor, some seen through a glass window, a doorway and a glass floor (package 2)",
       "renderDistance": 8,
       "settleSeconds": 20,
       "setup": [
-        "execute in minecraft:overworld run tp @a 2300.5 203 -1984.5 180 20",
+        "gamemode creative @a", "item replace entity @a weapon.mainhand with minecraft:air", "execute in minecraft:overworld run tp @a 2300.5 203 -1984.5 180 20",
         "#wait 6",
         "fill 2283 190 -2012 2317 212 -1980 minecraft:air",
         "tp @e[type=!minecraft:player,x=2283,y=190,z=-2012,dx=34,dy=22,dz=32] 2300.5 -200 -2000.5",
@@ -245,6 +249,7 @@
     },
     {
       "id": "occlusion_move",
+      "ciShard": 3,
       "title": "The occlusion layout with the camera sliding along the wall at 0.8 blocks/s while a pig is moved in and out of view and part of the wall is opened and closed again (package 2)",
       "renderDistance": 8,
       "settleSeconds": 20,
@@ -397,6 +402,7 @@
     },
     {
       "id": "occlusion_corner",
+      "ciShard": 3,
       "title": "Package 2b: the camera slides east past the corner of a large building on a sky platform at 2 blocks/s while turning to look behind it, where rows of walls (and the terrain under the platform) are hidden and then revealed",
       "renderDistance": 8,
       "settleSeconds": 20,
@@ -687,7 +693,7 @@
     },
     {
       "id": "flat_plants",
-      "ciShard": 2,
+      "ciShard": 3,
       "ciVanillaDrawGate": "median",
       "ciVanillaDrawGateReason": "Its average follows the runner's frame rate: the slower a run, the more of its frames line up with a game tick and draw that tick's extra draws, so the average moves with fps while the median does not. run 40274749083, Vulkan: Quicksilver 121.34 average / 124 median at 20.36 fps, vanilla's measure run 103.03 / 124 at 24.41 fps (limit x 1.10 + 2: 115.33); full on the same run: 123.96 / 124 against 123.62 / 124 at 15.72 and 16.15 fps. Gated against vanilla on the median (Andre's rule, 2026-10-25).",
       "title": "A garden of plants with smooth lighting off (flat lighting): grass, ferns, flowers, berry bushes, saplings, pink petals, crops on farmland, sugar cane and lily pads by water, leaves, bamboo, azaleas, moss carpet and vines (package 4)",
@@ -739,7 +745,7 @@
     },
     {
       "id": "renderer_off",
-      "ciShard": 2,
+      "ciShard": 3,
       "ciVanillaDrawGate": "median",
       "ciVanillaDrawGateReason": "Its average follows the runner's frame rate: the slower a run, the more of its frames line up with a game tick and draw that tick's extra draws, so the average moves with fps while the median does not. run 40279156080, Vulkan: Quicksilver 96.3 average / 123 median at 25.89 fps, vanilla's measure run 84.85 / 123 at 29.76 fps (limit x 1.10 + 2: 95.34); full on the same run: 95.72 / 123 against 97.05 / 123. Gated against vanilla on the median (Andre's rule, 2026-10-25).",
       "title": "A stone-brick hut with slabs, stairs, a glass window and a block display, with Quicksilver's block renderer switched off in its config and smooth lighting off (package 4)",
@@ -1067,6 +1073,8 @@
     },
     {
       "id": "lights",
+      "ciSpeedShard": 2,
+      "ciShard": 3,
       "ciPixelShots": [{"name": "pixel_lit", "commands": ["#client quicksilver speed option.dynamic-lights fast"], "after": ["#client quicksilver speed option.dynamic-lights off"]}],
       "title": "Dynamic lights (package 13): a sealed dark stone hall with a held torch, a burning cow, a dropped lantern and a burning arrow, with an armor stand and a chest near the camera (lit only by Fancy); the lights setting is off by default, so this shot is the normal picture",
       "renderDistance": 8,

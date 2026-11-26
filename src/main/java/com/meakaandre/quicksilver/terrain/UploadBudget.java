@@ -249,16 +249,29 @@ public final class UploadBudget {
         windowMaxMeshNanos = Math.max(windowMaxMeshNanos, meshNanosMax);
     }
 
-    /** An arena buffer grew into a bigger one (new buffer and copy of what it held): its time and new size. */
-    static void grew(long nanos, long newBytes) {
+    /** Run-time fix (2026-11-26): the slowest grow's time on a CPU and waiting for one (-1 unknown); grows at a frame's start. */
+    private static long windowGrowCpuAtMax, windowGrowWaitAtMax, windowGrowsAtFrameStart;
+
+    /**
+     * An arena buffer grew into a bigger one (new buffer and copy of what it held): its time, new size, the render
+     * thread's time on a CPU and waiting for one during it (-1 unknown; the rest it was blocked), and whether it was the
+     * grow ahead at the frame's start.
+     */
+    static void grew(long nanos, long newBytes, long cpuNanos, long waitNanos, boolean atFrameStart) {
         if (!GpuCounters.enabled) return;
         windowGrows++;
+        if (atFrameStart) windowGrowsAtFrameStart++;
+        if (nanos >= windowGrowNanosMax) {
+            windowGrowCpuAtMax = cpuNanos;
+            windowGrowWaitAtMax = waitNanos;
+        }
         windowGrowNanosMax = Math.max(windowGrowNanosMax, nanos);
         windowGrowBytesMax = Math.max(windowGrowBytesMax, newBytes);
     }
 
     static void startWindow() {
         windowMaxNonExemptBytes = windowMaxMeshNanos = windowGrows = windowGrowNanosMax = windowGrowBytesMax = windowPreGrows = windowMaxCap = 0;
+        windowGrowCpuAtMax = windowGrowWaitAtMax = windowGrowsAtFrameStart = 0;
         windowOverCapFrames = 0;
         windowMaxNanosLessWait = windowWaitAtMax = windowFramesWaitKnown = 0;
         windowFrames = windowBytes = windowMaxBytes = windowMeshes = windowExempt = windowWaitingSum = windowWaitingMax = 0;
@@ -297,6 +310,13 @@ public final class UploadBudget {
         o.addProperty("arenaGrowMsMax", round(windowGrowNanosMax / 1e6));
         o.addProperty("arenaGrowMBMax", round(windowGrowBytesMax / 1048576.0));
         o.addProperty("arenaGrowsAhead", windowPreGrows);
+        // run-time fix (2026-11-26): where the slowest grow's time went (on a CPU, waiting for one, blocked: for the
+        // driver's own threads, a fence or a lock); the grows done at a frame's start (before its terrain draws)
+        o.addProperty("arenaGrowsAtFrameStart", windowGrowsAtFrameStart);
+        boolean known = windowGrows > 0 && windowGrowCpuAtMax >= 0 && windowGrowWaitAtMax >= 0;
+        o.addProperty("arenaGrowCpuMsAtMax", known ? round(windowGrowCpuAtMax / 1e6) : -1);
+        o.addProperty("arenaGrowCpuWaitMsAtMax", known ? round(windowGrowWaitAtMax / 1e6) : -1);
+        o.addProperty("arenaGrowBlockedMsAtMax", known ? round(Math.max(0, windowGrowNanosMax - windowGrowCpuAtMax - windowGrowWaitAtMax) / 1e6) : -1);
         o.addProperty("hardCapBytesMax", windowMaxCap);
         o.addProperty("framesOverHardCap", windowOverCapFrames);
         o.addProperty("note", "Quicksilver's terrain uploads at the end of each measured frame: bytes copied into its arenas, meshes put in"

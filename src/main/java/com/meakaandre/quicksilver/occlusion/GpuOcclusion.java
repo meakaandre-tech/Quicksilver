@@ -472,7 +472,17 @@ public final class GpuOcclusion {
                     OcclusionStats.waited(waited[0]);
                     if (l0 == null) {
                         OcclusionStats.timeouts++;
+                        // run-time fix (2026-11-26): the calibration's one wait completed, but the frame's own waits keep timing
+                        // out (lavapipe, run 45804701677: 354 timeouts in one session, in-frame waits "work" by its calibration,
+                        // which every other session found not to): after a few in a row, in-frame waits count as not working
+                        // for the session, as if the calibration had found so (still camera instead)
+                        if (++timeoutsInARow >= TIMEOUTS_BEFORE_GIVING_UP && midFrameWait) {
+                            midFrameWait = false;
+                            QuicksilverClient.LOG.warn("Quicksilver occlusion: {} waits for the GPU within a frame timed out in a row; two-phase off for the session, still camera instead",
+                                timeoutsInARow);
+                        }
                     } else {
+                        timeoutsInARow = 0;
                         DepthPyramid p = new DepthPyramid(w, h, l0, mm, cx, cy, cz, fy, z01, rev);
                         latest = p;
                         latestStamp = stamp;
@@ -532,6 +542,9 @@ public final class GpuOcclusion {
     private static int calibrationFrames;
     /** Whether a fence wait within the frame completes on this backend (calibration): two-phase needs it. */
     static boolean midFrameWait;
+    /** Run-time fix: in-frame waits that timed out in a row, and how many make two-phase give way for the session. */
+    private static int timeoutsInARow;
+    static final int TIMEOUTS_BEFORE_GIVING_UP = 3;
     private static boolean twoPhaseUnavailableLogged;
 
     /**

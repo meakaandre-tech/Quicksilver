@@ -53,6 +53,23 @@ final class CpuWait {
         return t;
     }
 
+    /**
+     * Run-time fix (2026-11-26): this thread's time on a CPU and its time waiting on a run queue (schedstat's first two
+     * fields, nanoseconds) in one reading, or null where the file can't be read. What a timed span spent neither running
+     * nor waiting for a CPU, it spent blocked (for a lock, a fence, the driver's own threads).
+     */
+    static long[] cpuAndWait() {
+        if (broken) return null;
+        try {
+            String s = new String(Files.readAllBytes(FILE), StandardCharsets.US_ASCII).trim();
+            String[] f = s.split(" ");
+            return new long[] {Long.parseLong(f[0]), Long.parseLong(f[1])};
+        } catch (IOException | RuntimeException e) {
+            broken = true;
+            return null;
+        }
+    }
+
     /** The wait between two readings, 0 if either is unknown. */
     static long between(long before, long after) {
         return before < 0 || after < 0 ? 0 : Math.max(0, after - before);

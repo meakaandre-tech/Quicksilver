@@ -27,7 +27,7 @@ def main():
     cfg = json.load(open("ci/upload-gates.json"))
     failures, lines = [], ["# Terrain uploads: the worst frame (package B)\n", cfg.get("note", "") + "\n"]
     lines.append("| run | scene | bytes/frame | budget | hard cap (max) | largest frame | under the cap (max) | frames over cap |"
-                 " upload ms max (less CPU wait; wait) | slowest mesh ms | arena grows (ahead) | grow ms max | limit ms | |")
+                 " upload ms max (less CPU wait; wait) | slowest mesh ms | arena grows (ahead) | grow ms max (slowest grow: on CPU, waiting for a CPU, blocked; grows at a frame's start) | limit ms | |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     runs = sorted(d for d in glob.glob(os.path.join(res, "core-*quicksilver*")) if os.path.isdir(d)
                   and not os.path.basename(d).startswith(("core-measure", "core-speed")))
@@ -56,7 +56,7 @@ def main():
                 lines.append(f"| {run} | {scene} | {u.get('bytesPerFrame')} | {u.get('budgetBytesPerFrame')} | {u.get('hardCapBytesMax')} |"
                              f" {u.get('maxBytesInOneFrame')} | {u.get('maxBytesUnderHardCap')} | {u.get('framesOverHardCap')} |"
                              f" {u.get('uploadMsMax')} ({u.get('uploadMsMaxLessCpuWait')}; {u.get('cpuWaitMsInThatFrame')}) | {u.get('slowestMeshMs')} | {u.get('arenaGrows')} ({u.get('arenaGrowsAhead')}) |"
-                             f" {u.get('arenaGrowMsMax')} | reported | |")
+                             f" {u.get('arenaGrowMsMax')} (on CPU {u.get('arenaGrowCpuMsAtMax')}, waiting {u.get('arenaGrowCpuWaitMsAtMax')}, blocked {u.get('arenaGrowBlockedMsAtMax')}; {u.get('arenaGrowsAtFrameStart')} at frame start) | reported | |")
                 continue
             if u["framesOverHardCap"] > 0:
                 ok = False
@@ -73,7 +73,7 @@ def main():
             lines.append(f"| {run} | {scene} | {u.get('bytesPerFrame')} | {u.get('budgetBytesPerFrame')} | {u.get('hardCapBytesMax')} |"
                          f" {u.get('maxBytesInOneFrame')} | {u.get('maxBytesUnderHardCap')} | {u.get('framesOverHardCap')} |"
                          f" {u.get('uploadMsMax')} ({u.get('uploadMsMaxLessCpuWait')}; {u.get('cpuWaitMsInThatFrame')}) | {u.get('slowestMeshMs')} | {u.get('arenaGrows')} ({u.get('arenaGrowsAhead')}) |"
-                         f" {u.get('arenaGrowMsMax')} | {gate['uploadMsMax']} | {'ok' if ok else '**FAIL**'} |")
+                         f" {u.get('arenaGrowMsMax')} (on CPU {u.get('arenaGrowCpuMsAtMax')}, waiting {u.get('arenaGrowCpuWaitMsAtMax')}, blocked {u.get('arenaGrowBlockedMsAtMax')}; {u.get('arenaGrowsAtFrameStart')} at frame start) | {gate['uploadMsMax']} | {'ok' if ok else '**FAIL**'} |")
     if not runs:
         failures.append("upload: no Quicksilver client runs found")
     lines.append("\n## Upload failures\n")

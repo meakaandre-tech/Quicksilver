@@ -88,7 +88,12 @@ public final class TerrainStore {
             this.layer = layer;
             this.index = index;
             this.maxBytes = arenaBytesNow();
-            this.capacity = INITIAL_ARENA_BYTES;
+            // run-time fix (2026-11-26): on the plain path an arena is made at its full 16 MB, so it never grows: a grow
+            // copies what the arena holds into a new buffer on the render thread, and its time (on the CPU itself, run
+            // 45789027593: 2.3-3.0 ms of 2.7-3.8, nothing blocked) swung to 22.7 ms once on unchanged code (run
+            // 45723109783), the upload gate's one flake. Terrain memory reserved stays far under vanilla's (old-GPU
+            // fly-through 104 MB against vanilla's 416 MB in that run). The indirect path keeps 4 MB arenas that double.
+            this.capacity = maxBytes == PLAIN_ARENA_BYTES ? PLAIN_ARENA_BYTES : INITIAL_ARENA_BYTES;
             this.buffer = create(device, capacity);
             this.allocator = new TlsfAllocator(new TlsfAllocator.Heap(maxBytes));
         }
@@ -106,6 +111,7 @@ public final class TerrainStore {
             highWater = Math.max(highWater, end);
             if (end <= capacity) return;
             long g0 = System.nanoTime();
+            long[] c0 = com.meakaandre.quicksilver.bench.GpuCounters.enabled ? CpuWait.cpuAndWait() : null;
             long size = capacity;
             while (size < end) size *= 2;
             size = Math.min(size, maxBytes);
@@ -120,7 +126,8 @@ public final class TerrainStore {
             buffer = bigger;
             capacity = size;
             TerrainStats.ARENA_GROWS.incrementAndGet();
-            UploadBudget.grew(System.nanoTime() - g0, size);
+            long[] c1 = c0 == null ? null : CpuWait.cpuAndWait();
+            UploadBudget.grew(System.nanoTime() - g0, size, c1 == null ? -1 : c1[0] - c0[0], c1 == null ? -1 : c1[1] - c0[1], growingAhead);
         }
     }
 
@@ -456,11 +463,54 @@ public final class TerrainStore {
      * the rest stay staged for the next frame, in their staging order. New index lists for translucent layers already
      * in are written at once.
      */
+    /** Run-time fix (2026-11-26): a grow done at this frame's start by {@link #growAhead}, its time and its CPU wait (-1: none). */
+    private static long aheadNanos = -1, aheadWaitNanos;
+    /** Set while {@link #growAhead} grows an arena (for the bench's grow numbers). */
+    private static boolean growingAhead;
+
+    /**
+     * Package B's grow ahead of need (an arena past three quarters of its buffer, in a frame that then copies in nothing
+     * else but the camera's sections and overdue meshes), done at the start of the frame, before its terrain draws (run-time fix,
+     * 2026-11-26; it used to be done in the upload at the end of the frame). A buffer copy the GPU must order after draws
+     * that read the old buffer can make the render thread wait for those draws; on a software renderer (CI's llvmpipe) for
+     * all of them (one grow took 22.7 ms in run 45723109783 where the others of these days took 1-3 ms). At the frame's
+     * start the old buffer's last draws are the previous frame's. Its time counts as the frame's upload time. Render
+     * thread, as terrain preparation starts.
+     */
+    static void growAhead() {
+        if (UploadBudget.DEBUG_OFF) return;
+        synchronized (LOCK) {
+            if (STAGED.isEmpty() || aheadNanos >= 0) return;
+            for (Arena a : ARENAS) {
+                if (a.closed || a.capacity >= a.maxBytes || a.highWater * 4 <= a.capacity * 3) continue;
+                long t0 = System.nanoTime();
+                long w0 = com.meakaandre.quicksilver.bench.GpuCounters.enabled ? CpuWait.nanos() : -1;
+                long gc0 = w0 >= 0 ? CpuWait.gcPauseMillis() : 0;
+                long hw = a.highWater;
+                growingAhead = true;
+                try {
+                    a.ensure(RenderSystem.getDevice().createCommandEncoder(), a.capacity + 1);
+                } finally {
+                    growingAhead = false;
+                }
+                a.highWater = hw;
+                UploadBudget.preGrew();
+                aheadNanos = System.nanoTime() - t0;
+                aheadWaitNanos = w0 < 0 ? -1 : CpuWait.between(w0, CpuWait.nanos()) + (CpuWait.gcPauseMillis() - gc0) * 1_000_000L;
+                break;
+            }
+        }
+    }
+
     static void upload() {
         synchronized (LOCK) {
             UploadBudget.tick();
+            boolean growFrame = aheadNanos >= 0;
+            long aheadN = Math.max(0, aheadNanos), aheadW = aheadWaitNanos;
+            aheadNanos = -1;
+            aheadWaitNanos = 0;
             if (STAGED.isEmpty()) {
-                UploadBudget.frame(0, 0, 0, 0, UploadBudget.bytes(), 0);
+                UploadBudget.frame(0, 0, 0, 0, UploadBudget.bytes(), aheadN);
                 return;
             }
             long t0 = System.nanoTime();
@@ -519,23 +569,11 @@ public final class TerrainStore {
             int meshes = 0, exempt = 0;
             boolean tookOne = false;
             Staged current = null;
-            boolean growFrame = false;
             try {
                 GpuDevice device = RenderSystem.getDevice();
                 CommandEncoder encoder = device.createCommandEncoder();
-                // package B: an arena past three quarters of its buffer grows now, in a frame that copies nothing else in
-                // but the camera's sections (R1: one upload took 58 ms), instead of in the middle of a frame's uploads
-                if (!UploadBudget.DEBUG_OFF) {
-                    for (Arena a : ARENAS) {
-                        if (a.closed || a.capacity >= a.maxBytes || a.highWater * 4 <= a.capacity * 3) continue;
-                        long hw = a.highWater;
-                        a.ensure(encoder, a.capacity + 1);
-                        a.highWater = hw;
-                        UploadBudget.preGrew();
-                        growFrame = true;
-                        break;
-                    }
-                }
+                // package B: an arena past three quarters of its buffer grew at this frame's start (growAhead), so this
+                // frame copies in nothing else but the camera's sections and overdue meshes (R1: one upload took 58 ms)
                 for (Staged s : loose) {
                     current = s;
                     bytes += s.bytes();
@@ -620,8 +658,9 @@ public final class TerrainStore {
             // what waits goes back in staging order (new meshes staged later come after it)
             for (Staged s : all) if (left.contains(s)) STAGED.add(s);
             UploadBudget.forced(forced, staged);
-            long wall = System.nanoTime() - t0;
-            UploadBudget.cpuWait(w0 < 0 ? -1 : CpuWait.between(w0, CpuWait.nanos()) + (CpuWait.gcPauseMillis() - gc0) * 1_000_000L, wall);
+            // the frame-start grow's time and its CPU wait count as this frame's upload (run-time fix)
+            long wall = System.nanoTime() - t0 + aheadN;
+            UploadBudget.cpuWait(w0 < 0 || aheadW < 0 ? -1 : CpuWait.between(w0, CpuWait.nanos()) + (CpuWait.gcPauseMillis() - gc0) * 1_000_000L + aheadW, wall);
             UploadBudget.frame(bytes, meshes, exempt, groupsWaiting(), budget, wall);
             // what the hard cap governs: the frame's bytes outside the camera's sections, the index lists and forced meshes
             UploadBudget.frameDetail(bytes - exemptBytes - looseBytes - forcedBytes, meshNanosMax, cap, firstMeshBytes);

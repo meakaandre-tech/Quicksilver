@@ -39,8 +39,12 @@ run 45424033530 green). Main's full run 45480710531 then failed only a perf-worl
 **Fixes after package 13** (2026-11-26): main's meshing-time failure after the merge (the mesher now skips air), the
 lights scene's limits from three runs, the fly-over save gate over 24 rounds; merged (see "Fixes after package 13").
 
-**Package 11** (pixel art look): built on branch `package-11`, not merged: the next chat merges it (see "Package 11"
-below, "Decisions for Andre" there).
+**Package 11** (pixel art look): squash-merged into main 2026-11-26 as `addcc7b` (branch full run 45761156928 green; the
+branch was already on main's head, so the rebase changed nothing); main's full run 45785048470 green, `latest` rebuilt
+(see "Package 11" below, "Decisions for Andre" there).
+
+**Fixes before package 12** (2026-11-26, branch `fix-runtime-flakes`): full runs back under an hour, a fixed pixel art
+scene with a tight limit, the upload gate's and the direct-buffer gate's flakes; see "Fixes before package 12".
 
 **Branch cleanup** (2026-11-25, run 45587626867): every merged or finished branch and their log branches deleted; kept
 `main`, `p2-3b`, `test-pack`, `package-13` and the log branches CI reads or whose branch remains.
@@ -48,9 +52,9 @@ below, "Decisions for Andre" there).
 **Package 9** (settings screen): squash-merged into main 2026-11-25 after the main fix (see "Package 9" below,
 "Decisions for Andre" there).
 
-**Still to do, in order:** 11 (merge), R2 (laptop bench, `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two
-lines, which the file now reads as `preset=custom`, and `preset=low-end` turns on more; add pixel art against Normal), 12 (far terrain,
-judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
+**Still to do, in order:** 12 (far terrain, judged by the new look rule, without the SIFTEC worlds), R2 (laptop bench,
+`docs/laptop-bench.md`, "R2"; its low-end instance keeps its two lines, which the file now reads as `preset=custom`, and
+`preset=low-end` turns on more; add pixel art against Normal), R (release: laptop bench, then Modrinth).
 
 **Cut:** 2c (GPU-driven culling), 7b (GUI batching), 10 (compat sign-off and its popular-mods test pack; branch
 `test-pack` stays unmerged), the pixel-art palettes other than natural (Neon City, Sunset, Toxic Green, Game Boy).
@@ -58,9 +62,99 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
 
-## Package 11: pixel art look (branch `package-11`, not merged: the next chat merges it)
+## Fixes before package 12 (2026-11-26, branch `fix-runtime-flakes`)
 
-**Status:** built; final full run 45761156928 (`b450e88`) **green**, 62 min; independent review done and its findings fixed (below). Not merged.
+**Status:** all three changes tested in full runs 45789027593, 45804701677 and 45820211704 (the last: every client check green; failed only the server suite's known churn `LastUpdate` flake, see Runs); merged after the green re-run below.
+
+**Run time** (package 11's full runs took 62 min; its decision 12). A full run is about 800 runner-minutes on GitHub's
+~20 runners, so its length is set by when the longest jobs get a runner: in package 11's final run the 34-min
+`speed-full` job got one only 26 min in, and ended at 60.5 min. No check was dropped; the jobs were split and ordered:
+- **Three client shards** (was two): the occlusion scenes and the lights scene (out of shard 1's first session),
+  flat_plants and renderer_off (out of shard 2) are shard 3 (`ciShard`), in every run alike (vanilla's too). The
+  occlusion scene now sets the creative mode and empty hand it used to inherit from the outline scene in the same
+  session (a fresh shard-3 server would start it in spectator). Longest client job 32 -> 26 min.
+- **Two jobs per speed run** (scene key `ciSpeedShard`: spawn, flythrough and block_entities in one, water_glass,
+  nether, mobs and lights in the other; each scene's rounds stay on one runner). 34 -> 21 min.
+- **Four fly-over groups of six rounds** (was three of eight; still 24 rounds, each round on one runner, the verify run in
+  the first). 28-30 -> 21-22 min.
+- **Long jobs first:** the client matrix is split into `client` (Quicksilver's, the measure and the speed runs) and
+  `client-short` (vanilla, presets, bench-only, single player, Create smoke), which waits for a one-minute `queue` job,
+  as does the server suite's base world; so the long jobs and the fly-over groups take the runners first.
+- Job length is now at most about 26 min (run 45789027593, which shared the runners with main's run).
+- Measured (runs on this branch shared GitHub's runners with up to three package 12 runs, so their wall time is not the
+  run's own): run 45820211704 used 813 runner-minutes (package 11's final run: 780) and its longest job took 24.7 min
+  (package 11's: 34.4). Its span was 90 min with the runners shared four ways; main's first full run after the merge
+  gives the length of a run on its own (see "Runs").
+
+**Pixel art: a fixed, built scene** (package 11's decision 13: `spawn.pixel` needs 4.64%, over the 1.7% of a missing
+section, because the spawn world itself differs from run to run). New shot `spawn.pixel_island`: a 41 x 41 grass
+island built at y 300 (dirt under it, a sand patch, a stone mound with cobblestone, an oak with persistent leaves,
+poppies and dandelions, a brick wall, oak planks), seen from 6 blocks above its south edge at 15 degrees down, random
+ticks off while it is shot. At render distance 8 no world terrain can be in view (a ray that misses the island needs 37
+degrees of depression to reach terrain within the view, and every such ray lands on the island). References from run
+45789027593 (old-GPU for OpenGL; Vulkan its own: 0.77% apart, as package 11's decision 8); in that run the OpenGL
+profiles were 0.0% apart. Samples from three runs: run 45789027593: every profile 0.0; run 45804701677: OpenGL profiles 0.0, Vulkan 0.002; run 45820211704: the same. `spawn.pixel` keeps its limit (it still checks the
+natural world's look); the island now holds the pixel art look to 0.004% (twice the largest sample), below the smallest thing it must
+catch (one missing flower: about 100 pixels, 0.011%).
+
+**Upload gate flake** (one arena grow at 22.7 ms in run 45723109783, unchanged upload code). Found: a grow (a new
+buffer and a copy of what the arena holds, on the render thread) is CPU work of its own. The bench now splits the
+slowest grow's time into on a CPU, waiting for one and blocked: in run 45789027593 the plain-path grows took 2.7-3.8 ms,
+2.3-3.0 of it on the CPU and at most 0.5 blocked (the full profile's 64 MB arenas: 41 ms, 37 on the CPU). So the time
+is the copy into fresh memory, whose cost swings with the runner's memory, not a wait the CPU-wait correction misses.
+**Fix:** on the plain path an arena is made at its full 16 MB and never grows (no copy at all); the indirect path's
+arenas still start at 4 MB and double (reported there, not gated). Terrain memory reserved stays far under vanilla's
+in the same run (old-GPU fly-through 104 MB against vanilla's 416 MB). The grow ahead of need now runs at the start of
+the frame (before its terrain draws; its time still counts as that frame's upload), and the grow's time split stays in
+the report. Upload gate unchanged (20 ms). In run 45820211704 the plain-path runs had no grow at all and their slowest upload frame took 7.1-7.8 ms (fly-through; the flake was 22.7).
+
+**Direct-buffer flake** (full profile 8.24 MB against vanilla's 3.99 + 4.0 once). Found: the steps are Netty's
+network buffers. Netty 4.2's default allocator (adaptive) takes direct memory in chunks of a few MB when a burst of
+packets needs them and keeps them, and on Java 25 they are java.nio buffers with a cleaner, so inside the JVM's direct
+pool that the bench reads; when it takes another chunk is packet timing, the same code in both runs. The bench now
+records Netty's own direct memory (its allocator's metric) and the pool without it. Run 45789027593 shows it exactly:
+old-GPU spawn 8.24 MB against vanilla's 3.48 (over the old gate, 7.48), of which Netty 7.54 against 2.77; without Netty
+0.71 MB in both, in every scene of every profile. **Fix:** the gate against vanilla compares the pool without Netty's
+pooled buffers where both runs' benches show Netty's buffers in the JVM's pool (otherwise the whole pool, as before);
+same +4 MB allowance, same ceiling on the whole pool. Run 45820211704: without Netty both runs equal in every scene and profile; the whole pool still reached 8.24 against 3.48 in places (Netty).
+
+**Runs:** 45789027593 (`b845ae2`): failed only on the new island shot's missing reference (taken from it). 45804701677
+(`0b51f34`): `spawn.pixel` 9.7% from its reference in every profile (the spawn world's run-to-run difference: made
+reported), the island's Vulkan shot 0.002% against the provisional floor 0.001%, and a Vulkan occlusion check (354
+in-frame wait timeouts in flat_plants after a calibration that said waits work: fixed, two-phase gives way after three
+in a row). 45820211704 (`6190e22`): every client check green (pictures, island, upload, direct buffers, speed, presets);
+failed only the server suite's churn check, one chunk's `LastUpdate` outside vanilla's noise in Quicksilver's round 3,
+the timing flake package L and package B each met once, on server code this branch doesn't touch; not GitHub
+infrastructure, so no `[rerun]` (it re-runs main only); the branch was run again: run 45836033291 (`cbdf54b`), every client check passed and the churn too; its only failure was the server perf gate's random-tick scene at a median ratio of 1.108 (rounds 0.85 to 1.28, the noise `docs/ci-limits.md` "Perf job" describes; the branch changes no server code), so that one job was re-run with GitHub's job re-run (not `[rerun]`, which re-runs main only): median 1.032, run green. See decision 10.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **Three client shards, two jobs per speed run, four fly-over groups, long jobs first** (more runners, no check
+   dropped). Alternatives: fewer redundant rounds (e.g. the speed runs' reported-only switches at three rounds already);
+   a self-hosted runner. Switch: `ciShard` / `ciSpeedShard` in `core.json`, the workflow's matrices and `queue` job.
+2. **The occlusion scene sets creative mode and an empty hand itself** (it inherited them before). Switch: its setup.
+3. **A built pixel art island for the tight pixel art limit;** `spawn.pixel` kept with its 4.64%. Alternative: drop
+   `spawn.pixel`. Switch: `ciPixelShots` in `core.json`, `ci/pixel-art-limits.json`.
+4. **Plain-path arenas made at their full 16 MB** (no grows there). Alternative: grow in place over several frames.
+   Switch: the `capacity` line in `TerrainStore.Arena`.
+5. **Direct buffers gated without Netty's pooled network buffers** when both runs show them in the JVM's pool.
+   Alternative: a smaller allowance (without Netty both runs read 0.71 MB, so +4 MB could go down). Switch:
+   `ci/compare.py`, the direct-buffer gate.
+6. **The arena grow ahead of need moved to the frame's start** (kept though it was not the cause). Switch:
+   `TerrainStore.growAhead` and its call in `TerrainRenderer.prepare`.
+7. **`spawn.pixel` reported, not gated** (its world differs from run to run, 9.7% in two runs); the island gates the
+   look at 0.004%. Alternative: re-collect spawn.pixel's limit (it would have to be about 20%, which checks little).
+   Switch: `"reported"` in `ci/pixel-art-limits.json`.
+8. **Two-phase occlusion gives way after three in-frame wait timeouts in a row** (for the session). Alternative: a
+   second calibration later in the session. Switch: `TIMEOUTS_BEFORE_GIVING_UP` in `GpuOcclusion`.
+9. **The churn `LastUpdate` flake** (third time: packages L and B, this branch) was re-run, not changed. Alternative:
+   compare churn chunks without the tick they were saved at, as the kill check does. Switch: `ci/server/compare-chunks.py`.
+10. **One flaky server perf job re-run, not loosened.** Picked: re-running the `server-perf (core, random)` job of run 45836033291 (median 1.108 over the 1.10 regression gate, with no server code changed); the re-run gave 1.032. Alternatives: raise the 1.10 gate (against the rules), or push an empty commit for a whole new full run (an hour of runners). To switch: if the random scene keeps landing near 1.10, its rounds could go from 7 to 11 (`ci/server/perf-run.sh`) so the median moves less.
+
+## Package 11: pixel art look (merged, squash of `package-11`)
+
+**Status:** merged 2026-11-26 as `addcc7b` (squash of `package-11`, already on main's head `c43cd17`); final branch full
+run 45761156928 (`b450e88`) **green**, 62 min; main's full run 45785048470 green. Independent review done and its
+findings fixed (below). Decision 12 (run time) and decision 13 (spawn.pixel's limit) are taken up by "Fixes before package 12".
 
 **What it adds** (design doc, "Pixel art city mode", with Andre's 2026-11-26 changes: natural palette only, off by default)
 - **A Look setting, off by default:** `option.look` = normal or pixel-art. On the options screen's new **Look** row

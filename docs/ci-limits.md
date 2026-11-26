@@ -3,6 +3,32 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Fixes before package 12 (2026-11-26, branch `fix-runtime-flakes`)
+
+- **Pixel art island** (`spawn.pixel_island`, a `ciPixelShots` entry of the spawn scene, Quicksilver client runs only):
+  a built grass island at y 300 seen from above its south edge, nothing of the world in view. References from full run
+  45789027593 (old-GPU for the OpenGL profiles, the Vulkan run's own: 0.77% apart). Samples (share of pixels over
+  8/255 against the reference, every Quicksilver profile): 0.0 in every profile of runs 45789027593, 45804701677 and 45820211704 but Vulkan in the last two, 0.002. Limit by the rule (twice the largest, at least
+  0.001%, rounded up to 0.0005%): **0.004%**, under the smallest thing the shot must catch (one missing flower,
+  about 100 pixels, 0.011%).
+- **`spawn.pixel` reported, not gated** against its reference: it shows the natural spawn world, which differs from run
+  to run (2.3% in package 11's runs, 9.7% in run 45804701677: a huge red mushroom and other trees, every profile alike,
+  while the Normal spawn shot matched vanilla in the same run). Its check that the look applied (at least 5% from the
+  Normal shot) stays. The island holds the pixel art look to its tight limit instead.
+- **Direct buffers against vanilla:** the same gate (+4.0 MB, end and peak) on the JVM's direct pool **less Netty's
+  pooled network buffers**, where both runs' benches report Netty's buffers inside the JVM's pool (`nettyDirectInJvmPool`;
+  otherwise the whole pool, as before). Both values and Netty's share are in the report's table; the ceiling still
+  gates the whole pool. Why: in run 45789027593 old-GPU spawn read 8.24 MB against vanilla's 3.48 (the flake's numbers,
+  over the old gate) of which Netty 7.54 against 2.77; without Netty 0.71 MB in both runs in every scene of every
+  profile.
+- **Upload gate:** unchanged (20 ms less CPU wait). Plain-path arenas no longer grow (made at 16 MB), so the grow that
+  flaked once is gone there; the report splits each run's slowest grow into time on a CPU, waiting for one and blocked.
+- **Occlusion:** unchanged gates; two-phase now gives way to the still camera for the session after three in-frame
+  waits time out in a row (Vulkan's calibration found waits working once, then 354 timed out in flat_plants in run
+  45804701677; every other Vulkan session's calibration found they don't).
+- **Run time:** no check dropped. Shards (`ciShard` 1-3), speed run halves (`ciSpeedShard`), four fly-over groups, the
+  `client` / `client-short` split behind the `queue` job: `docs/progress.md`, "Fixes before package 12".
+
 ## Package 11: pixel art look (2026-11-26)
 
 - **Limits:** none of today's changed. The look is Normal by default and in every preset, so every existing shot, measure

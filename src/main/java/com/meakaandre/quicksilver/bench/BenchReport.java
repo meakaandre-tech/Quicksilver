@@ -36,10 +36,14 @@ final class BenchReport {
     static final class Memory {
         long samples, heapUsedSum, heapUsedMax, heapCommittedMax;
         long directStart = -1, directMax = 0, directMaxAtSample = 0;
+        /** Run-time fix (2026-11-26): the peak of direct buffers less Netty's pooled network buffers (-1: not known). */
+        long lessNettyMax = -1;
 
         void start() {
             directStart = direct();
             directMax = directStart;
+            long n = netty();
+            lessNettyMax = n >= 0 && nettyInJvmPool() ? directStart - n : -1;
         }
 
         void sample() {
@@ -53,6 +57,36 @@ final class BenchReport {
             if (d > directMax) {
                 directMax = d;
                 directMaxAtSample = samples;
+            }
+            if (lessNettyMax >= 0) {
+                long n = netty();
+                if (n >= 0) lessNettyMax = Math.max(lessNettyMax, d - n);
+            }
+        }
+
+        /**
+         * Run-time fix (2026-11-26): the direct memory Netty's buffer allocators hold (the game's network buffers: whole
+         * chunks of a few MB, taken when a burst of packets needs them and kept), or -1 if it can't be read. With Netty's
+         * cleaner-backed buffers (as on Java 25) these chunks are java.nio direct buffers, so they are inside {@link
+         * #direct}; when the pool took a chunk is a matter of packet timing, in vanilla's runs as in Quicksilver's.
+         */
+        static long netty() {
+            try {
+                // Netty 4.2's default allocator (adaptive unless io.netty.allocator.type says otherwise), which the game's
+                // connections use; read only, so the bench makes no allocator of its own
+                return io.netty.buffer.ByteBufAllocator.DEFAULT instanceof io.netty.buffer.ByteBufAllocatorMetricProvider p
+                    ? Math.max(0, p.metric().usedDirectMemory()) : -1;
+            } catch (Throwable e) {
+                return -1;
+            }
+        }
+
+        /** Whether Netty's direct buffers are java.nio ones with a cleaner (so counted in the JVM's direct pool). */
+        static boolean nettyInJvmPool() {
+            try {
+                return !io.netty.util.internal.PlatformDependent.useDirectBufferNoCleaner();
+            } catch (Throwable e) {
+                return false;
             }
         }
 
@@ -138,6 +172,14 @@ final class BenchReport {
         memory.addProperty("directBuffersStartMB", mem.directStart < 0 ? null : mb(mem.directStart));
         memory.addProperty("directBuffersMaxMB", mb(mem.directMax));
         memory.addProperty("directBuffersMaxAtTick", mem.directMaxAtSample);
+        // run-time fix (2026-11-26): Netty's pooled network buffers, and direct buffers without them (what CI gates
+        // against vanilla when Netty's buffers are in the JVM's pool)
+        long nettyEnd = Memory.netty();
+        boolean inPool = Memory.nettyInJvmPool();
+        memory.addProperty("nettyDirectMB", nettyEnd < 0 ? null : mb(nettyEnd));
+        memory.addProperty("nettyDirectInJvmPool", inPool);
+        memory.addProperty("directBuffersLessNettyMB", nettyEnd < 0 || !inPool ? null : mb(Memory.direct() - nettyEnd));
+        memory.addProperty("directBuffersLessNettyMaxMB", mem.lessNettyMax < 0 ? null : mb(mem.lessNettyMax));
         memory.addProperty("nonHeapMB", mb(ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage().getUsed()));
         // after measuring, so the collection cannot touch the frame times
         System.gc();

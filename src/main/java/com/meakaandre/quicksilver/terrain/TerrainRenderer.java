@@ -255,6 +255,12 @@ public final class TerrainRenderer {
         GpuOcclusion.resetFrame();
         Terrain.beginFrame();
         if (!Terrain.drawing()) return;
+        // run-time fix (2026-11-26): an arena's grow ahead of need, before this frame's terrain draws
+        try {
+            TerrainStore.growAhead();
+        } catch (Throwable t) {
+            Terrain.fail("growing an arena", t, false);
+        }
         com.meakaandre.quicksilver.bench.StageProfile.push("terrain.prepare");
         try {
             sortTranslucent = sort;
