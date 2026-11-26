@@ -56,6 +56,18 @@ public final class QuicksilverClient implements ClientModInitializer {
             }
         });
         ClientTickEvents.END_CLIENT_TICK.register(com.meakaandre.quicksilver.settings.VideoSettingsButton::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(com.meakaandre.quicksilver.look.PixelArt::tick);
+        // package 11: the pixel art look's CI resize test (/quicksilver pixelart resizetest)
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> {
+            for (String name : new String[] {"quicksilver", "qs"}) {
+                dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal(name).then(
+                    net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("pixelart").then(
+                        net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("resizetest").executes(c -> {
+                            com.meakaandre.quicksilver.look.PixelArt.resizeTest();
+                            return 1;
+                        }))));
+            }
+        });
         if (Boolean.getBoolean("quicksilver.ci.screenTest")) {
             ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> com.meakaandre.quicksilver.settings.ScreenTest.register(dispatcher));
             ClientTickEvents.END_CLIENT_TICK.register(com.meakaandre.quicksilver.settings.ScreenTest::tick);

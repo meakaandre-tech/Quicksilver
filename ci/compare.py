@@ -286,6 +286,150 @@ def light_check(name, scenes, runs, rep, sd, failures, lines):
         lines.extend(rows)
 
 
+def outline_check(path):
+    """Package 11: the pixel art outline check on spawn.pixel_outline (a flat stone floor, 49 x 49 blocks, with one gold
+    block on it, seen from above at 60 degrees). The floor away from the block (more than OUTLINE_MARGIN pixels from the
+    block's box, and away from the crosshair) must have no outline: no pixel darker than half the floor's median
+    brightness (an outline is the colour at 0.45 brightness, then the palette's nearest; the stone's own palette greys
+    are well above half). The block must have one: dark gold pixels (gold at under 0.6 of the block's median brightness,
+    still gold-coloured, so not the floor's grey shade next to it) at its box's edge, at least OUTLINE_MIN_SHARE of the
+    box's perimeter. Returns (problem or None, numbers)."""
+    x = load(path)
+    if x is None:
+        return "no screenshot", {}
+    r, g, b = x[..., 0].astype(float), x[..., 1].astype(float), x[..., 2].astype(float)
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    gold = (r > 150) & (g > 110) & (b < 110) & (r - b > 80)
+    h, w = lum.shape
+    if gold.sum() < 200:
+        return f"no gold block found ({int(gold.sum())} gold pixels)", {"goldPixels": int(gold.sum())}
+    ys, xs = np.nonzero(gold)
+    y0, y1, x0, x1 = int(ys.min()), int(ys.max()) + 1, int(xs.min()), int(xs.max()) + 1
+    near = np.zeros_like(gold)
+    near[max(0, y0 - OUTLINE_MARGIN):y1 + OUTLINE_MARGIN, max(0, x0 - OUTLINE_MARGIN):x1 + OUTLINE_MARGIN] = True
+    centre = np.zeros_like(gold)
+    centre[h // 2 - 20:h // 2 + 20, w // 2 - 20:w // 2 + 20] = True
+    floor = ~near & ~centre
+    floor_med = float(np.median(lum[floor]))
+    floor_dark = int((floor & (lum < 0.5 * floor_med)).sum())
+    box = np.zeros_like(gold)
+    box[max(0, y0 - 4):y1 + 4, max(0, x0 - 4):x1 + 4] = True
+    gold_med = float(np.median(lum[gold]))
+    dark_gold = box & ~gold & (lum < 0.6 * gold_med) & (r > b + 30) & (r >= g)
+    perimeter = 2 * ((x1 - x0) + (y1 - y0))
+    nums = {"floorPixels": int(floor.sum()), "floorMedian": round(floor_med, 1), "floorDark": floor_dark, "goldPixels": int(gold.sum()),
+            "goldBox": [x0, y0, x1, y1], "outlinePixels": int(dark_gold.sum()), "perimeter": perimeter}
+    if floor.sum() < 0.5 * h * w:
+        return f"the floor covers only {int(floor.sum())} pixels (the view is not the floor)", nums
+    if floor_dark > OUTLINE_FLOOR_MAX:
+        return f"{floor_dark} outline-dark pixels on the flat floor (at most {OUTLINE_FLOOR_MAX}): lines between blocks that join", nums
+    if dark_gold.sum() < OUTLINE_MIN_SHARE * perimeter:
+        return f"only {int(dark_gold.sum())} outline pixels around the block (at least {OUTLINE_MIN_SHARE} of its box's perimeter {perimeter})", nums
+    return None, nums
+
+
+OUTLINE_MARGIN = 60
+OUTLINE_FLOOR_MAX = 0
+OUTLINE_MIN_SHARE = 0.5
+# a pixel art shot must differ from the scene's Normal shot by at least this (the look applied)
+PIXEL_MIN_PCT = 5.0
+
+
+def pixel_check(name, scenes, runs, rep, sd, failures, lines):
+    """Package 11: pixel art shots ("ciPixelShots", Quicksilver client runs only) against their stored references
+    (ci/references/<suite>/<shot>.png) with the limits in ci/pixel-art-limits.json (share of pixels over 8/255, as the
+    picture check; references and limits by the documented rule, docs/ci-limits.md, "Package 11"). Each must differ from
+    the scene's own (Normal look) shot by at least PIXEL_MIN_PCT, the client log must show the look drawn and not failed,
+    spawn.pixel_outline must pass the outline check, and the window resizes before spawn.pixel must leave the look's GPU
+    objects at their count (no leak). A missing reference fails and the shot is copied to new-references."""
+    limits = json.load(open("ci/pixel-art-limits.json")) if os.path.exists("ci/pixel-art-limits.json") else {}
+    rows, extra_rows = [], []
+    any_pixel = any(sc.get("ciPixelShots") and not sc.get("skip") for sc in scenes)
+    if any_pixel:
+        for prof, (b, v) in PAIRS.items():
+            if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
+                continue
+            t = logs(runs[b])
+            ons = re.findall(r"Quicksilver pixel art: on, (\d+)x(\d+) from (\d+)x(\d+) .*?live GPU objects (\d+)", t)
+            if not ons:
+                failures.append(f"{name}: pixel art never drew in {prof} (no 'Quicksilver pixel art: on' line); its shots tested nothing")
+            if ons and "Quicksilver pixel art: distances from the projection known" not in t:
+                failures.append(f"{name}: pixel art never saw the world's projection in {prof} (its outlines would not fade in the fog)")
+            if "Quicksilver pixel art failed" in t or "Quicksilver pixel art: on, but nothing drawn" in t:
+                failures.append(f"{name}: pixel art failed in {prof} (see client log)")
+            lives = sorted({int(o[4]) for o in ons})
+            windows = sorted({o[2] + "x" + o[3] for o in ons})
+            sd.setdefault("pixelArt", {}).setdefault("_runs", {})[prof] = {"windows": windows, "liveGpuObjects": lives, "onLines": len(ons)}
+            if lives and max(lives) > PIXEL_LIVE_MAX:
+                failures.append(f"{name}: pixel art's GPU objects grew to {max(lives)} in {prof} (at most {PIXEL_LIVE_MAX}): a leak across resizes")
+            resized = [sc for sc in scenes if not sc.get("skip") and any(x.get("resize") for x in sc.get("ciPixelShots", []))]
+            if resized and len(windows) < 4:
+                failures.append(f"{name}: pixel art saw only the window sizes {windows} in {prof} (the resize test before the shot didn't run)")
+            if resized and "Quicksilver pixel art: resize test done" not in t:
+                failures.append(f"{name}: pixel art's resize test never finished in {prof}")
+            extra_rows.append(f"| {PROFILE_NAMES[prof]} | {len(ons)} | {', '.join(windows)} | {', '.join(map(str, lives))} |")
+    for sc in scenes:
+        if sc.get("skip") or not sc.get("ciPixelShots"):
+            continue
+        for extra in sc["ciPixelShots"]:
+            shot_id = sc["id"] + "." + extra["name"]
+            ref = os.path.join("ci", "references", name, shot_id + ".png")
+            limit = limits.get(name, {}).get(shot_id)
+            res = sd.setdefault("pixelArt", {}).setdefault(shot_id, {})
+            for prof, (b, v) in PAIRS.items():
+                if not b.startswith("quicksilver") or not os.path.isdir(runs.get(b, "")):
+                    continue
+                got = os.path.join(runs[b], "shots", shot_id + ".png")
+                if not os.path.exists(got):
+                    failures.append(f"{name}/{shot_id}: no {prof} pixel art screenshot")
+                    continue
+                normal = diff(got, os.path.join(runs[b], "shots", sc["id"] + ".png"))
+                if extra["name"] == "pixel" and (normal is None or normal["pct"] < PIXEL_MIN_PCT):
+                    failures.append(f"{name}/{shot_id}: {prof} differs from the Normal shot on only {normal['pct'] if normal else None}% of pixels (at least {PIXEL_MIN_PCT}%): the look did not apply")
+                ol = ""
+                if extra["name"] == "pixel_outline":
+                    problem, nums = outline_check(got)
+                    res.setdefault("outline", {})[prof] = nums
+                    ol = f"{nums.get('floorDark')} / {nums.get('outlinePixels')} of {nums.get('perimeter')}"
+                    if problem:
+                        failures.append(f"{name}/{shot_id}: {prof} outline check: {problem}")
+                if not os.path.exists(ref):
+                    os.makedirs(os.path.join(rep, "new-references", name), exist_ok=True)
+                    shutil.copy(got, os.path.join(rep, "new-references", name, f"{shot_id}-{prof}.png"))
+                    failures.append(f"{name}/{shot_id}: no stored reference in {ref} (this run's shot is in new-references for review)")
+                    res[prof] = {"reference": None, "normal": normal}
+                    rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | missing | {limit} | {normal['pct'] if normal else ''} | {ol} |")
+                    continue
+                # package 11: Vulkan has its own reference where one is stored (the palette and the dithering turn
+                # Vulkan's small colour differences from OpenGL into whole palette steps: 0.2-1.8% of pixels)
+                vref = os.path.join("ci", "references", name, shot_id + ".vulkan.png")
+                use = vref if prof == "vulkan" and os.path.exists(vref) else ref
+                d = diff(got, use, os.path.join(rep, "diff", f"{name}-{shot_id}-{prof}-reference.png"))
+                res[prof] = {"reference": d, "normal": normal, "referenceFile": os.path.basename(use)}
+                if limit is None:
+                    failures.append(f"{name}/{shot_id}: no pixel art limit in ci/pixel-art-limits.json")
+                elif d["pct"] > limit:
+                    failures.append(f"{name}/{shot_id}: {prof} differs from its stored reference on {d['pct']}% of pixels (limit {limit}%)")
+                rows.append(f"| {shot_id} | {PROFILE_NAMES[prof]} | {d['pct']} | {limit} | {normal['pct'] if normal else ''} | {ol} |")
+    if rows or extra_rows:
+        lines.append("")
+        lines.append("Pixel art look against its stored references, % of pixels over 8/255; then against the scene's Normal shot (at least " + str(PIXEL_MIN_PCT)
+                     + "% for <scene>.pixel); outline check (spawn.pixel_outline): dark pixels on the flat floor (at most " + str(OUTLINE_FLOOR_MAX)
+                     + ") / outline pixels around the block of its box's perimeter (at least " + str(OUTLINE_MIN_SHARE) + "x):\n")
+        lines.append("| shot | profile | reference % | limit % | Normal % | outline |")
+        lines.append("|---|---|---|---|---|---|")
+        lines.extend(rows)
+        lines.append("")
+        lines.append("Pixel art's log lines per run: 'on' lines, window sizes seen (the resizes before spawn.pixel), live GPU objects (at most " + str(PIXEL_LIVE_MAX) + "):\n")
+        lines.append("| profile | on lines | window sizes | live GPU objects |")
+        lines.append("|---|---|---|---|")
+        lines.extend(extra_rows)
+
+
+# the small target and the art texture with its view
+PIXEL_LIVE_MAX = 3
+
+
 LIGHT_MIN_PCT = 0.5
 # Fancy against Fast, same view: the armor stand, the chest, the lantern and the arrow lit too
 FANCY_MIN_PCT = 0.05
@@ -1033,6 +1177,7 @@ def main():
         lines.extend(strict_lines)
         lod_check(name, scenes, runs, rep, sd, failures, lines)
         light_check(name, scenes, runs, rep, sd, failures, lines)
+        pixel_check(name, scenes, runs, rep, sd, failures, lines)
         lines.append("")
         if not QUICK:
             lines.append("Measure runs (Quicksilver loaded, every module off) against vanilla's run of the same profile: % of pixels over"

@@ -39,14 +39,17 @@ run 45424033530 green). Main's full run 45480710531 then failed only a perf-worl
 **Fixes after package 13** (2026-11-26): main's meshing-time failure after the merge (the mesher now skips air), the
 lights scene's limits from three runs, the fly-over save gate over 24 rounds; merged (see "Fixes after package 13").
 
+**Package 11** (pixel art look): built on branch `package-11`, not merged: the next chat merges it (see "Package 11"
+below, "Decisions for Andre" there).
+
 **Branch cleanup** (2026-11-25, run 45587626867): every merged or finished branch and their log branches deleted; kept
 `main`, `p2-3b`, `test-pack`, `package-13` and the log branches CI reads or whose branch remains.
 
 **Package 9** (settings screen): squash-merged into main 2026-11-25 after the main fix (see "Package 9" below,
 "Decisions for Andre" there).
 
-**Still to do, in order:** R2 (laptop bench, `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two
-lines, which the file now reads as `preset=custom`, and `preset=low-end` turns on more), 11 (pixel art look, natural palette only), 12 (far terrain,
+**Still to do, in order:** 11 (merge), R2 (laptop bench, `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two
+lines, which the file now reads as `preset=custom`, and `preset=low-end` turns on more; add pixel art against Normal), 12 (far terrain,
 judged by the new look rule, without the SIFTEC worlds), R (release: laptop bench, then Modrinth).
 
 **Cut:** 2c (GPU-driven culling), 7b (GUI batching), 10 (compat sign-off and its popular-mods test pack; branch
@@ -54,6 +57,121 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Package 11: pixel art look (branch `package-11`, not merged: the next chat merges it)
+
+**Status:** built; final full run 45761156928 (`b450e88`) **green**, 62 min; independent review done and its findings fixed (below). Not merged.
+
+**What it adds** (design doc, "Pixel art city mode", with Andre's 2026-11-26 changes: natural palette only, off by default)
+- **A Look setting, off by default:** `option.look` = normal or pixel-art. On the options screen's new **Look** row
+  (Look: Normal / Pixel art; Pixel size: Small / Medium / Large; Dithering: On / Off; Outlines: On / Off; each with a
+  tooltip), in `/qs speed` (`/qs speed option.look pixel-art`, `/qs speed option.pixel-size large`) and in
+  `config/quicksilver.properties`. Normal in every preset; the three pixel art choices are in no preset (changing them
+  keeps the preset shown).
+- **How** (`look/PixelArt`): while the level renderer draws, `GameRenderer.mainRenderTarget()` returns a small target
+  (the window's size divided by the pixel size, the main target's own formats), and the level renderer is resized to it,
+  so every world pass (terrain, entities, sky, clouds, fog, water and glass, Improved Transparency's targets, dynamic
+  lights) draws small. Then two full-screen draws: at the small size, each pixel to the nearest palette colour (a
+  32x32x32 lookup table) after ordered 4x4 Bayer dithering, with outlines; then scaled up to the window with sharp
+  nearest-neighbour pixels. The hand, HUD, menus, chat and text draw afterwards at full resolution. Off: the target is
+  never swapped and the level renderer gets the window's size back; the small targets are freed.
+- **Natural palette** (`look/Palette`): vanilla's own colours only: the 61 map colours in the four shades vanilla's maps
+  draw them in, vanilla's default biome grass, foliage, water and fog colours (four shades each), and the overworld's sky
+  colours from vanilla's sky formula over its temperature range (six brightnesses, for dusk and night): 469 colours. So
+  grass stays green, water blue, the sky sky-blue. The other palettes are cut.
+- **Pixel size:** Small 360, Medium 240 (default), Large 144 art lines for the window at any size, at least 2 window
+  pixels an art pixel: at 1280x720 Small 2, Medium 3, Large 5 window pixels.
+- **Outlines** (`qs_pixel_art.fsh`): from the depth image. Depth is affine in 1/distance, so along any flat surface its
+  second difference is zero: no line between blocks that join, no grid on a floor or wall. A pixel nearer than the line
+  through its two neighbours (row or column) by at least 0.3 of the change across them is on the near side of a convex
+  edge: a block against what is behind it, a cliff's edge, a block's outer corner, a shape against the sky; inside
+  corners bend the other way and get none. One pixel wide, the colour at 0.45, fading out in the distance fog (the
+  frame's projection gives each pixel's distance; the fog's start and end from Quicksilver's fog hook), so fully fogged
+  terrain draws no line against the sky.
+- **Bench:** a `pixelArt` section (state, sizes, factor, palette, frames, CPU ms in its passes, GPU objects, fog).
+
+**CI** (`docs/ci-limits.md`, "Package 11")
+- With Look = Normal every existing shot, count, measure run and gate as before (the look is off by default).
+- Pixel art shots in every Quicksilver client run: `spawn.pixel`, `spawn.pixel_outline`, `water_glass.pixel`,
+  `nether.pixel`, `mobs.pixel`, `water_glass_oit.pixel` (Improved Transparency) and `lights.pixel_lit` (dynamic lights
+  Fast), against stored Quicksilver references by the documented rule; each `<scene>.pixel` at least 5% from the
+  scene's Normal shot; the log must show the look drawn, its projection seen and no failure.
+- Outline check on `spawn.pixel_outline` (a flat 49 x 49 stone floor with one gold block): no outline-dark pixel on the
+  floor (0 in every run), outline pixels around the block at least half its box's perimeter (1,022 against 125).
+- Resize test before `spawn.pixel`: the look's targets for five window sizes in turn, its GPU objects never above 3.
+- Speed gate: pixel art frame time at most Normal's in spawn on speed-old; the speed runs must show the look drew.
+
+**Cost** (speed runs, spawn, frame time on/off, five rounds, trimmed geometric mean): Pixel art against Normal, medium size, 1280x720:
+
+| run | profile | frame time on/off | Normal ms -> pixel art ms | 1% low fps |
+|---|---|---|---|---|
+| 45739913191 | speed-old (old GPU, plain path) | **0.677** (rounds 0.673-0.690) | 78.1 -> 53.3 | 10.85 -> 13.77 |
+| 45739913191 | speed-full (indirect path) | **0.654** | 81.3 -> 51.2 | 10.73 -> 16.74 |
+
+So about a third less frame time on CI's software renderer, where every pixel costs; triangles drawn 0.96-0.97 (the
+same world, fog culling unchanged). On a real GPU the saving depends on how much of its frame is pixel work; the laptop
+bench (R2) will show it. The two extra passes: well under 0.1 ms of CPU a frame.
+
+**References and limits:** references from run 45739913191 (OpenGL: old-GPU; Vulkan its own), limits twice the
+largest of 10 samples a shot over three runs (that run's other profiles, and runs 45749647841 and 45749687305 on the same
+picture code): spawn.pixel 4.6395%, water_glass 0.666%, water_glass_oit 0.672%, nether 0.0645%, mobs 0.0255%, the
+outline and lights shots 0.001%. The samples are world differences between runs (spawn's forest, fish, far terrain),
+the same in every profile of a run; `docs/ci-limits.md`, "Package 11". No limit of today's changed.
+
+**Run time:** run 45739913191 took 83 min from push to its last job and 780 runner-minutes (package 13's
+54-min run: 700), but it shared GitHub's ~20 runners with main's full run for most of it. The longest jobs: the fly-over
+groups (28-36 min, after the fly-over fix's 24 rounds) and the speed runs (34 min). The final run, 45761156928, ran mostly alone: **62 min** from push to the last
+job (the fly-over groups and the speed runs are the longest jobs, 28-36 min each). Over the hour by about 2 min: see
+decision 12.
+
+**Runs:** 45739913191 (`5e1cbd5`): every check green but the missing references (taken from it). 45749647841 and
+45749687305 (`05453e5`, the same commit, the second started by hand to get the third sample sooner): failed only on the
+first, one-run limits; the second also failed the direct-buffer gate in the full profile's first session (8.24 MB against
+vanilla's 3.99 + 4.0 in spawn, water_glass and nether, after the pixel shots; the other two runs passed it). As a
+precaution the look now writes its uniform block only when a value changes, not every frame. 45761156928 (`b450e88`, the limits, the review fixes and this one): **green** in 62 min (pixel art 0.689 on speed-old, 0.668 on speed-full; spawn.pixel 2.30%, water_glass 0.24%, every other pixel shot at most 0.0127%; the outline check 0 / 1,022; direct buffers within vanilla + 4 MB everywhere).
+
+**Independent review** (a fresh agent, after run 45739913191). Fixed: the speed gate could pass with the look not
+drawing (the speed runs must now show it drew); a missing projection hook would have left outlines unfaded unnoticed
+(now logged and checked); at a pixel size of 1 (a small window) the look cost more than Normal (now at least 2); `/qs
+speed option.look 1` was refused; three comments. Left, as decisions or nits: the leak check counts the look's own GPU
+objects (not every texture of the game) and its resize test sets the look's sizes, not the window's (Xvfb has no window
+manager and the game did not follow an X resize there); the art is 427 columns for 1280 (one column 2 px wide, not 3);
+no outlines-off negative control in the outline check; the resize test command is available outside CI; entity LOD
+still estimates sizes from the window's height.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **The hand is drawn at full resolution** with the HUD (it is drawn after the level renderer). Alternative: pixelate
+   it too. Switch: the swap would have to cover `GameRenderer`'s hand pass.
+2. **Natural palette = map colours + vanilla's default biome and sky colours** (469); with the map colours alone (244)
+   the sky dithered into a lilac checkerboard. Alternative: map colours only. Switch: `Palette.natural()`.
+3. **Pixel sizes by lines for the window** (Small 360, Medium 240, Large 144, at least 2 window pixels each): the look
+   is the same at any window size; Medium is 3 window pixels at 720p (the brief's 3-4) and 4.5 at 1080p (the design doc
+   said 3 at 1080p). Switch: `PixelArt.LINES`.
+4. **Two passes, not one:** the palette and outlines at the small size, then a plain nearest-neighbour scale-up (the
+   same picture as one full-size pass, at a ninth of the shader work). Switch: `PixelArt.afterLevel`.
+5. **Outlines: convexity of depth, threshold 0.3, colour x 0.45, fading in the fog;** an Outlines on/off option was
+   added (the design doc's), on by default. Switch: `convex()` in `qs_pixel_art.fsh`, `Speed.PIXEL_OUTLINES`.
+6. **Dithering strength 0.1** (a step of about a twelfth of the palette's spacing between shades). Switch: the
+   `QS_DITHER` lines in `qs_pixel_art.fsh`.
+7. **Cut from the design doc:** the glow on lit things, the banded sky and the purple haze (they belonged to the neon
+   palettes), and the in-game toggle key (`/qs speed option.look` and the screen do it). Alternative: add the key.
+8. **Vulkan has its own references:** the palette and dithering turn Vulkan's small colour differences from OpenGL
+   into whole palette steps (0.2-1.8% of pixels in run 45739913191), so one OpenGL reference would need limits about
+   ten times looser. Alternative: one reference, looser limits. Switch: the `.vulkan.png` files (compare.py uses them
+   when present).
+9. **The resize test sets the look's sizes, not the window's;** the leak check counts the look's own objects.
+   Alternative: count every GPU texture the game makes (a counters mixin), and resize the game's targets too.
+10. **Mixins optional** (as package 13's): another mod can't stop the game starting; if a hook is missing the look
+    stays Normal or warns once, and CI fails on it.
+11. **Speed gate at most 1.00 on speed-old** (measured 0.677 and 0.689). Alternative: a tighter gate (e.g. 0.85) so a regression
+    that eats most of the saving fails.
+12. **Run time 62 min, not under an hour:** the fly-over fix's three 8-round groups (28-36 min) and the speed runs
+    (34 min) now set the length. Alternatives: four fly-over groups of 6 rounds (one more runner), or the pixel art
+    speed A/B in a scene the speed runs already reach sooner. Switch: the workflow's `server-chunks` matrix.
+13. **spawn.pixel's limit (4.64%) is over the smallest thing the spawn scene must catch** (a mid-distance section, about
+    1.7%): its samples are the spawn world differing from run to run (forest, fish), which Normal shots never see because
+    they are compared with vanilla in the same run. The Normal spawn shot still catches a missing section. Alternative:
+    a fixed, built scene for the pixel shot instead of the spawn (as the outline scene), then a tight limit.
 
 ## Fixes after package 13 (2026-11-26, branch `fix-lights-flyover`)
 

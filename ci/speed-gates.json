@@ -1,5 +1,5 @@
 {
-  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame. Package B: the fog-sections auto-off check (ci.fog-unconfirmed), translucent terrain by region (approx.translucent-regions), and fog-sections in the nether's environmental fog. Package 13: option.dynamic-lights=1 (Fast) in the lights scene, speed-old, frame time on/off at most 1.05 (Fancy reported).",
+  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame. Package B: the fog-sections auto-off check (ci.fog-unconfirmed), translucent terrain by region (approx.translucent-regions), and fog-sections in the nether's environmental fog. Package 13: option.dynamic-lights=1 (Fast) in the lights scene, speed-old, frame time on/off at most 1.05 (Fancy reported). Package 11: option.look=1 (pixel art) in spawn, speed-old, frame time on/off at most 1.00 (it draws the world at a ninth of the pixels; speed-full reported).",
   "gates": [
     {
       "setting": "approx.fog-sections",
@@ -112,6 +112,17 @@
       "metric": "frameMsAvg",
       "max": 1.05,
       "reason": "package 13: dynamic lights at Fast (the nearest 8, terrain only) may cost at most 5% of frame time on the old-GPU profile (Intel's plain path) with every light of the lights scene near; measured 1.000 (rounds 0.981-1.042) in run 45573754150, Fancy 1.015 (reported)"
+    },
+    {
+      "setting": "option.look",
+      "onValue": 1,
+      "scene": "spawn",
+      "runs": [
+        "speed-old"
+      ],
+      "metric": "frameMsAvg",
+      "max": 1.0,
+      "reason": "package 11: the pixel art look draws the world at a ninth of the window's pixels (medium, 3 window pixels a side at 720p), so it must not make frames slower than Normal on the old-GPU profile (Intel's plain path)"
     }
   ]
 }

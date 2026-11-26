@@ -68,6 +68,26 @@ public final class SpeedTerrain {
     }
 
     /**
+     * Package 11: the fog the world is drawn with now, for the pixel art look's outlines (they fade out in it): {start,
+     * end} in blocks, the nearer of the render-distance fog and the environmental fog (water, lava, the nether's thick
+     * fog) where each has its start before its end; null if the fog hook has not seen a fog with an end, or fog is off.
+     */
+    public static float[] fogForLook() {
+        if (!hookSeen || !hookEnabled) return null;
+        float s = hookStart, e = hookEnd;
+        if (!(Float.isFinite(e) && Float.isFinite(s) && s < e)) {
+            s = Float.POSITIVE_INFINITY;
+            e = Float.POSITIVE_INFINITY;
+        }
+        float es = hookEnvStart, ee = hookEnvEnd;
+        if (Float.isFinite(ee) && Float.isFinite(es) && es < ee && ee < e) {
+            s = es;
+            e = ee;
+        }
+        return Float.isFinite(e) ? new float[] {s, e} : null;
+    }
+
+    /**
      * The fog end this frame, in blocks, or 0 when fog culling is off. Package B: only an end the fog hook saw vanilla
      * write for the shaders this frame or the one before (its value, plus one block of margin), with vanilla's fog switched
      * on, start before end, a fog colour that is opaque, no shader pack in use and no world border within reach of the

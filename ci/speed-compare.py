@@ -44,6 +44,13 @@ def main():
             lines.append(f"## {run}: no results\n")
             continue
         found = True
+        # package 11 (review): the pixel art look's speed gate only measures something if the look drew in that run
+        if any("option.look" in open(f).read() for f in files):
+            log = "".join(open(f, errors="replace").read() for f in sorted(glob.glob(os.path.join(d, "client-*.log"))))
+            if "Quicksilver pixel art: on" not in log:
+                failures.append(f"speed: {run}: option.look was measured but the pixel art look never drew (no 'Quicksilver pixel art: on' line)")
+            if "Quicksilver pixel art failed" in log or "Quicksilver pixel art: on, but nothing drawn" in log:
+                failures.append(f"speed: {run}: the pixel art look failed during the speed run (see client log)")
         lines.append(f"## {run}\n")
         for f in files:
             j = json.load(open(f))

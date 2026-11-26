@@ -3,6 +3,54 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package 11: pixel art look (2026-11-26)
+
+- **Limits:** none of today's changed. The look is Normal by default and in every preset, so every existing shot, measure
+  run, count and speed gate is the normal picture (checked in every run on the branch).
+- **Pixel art shots** (`ciPixelShots`, Quicksilver client runs only; `ci/drive.py`, `pixel_check` in `ci/compare.py`):
+  after a scene's own shot, the look is switched to pixel art (`/quicksilver speed option.look pixel-art`), the shot
+  `<scene>.<name>` taken, and the look switched back. Shots: `spawn.pixel`, `spawn.pixel_outline` (below),
+  `water_glass.pixel`, `nether.pixel`, `mobs.pixel`, `water_glass_oit.pixel` (Improved Transparency) and
+  `lights.pixel_lit` (dynamic lights at Fast). Each against its stored Quicksilver reference
+  `ci/references/core/<shot>.png` with the limit in `ci/pixel-art-limits.json`; each `<scene>.pixel` must differ from
+  the scene's Normal shot by at least 5% (the look applied); the log must show the look drawn and never failed.
+- **References and limits** (the documented rule, as far entity LOD's and the light shots'): references are Quicksilver's shots of full
+  run 45739913191 (`5e1cbd5`; looked at): old-GPU for the OpenGL profiles, and the Vulkan run's own for Vulkan (the
+  palette and the dithering turn Vulkan's small colour differences into whole palette steps: 0.2-1.8% of pixels against
+  the OpenGL shot). Samples: the other profiles of that run, and every profile of runs 45749647841 and 45749687305
+  (`05453e5`, the same picture code): 10 a shot. Limit = twice the largest, at least 0.001%, rounded up to 0.0005%
+  (`ci/pixel-art-limits.json`):
+
+  | shot | largest sample % | limit % |
+  |---|---|---|
+  | spawn.pixel | 2.3197 (run 45749647841, Vulkan; every profile of that run 2.29-2.32) | 4.6395 |
+  | water_glass.pixel | 0.333 | 0.666 |
+  | water_glass_oit.pixel | 0.3359 | 0.672 |
+  | nether.pixel | 0.0322 | 0.0645 |
+  | mobs.pixel | 0.0127 | 0.0255 |
+  | spawn.pixel_outline, lights.pixel_lit | 0.0 | 0.001 |
+
+  Where the samples come from: they move with the run, not the profile (each run's four profiles agree within 0.03%),
+  and sit in the world, not in the look: spawn's forest on the hill (its leaves and trees differ from run to run, where
+  the Normal shot is only ever compared with vanilla in the same run) and fish in the sea; water_glass's terrain far
+  below the platform; mobs' bottom edge. Normal shots never meet this, as each is compared with vanilla in the same run.
+  **Below the smallest thing to catch?** Pixel art's own failures (wrong palette, dithering, outlines or scale, a target
+  of the wrong size) change most of the picture, far over every limit; the 5% floor against the Normal shot catches a
+  look that didn't apply. What each scene's Normal shot must catch (a missing section, ~16,000 px in spawn) is caught
+  by that shot against vanilla in the same run, the same world drawn by the same code below the look; spawn.pixel's
+  limit (4.64%, about 43,000 px) is over it, so spawn.pixel alone would not catch a missing mid-distance section.
+- **Outline check** (`outline_check`, on `spawn.pixel_outline`: a 49 x 49 stone floor with nothing above it and one gold
+  block on it, seen from 7.6 blocks up at 60 degrees): on the floor more than 60 pixels from the block's box (and away
+  from the crosshair) no pixel may be darker than half the floor's median brightness (0 allowed); around the block's box
+  the dark gold outline pixels must number at least half its perimeter. In every run of the branch: 0 floor pixels, 1,022 outline pixels against 125.
+- **Resize test** (before `spawn.pixel`): `/quicksilver pixelart resizetest` makes the look's targets for 960x540,
+  1100x620, 800x600, 1920x1080 and 640x360 in turn (20 frames each; the picture is still scaled to the real window). Gate:
+  at least four window sizes in the look's log lines, the test's end line, and its GPU objects at most 3 at every line
+  (the small target and the art texture with its view; no leak). Xvfb has no window manager, so a real X resize
+  (`xdotool windowsize`) is tried too but the game does not follow it there.
+- **Speed gate** (`ci/speed-gates.json`): `option.look=1` in spawn, speed-old, frame time on/off at most **1.00** (five
+  rounds, trimmed geometric mean); speed-full reported. Measured 0.677 (rounds 0.673-0.690) on speed-old and 0.654 on speed-full in run 45739913191. The speed runs must also show the look drew and never failed (`ci/speed-compare.py`).
+
 ## Fixes after package 13 (2026-11-26, branch `fix-lights-flyover`)
 
 - **Lights scene re-collected by the rule (three full runs).** Samples from main's run 45710512593 (package 13's merge)

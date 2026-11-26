@@ -74,6 +74,9 @@ final class BenchSections {
         // package 13: dynamic lights (off by default)
         BenchModules.register(BenchModules.section("dynamicLights", com.meakaandre.quicksilver.lights.DynamicLights::startWindow,
             f -> com.meakaandre.quicksilver.lights.DynamicLights.json(), com.meakaandre.quicksilver.lights.DynamicLights::line));
+        // package 11: the pixel art look (off by default)
+        BenchModules.register(BenchModules.section("pixelArt", com.meakaandre.quicksilver.look.PixelArt::startWindow,
+            f -> com.meakaandre.quicksilver.look.PixelArt.json(), com.meakaandre.quicksilver.look.PixelArt::line));
         // package 5: Flywheel as Create Fly bundles it (backend, visuals, its hooks on vanilla); "absent" without Create Fly
         BenchModules.register(BenchModules.section("flywheel", com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat::startWindow,
             com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat::json, com.meakaandre.quicksilver.compat.flywheel.FlywheelCompat::line));

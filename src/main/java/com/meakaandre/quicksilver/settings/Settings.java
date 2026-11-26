@@ -74,18 +74,22 @@ public final class Settings {
         low.put(Speed.PARTICLE_DENSITY.key, 50);
         // package 13: dynamic lights are off in every preset (Balanced and Quality take the default, off)
         low.put(Speed.DYNAMIC_LIGHTS.key, 0);
+        // package 11: the look is Normal in every preset; pixel art's own choices (size, dithering, outlines) are in none
+        low.put(Speed.LOOK.key, 0);
         PRESETS.put(Preset.LOW_END, low);
         // Balanced (the default): the invisible approximations only, every visible option off (Quicksilver's defaults)
         Map<String, Integer> balanced = new LinkedHashMap<>();
-        for (Speed.Setting s : Speed.all().values()) balanced.put(s.key, s.defaultValue);
+        for (Speed.Setting s : Speed.all().values()) if (!Speed.presetFree(s)) balanced.put(s.key, s.defaultValue);
         PRESETS.put(Preset.BALANCED, balanced);
         // Quality: the approximations off too (every terrain section inside the fog drawn, translucent terrain in vanilla's
         // exact order)
         Map<String, Integer> quality = new LinkedHashMap<>();
-        for (Speed.Setting s : Speed.all().values()) quality.put(s.key, s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : 0);
+        for (Speed.Setting s : Speed.all().values()) if (!Speed.presetFree(s)) quality.put(s.key, s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : 0);
         PRESETS.put(Preset.QUALITY, quality);
         for (Map<String, Integer> m : PRESETS.values()) {
-            if (!m.keySet().equals(Speed.all().keySet())) throw new IllegalStateException("a preset misses a speed switch: " + m.keySet());
+            java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+            for (Speed.Setting s : Speed.all().values()) if (!Speed.presetFree(s)) keys.add(s.key);
+            if (!m.keySet().equals(keys)) throw new IllegalStateException("a preset misses a speed switch: " + m.keySet());
         }
     }
 

@@ -312,6 +312,62 @@ def main():
             xdo("key", "d")
             xdo("keyup", "F3")
             time.sleep(1)
+        # package 11: pixel art shots, Quicksilver client runs only (not the measure runs: their switches stay off). Each
+        # sends its commands (server commands; "#client <command>" for a client command), switches the look to pixel art,
+        # takes the shot <scene>.<name> and switches it back to Normal; compare.py checks them against the stored
+        # references in ci/references (pixel art has no vanilla picture to match). "resize": before the shot, the
+        # window is resized three times and back (the look's targets follow; CI's leak check reads the log).
+        if mode == "quicksilver" and os.environ.get("RUN", "").startswith("quicksilver") and sc.get("ciPixelShots"):
+            for extra in sc["ciPixelShots"]:
+                for cmd in extra.get("commands", []):
+                    if cmd.startswith("#client "):
+                        chat(cmd[8:])
+                        time.sleep(2)
+                    else:
+                        send(cmd)
+                if extra.get("commands"):
+                    time.sleep(3)
+                chat("quicksilver speed option.look pixel-art")
+                time.sleep(2)
+                if extra.get("resize"):
+                    # the game's window: every visible window the size of the screen (SDL's title is not always in
+                    # WM_NAME, so it is found by its size; Xvfb runs no window manager)
+                    win = []
+                    for wid in subprocess.run(["xdotool", "search", "--onlyvisible", "--name", ""], capture_output=True, text=True).stdout.split():
+                        geo = subprocess.run(["xdotool", "getwindowgeometry", wid], capture_output=True, text=True).stdout
+                        if "1280x720" in geo:
+                            win.append(wid)
+                    entry.setdefault("pixelResize", {})["windows"] = len(win)
+                    for w, h in ((960, 540), (1100, 620), (800, 600), (1280, 720)):
+                        for wid in win:
+                            xdo("windowsize", "--sync", wid, str(w), str(h))
+                        time.sleep(3)
+                    for wid in win:
+                        xdo("windowmove", wid, "0", "0")
+                    time.sleep(2)
+                    # Xvfb has no window manager, and the game may not follow an X resize there: the look's own resize
+                    # test makes its targets for five window sizes in turn (its log lines name them; compare.py counts
+                    # the sizes and the GPU objects left)
+                    chat("quicksilver pixelart resizetest")
+                    time.sleep(8)
+                xdo("keydown", "F3")
+                xdo("key", "d")
+                xdo("keyup", "F3")
+                time.sleep(2)
+                p = os.path.join(out, "shots", sid + "." + extra["name"] + ".png")
+                entry.setdefault("pixelShots", {})[extra["name"]] = steady_shot(p)
+                chat("quicksilver speed option.look normal")
+                time.sleep(2)
+                for cmd in extra.get("after", []):
+                    if cmd.startswith("#client "):
+                        chat(cmd[8:])
+                        time.sleep(2)
+                    else:
+                        send(cmd)
+                xdo("keydown", "F3")
+                xdo("key", "d")
+                xdo("keyup", "F3")
+                time.sleep(1)
         # seconds each shot waited for Quicksilver's upload queue; -1: timed out (compare.py fails on it)
         entry["uploadWaits"] = list(WAITS)
         if screen:

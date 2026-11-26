@@ -107,6 +107,27 @@ public final class Speed {
     public static final Setting DYNAMIC_LIGHTS = add(new Setting("option.dynamic-lights", false, false, 0, 0, 2, "",
         "held and dropped light sources, burning and glowing mobs and lit projectiles light the world around them (fast: nearest 8, terrain; fancy: nearest 32, terrain, entities and block entities)"));
 
+    /**
+     * Package 11: the look (design doc, "Pixel art city mode", natural palette only): 0 Normal, 1 Pixel art. Off by
+     * default and in every preset. {@code look/PixelArt}.
+     */
+    public static final Setting LOOK = add(new Setting("option.look", false, false, 0, 0, 1, "",
+        "normal, or pixel-art: the world drawn small in vanilla's own colours (a limited palette, dithered, with dark outlines on exposed edges) and scaled up with sharp pixels; the HUD, menus and text stay sharp"));
+    /** Package 11: pixel art's pixel size: 1 small, 2 medium (default: 240 art lines, 3 window pixels at 720p), 3 large. Not in presets. */
+    public static final Setting PIXEL_SIZE = add(new Setting("option.pixel-size", false, false, 2, 1, 3, "",
+        "pixel art's pixel size: small (360 lines), medium (240) or large (144), at any window size"));
+    /** Package 11: pixel art's ordered dithering (on by default). Not in presets. */
+    public static final Setting PIXEL_DITHER = add(new Setting("option.pixel-dither", false, false, 1, 0, 1, "",
+        "pixel art: ordered (Bayer) dithering between the palette's colours"));
+    /** Package 11: pixel art's outlines on exposed edges (on by default). Not in presets. */
+    public static final Setting PIXEL_OUTLINES = add(new Setting("option.pixel-outlines", false, false, 1, 0, 1, "",
+        "pixel art: a dark one-pixel outline on exposed block edges"));
+
+    /** Package 11: the pixel art look's own choices, which no preset sets (a preset's look is Normal). */
+    public static boolean presetFree(Setting s) {
+        return s == PIXEL_SIZE || s == PIXEL_DITHER || s == PIXEL_OUTLINES;
+    }
+
     // ---- CI only (not listed, not in the config file): checks the speed bench can switch like the others
 
     private static final Map<String, Setting> CI = new LinkedHashMap<>();
@@ -154,7 +175,7 @@ public final class Speed {
         loaded = true;
         if (Boolean.getBoolean("quicksilver.ci.measureOnly")) {
             locked = true;
-            for (Setting s : ALL.values()) s.value = s.key.equals(PARTICLE_DENSITY.key) ? 100 : 0;
+            for (Setting s : ALL.values()) s.value = s.key.equals(PARTICLE_DENSITY.key) ? 100 : s == PIXEL_SIZE ? 2 : 0;
             QuicksilverClient.LOG.info("Quicksilver speed: every approximation and option off (measure run)");
             return;
         }
@@ -189,6 +210,21 @@ public final class Speed {
             if (v.equalsIgnoreCase("fast") || v.equalsIgnoreCase("on")) return 1;
             if (v.equalsIgnoreCase("fancy")) return 2;
         }
+        if (s.key.equals("option.look")) {
+            if (v.equalsIgnoreCase("normal") || v.equalsIgnoreCase("off")) return 0;
+            if (v.equalsIgnoreCase("pixel-art") || v.equalsIgnoreCase("pixel") || v.equalsIgnoreCase("on") || v.equals("1") || v.equalsIgnoreCase("true")) return 1;
+            if (v.equals("0") || v.equalsIgnoreCase("false")) return 0;
+            return null;
+        }
+        if (s.key.equals("option.pixel-size")) {
+            for (int i = 1; i <= 3; i++) if (v.equalsIgnoreCase(PIXEL_SIZE_NAMES[i])) return i;
+            try {
+                int n = Integer.parseInt(v);
+                return n >= 1 && n <= 3 ? n : null;
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
         if (v.equalsIgnoreCase("on") || v.equalsIgnoreCase("true")) return s.bool() ? 1 : null;
         if (v.equalsIgnoreCase("off") || v.equalsIgnoreCase("false")) return s.key.equals(PARTICLE_DENSITY.key) ? 100 : 0;
         try {
@@ -201,8 +237,13 @@ public final class Speed {
         }
     }
 
+    /** Package 11: the pixel sizes' names (1-3). */
+    public static final String[] PIXEL_SIZE_NAMES = {"medium", "small", "medium", "large"};
+
     public static String show(Setting s) {
         if (s.key.equals("option.dynamic-lights")) return s.value == 1 ? "fast" : s.value == 2 ? "fancy" : "off";
+        if (s.key.equals("option.look")) return s.value == 1 ? "pixel-art" : "normal";
+        if (s.key.equals("option.pixel-size")) return PIXEL_SIZE_NAMES[s.value >= 1 && s.value <= 3 ? s.value : 2];
         if (s.bool()) return s.on() ? "on" : "off";
         if (s.key.equals(PARTICLE_DENSITY.key)) return s.value + "%";
         return s.on() ? s.value + " " + s.unit : "off";
@@ -214,7 +255,7 @@ public final class Speed {
      */
     public static String set(Setting s, int value) {
         if (locked) return "switches stay off in a measure run";
-        boolean offValue = value == 0 || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
+        boolean offValue = (value == 0 && s != PIXEL_SIZE) || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
         if (!offValue && (value < s.min || value > s.max)) return "takes " + s.min + "-" + s.max + (s.unit.isEmpty() ? "" : " " + s.unit);
         if (s.value == value) return null;
         s.value = value;
@@ -269,7 +310,7 @@ public final class Speed {
 
     /** Package 9: a switch's value as written in the config file (on/off, or the number; parse reads it back). */
     public static String fileValue(Setting s) {
-        if (s.key.equals("option.dynamic-lights")) return show(s);
+        if (s.key.equals("option.dynamic-lights") || s.key.equals("option.look") || s.key.equals("option.pixel-size")) return show(s);
         if (s.bool()) return s.on() ? "on" : "off";
         if (s.key.equals(PARTICLE_DENSITY.key)) return String.valueOf(s.value);
         return s.on() ? String.valueOf(s.value) : "off";
@@ -365,6 +406,11 @@ public final class Speed {
                         b.suggest("off");
                         b.suggest("fast");
                         b.suggest("fancy");
+                        b.suggest("normal");
+                        b.suggest("pixel-art");
+                        b.suggest("small");
+                        b.suggest("medium");
+                        b.suggest("large");
                         return b.buildFuture();
                     })
                     .executes(c -> setCommand(c.getSource(), StringArgumentType.getString(c, "name"), StringArgumentType.getString(c, "value")))));
@@ -403,7 +449,8 @@ public final class Speed {
         }
         Integer v = parse(s, value);
         if (v == null) {
-            src.sendError(Component.literal("[Quicksilver] " + s.key + " takes " + (s.bool() ? "on or off" : "off or " + s.min + "-" + s.max + " " + s.unit) + "."));
+            String takes = s == LOOK ? "normal or pixel-art" : s == PIXEL_SIZE ? "small, medium or large" : s.bool() ? "on or off" : "off or " + s.min + "-" + s.max + " " + s.unit;
+            src.sendError(Component.literal("[Quicksilver] " + s.key + " takes " + takes + "."));
             return 0;
         }
         String why = set(s, v);
