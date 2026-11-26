@@ -535,7 +535,7 @@ jobs:
     # saving the world), with JFR in every round and the saved files as hashes; compared in server-compare
     # (ci/server/compare-chunks.py). Core only. The saved terrain is vanilla's, generated once and cached on its inputs.
     # Package L: flyover on one runner, the save, churn and kill scenes on another (each scene's rounds still alternate
-    # on one runner); about 23 and 19 minutes instead of 48 in one job
+    # on one runner); about 23 and 19 minutes instead of 48 in one job. The fly-over is split over three groups (below).
     needs: [mode, build]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
@@ -544,8 +544,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {group: flyover, scenes: "flyover"}
-          - {group: save, scenes: "save churn kill"}
+          # fly-over fix (2026-11-26): the fly-over's save-time gate rests on JFR samples (about 400 a run, so about 7%
+          # noise a round); 24 rounds, eight on each of three runners (each round still on one runner), the verify run
+          # in the first
+          - {group: flyover-1, scenes: "flyover", from: 1, to: 8, verify: 1}
+          - {group: flyover-2, scenes: "flyover", from: 9, to: 16, verify: 0}
+          - {group: flyover-3, scenes: "flyover", from: 17, to: 24, verify: 0}
+          - {group: save, scenes: "save churn kill", from: 1, to: 999, verify: 1}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -569,6 +574,10 @@ jobs:
         env:
           SUITE: core
           SCENES: ${{ matrix.scenes }}
+          GROUP: ${{ matrix.group }}
+          ROUND_FROM: ${{ matrix.from }}
+          ROUND_TO: ${{ matrix.to }}
+          VERIFY: ${{ matrix.verify }}
           OUT: /tmp/sout/core-chunks
           CI_MODE: ${{ needs.mode.outputs.mode }}
         run: bash ci/server/chunks-run.sh

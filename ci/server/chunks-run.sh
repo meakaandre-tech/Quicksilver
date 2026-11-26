@@ -11,17 +11,23 @@
 # full runs' verify run ($OUT/<scene>/quicksilver-verify/), the kill check ($OUT/kill/<side>-complete|killed|reload<round>/)
 # and $OUT/base.json (the saved terrain's dump). ROUNDS caps every scene's rounds. SCENES (package L): only these scenes
 # (space-separated), so the workflow splits the scenes over runners; each scene's rounds still alternate on one runner.
+# ROUND_FROM / ROUND_TO (fly-over fix, 2026-11-26): only rounds FROM..TO of each scene, so one scene's rounds can be split
+# over runners (every round's vanilla and Quicksilver runs still share one runner; odd rounds still start with vanilla);
+# VERIFY=0 leaves out the full runs' verify run (it runs in one group only). GROUP names the log file.
 set +e
 root=$PWD
 SUITE=${SUITE:-core}
 OUT=${OUT:-/tmp/sout/$SUITE-chunks}
-ROUNDS=${ROUNDS:-9}  # package 9: the fly-over has 9 rounds (ci/server/chunks-core.txt); the others keep theirs
+ROUNDS=${ROUNDS:-24}  # the fly-over has 24 rounds (ci/server/chunks-core.txt; 9 in package 9); the others keep theirs
+ROUND_FROM=${ROUND_FROM:-1}
+ROUND_TO=${ROUND_TO:-999}
+VERIFY=${VERIFY:-1}
 mkdir -p "$OUT"
-log=chunks.txt; [ -n "${SCENES:-}" ] && log="chunks-${SCENES%% *}.txt"
+log=chunks.txt; [ -n "${SCENES:-}" ] && log="chunks-${SCENES%% *}.txt"; [ -n "${GROUP:-}" ] && log="chunks-$GROUP.txt"
 exec > >(tee "$OUT/$log") 2>&1
 spec=ci/server/chunks-$SUITE.txt
 if [ ! -f "$spec" ]; then echo "no $spec: no chunk scenes for $SUITE"; exit 0; fi
-echo "chunk scenes suite=$SUITE rounds=$ROUNDS"
+echo "chunk scenes suite=$SUITE rounds=$ROUNDS (this group: $ROUND_FROM-$ROUND_TO, verify $VERIFY)"
 srv=$root/srv
 rm -rf "$srv"
 bash ci/server/fetch-server.sh "$srv" || { echo "could not fetch the server"; exit 1; }
@@ -140,6 +146,7 @@ while read -r scene script ticks speed rounds; do
   [ "$rounds" -gt "$ROUNDS" ] && rounds=$ROUNDS
   echo "== scene $scene ($script, $ticks ticks, $speed, $rounds rounds)"
   for r in $(seq 1 "$rounds"); do
+    { [ "$r" -lt "$ROUND_FROM" ] || [ "$r" -gt "$ROUND_TO" ]; } && continue
     if [ $((r % 2)) = 1 ]; then first=vanilla; second=quicksilver; else first=quicksilver; second=vanilla; fi
     for side in $first $second; do
       if [ "$scene" = kill ]; then
@@ -153,7 +160,7 @@ while read -r scene script ticks speed rounds; do
     done
   done
   # full runs: Quicksilver once more with chunks verify mode (every shared section checked against a real copy)
-  if [ "${CI_MODE:-}" = full ] && [ "$scene" != kill ]; then
+  if [ "${CI_MODE:-}" = full ] && [ "$scene" != kill ] && [ "$VERIFY" = 1 ]; then
     one quicksilver quicksilver-verify "$scene" "$script" "$ticks" "$speed" verify
   fi
 done < "$spec"

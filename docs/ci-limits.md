@@ -3,6 +3,29 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Fixes after package 13 (2026-11-26, branch `fix-lights-flyover`)
+
+- **Lights scene re-collected by the rule (three full runs).** Samples from main's run 45710512593 (package 13's merge)
+  and this branch's runs 45711106775 and 45723109783 (rendering code unchanged between them; the branch changes the
+  server suite and the mesher's air test only):
+  - light shots against their references (4 Quicksilver profiles x 3 runs = 12 samples a shot): largest 0.0002%
+    (`all_fancy`, Vulkan), `all_fast` and `torch` 0.0001%, the others 0.0. Limit = twice the largest, at least 0.001%:
+    **0.001% each, unchanged**. References unchanged (Quicksilver old-GPU, run 45592666729: every sample of the three
+    runs is within 0.0002% of them).
+  - the scene's own shot (lights off) against vanilla: every Quicksilver profile, measure run and vanilla a/b 0.0 in all
+    three. Approximation limit 0.001% (the rule's floor), noise limit 0.25% (its floor): **unchanged**.
+  - count baselines (`ci/baselines/core-*.json`, `lights`): the highest value of the three runs, the old-GPU file over
+    both old-GPU runs (plain and two-phase), runs listed. Changed: old-GPU draw calls 15.73 -> 15.67, heap 265.37 ->
+    265.68 MB, direct 4.06 -> 5.81 MB (a ceiling only: direct buffers are gated against vanilla in the same run);
+    full heap 265.88 -> 265.73 MB; Vulkan heap 265.39 -> 265.79 MB, direct 4.04 -> 5.27 MB. Uploads and bytes unchanged.
+- **Fly-over save gate** (`ci/server/compare-chunks.py`, `ci/server/chunks-core.txt`, the workflow's `server-chunks`
+  groups): 24 rounds (was 9), eight on each of three runners (`flyover-1`, `flyover-2`, `flyover-3`: rounds 1-8, 9-16,
+  17-24; every round's vanilla and Quicksilver runs still share one runner; odd rounds still start with vanilla), the
+  verify run in the first group only. Same gate (trimmed geometric mean of the per-round ratios below 1.00), same limit.
+  Why: the save time is JFR samples, about 400 a run; the per-round ratios spread 6.2% in main's run on `69ba515`, which is
+  the samples' own Poisson noise (7.2%), so the gated mean of 9 rounds moved by about 2.3% from run to run and read 1.026
+  once (package 13's run 45601639737, unchanged server code). With 24 rounds about 1.3%.
+
 ## Package 13: dynamic lights (2026-11-25)
 
 - **Limits:** none of today's changed; dynamic lights are off by default, so every existing shot is the normal picture.
@@ -14,8 +37,8 @@ package 0 merges; from then on a limit is never raised and a baseline only goes 
   (0.001% each: twice the largest other-profile sample, 0.0002%, at least 0.001%). Each must differ from its `_unlit`
   pair (same view, lights off, taken just before) by at least 0.5%; `all_fancy` from `all_fast` by at least 0.05%; the log
   must show terrain drawn lit and the bench the frame and reload hooks. A missing reference fails and the shot goes to
-  the report's new-references folder. Only one run's samples (the rule asks for three): see `docs/progress.md`,
-  "Package 13".
+  the report's new-references folder. Only one run's samples (the rule asks for three): re-collected from three full
+  runs on 2026-11-26 (above, "Fixes after package 13"), values unchanged.
 - **Pin:** dropped items in the lights hall don't spin or bob (`ItemSpinMixin`), in every CI client run.
 - **Speed gate:** `option.dynamic-lights=1` (Fast), lights scene, speed-old, frame time on/off at most 1.05 (measured
   1.000 and 1.008); five rounds, trimmed geometric mean. Fancy and speed-full reported.

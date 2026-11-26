@@ -157,8 +157,12 @@ final class MeshWorker {
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
                         BlockState state = snap.local(x, y, z);
+                        // air (air, cave air, void air) is not solid, has no block entity, no fluid and no model: nothing
+                        // below would do anything with it (main's run 45710512593: a near-empty section took about 3 ms
+                        // here, its 4096 blocks each going through every test, against vanilla's 0.15 ms)
+                        if (state.isAir()) continue;
                         p.set(ox + x, oy + y, oz + z);
-                        if (Mesher.VERIFY && !state.isAir()) nonAir++; // the profile's count, CI only
+                        if (Mesher.VERIFY) nonAir++; // the profile's count, CI only
                         if (state.isSolidRender()) visGraph.setOpaque(p);
                         if (state.hasBlockEntity()) {
                             BlockEntity be = region.getBlockEntity(p);

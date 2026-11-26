@@ -36,6 +36,9 @@ run 45424033530 green). Main's full run 45480710531 then failed only a perf-worl
 **Package 13** (dynamic lights): squash-merged into main 2026-11-26 (branch full run 45609305464 green; see "Package
 13" below, "Decisions for Andre" there).
 
+**Fixes after package 13** (2026-11-26): main's meshing-time failure after the merge (the mesher now skips air), the
+lights scene's limits from three runs, the fly-over save gate over 24 rounds; merged (see "Fixes after package 13").
+
 **Branch cleanup** (2026-11-25, run 45587626867): every merged or finished branch and their log branches deleted; kept
 `main`, `p2-3b`, `test-pack`, `package-13` and the log branches CI reads or whose branch remains.
 
@@ -51,6 +54,60 @@ judged by the new look rule, without the SIFTEC worlds), R (release: laptop benc
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Fixes after package 13 (2026-11-26, branch `fix-lights-flyover`)
+
+**Status:** merged to main as a squash of `fix-lights-flyover` (branch full run 45733573674 (`de6e42f`) green).
+
+**Main after package 13's merge.** Package 13 was squash-merged as `4212394` (the branch was already on main's head, so
+the rebase changed nothing). Main's full run 45710512593 failed one check: in `quicksilver-2p-old`'s
+`water_glass_oit` session, Quicksilver's median meshing time per section (like for like with vanilla's compiler, same
+sections, same thread) was 3.488 ms against vanilla's 3.487 ms. Not GitHub infrastructure, so no `[rerun]`; the limit
+was not touched. The check's own profile showed why: Quicksilver spent about 3 ms on a section's block loop whatever the
+section held (one block or 3,975), where vanilla's compiler took 0.15 ms for a near-empty section; every air block went
+through every test of the loop. **Fix:** air goes straight to the next block (`MeshWorker.compile`; air is not solid, has
+no block entity, no fluid and no model, so nothing else changes; CI's mesher check still compares every mesh with
+vanilla's byte for byte). The same gate afterwards (Quicksilver / vanilla median ms, water_glass_oit): in run 45733573674 full 4.57 / 6.39 ms, old-GPU 3.96 / 4.62, Vulkan 4.29 / 5.53, old-GPU two-phase 6.78 / 8.19 (0.72-0.86x; was 1.0003x on the failing two-phase run).
+
+**Lights scene limits from three full runs** (package 13 took them from one run; `docs/ci-limits.md` asks for three).
+Samples from main's run 45710512593 and the branch's runs 45711106775 and 45723109783:
+- light shots against their references: 12 samples a shot (4 profiles x 3 runs), largest 0.0002% (`all_fancy`,
+  Vulkan). Limits by the rule (twice the largest, at least 0.001%): 0.001% each, **unchanged**; references unchanged.
+- the scene's own shot against vanilla: 0.0 everywhere (Quicksilver profiles, measure runs, vanilla a/b). Approximation
+  limit 0.001%, noise limit 0.25%: the rule's floors, **unchanged**.
+- count baselines: the highest of the three runs (old-GPU over both old-GPU runs). Changed: old-GPU draw calls 15.73 ->
+  15.67, heap 265.37 -> 265.68 MB, direct 4.06 -> 5.81 MB; full heap 265.88 -> 265.73 MB; Vulkan heap 265.39 -> 265.79
+  MB, direct 4.04 -> 5.27 MB (direct buffers are gated against vanilla in the same run; the baseline is only a ceiling).
+
+**Fly-over save gate** (1.026 once in package 13's run 45601639737 on unchanged server code). The gated number is JFR
+samples of the server thread in chunk saving, about 400 a run: in main's run on `69ba515` the per-round ratios spread
+6.2%, which is the samples' own Poisson noise (7.2%). Package 9 had already made the gate the trimmed geometric mean of 9
+rounds; that still moved by about 2.3% between runs of the same code, with the typical value about 0.94, so a run past
+1.00 came about once in 40. As package 9 did for the other chunk gates, more data instead of a looser limit: **24
+rounds** (was 9), eight on each of three runners (workflow groups `flyover-1`/`-2`/`-3`, `ROUND_FROM`/`ROUND_TO` in
+`ci/server/chunks-run.sh`; every round's vanilla and Quicksilver runs still on one runner, odd rounds vanilla first; the
+verify run in the first group). Expected spread about 1.3%. Limit unchanged (below 1.00).
+
+| run | fly-over save gate (trimmed geometric mean of 24) | per-round ratios |
+|---|---|---|
+| 45711106775 (`2de1fcc`) | 0.941 | 0.83-1.07 |
+| 45723109783 (`1a4d5cf`) | under 1.00 (server suite green) | not kept (its log branch was overwritten) |
+| 45733573674 (`de6e42f`) | 0.954 | 0.84-1.08 |
+
+**Runs:** 45711106775 (fly-over change) green; 45723109783 (mesher fix) failed only the upload gate: the old-GPU two-phase fly-through's slowest frame took 21.6 ms less CPU wait against 20 ms, an arena grow (22.7 ms; 1-3 ms in the other runs of these days, upload code unchanged); 45733573674 (lights limits) **green**, that frame 8.0 ms. The upload gate is left as it is (package 9 already noted it may need package 9's treatment); see decision 4.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **The mesher skips air before its other tests** (main's meshing-time failure). Alternative: change the gate to the
+   median of per-section ratios (Quicksilver is about 0.8x vanilla on dense sections and 1.4x on near-empty ones; the
+   median of medians lands between the two groups). Switch: the `isAir` line in `MeshWorker.compile`.
+2. **Fly-over: 24 rounds over three runners.** Alternatives: a longer fly-over (more samples a round, one runner, the
+   saved terrain would need to be larger), or counting the save time with a timer instead of JFR samples (exact, but a
+   different measure). Switch: `chunks-core.txt` (rounds) and the workflow's `server-chunks` matrix.
+3. **Lights baselines rose slightly** (heap by up to 0.4 MB, direct-buffer ceilings by up to 1.75 MB) as the rule takes
+   the highest of three runs; draw calls went down. Switch: `ci/baselines/core-*.json`, `lights`.
+4. **The upload gate's one failure (an arena grow at 22.7 ms on one runner) was not changed:** one failure in four runs,
+   on unchanged upload code, passing again on the next run. Alternative: package 9's treatment (gate a statistic of
+   several frames or rounds). Switch: `ci/upload-compare.py`.
 
 ## Package 13: dynamic lights (merged, squash of `package-13`)
 
