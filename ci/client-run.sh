@@ -30,7 +30,7 @@ loader=$(grep '^loader_version' gradle.properties | sed 's/.*= *//')
 fapi=$(grep '^fabric_version' gradle.properties | sed 's/.*= *//')
 suitefile=src/main/resources/quicksilver/scenes/$SUITE.json
 
-case "$RUN" in quicksilver-*|measure-*|speed-*|preset-*) qs=1;; *) qs=0;; esac
+case "$RUN" in quicksilver-*|measure-*|speed-*|preset-*|far-*) qs=1;; *) qs=0;; esac
 # package 9: preset-low-old / preset-balanced-old / preset-quality-old: Quicksilver on the old-GPU profile (the laptop's
 # plain path) with "preset=<preset>" in its config file, in PRESET_SCENES only, shots only (no bench, so none of the
 # verify* checks, whose results go to the bench: only the upload-queue log the driver waits on); ci/preset-compare.py
@@ -73,9 +73,15 @@ elif [ $measure = 1 ]; then
   client_jvm="$client_jvm -Dquicksilver.ci.measureOnly=true"
   echo "measure run JVM properties:$client_jvm"
 elif [ -n "$preset" ]; then
-  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true"
+  # package 12: the Quality preset sets far terrain to 96 chunks; the preset runs are compared with vanilla, so far terrain
+  # is set but not drawn there (it has its own shots, ciFarSteps)
+  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.ci.farTerrainOff=true"
   [ "$preset" = balanced ] && client_jvm="$client_jvm -Dquicksilver.ci.screenTest=true"
   echo "preset run JVM properties:$client_jvm"
+elif [ "${RUN#far-}" != "$RUN" ]; then
+  # package 12: the far suite's runs (a fresh Terralith or superflat world): only the upload log the shots wait on
+  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true"
+  echo "far run JVM properties:$client_jvm"
 elif [ $qs = 1 ]; then
   # package 8: the animation module logs each animated sprite's first use outside terrain, with where it came from
   # package 4b: the terrain upload budget logs when meshes wait for a later frame and when it has caught up, so
@@ -101,9 +107,29 @@ else
   echo "eula=true" > server/eula.txt
 fi
 if [ $qs = 1 ]; then cp dist/quicksilver.jar server/mods/; fi
+# package 12b: a server shares its seed with far terrain only if its owner opts in (far-terrain-share=on; off by default).
+# Every Quicksilver server in CI opts in, so the far steps sample the world's own generator, except far-default's (a
+# superflat world like far-flat's), which keeps the default: ci/far-compare.py checks that it sends no seed and that its
+# client draws real chunks only.
+if [ $qs = 1 ] && [ "$RUN" != far-default ]; then
+  mkdir -p server/config
+  printf '\nfar-terrain-share=on\n' >> server/config/quicksilver.properties
+  echo "server: far-terrain-share=on"
+fi
+# package 12: the far suite's runs play a fresh world (seed 12345) the server generates as it starts: Terralith's
+# (far-terralith: Terralith and Lithostitched on the server, as the Terralith server suite has them) or a superflat one
+# (far-flat)
+if [ "$SUITE" = far ]; then
+  rm -rf server/world
+  if [ "$RUN" = far-terralith ]; then
+    packset=terralith
+    PACK_CHECK=partial PACK_REPORT="$OUT/pack-sha256-terralith.txt" bash ci/pack-fetch.sh terralith /tmp/terralith-jars || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; }
+    cp /tmp/terralith-jars/*.jar server/mods/
+  fi
+fi
 # package A: the Create + Flywheel smoke job (suite create): Create Fly, which carries Flywheel, on the server and the
 # client (the client gets every server jar but Fabric API, below)
-packset=core
+packset=${packset:-core}
 if [ "$SUITE" = create ]; then
   packset=create
   PACK_CHECK=partial PACK_REPORT="$OUT/pack-sha256.txt" bash ci/pack-fetch.sh create /tmp/create-jars || { echo "could not fetch Create Fly, or it changed (see above)"; exit 1; }
@@ -137,7 +163,8 @@ fi
 bash ci/pack-check.sh server/mods $packset complete "$OUT/pack-sha256.txt" || { echo "the pack changed (see above)"; exit 1; }
 cd server
 # a view distance that covers the 12-chunk fly-through and no console echo in chat
-printf 'level-seed=12345\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
+leveltype=""; { [ "$RUN" = far-flat ] || [ "$RUN" = far-default ]; } && leveltype='level-type=minecraft\:flat\n'
+printf "${leveltype}"'level-seed=12345\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
 ls -l mods
 rm -f in.fifo; mkfifo in.fifo
 (java -Xmx3G -jar server.jar --nogui < in.fifo > server.log 2>&1; echo "EXIT $?" >> server.log) &

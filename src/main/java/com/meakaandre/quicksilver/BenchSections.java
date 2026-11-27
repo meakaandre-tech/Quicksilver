@@ -74,6 +74,9 @@ final class BenchSections {
         // package 13: dynamic lights (off by default)
         BenchModules.register(BenchModules.section("dynamicLights", com.meakaandre.quicksilver.lights.DynamicLights::startWindow,
             f -> com.meakaandre.quicksilver.lights.DynamicLights.json(), com.meakaandre.quicksilver.lights.DynamicLights::line));
+        // package 12: far terrain (off by default)
+        BenchModules.register(BenchModules.section("farTerrain", com.meakaandre.quicksilver.far.FarTerrain::startWindow,
+            f -> com.meakaandre.quicksilver.far.FarTerrain.json(), com.meakaandre.quicksilver.far.FarTerrain::line));
         // package 11: the pixel art look (off by default)
         BenchModules.register(BenchModules.section("pixelArt", com.meakaandre.quicksilver.look.PixelArt::startWindow,
             f -> com.meakaandre.quicksilver.look.PixelArt.json(), com.meakaandre.quicksilver.look.PixelArt::line));

@@ -68,6 +68,43 @@ public final class QuicksilverClient implements ClientModInitializer {
                         }))));
             }
         });
+        // package 12: far terrain (off by default) and its command (/quicksilver far status | probe <x> <z>)
+        com.meakaandre.quicksilver.far.FarTerrain.init();
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> {
+            for (String name : new String[] {"quicksilver", "qs"}) {
+                dispatcher.register(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal(name).then(
+                    net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("far")
+                        .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("status").executes(c -> {
+                            String line = com.meakaandre.quicksilver.far.FarTerrain.status();
+                            LOG.info("Quicksilver far terrain status: {}", line);
+                            c.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Quicksilver] far terrain: " + line));
+                            return 1;
+                        }))
+                        .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("mark")
+                            .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("on").executes(c -> {
+                                com.meakaandre.quicksilver.terrain.FarLayer.mark(true);
+                                return 1;
+                            }))
+                            .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("off").executes(c -> {
+                                com.meakaandre.quicksilver.terrain.FarLayer.mark(false);
+                                return 1;
+                            })))
+                        .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("wait").executes(c -> {
+                            com.meakaandre.quicksilver.far.FarTerrain.waitSettled();
+                            return 1;
+                        }))
+                        .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("probe")
+                            .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("x", com.mojang.brigadier.arguments.IntegerArgumentType.integer())
+                                .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("z", com.mojang.brigadier.arguments.IntegerArgumentType.integer()).executes(c -> {
+                                    int x = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "x");
+                                    int z = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "z");
+                                    String line = com.meakaandre.quicksilver.far.FarTerrain.probe(x, z);
+                                    LOG.info("Quicksilver far terrain probe {} {}: {}", x, z, line);
+                                    c.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Quicksilver] far terrain at " + x + " " + z + ": " + line));
+                                    return 1;
+                                }))))));
+            }
+        });
         if (Boolean.getBoolean("quicksilver.ci.screenTest")) {
             ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> com.meakaandre.quicksilver.settings.ScreenTest.register(dispatcher));
             ClientTickEvents.END_CLIENT_TICK.register(com.meakaandre.quicksilver.settings.ScreenTest::tick);

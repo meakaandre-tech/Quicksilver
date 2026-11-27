@@ -123,6 +123,17 @@ public final class Speed {
     public static final Setting PIXEL_OUTLINES = add(new Setting("option.pixel-outlines", false, false, 1, 0, 1, "",
         "pixel art: a dark one-pixel outline on exposed block edges"));
 
+    /**
+     * Package 12: far terrain (design doc, "Far terrain (like Ecstatic)"): 0 off, else how far it reaches, in chunks
+     * ({@link #FAR_TERRAIN_CHOICES}). Sampled from the dimension's own noise, biomes and surface rules on background
+     * threads, never generating or loading chunks; real chunks replace the samples once they exist. Off by default, in
+     * Low-end and Balanced; 96 in Quality. {@code far/FarTerrain}.
+     */
+    public static final Setting FAR_TERRAIN = add(new Setting("option.far-terrain", false, false, 0, 32, 128, "chunks",
+        "terrain beyond the render distance out to this many chunks (32, 64, 96 or 128), sampled from the world's own generator and drawn simply (no structures); real chunks replace it once they exist"));
+    /** Package 12: the far terrain distances (chunks); 0 is off. */
+    public static final int[] FAR_TERRAIN_CHOICES = {0, 32, 64, 96, 128};
+
     /** Package 11: the pixel art look's own choices, which no preset sets (a preset's look is Normal). */
     public static boolean presetFree(Setting s) {
         return s == PIXEL_SIZE || s == PIXEL_DITHER || s == PIXEL_OUTLINES;
@@ -216,6 +227,16 @@ public final class Speed {
             if (v.equals("0") || v.equalsIgnoreCase("false")) return 0;
             return null;
         }
+        if (s.key.equals("option.far-terrain")) {
+            if (v.equalsIgnoreCase("off") || v.equalsIgnoreCase("false")) return 0;
+            try {
+                int n = Integer.parseInt(v);
+                for (int c : FAR_TERRAIN_CHOICES) if (c == n) return n;
+                return null;
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
         if (s.key.equals("option.pixel-size")) {
             for (int i = 1; i <= 3; i++) if (v.equalsIgnoreCase(PIXEL_SIZE_NAMES[i])) return i;
             try {
@@ -257,6 +278,7 @@ public final class Speed {
         if (locked) return "switches stay off in a measure run";
         boolean offValue = (value == 0 && s != PIXEL_SIZE) || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
         if (!offValue && (value < s.min || value > s.max)) return "takes " + s.min + "-" + s.max + (s.unit.isEmpty() ? "" : " " + s.unit);
+        if (s == FAR_TERRAIN && parse(s, String.valueOf(value)) == null) return "takes off, 32, 64, 96 or 128 chunks";
         if (s.value == value) return null;
         s.value = value;
         QuicksilverClient.LOG.info("Quicksilver speed: {} = {}", s.key, show(s));
@@ -286,6 +308,7 @@ public final class Speed {
             if (value == 0 && s.key.equals(PARTICLE_DENSITY.key)) return "particle density takes 1-100";
             boolean offValue = value == 0 || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
             if (!offValue && (value < s.min || value > s.max)) return s.key + " takes " + s.min + "-" + s.max;
+            if (s == FAR_TERRAIN && parse(s, String.valueOf(value)) == null) return s.key + " takes off, 32, 64, 96 or 128";
         }
         boolean remesh = false;
         StringBuilder log = new StringBuilder();

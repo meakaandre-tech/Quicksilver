@@ -76,6 +76,8 @@ public final class Settings {
         low.put(Speed.DYNAMIC_LIGHTS.key, 0);
         // package 11: the look is Normal in every preset; pixel art's own choices (size, dithering, outlines) are in none
         low.put(Speed.LOOK.key, 0);
+        // package 12: far terrain off in Low-end and Balanced (the default), 96 chunks in Quality
+        low.put(Speed.FAR_TERRAIN.key, 0);
         PRESETS.put(Preset.LOW_END, low);
         // Balanced (the default): the invisible approximations only, every visible option off (Quicksilver's defaults)
         Map<String, Integer> balanced = new LinkedHashMap<>();
@@ -84,7 +86,7 @@ public final class Settings {
         // Quality: the approximations off too (every terrain section inside the fog drawn, translucent terrain in vanilla's
         // exact order)
         Map<String, Integer> quality = new LinkedHashMap<>();
-        for (Speed.Setting s : Speed.all().values()) if (!Speed.presetFree(s)) quality.put(s.key, s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : 0);
+        for (Speed.Setting s : Speed.all().values()) if (!Speed.presetFree(s)) quality.put(s.key, s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : s == Speed.FAR_TERRAIN ? 96 : 0);
         PRESETS.put(Preset.QUALITY, quality);
         for (Map<String, Integer> m : PRESETS.values()) {
             java.util.Set<String> keys = new java.util.LinkedHashSet<>();

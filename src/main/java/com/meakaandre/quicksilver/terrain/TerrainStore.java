@@ -252,7 +252,9 @@ public final class TerrainStore {
     /** Live meshes: index 0 solid, 1 cutout, 2 translucent. */
     static final Map<CompiledSectionMesh, Entry[]> ENTRIES = new IdentityHashMap<>();
     static final int LAYERS = 3, TRANSLUCENT = 2;
-    private static final String[] LAYER_NAMES = {"solid", "cutout", "translucent"};
+    /** Package 12: far terrain's tiles have arenas of their own layer (not a section layer: no region, no entry). */
+    static final int FAR = 3;
+    private static final String[] LAYER_NAMES = {"solid", "cutout", "translucent", "far"};
     /** Meshes whose translucent layer Quicksilver held and which vanilla has let go of since: a late sort of one is dropped. */
     private static final Set<CompiledSectionMesh> RELEASED_TRANSLUCENT = java.util.Collections.newSetFromMap(new WeakHashMap<>());
     private static final List<Staged> STAGED = new ArrayList<>();
@@ -814,8 +816,66 @@ public final class TerrainStore {
         }
     }
 
+    // ---- package 12: far terrain tiles (FarLayer), in arenas of the FAR layer
+
+    /** One far tile's vertices in a far arena. */
+    record FarPart(Arena arena, TlsfAllocator.Allocation allocation, int vertices) {
+        long offset() {
+            return allocation.getOffsetFromHeap();
+        }
+    }
+
+    /** Copies a far tile's vertices (stride {@code stride}) into a far arena: the first with room, or a new one. Render thread. */
+    static FarPart farCopy(GpuDevice device, CommandEncoder encoder, ByteBuffer data, int vertices, int stride) {
+        synchronized (LOCK) {
+            long bytes = data.remaining();
+            TlsfAllocator.Allocation a = null;
+            Arena arena = null;
+            for (int i = 0; a == null && i < ARENAS.size(); i++) {
+                Arena c = ARENAS.get(i);
+                if (c.layer != FAR || c.closed) continue;
+                a = c.allocator.allocate(bytes, stride);
+                if (a != null) arena = c;
+            }
+            if (a == null) {
+                arena = newArena(device, FAR);
+                a = arena.allocator.allocate(bytes, stride);
+                if (a == null) throw new IllegalStateException("a fresh far terrain arena refused " + bytes + " bytes");
+            }
+            try {
+                arena.ensure(encoder, a.getOffsetFromHeap() + a.getSize());
+                encoder.writeToBuffer(arena.buffer.slice(a.getOffsetFromHeap(), data.remaining()), data);
+            } catch (Throwable t) {
+                arena.allocator.free(a);
+                throw t;
+            }
+            arena.used += a.getSize();
+            return new FarPart(arena, a, vertices);
+        }
+    }
+
+    /** Frees a far tile's vertices; an emptied far arena closes (render thread). */
+    static void farFree(FarPart p) {
+        synchronized (LOCK) {
+            if (p.arena.closed) return;
+            p.arena.used -= p.allocation.getSize();
+            p.arena.allocator.free(p.allocation);
+            closeIfEmpty(p.arena);
+        }
+    }
+
+    /** The far arenas now (render thread, for the draw). */
+    static List<Arena> farArenas() {
+        synchronized (LOCK) {
+            List<Arena> out = new ArrayList<>();
+            for (Arena a : ARENAS) if (a.layer == FAR && !a.closed) out.add(a);
+            return out;
+        }
+    }
+
     private static void closeIfEmpty(Arena a) {
-        if (!a.closed && a.allocator.isCompletelyFree() && ARENAS.stream().anyMatch(o -> o != a && o.layer == a.layer)) {
+        // package 12: an empty far arena always goes (far terrain switched off leaves no GPU memory behind)
+        if (!a.closed && a.allocator.isCompletelyFree() && (a.layer == FAR || ARENAS.stream().anyMatch(o -> o != a && o.layer == a.layer))) {
             // an empty arena goes (closed on the render thread before the next frame's draws)
             a.closed = true;
             ARENAS.remove(a);

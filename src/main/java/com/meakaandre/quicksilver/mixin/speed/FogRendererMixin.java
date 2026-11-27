@@ -20,6 +20,12 @@ public abstract class FogRendererMixin {
     @Shadow
     private static boolean fogEnabled;
 
+    /** Package 12: while far terrain draws, the render-distance fog ends at the far distance (before vanilla writes it). */
+    @Inject(method = "updateBuffer(Lnet/minecraft/client/renderer/fog/FogData;)V", at = @At("HEAD"))
+    private void quicksilver$farFog(FogData data, CallbackInfo ci) {
+        com.meakaandre.quicksilver.far.FarTerrain.fog(data);
+    }
+
     @Inject(method = "updateBuffer(Lnet/minecraft/client/renderer/fog/FogData;)V", at = @At("TAIL"))
     private void quicksilver$fog(FogData data, CallbackInfo ci) {
         SpeedTerrain.fogWritten(fogEnabled, data.renderDistanceStart, data.renderDistanceEnd, data.environmentalStart, data.environmentalEnd,

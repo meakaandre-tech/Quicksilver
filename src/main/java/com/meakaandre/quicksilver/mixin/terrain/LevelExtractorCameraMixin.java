@@ -21,5 +21,7 @@ public abstract class LevelExtractorCameraMixin {
     private void quicksilver$camera(Camera camera, Frustum frustum, DeltaTracker deltaTracker, LevelRenderState state, CallbackInfo ci) {
         var p = camera.position();
         TerrainRenderer.camera(p.x, p.y, p.z);
+        // package 12: far terrain leaves out its tiles off screen
+        com.meakaandre.quicksilver.terrain.FarLayer.view(camera);
     }
 }

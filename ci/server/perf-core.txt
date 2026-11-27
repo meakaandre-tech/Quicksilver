@@ -4,7 +4,11 @@
 # random-tick run (random ticks, precipitation, natural spawning); run: the scripted run (machines, crops, animals,
 # villagers, items).
 mobs    scripted-run-core-mobs.txt    4800  world
-random  scripted-run-core-random.txt  6000  -
+# package 12b: random runs 24000 ticks (was 6000: the first 6000 were mostly the JIT compiling the scene's code, 1.1-1.3
+# ms a tick in the first 500 against 0.1-0.3 later); the harness's random-tick pins no longer use ThreadLocals, whose
+# lookups cost more and varied from JVM to JVM with Quicksilver's own ThreadLocals in the same map (docs/ci-limits.md,
+# "Package 12b"). Gated on the whole run, as before.
+random  scripted-run-core-random.txt  24000 -
 run     scripted-run-core.txt         4800  -
 # P2-3: factory: vanilla hoppers (moving items, waiting with nothing to take, in rings), furnaces fed by hoppers,
 # comparators on chests; village: villagers with beds, job sites and a bell, and iron golems (brains, sensors,

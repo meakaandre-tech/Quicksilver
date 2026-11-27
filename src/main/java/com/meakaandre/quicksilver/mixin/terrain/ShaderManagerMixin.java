@@ -13,5 +13,6 @@ public abstract class ShaderManagerMixin {
     @Inject(method = "apply", at = @At("TAIL"))
     private void quicksilver$reloaded(CallbackInfo ci) {
         Terrain.resourcesReloaded();
+        com.meakaandre.quicksilver.far.FarTerrain.resourcesReloaded();
     }
 }

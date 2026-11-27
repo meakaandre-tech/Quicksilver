@@ -20,9 +20,15 @@ public final class Pins {
     /** Sections at or above this block y random-tick in the random-tick run; MIN_VALUE: the pin is off. */
     public static volatile int randomTickMinY = Integer.MIN_VALUE;
 
-    /** The chunk being ticked and its own random (set at the head of ServerLevel#tickChunk). */
-    public static final ThreadLocal<RandomSource> CHUNK_RANDOM = new ThreadLocal<>();
-    public static final ThreadLocal<LevelChunk> CHUNK = new ThreadLocal<>();
+    /**
+     * The chunk being ticked and its own random (set at the head of ServerLevel#tickChunk, cleared at its return; only
+     * the server thread ticks chunks, and tickChunk doesn't nest). Package 12b: plain fields, not ThreadLocals: a lookup
+     * in the server thread's ThreadLocal map, several per random tick, cost more with Quicksilver loaded (its own
+     * ThreadLocals in the same map: misses up to 4.3% of the samples against vanilla's 1.9%), the harness's cost, not
+     * the game's, which moved the perf job's random-tick scene against vanilla.
+     */
+    public static RandomSource chunkRandom;
+    public static LevelChunk chunk;
 
     /** What each hook did over the run: random positions drawn, random ticks given the pinned random, sections let
      * through and held still, precipitation let through and held. */

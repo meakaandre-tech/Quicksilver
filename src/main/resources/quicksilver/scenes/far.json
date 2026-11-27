@@ -1,0 +1,139 @@
+{
+  "suite": "far",
+  "requiresMod": null,
+  "ciOwnCheck": "ci/far-compare.py",
+  "description": "Package 12: far terrain on worlds CI's core suite doesn't have: Terralith's overworld (run far-terralith: a fresh world with Terralith on the server) and a superflat world (run far-flat: no noise-based generator, so far terrain comes from real chunks only). Quicksilver on the server and the client in both; seed 12345. Far shots against stored Quicksilver references (ci/references/far, ci/far-limits.json).",
+  "preamble": [
+    "gamerule advance_time false",
+    "gamerule advance_weather false",
+    "gamerule send_command_feedback false",
+    "gamerule spawn_wandering_traders false",
+    "gamemode spectator @a",
+    "time set 6000",
+    "weather clear"
+  ],
+  "scenes": [
+    {
+      "id": "far_land",
+      "title": "Terralith's overworld from 230 high above the world's centre, looking down at 35 degrees to the north-west so real terrain, the ocean far below (sections vanilla doesn't hand over: far terrain fills them) and the band show: far terrain off, on, and its hand-over band marked",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-flat",
+        "far-default"
+      ],
+      "ciSkipReason": "the Terralith run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 135 35"
+      ],
+      "ciNoteWait": "a fresh Terralith world: the server is still generating the chunks around the camera for a while after the first tp (run 45863980548 shot them half loaded: a hole where neither real chunks nor far terrain draw, as in vanilla while loading), so the steps wait 60 s first",
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 135 35",
+        "#wait 60",
+        "#client quicksilver far status",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#client quicksilver far status",
+        "#mark on",
+        "#shot far_mark",
+        "#mark off",
+        "#probe 900 0",
+        "#probe 30 0",
+        "#probe 60 0",
+        "#probe 90 0",
+        "#probe 60 30",
+        "#far off"
+      ],
+      "ciViewNote": "package 12b: looking north-west (yaw 135), not east: from the east view a 100-block real cliff stood inside the hand-over band, so the seam check compared the island's top just beyond the band with the ocean just nearer it (a step of about 120 in those columns with no hole at all); of seven other directions shot in run 45939071469, north-west keeps real terrain, ocean and mountains in view and its band crosses no cliff (docs/ci-limits.md, Package 12b)"
+    },
+    {
+      "id": "far_nether",
+      "title": "Terralith's nether at render distance 2, from an air pocket cleared over the real chunks (so the view reaches past them), looking east: far terrain off and on",
+      "renderDistance": 2,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-flat",
+        "far-default"
+      ],
+      "ciSkipReason": "the Terralith run's scene",
+      "ciNoteNether": "the nether's real terrain walls the view in within a few blocks almost everywhere, so its far terrain is only seen across big caverns; the pocket (80 x 30 x 80 blocks of air over the client's 5 x 5 chunks, 32,000 blocks a fill) stands in for one",
+      "setup": [
+        "execute in minecraft:the_nether run tp @a 0.5 52 0.5 -90 12"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:the_nether run tp @a 0.5 52 0.5 -90 12",
+        "#wait 8",
+        "execute in minecraft:the_nether run fill -32 38 -32 47 42 47 minecraft:air",
+        "execute in minecraft:the_nether run fill -32 43 -32 47 47 47 minecraft:air",
+        "execute in minecraft:the_nether run fill -32 48 -32 47 52 47 minecraft:air",
+        "execute in minecraft:the_nether run fill -32 53 -32 47 57 47 minecraft:air",
+        "execute in minecraft:the_nether run fill -32 58 -32 47 62 47 minecraft:air",
+        "execute in minecraft:the_nether run fill -32 63 -32 47 67 47 minecraft:air",
+        "#wait 6",
+        "execute in minecraft:the_nether run tp @a 0.5 52 0.5 -90 12",
+        "#wait 4",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#probe 300 0",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_flat",
+      "title": "A superflat world: far terrain from real chunks only (none beyond what the client has seen; then, after a ring of visits 160 blocks out, the land seen, with the fog moved out to where every chunk was seen)",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-terralith"
+      ],
+      "ciSkipReason": "the superflat run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 -40 0.5 -90 10"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 -40 0.5 -90 10",
+        "#wait 6",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot far_off",
+        "#far 96",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot far",
+        "#probe 600 0",
+        "execute in minecraft:overworld run tp @a 160.5 -40 0.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 113.5 -40 113.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 0.5 -40 160.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a -113.5 -40 113.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a -160.5 -40 0.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a -113.5 -40 -113.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 0.5 -40 -160.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 113.5 -40 -113.5 -90 10",
+        "#wait 6",
+        "execute in minecraft:overworld run tp @a 400.5 -40 0.5 -90 10",
+        "#wait 10",
+        "execute in minecraft:overworld run tp @a 0.5 -40 0.5 -90 10",
+        "#wait 12",
+        "#far 96",
+        "#probe 400 0",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot far_seen",
+        "execute in minecraft:the_nether run tp @a 0.5 100 0.5 -90 10",
+        "#wait 15",
+        "#client quicksilver far status",
+        "#far off"
+      ],
+      "ciNoteAnimals": "animals are removed right before each shot: superflat's passive mobs wander between runs (0.23% of the off shot in run 45873928148)"
+    }
+  ]
+}

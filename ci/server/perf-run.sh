@@ -46,9 +46,9 @@ keep_world() { # world_dir dest (as server-run.sh)
    cp level.dat "$2/" 2>/dev/null)
 }
 
-# one run: side (vanilla|quicksilver) round scene script ticks keep(world|-) jfr(0|1)
+# one run: side (vanilla|quicksilver) round scene script ticks keep(world|-) jfr(0|1) steady(0|first steady tick)
 one() {
-  local side=$1 round=$2 scene=$3 script=$4 ticks=$5 keep=$6 jfr=$7
+  local side=$1 round=$2 scene=$3 script=$4 ticks=$5 keep=$6 jfr=$7 steady=${8:-0}
   local dir="$OUT/$scene/$side$round"
   mkdir -p "$dir"
   rm -f "$srv/mods/quicksilver.jar"
@@ -64,9 +64,9 @@ one() {
   fi
   local t0=$(date +%s)
   (cd "$srv" && timeout 1800 java -Xmx3G -Dmax.bg.threads=1 -Dci.harness.out="$dir" -Dci.harness.run="$dir/script.txt" \
-     -Dci.harness.ticks="$ticks" "${extra[@]}" -jar server.jar --nogui < /dev/null > "$dir/server.log" 2>&1
+     -Dci.harness.ticks="$ticks" -Dci.harness.steadyFrom="$steady" "${extra[@]}" -jar server.jar --nogui < /dev/null > "$dir/server.log" 2>&1
    echo "EXIT $?" >> "$dir/server.log")
-  local j=$(python3 -c "import json,sys; j=json.load(open(sys.argv[1])); print(j.get('msptAvg'), j.get('msptP50'), j.get('msptP99'), j.get('error',''))" "$dir/ci-harness-result.json" 2>/dev/null)
+  local j=$(python3 -c "import json,sys; j=json.load(open(sys.argv[1])); print(j.get('msptAvg'), j.get('msptP50'), j.get('msptP99'), 'steady', j.get('msptAvgSteady', '-'), j.get('error',''))" "$dir/ci-harness-result.json" 2>/dev/null)
   echo "$scene $side r$round: mspt avg/p50/p99 $j ($(( $(date +%s) - t0 )) s)"
   grep -q 'CI HARNESS RUN DONE' "$dir/server.log" || { echo "  did not finish:"; tail -n 5 "$dir/server.log"; }
   case "$keep" in world|world-report) keep_world "$srv/world" "$dir/world";; esac
@@ -82,16 +82,18 @@ one() {
   rm -rf "$srv/world" "$srv/quicksilver" "$srv/crash-reports"
 }
 
-while read -r scene script ticks keep; do
+while read -r scene script ticks keep steady; do
   case "$scene" in ''|'#'*) continue;; esac
+  # package 12b: an optional fifth column, steady=N: the gate takes each run's MSPT from tick N on (msptAvgSteady)
+  case "${steady:-}" in steady=*) steady=${steady#steady=};; *) steady=0;; esac
   if [ -n "${SCENES:-}" ]; then case " $SCENES " in *" $scene "*) ;; *) continue;; esac; fi
   echo "== scene $scene ($script, $ticks ticks sprinting, keep: $keep)"
   for r in 1 2 3 4 5 6 7; do
     if [ $((r % 2)) = 1 ]; then first=vanilla; second=quicksilver; else first=quicksilver; second=vanilla; fi
-    one $first $r "$scene" "$script" "$ticks" "$keep" 0
-    one $second $r "$scene" "$script" "$ticks" "$keep" 0
+    one $first $r "$scene" "$script" "$ticks" "$keep" 0 "$steady"
+    one $second $r "$scene" "$script" "$ticks" "$keep" 0 "$steady"
   done
-  one quicksilver 8 "$scene" "$script" "$ticks" "$keep" 1
-  one vanilla 8 "$scene" "$script" "$ticks" "$keep" 1
+  one quicksilver 8 "$scene" "$script" "$ticks" "$keep" 1 "$steady"
+  one vanilla 8 "$scene" "$script" "$ticks" "$keep" 1 "$steady"
 done < "$spec"
 echo "perf done"

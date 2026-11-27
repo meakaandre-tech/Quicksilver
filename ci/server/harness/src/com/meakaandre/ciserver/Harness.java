@@ -82,6 +82,9 @@ public final class Harness implements ModInitializer {
     private static final int SETTLE_TICKS = 200;
     private static long tickStart = 0, startingAt = 0, startedAt = 0;
     private static long[] tickNanos = new long[0];
+    // package 12b (the perf job's flake): JIT compile time and GC at the run's start, and both at each 500-tick block's end
+    private static long jitAtStart, gcCountAtStart, gcMsAtStart;
+    private static final JsonArray BLOCKS = new JsonArray();
     private static final JsonObject result = new JsonObject();
 
     @Override
@@ -658,6 +661,9 @@ public final class Harness implements ModInitializer {
                 renumberTicks(server);
                 tickNanos = new long[ticks];
                 tick = 0;
+                jitAtStart = jitMs();
+                gcCountAtStart = gc(false);
+                gcMsAtStart = gc(true);
                 stage = Stage.RUNNING;
                 // P2-4: the run's wall-clock window, for the chunk scenes' recordings (ci/server/chunks-jfr.py)
                 result.addProperty("runStartEpochMs", System.currentTimeMillis());
@@ -667,6 +673,7 @@ public final class Harness implements ModInitializer {
             case RUNNING -> {
                 // the first tick after unfreezing is the run's tick 0
                 tickNanos[tick] = dt;
+                if ((tick + 1) % 500 == 0) block(tick + 1);
                 CiTrain.tick(server, tick);
                 spawn(server);
                 if (!reports.isEmpty() && (tick <= 3 || tick == 10 || tick == 20 || tick % 100 == 0 || tick == ticks - 1)) report(server);
@@ -688,6 +695,20 @@ public final class Harness implements ModInitializer {
                     result.addProperty("msptP99", round(s[Math.min(s.length - 1, (int) Math.ceil(s.length * 0.99) - 1)] / 1e6));
                     result.addProperty("msptMax", round(s[s.length - 1] / 1e6));
                     result.addProperty("ticksOver50ms", over);
+                    // package 12b: where in the run the time went (per 500 ticks), and the JIT and GC during it
+                    result.add("msptBlocks", BLOCKS);
+                    // package 12b: the perf job's steady part of a run (-Dci.harness.steadyFrom=N: the ticks from N on,
+                    // once the JIT has compiled the scene's code; the ticks before it are its warm-up)
+                    int steadyFrom = Integer.getInteger("ci.harness.steadyFrom", 0);
+                    if (steadyFrom > 0 && steadyFrom < tickNanos.length) {
+                        long ss = 0;
+                        for (int k = steadyFrom; k < tickNanos.length; k++) ss += tickNanos[k];
+                        result.addProperty("steadyFrom", steadyFrom);
+                        result.addProperty("msptAvgSteady", round(ss / 1e6 / (tickNanos.length - steadyFrom)));
+                    }
+                    result.addProperty("jitMsDuringRun", jitMs() - jitAtStart);
+                    result.addProperty("gcCountDuringRun", gc(false) - gcCountAtStart);
+                    result.addProperty("gcMsDuringRun", gc(true) - gcMsAtStart);
                     if (CiChunks.active()) slowTicks(tickNanos);
                     CiChunks.result(server, result);
                     heap("heapEndMB");
@@ -1030,5 +1051,36 @@ public final class Harness implements ModInitializer {
         } catch (Exception e) {
             LOG.error("CI HARNESS could not write its result", e);
         }
+    }
+
+    /** Package 12b: one 500-tick block of the run (its MSPT average and median, the JIT time and GC count so far). */
+    private static void block(int end) {
+        int start = end - 500;
+        long[] b = Arrays.copyOfRange(tickNanos, start, end);
+        long sum = 0;
+        for (long v : b) sum += v;
+        Arrays.sort(b);
+        JsonObject o = new JsonObject();
+        o.addProperty("end", end);
+        o.addProperty("avg", round(sum / 1e6 / b.length));
+        o.addProperty("p50", round(b[b.length / 2] / 1e6));
+        o.addProperty("jitMs", jitMs() - jitAtStart);
+        o.addProperty("gc", gc(false) - gcCountAtStart);
+        BLOCKS.add(o);
+    }
+
+    private static long jitMs() {
+        try {
+            var c = ManagementFactory.getCompilationMXBean();
+            return c != null && c.isCompilationTimeMonitoringSupported() ? c.getTotalCompilationTime() : -1;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    private static long gc(boolean ms) {
+        long n = 0;
+        for (var g : ManagementFactory.getGarbageCollectorMXBeans()) n += Math.max(0, ms ? g.getCollectionTime() : g.getCollectionCount());
+        return n;
     }
 }

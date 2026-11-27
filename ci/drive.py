@@ -368,6 +368,56 @@ def main():
                 xdo("key", "d")
                 xdo("keyup", "F3")
                 time.sleep(1)
+        # package 12: far terrain steps, Quicksilver client runs only (the measure runs keep every switch off). Each step is a
+        # server command, "#client <command>", "#wait <s>", or: "#far <chunks>|off" (sets far terrain and, when on, waits
+        # for its "settled" line: every wanted tile made and copied in), "#shot <name>" (a steady shot <scene>.<name>),
+        # "#mark on|off" (the hand-over band painted, for the seam check), "#probe <x> <z>" (what far terrain holds there,
+        # logged). compare.py checks the shots against stored Quicksilver references, the seam, and the probes' lines.
+        if mode == "quicksilver" and os.environ.get("RUN", "").startswith(("quicksilver", "far-")) and sc.get("ciFarSteps"):
+            far_log = []
+            for step in sc["ciFarSteps"]:
+                if step.startswith("#far "):
+                    v = step[5:].strip()
+                    chat(f"quicksilver speed option.far-terrain {v}")
+                    time.sleep(2)
+                    if v != "off":
+                        before = open(latest, errors="replace").read().count("Quicksilver far terrain: settled") if os.path.exists(latest) else 0
+                        t0 = time.time()
+                        chat("quicksilver far wait")
+                        ok = False
+                        while time.time() - t0 < 270:
+                            time.sleep(2)
+                            text = open(latest, errors="replace").read() if os.path.exists(latest) else ""
+                            if text.count("Quicksilver far terrain: settled") > before:
+                                ok = True
+                                break
+                            if text.count("Quicksilver far terrain: not settled") > 0 and time.time() - t0 > 245:
+                                break
+                        far_log.append({"step": step, "settled": ok, "seconds": round(time.time() - t0, 1)})
+                elif step.startswith("#shot "):
+                    name = step[6:].strip()
+                    xdo("keydown", "F3")
+                    xdo("key", "d")
+                    xdo("keyup", "F3")
+                    time.sleep(2)
+                    p = os.path.join(out, "shots", sid + "." + name + ".png")
+                    far_log.append({"step": step, "steady": steady_shot(p)})
+                elif step.startswith("#mark "):
+                    chat(f"quicksilver far mark {step[6:].strip()}")
+                    time.sleep(2)
+                elif step.startswith("#probe "):
+                    chat(f"quicksilver far {step[1:].strip()}")
+                    time.sleep(1.5)
+                elif step.startswith("#client "):
+                    chat(step[8:])
+                    time.sleep(2)
+                else:
+                    send(step)
+            entry["farSteps"] = far_log
+            xdo("keydown", "F3")
+            xdo("key", "d")
+            xdo("keyup", "F3")
+            time.sleep(1)
         # seconds each shot waited for Quicksilver's upload queue; -1: timed out (compare.py fails on it)
         entry["uploadWaits"] = list(WAITS)
         if screen:
@@ -388,6 +438,9 @@ def main():
             # the world meshes again)
             if os.environ.get("RUN", "").startswith("speed-") and sc.get("speedAb"):
                 budget += 120 + 150 * len(sc["speedAb"])
+                # package 12: far terrain's first pass before its first "on" round
+                if any(a.startswith("option.far-terrain") for a in sc["speedAb"]):
+                    budget += 300
             pressed = 0.0
             result = "timeout"
             while time.time() < budget:

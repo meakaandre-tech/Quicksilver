@@ -205,6 +205,7 @@ public final class TerrainRenderer {
         BackFaces.camera(x, y, z);
         com.meakaandre.quicksilver.speed.Speed.camera(x, y, z);
         com.meakaandre.quicksilver.occlusion.GpuOcclusion.camera(x, y, z);
+        com.meakaandre.quicksilver.far.FarTerrain.camera(x, y, z);
     }
 
     static String plainPathName() {
@@ -254,12 +255,30 @@ public final class TerrainRenderer {
         CULLED.clear();
         GpuOcclusion.resetFrame();
         Terrain.beginFrame();
+        // package 12: far terrain's parameters for this frame (nothing drawn unless Quicksilver's terrain draws)
+        try {
+            com.meakaandre.quicksilver.far.FarTerrain.frame(Terrain.drawing());
+        } catch (Throwable t) {
+            FarLayer.fail("preparing far terrain", t);
+        }
         if (!Terrain.drawing()) return;
         // run-time fix (2026-11-26): an arena's grow ahead of need, before this frame's terrain draws
         try {
             TerrainStore.growAhead();
         } catch (Throwable t) {
             Terrain.fail("growing an arena", t, false);
+        }
+        // package 12b: the chunk columns real terrain draws this frame, for far terrain's holes (before its block is written)
+        try {
+            farColumns(visible);
+        } catch (Throwable t) {
+            FarLayer.fail("finding far terrain's holes", t);
+        }
+        // package 12: far terrain's tiles, copied in before this frame's draws (their own budget)
+        try {
+            FarLayer.upload();
+        } catch (Throwable t) {
+            FarLayer.fail("copying far terrain in", t);
         }
         com.meakaandre.quicksilver.bench.StageProfile.push("terrain.prepare");
         try {
@@ -274,6 +293,49 @@ public final class TerrainRenderer {
         } finally {
             com.meakaandre.quicksilver.bench.StageProfile.pop();
         }
+    }
+
+    /**
+     * Package 12b: while far terrain draws, the sections vanilla handed over that have geometry (held by Quicksilver or
+     * by vanilla), whether or not occlusion culling then hides them (hidden: far terrain there would be hidden too). Far
+     * terrain fills, inside the hand-over circle, what lies below the lowest of them in each chunk column.
+     */
+    private static final ChunkSectionLayer[] LAYERS = ChunkSectionLayer.values();
+
+    private static void farColumns(List<SectionRenderDispatcher.RenderSection> visible) {
+        if (!FarLayer.wantsColumns()) {
+            FarLayer.clearColumns();
+            return;
+        }
+        FarLayer.beginColumns();
+        synchronized (TerrainStore.LOCK) {
+            for (SectionRenderDispatcher.RenderSection section : visible) {
+                SectionMesh mesh = section.getSectionMesh();
+                boolean geometry = false;
+                TerrainStore.Entry[] es = TerrainStore.ENTRIES.get(mesh);
+                if (es != null) {
+                    for (TerrainStore.Entry e : es) {
+                        if (e != null) {
+                            geometry = true;
+                            break;
+                        }
+                    }
+                }
+                if (!geometry) {
+                    for (ChunkSectionLayer layer : LAYERS) {
+                        if (mesh.getSectionDraw(layer) != null) {
+                            geometry = true;
+                            break;
+                        }
+                    }
+                }
+                if (geometry) {
+                    long node = section.getSectionNode();
+                    FarLayer.covered(net.minecraft.core.SectionPos.x(node), net.minecraft.core.SectionPos.y(node), net.minecraft.core.SectionPos.z(node));
+                }
+            }
+        }
+        FarLayer.endColumns();
     }
 
     private static void prepareFrame(List<SectionRenderDispatcher.RenderSection> visible, double fadeSeconds, boolean indirect) {
@@ -303,6 +365,8 @@ public final class TerrainRenderer {
         List<TerrainStore.Region> touched = new ArrayList<>();
         skipBackFaces = BackFaces.beginFrame(TerrainPipelines.pipeline(plain, false), TerrainPipelines.pipeline(plain, true));
         UploadBudget.frameVisible(visible);
+        lastVisibleSections = visible.size();
+        lastFogged = FOGGED.size();
         // package 2b: what occlusion culling does this frame (nothing when off)
         GpuOcclusion.beginFrame(visible, path == Path.INDIRECT, BackFaces.wireframe());
         boolean culling = GpuOcclusion.active();
@@ -861,7 +925,10 @@ public final class TerrainRenderer {
         boolean wireframe = override != null || overrideMultidraw != null;
         // package 4b: the wireframe view draws back faces' edges too, so the next frames draw every facing group
         if (li == 0) BackFaces.wireframeFrame(wireframe);
-        if (FRAME[li].isEmpty()) return;
+        if (FRAME[li].isEmpty()) {
+            if (li == 0 && !wireframe) drawFar(pass);
+            return;
+        }
         try {
             TerrainGpuErrors.Mark mark = TerrainGpuErrors.mark();
             boolean plain = path != Path.INDIRECT;
@@ -895,6 +962,19 @@ public final class TerrainRenderer {
         } catch (Throwable t) {
             prepared = false;
             Terrain.fail("drawing terrain", t, false);
+        }
+        if (li == 0 && !wireframe) drawFar(pass);
+    }
+
+    /** Package 12: far terrain, right after the solid layer (real terrain's depth already there), in the same pass. */
+    private static void drawFar(RenderPass pass) {
+        try {
+            TerrainGpuErrors.Mark mark = TerrainGpuErrors.mark();
+            FarLayer.draw(pass);
+            String err = TerrainGpuErrors.since(mark);
+            if (err != null) FarLayer.fail("drawing far terrain", new IllegalStateException("GPU error: " + err));
+        } catch (Throwable t) {
+            FarLayer.fail("drawing far terrain", t);
         }
     }
 
@@ -1101,6 +1181,12 @@ public final class TerrainRenderer {
     private static final List<Late> LATE = new ArrayList<>(), CULLED = new ArrayList<>();
     /** Package A: sections left out this frame because they are wholly inside the fog. */
     private static final List<SectionRenderDispatcher.RenderSection> FOGGED = new ArrayList<>();
+    /** Package 12 diagnostics (far terrain's status line): sections vanilla handed over, and those fog-sections left out, the frame before. */
+    private static int lastVisibleSections, lastFogged;
+
+    public static String sectionCounts() {
+        return "real sections handed over " + lastVisibleSections + ", left out in fog " + lastFogged;
+    }
     /** The late pass's draw lists (solid, cutout). */
     @SuppressWarnings("unchecked")
     private static final List<ArenaDraws>[] FRAME2 = new List[] {new ArrayList<ArenaDraws>(), new ArrayList<ArenaDraws>()};

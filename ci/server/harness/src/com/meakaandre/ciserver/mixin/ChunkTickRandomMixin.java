@@ -27,23 +27,23 @@ public abstract class ChunkTickRandomMixin {
     private void ciServer$chunkRandom(LevelChunk chunk, int randomTickSpeed, CallbackInfo ci) {
         long t = ((ServerLevel) (Object) this).getGameTime();
         if (Pins.on()) {
-            Pins.CHUNK.set(chunk);
-            Pins.CHUNK_RANDOM.set(Pins.chunkRandom(chunk, t));
+            Pins.chunk = chunk;
+            Pins.chunkRandom = Pins.chunkRandom(chunk, t);
             return;
         }
         if (!Harness.gameTestPins) return;
-        Pins.CHUNK_RANDOM.set(new LegacyRandomSource(SeedPin.mix(chunk.getPos().getMinBlockX() * 31L + chunk.getPos().getMinBlockZ() * 1_000_003L + t)));
+        Pins.chunkRandom = new LegacyRandomSource(SeedPin.mix(chunk.getPos().getMinBlockX() * 31L + chunk.getPos().getMinBlockZ() * 1_000_003L + t));
     }
 
     @Inject(method = "tickChunk", at = @At("RETURN"))
     private void ciServer$chunkRandomDone(LevelChunk chunk, int randomTickSpeed, CallbackInfo ci) {
-        Pins.CHUNK_RANDOM.remove();
-        Pins.CHUNK.remove();
+        Pins.chunkRandom = null;
+        Pins.chunk = null;
     }
 
     @Redirect(method = "tickChunk", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/RandomSource;nextInt(I)I"), require = 1)
     private int ciServer$pinnedNextInt(RandomSource shared, int bound) {
-        RandomSource r = Pins.CHUNK_RANDOM.get();
+        RandomSource r = Pins.chunkRandom;
         return (r != null ? r : shared).nextInt(bound);
     }
 }

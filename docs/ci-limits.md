@@ -3,6 +3,91 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package 12b: the Terralith hole, seed sharing, the perf flake (2026-11-27, branch `package-12`)
+
+- **Terralith view** (`scenes/far.json`, `far_land`): same place (230 high over Terralith's ocean, render distance 8),
+  now looking north-west (yaw 135) instead of east. In the east view a 100-block real cliff stood inside the hand-over
+  band, so the seam check compared the island's top just beyond the band with the ocean just nearer it: a step of about
+  120 in those columns with no hole at all (run 45935569318: 36.2 against 7.2 with the hole filled; in the first run's
+  shot most of the 50.2 came from those columns too). Seven other directions were shot in run 45939071469; the seam
+  check there: south, south-west, west 0.7 / 0.0, north-west 1.07 / 0.3, south-east 16.4 / 5.0, north 18.3 / 5.3,
+  north-east 42.0 / 5.5 (cliffs in the band again). North-west keeps real terrain, ocean far below (sections vanilla
+  doesn't hand over: far terrain fills them) and mountains in view. The seam check itself is unchanged (2x + 4).
+- **References and limits** for `far_land.far_off`, `far_land.far` and `far_land.far_mark`: Quicksilver's own, from run 45946981197
+  (`3a88d2b`, the hole fill in its final form; samples 0.0 there). Samples (% over 8/255 against the reference; far shots
+  where the view off matched): run 45949682642: off 0.0624, far 0.3774, mark 0.3604; run 45949719967: off 0.5767, far
+  0.6794 (compared on 99.42%), mark 0.431; full run 45954348082: off 0.5762, far 0.7335, mark 0.4533 (within). A fresh Terralith world each run: its real island in the corner and the
+  columns far terrain takes from the client's chunks differ (as the core view's samples in "Package 12"). Limits by the
+  rule (twice the largest, at least 0.001, rounded up to 0.0005): **off 1.1535, far 1.359, mark 0.862**, below the smallest
+  thing the view must catch: the hole this package fixes covered 6.7% of the picture (61,334 sky pixels below the
+  horizon in run 45912630472; 185 now).
+- **New far run and checks** (`ci/far-compare.py`): `far-default`, a superflat world on a Quicksilver server with the
+  default config (every other CI server has `far-terrain-share=on`), plays far_flat's steps: its server must answer the
+  request without sending its seed (server log: asked, not shared; nothing sent; the client told and drawing real chunks
+  only), and its nether (real chunks only) must report far terrain behind real terrain under the ceiling; the Terralith view must count
+  columns at vanilla's vertical cut (the steep fill's case). A `[far]` quick run fails if a far run produced nothing.
+- **Perf job, random-tick scene** (`ci/server/perf-core.txt`): 24000 ticks (was 6000), gate unchanged (median ratio at
+  most 1.10, whole run). Why: the harness now records MSPT per 500 ticks with the JIT's compile time and GC count
+  (`msptBlocks`). In run 45931876036 the first 500 ticks took 1.1-1.3 ms a tick and the last ones 0.10-0.27, with the
+  JIT still compiling throughout (6 s of compile time in a 2.5 s run); ticks were slower while the compiler was busy
+  (correlation 0.53). Gated on ticks 12000 on (run 45935569318), Quicksilver read 12% slower in every round: JFR put it
+  in the harness's own random-tick pins, whose ThreadLocal lookups missed twice as often with Quicksilver's ThreadLocals
+  in the server thread's map (4.3% of samples against 1.9%). The pins are plain fields now (only the server thread ticks
+  chunks); with them steady ticks halved (0.065 to 0.035 ms) and Quicksilver's steady ratio was 0.97, but steady ticks
+  that short are mostly noise (rounds 0.77-1.15), so the gate stays on the whole run. Samples (median of seven, whole
+  run): 0.993 (rounds 0.955-1.055, run 45942342535), 0.990 (45943470146), 0.970 (45946981197), 0.958 (45949682642).
+
+## Package 12: far terrain (2026-11-27, branch `package-12`)
+
+Far terrain is off by default and in every existing shot (the preset runs set `quicksilver.ci.farTerrainOff`, so
+Quality's 96 isn't in shots compared with vanilla): every existing limit unchanged. New checks, `ci/far-compare.py`:
+
+- **References:** Quicksilver's own (far terrain has no vanilla picture), `ci/references/core/lights.far*.png` (old-GPU
+  run, used by full, old-GPU and 2-pass; `.vulkan.png` from the Vulkan run) and `ci/references/far/` (one profile).
+  Core from run 45852790680 (`7b767fa`), the End's from 45863980548 (`5c25482`, the first with its flash pinned), the
+  nether's off view from 45852790680 and its far view from 45912630472 (`45f6abd`, far terrain under a ceiling only
+  past every real section; the shot was identical in every earlier run, 0.0), superflat and Terralith's overworld from 45895177811 (`6c4406b`: superflat's animals removed
+  before each shot, its fog radius counting made tiles only, fog-sections using far terrain's fog end). A far shot and its off shot's
+  reference always come from the same run.
+- **What is compared:** an off shot (far terrain off) whole. A far shot only where the same view off matches its own
+  reference (8/255): the natural world differs between runs, since vanilla's world generation places features across
+  chunk borders in a varying order (run 45863980548's `lights.far_off` was 11.3% off its reference, every profile
+  alike: other trees, more mushrooms), so far terrain is judged where the real terrain matched. The share compared is
+  in the report and may not fall below 100 minus the off shot's limit.
+- **Limits** (`ci/far-limits.json`) by the rule: twice the largest sample, at least 0.001%, rounded up to 0.0005%.
+  Samples (% of pixels over 8/255, every profile against the reference):
+  - core `lights.far_off`: 0.0 (runs 45821868333, 45852790680), 11.3151 (45863980548): **22.6305**.
+  - core `lights.far`, `far_mark`, `far_real`: up to 0.9558 (45821868333), 0.6187 (2-pass in the reference run),
+    2.488 (45863980548, Vulkan; the rest is real land newly shown by the moved fog, and real columns far terrain takes
+    from the client's chunks): **4.972, 4.878, 4.976**.
+  - core `lights.far_end_off`, `far_end`: 0.0 (every profile, 45863980548): **0.001** each.
+  - far `far_nether.far_off`, `far`: 0.0 (45863980548): **0.001** each.
+  - far `far_flat.far_off`: 0.0142 (45863980548), 0.2322 (45873928148: animals wander on superflat): **0.4645**;
+    `far`: 0.0039, `far_seen`: 0.0139 (45863980548): **0.008, 0.028**.
+  - far `far_land.far_off`: 1.7046 (45873928148): **3.4095**; `far`, `far_mark`: no sample yet: **0.001**.
+  - Run 45873928148's far shots aren't samples: that build drew tiles past the band behind real terrain (the review's
+    finding 1), which moved the End and nether shots by 0.35% and 0.04%.
+- **Open, fixed in 12b ("Package 12b" above) (Terralith's overworld failed its seam check and reference check, not loosened):** from 230 high over
+  Terralith's ocean, vanilla's own section graph doesn't hand over the ocean's sections far below the camera (135
+  sections with far terrain off, 136 on; fog-sections leaves out none; probes: the client has those chunks, gravel at
+  42-49 under water to 63). Vanilla's fog hides that; far terrain moves the fog out, so inside the band, where far
+  terrain gives way to real terrain, the clear colour shows (the seam check's step of about 50 against 7). The next
+  chat decides the fix (`docs/progress.md`, "Package 12", "Open").
+- **Far terrain showed:** each far shot differs from the same view off on at least 2%.
+- **Seam:** in the shot with the band painted (`_mark`), per screen column, the brightness step across the band's edges
+  in the normal far shot against the picture's own change 6 pixels further out on each side: at most 2x + 4.
+- **Probes** (logged lines): 700 blocks east sampled before, the gold platform built there real after; the nether's
+  sample is its floor (below 123, not the roof); Terralith's overworld 900 east sampled; superflat 600 east nothing, then
+  400 east real after a visit.
+- **Settled and sources:** every `#far` step settles (every wanted tile made and copied in), no far terrain failure in
+  the client log, the source line (generator or real chunks only) for each scene, and the server log's "sent the
+  world's generator" in the far runs.
+- **ci/pin-mod:** the End's sky flash held at rest (`EndFlashMixin`), vanilla and Quicksilver alike: it relit the
+  whole End shot between runs (9-25% of pixels, far terrain off too).
+- **Speed gates** (`ci/speed-gates.json`): `option.far-terrain=96` in spawn on old-GPU, frame time on/off at most 1.35
+  (measured 1.283 in run 45873928148); the fly-through's sampling thread at most 850 ms of CPU a second (measured 678
+  and 681).
+
 ## Fixes before package 12 (2026-11-26, branch `fix-runtime-flakes`)
 
 - **Pixel art island** (`spawn.pixel_island`, a `ciPixelShots` entry of the spawn scene, Quicksilver client runs only):
@@ -1409,7 +1494,7 @@ other by more than Quicksilver's savings (one runner played the mob scene at 2.9
 server suite's per-run MSPT can't show a saving. The perf job plays each perf scene on one runner, vanilla and
 Quicksilver alternately (seven rounds, the side that goes first alternating; an eighth with JFR for MSPT by phase), sprinting
 for the scene's ticks, with the scripts' `qs-at` lines left out. Scenes: core `mobs` (172 mobs over mixed shapes, a boat
-and a minecart; 4800 ticks), `random` (the random-tick run, 6000 ticks), `run` (the scripted run, 4800 ticks); SIFTEC
+and a minecart; 4800 ticks), `random` (the random-tick run, 6000 ticks; 24000 since package 12b), `run` (the scripted run, 4800 ticks); SIFTEC
 `train` (its scripted run with the Create train, 1200 ticks). Rounds were 2400 ticks and three per side at first (about 2 s of
 server work for the random-tick scene). The runner drifts between rounds by 10-20%, more than the random-tick scene's
 saving (entity movement is about 15% of that scene), so the gate compares each round's Quicksilver run with the vanilla

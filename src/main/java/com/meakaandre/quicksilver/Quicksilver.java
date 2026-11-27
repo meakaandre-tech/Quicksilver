@@ -20,6 +20,8 @@ public final class Quicksilver implements ModInitializer {
         com.meakaandre.quicksilver.logic.Logic.init();
         // phase 2 (P2-4): the Chunks module's switches and status line (its mixins are chosen by its mixin plugin)
         com.meakaandre.quicksilver.chunks.Chunks.init();
+        // package 12: far terrain's optional handshake (payload types on both sides; a server answers a client's ask)
+        com.meakaandre.quicksilver.far.FarNet.init();
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
             com.meakaandre.quicksilver.frapi.QuicksilverRenderer.register();
         }

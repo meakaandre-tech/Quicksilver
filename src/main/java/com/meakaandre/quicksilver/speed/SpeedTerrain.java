@@ -116,6 +116,13 @@ public final class SpeedTerrain {
         }
         double end = Math.max(hookEnd, mc.options.getEffectiveRenderDistance() * 16.0f) + 1.0;
         endFrom = "render-distance fog";
+        // package 12: while far terrain draws it moves the fog out; sections are left out only past that end (the
+        // value the hook saw can lag a frame behind, and a section far below the eye is past vanilla's end, not this)
+        float farEnd = com.meakaandre.quicksilver.far.FarTerrain.fogEndNow();
+        if (farEnd + 1.0 > end) {
+            end = farEnd + 1.0;
+            endFrom = "far terrain's fog";
+        }
         // package B: in a dimension without a sky (the nether) the environmental fog too: the shader takes the larger of
         // the two fog values, so a fragment is the fog colour once either reaches its end, and the nether's thick fog ends
         // at about half the render distance. Only its value written during this frame, before the terrain is prepared (a
@@ -125,7 +132,7 @@ public final class SpeedTerrain {
             noSkyThisFrame = true;
             float env = hookEnvEnd;
             long presents = com.meakaandre.quicksilver.bench.FrameRecorder.presents();
-            if (presents > 0 && hookPresent == presents && Float.isFinite(env) && env > 0 && hookEnvStart < env && env + 1.0 < end) {
+            if (farEnd <= 0 && presents > 0 && hookPresent == presents && Float.isFinite(env) && env > 0 && hookEnvStart < env && env + 1.0 < end) {
                 end = env + 1.0;
                 endFrom = "environmental fog";
             }

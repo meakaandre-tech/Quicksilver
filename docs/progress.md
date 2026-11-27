@@ -52,7 +52,14 @@ scene with a tight limit, the upload gate's and the direct-buffer gate's flakes;
 **Package 9** (settings screen): squash-merged into main 2026-11-25 after the main fix (see "Package 9" below,
 "Decisions for Andre" there).
 
-**Still to do, in order:** 12 (far terrain, judged by the new look rule, without the SIFTEC worlds), R2 (laptop bench,
+**Fixes before package 12** (run time, a built pixel art scene, the upload and direct-buffer flakes): squash-merged
+into main 2026-11-27 as `3ee91df` (see "Fixes before package 12" below); main's full run 45856403966 green.
+
+**Package 12** (far terrain) **and 12b** (the Terralith hole, seed sharing off by default, the perf flake):
+squash-merged into main 2026-11-27 (branch full run 45960358116 green; see "Package 12b" and "Package 12" below,
+"Decisions for Andre" in both).
+
+**Still to do, in order:** R2 (laptop bench,
 `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two lines, which the file now reads as `preset=custom`, and
 `preset=low-end` turns on more; add pixel art against Normal), R (release: laptop bench, then Modrinth).
 
@@ -61,6 +68,271 @@ scene with a tight limit, the upload gate's and the direct-buffer gate's flakes;
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Package 12b: the Terralith hole, seed sharing, the perf flake (2026-11-27, branch `package-12`)
+
+**Status:** the hole, the seed default and the perf flake fixed on `package-12`, reviewed twice (fresh agents); the merge is recorded at the top of this file.
+
+**Terralith hole (fixed).** Cause: vanilla's section graph hands over no section more than the render distance below
+the camera (camera section 14 at y 230, render distance 8: nothing below section 6, y 96), and sections not meshed yet;
+its fog hides that, far terrain moved the fog out, so the clear colour showed. Fix (the option "far terrain fills any
+column where no real section is drawn", refined per section): `TerrainRenderer.farColumns` records, for each chunk column
+of a 68 x 68 grid around the camera, the lowest section vanilla handed over that has geometry; `FarLayer` sends the bytes
+to the far shader (`qsFarLow`), which draws far terrain inside the hand-over circle where its point lies below that
+section (behind real terrain), in columns with nothing real drawn (in front, as beyond the band), and for steep parts
+within the lowest section when that section is vanilla's cut (camera section less render distance: the slopes under
+cut cliffs). Not under a ceiling (the nether stays behind real terrain with no band, with or without a generator), and not while
+the camera is more than 4 blocks below the ground at its own column (in a cave nearly every column has nothing drawn;
+filling there would only cost).
+`FarTiles` also makes the tiles wholly inside the circle (last, with a generator); `FarLayer.draw` draws such a tile only
+if far terrain can show in it. Nothing changes with far terrain off (every existing shot and check as before).
+- **Measured:** in the Terralith view sky-coloured pixels below the horizon went from 61,334 (run 45912630472) to 185
+  (run 45946981197; a few shoreline pixels). Seam check (unchanged, 2x + 4): 1.64 against 0.55. Cost: spawn with far
+  terrain on, old-GPU, frame time on/off x1.303 (gate 1.35; x1.283 before; run 45935569318); x1.313 in the final full run 45960358116; in the Terralith view 123
+  columns with nothing drawn and 13 cut, filled by tiles the band already drew. The other option, drawing the sections
+  vanilla dropped, would have meshed and drawn 1,116 more sections with blocks in that view (the status line counts
+  them), on every frame, through the visibility module every scene depends on.
+- **The Terralith view now looks north-west** (see `docs/ci-limits.md`, "Package 12b"): from the east view a real cliff
+  stood in the band and the seam check compared cliff top with ocean (about 120 in those columns, also in the "before"
+  shot), which no correct picture can pass. Seven directions were shot in one run and compared.
+
+**Seed sharing off by default.** `far-terrain-share` is now off unless the server's `config/quicksilver.properties` says
+`on` (missing file, missing key or a read error: off). A server answers a request once per connection with no data and a
+note; the client then draws real chunks only (`FarWorld.realOnly`) and says once in the chat "far terrain shows only land
+you have seen here". CI: every Quicksilver server opts in except far-flat's, whose default server must log the request as
+not shared, send nothing, and tell the client; its nether (real chunks only) must stay behind real terrain.
+
+**Perf flake (fixed, gate unchanged).** The random-tick scene's 6000 ticks were mostly the JIT compiling the scene's
+code (first 500 ticks 1.1-1.3 ms, last 0.1-0.3, the compiler busy throughout; ticks slower while it was), and the CI
+harness's random-tick pins looked up two ThreadLocals several times per random tick: with Quicksilver's own
+ThreadLocals in the same map those lookups missed about twice as often, a harness cost that varied from JVM to JVM. Fix:
+the pins are plain fields (only the server thread ticks chunks) and the scene runs 24000 ticks. Gate unchanged (median of
+seven whole-run ratios at most 1.10). Median ratios since (each of seven same-runner rounds): 1.000 (rounds 0.926-1.017, final full run 45960358116), 0.993 (rounds 0.955-1.055, run 45942342535), 0.990
+(45943470146), 0.970 (45946981197), 0.958 (45949682642); the 1.108 flake was 0.85-1.28 per round. The harness now also records MSPT per 500 ticks with
+JIT and GC (`msptBlocks`), and can gate a scene's steady part (`steady=N` in `perf-<suite>.txt`; not used).
+
+**Review** (fresh agent, of everything since `45f6abd`): fixed: real-chunk-only sessions under a ceiling got the
+overworld band (the nether on a non-sharing server; now checked in far-flat); section boundary rounding in the shader;
+tiles inside the circle made before visible ones; the not-shared answer outside the once-per-connection guard; `[far]`
+quick runs could pass without far results; columns at vanilla's cut are counted and CI checks there are some; stale
+docs. Tried and reverted: keeping band pixels behind in holes (it drew a line across the End's islands); instead,
+columns with nothing real drawn are filled in front. **Second review** (fresh agent, of `45f6abd..0ab98b9`): fixed:
+placeholders left in these docs; stale counters in the status line while columns aren't wanted (the nether); no fill
+underground (every inside tile drawn in caves); the real-only session note now says why (the server's own note); the
+version reply inside the once-per-connection guard; the not-noise-based real-only path is tested again (far-flat's server
+shares again; a third far run, `far-default`, a superflat world on a default server, carries the no-seed and nether
+checks); stale comments. The far limits' third sample: full run 45954348082 (`0ab98b9`; picture unchanged by these
+fixes). Kept as decisions: the front depth for empty columns (2), the north-west view (4), real-only start order (10).
+
+**Decisions for Andre** (each the safest that can be undone; how to switch is in each line)
+1. **Fill per column below the lowest drawn section** (not: draw the sections vanilla dropped). Alternatives: (a) add
+   vanilla's dropped sections in the visibility module (about 1,100 more sections meshed and drawn in the Terralith view;
+   every scene depends on that module); (c) give real terrain its own fog end. Switch: `TerrainRenderer.farColumns`,
+   `FarLayer` (`fill`, `LOW`), `far.fsh` (`qsHole`).
+2. **Empty columns filled in front, below-cut fills behind** (see 12). Alternative: all behind (a dotted line at the band's inner
+   edge, where the ocean floor beat the water). Switch: `far.fsh`, `hole == 2`.
+3. **Steep parts filled within the cut section** (normal |y| < 0.7), flat tops never. Alternative: below the section only
+   (a fringe of sky under cut cliffs). Switch: `far.fsh`, bit 7; `FarLayer.endColumns`.
+4. **The Terralith view looks north-west.** Alternative: the east view with the island's cliff in the band (its seam check
+   can't pass). Switch: `scenes/far.json` (`far_land`, yaw), references in `ci/references/far/`.
+5. **Seed sharing off by default; non-sharing servers give real chunks only** (also when the handshake versions differ or
+   the server can't pack its generator). Alternatives: on by default; far terrain off there. Switch: `FarNet.shareEnabled`,
+   `FarTerrain.received`. Servers that don't run Quicksilver: far terrain stays off, as before.
+6. **A third far run, `far-default`** (superflat, default server: no seed sent, real chunks only, the nether behind real
+   terrain); far-flat shares again (the not-noise-based path). Alternative: test the default on far-flat (one job fewer,
+   loses that path). Switch: `ci/client-run.sh`, `ci/far-compare.py` (`DEFAULT_SERVER_RUNS`), the workflow's matrix.
+7. **Perf random scene 24000 ticks, whole run gated** (the review called the longer run a possible loosening for a
+   regression in the first ticks; the first 6000 are a quarter of the run now). Alternatives: also gate ticks 0-6000;
+   gate the steady part (tried: steady ticks of 0.035 ms are mostly noise, rounds 0.77-1.15). Switch:
+   `ci/server/perf-core.txt` (ticks, `steady=`).
+8. **Harness pins in plain fields** (CI only). Switch: `ci/server/harness/.../Pins.java`.
+9. **`[far]` commit tag** adds the far suite to a quick run. Switch: `.github/workflows/build.yml`.
+10. **Real-only sessions make the nearest tile first, inside tiles included** (with a generator inside tiles come last).
+   The review: on a non-sharing server at render distance 32 the band can wait a few seconds after joining. Alternative:
+   inside tiles last there too (it moved far_flat's fog edge in run 45943470146). Switch: `FarTiles` (`order`).
+11. **No fill while the camera is more than 4 blocks below the ground** at its column. Alternative: fill there too (cost
+   only). Switch: `FarTerrain.frame` (`belowGround`).
+12. **Empty columns drawn 0.5% nearer than they are** (as the band): the review notes far terrain there can beat real
+   terrain behind it by up to that (1-2 blocks at grazing angles, e.g. a drawn column right next to an empty one).
+   Alternative: true depth (the dotted line at the band's inner edge may come back in places). Switch: `far.fsh`, `hole == 2`.
+
+## Package 12: far terrain (merged with 12b, squash of `package-12`)
+
+**Status:** built and checked, **not merged** (the next chat merges it). Last full run: 45912630472 (`45f6abd`): every client, server and
+speed check passes but the open one below (Terralith's seam and its two reference shots, 3.40% and 2.70% where the real
+terrain matched: samples for their limits once the gap is fixed); the nether's far shot was new there (the ceiling fix)
+and is its reference now. Two earlier runs lost a client shard each to Maven Central answering 429 (GitHub's side). Fixes before it merged
+into main first (squash `3ee91df`, main's full run 45856403966 green) and main merged into this branch.
+
+**What it adds** (design doc, "Far terrain (like Ecstatic)": the idea of sampling the world's noise instead of
+generating chunks, none of Ecstatic's code; judged by the new look rule)
+- **A Far terrain setting:** `option.far-terrain` = off, 32, 64, 96 or 128 chunks. On the options screen's new **Far
+  terrain** row (with a tooltip), in `/qs speed` (`/qs speed option.far-terrain 96`) and in `config/quicksilver.properties`.
+  Off in Low-end and Balanced, 96 in Quality. Switching it off pauses it (nothing drawn or held on the GPU, the samples
+  kept), so switching it on again only re-makes the meshes.
+- **Sampling** (`far/FarSource`, `far/FarTiles`, one background thread "Quicksilver far terrain" at the lowest priority, resting as long as each tile took, so about
+half a core at most):
+  tiles of 128 x 128 blocks around the camera out to the far distance, sampled on a grid of 4 blocks within 16 chunks,
+  8 to 32, 16 to 64 and 32 beyond. Per column: the dimension's own noise router through vanilla's column sampling
+  (`getBaseHeight` for the solid and the fluid top; under a ceiling, the nether, the first floor below the roof from
+  `getBaseColumn`), its own biome source at the top, and its own material (surface) rules for the top block
+  (`MaterialSystem.topMaterial`, vanilla's single-position query, with the slope from the neighbouring samples). No chunk
+  is generated or loaded: the only chunk object is a scratch one the surface query reads two heights from, never filled.
+- **Colours** (`far/FarColors`): the top block's colour is the average of its model's top-face texture (read from the
+  resource pack, as the entity atlas reads textures), tinted by the game's own tint source for that block in that biome
+  (grass, foliage, water). Each vertex is shaded by its slope like the game's faces (1 up, 0.8 north/south, 0.6
+  east/west), and lit by the lightmap's full-sky texel, so far terrain darkens with the day.
+- **Trees** (`far/FarTrees`): each biome's placed features that are trees, or choose among trees (read through
+  `getSubFeatures`), with their average count per chunk (count placements, rarity filters); simple boxes (a crown, a
+  trunk within 16 chunks) coloured by that tree's own leaf and log blocks, at that density, within 32 chunks. No
+  structures.
+- **Off screen:** each tile's box is tested against the camera's side planes; tiles wholly off screen aren't drawn.
+  Tiles wholly beyond the hand-over band use a plain fragment stage (fog only), so hidden pixels are rejected before
+  shading; only the band's tiles use the dither stage (it writes depth).
+- **Real chunks win:** every chunk the client has (as it arrives, as it goes, and re-read in turn about every two seconds
+  while loaded, so built and mined blocks follow) gives its columns at 4-block steps, which replace the samples there.
+- **Other generators** (superflat, void, custom: not noise-based): far terrain from real chunks only, tiles with real
+  chunks at most 4 a second, nothing where none was seen. The fog moves out to the radius within which every chunk was
+  seen (rings of chunks around the camera), so land seen before shows and land never seen stays in the fog.
+- **Seed:** single player uses the integrated server's own generators (the world's seed). On a server, far terrain asks
+  (`quicksilver:far_hello_v2`) only while it is on; a server running Quicksilver answers once per connection with the seed,
+  every dimension's generator and every world registry's entries and tags, vanilla's and those mods add (Fabric's
+`DynamicRegistries.getWorldRegistries()`; Terralith's Lithostitched has one) (`far/FarNet`), which the client loads with
+  vanilla's registry loader (`far/FarWorld`), so datapacks and world-gen mods (Terralith) arrive as they are. Any other
+  server never answers; far terrain stays off with one chat line. Never a guessed seed. A server owner can switch the
+  answer off (`far-terrain-share=off`; the server logs that it shares the seed the first time it does). **Changed in 12b:** off by
+  default; a server owner opts in with `far-terrain-share=on`, and clients of other Quicksilver servers draw real chunks only.
+- **Drawing** (`terrain/FarLayer`): an 8-byte vertex (x and z as block offsets from an anchor near the camera, y in
+  1/16 block, RGB565), in Quicksilver's terrain arenas (arenas of a fourth layer, `far`), copied in at the frame's start
+  under a budget of its own, drawn right after the solid layer in the same pass, one multi-draw per far arena. Far
+  terrain is drawn 1.5% further than it is (the eye position scaled about the camera: same pixel, deeper), so real
+  terrain wins wherever both draw. **Hand-over:** nothing within 32 blocks of the render distance's edge; across those
+  32 blocks an ordered dither moves a growing share of far terrain's pixels to just in front of real terrain, so the
+  change is spread over the band, not drawn as a line. **Fog:** while far terrain draws (from a generator) the
+  render-distance fog ends at the far distance (fog-sections reads that end, so it culls nothing far terrain needs);
+  pixel art draws it like any world pass; dynamic lights don't light it (it is far away).
+- **Bench:** a `farTerrain` section (source, tiles, columns sampled and from real chunks, quads and draws, the sampling
+  thread's CPU). Commands: `/qs far status`, `/qs far probe <x> <z>`, `/qs far wait`, `/qs far mark on|off` (CI).
+
+**CI** (`docs/ci-limits.md`, "Package 12")
+- With far terrain off (the default, and in every existing shot), every check as before. The preset runs set
+  `quicksilver.ci.farTerrainOff` so the Quality preset (96) doesn't draw far terrain in shots compared with vanilla.
+- **Far steps** (`ciFarSteps`, the lights scene in Quicksilver's client runs): the overworld from 200 high above spawn
+  looking east with far terrain off, on and with the hand-over band marked; a probe 700 blocks east (sampled), a gold
+  platform built there, the probe again (real) and a shot; a nether probe (the floor under the roof, not the roof);
+  the End (off and on).
+- **Far suite** (`scenes/far.json`, two new full-mode jobs): `far-terralith` (a fresh Terralith world on a Quicksilver
+  server: the handshake carries Terralith's generator; its overworld, and its nether at render distance 2 from an
+  80 x 30 x 80 air pocket, since the nether's own walls hide far terrain almost everywhere) and `far-flat` (a superflat
+  world: real chunks only; nothing beyond what was seen, then a ring of visits 160 blocks out and the land seen).
+- **Checks** (`ci/far-compare.py`): each far shot against a stored Quicksilver reference, counted where the same view
+  with far terrain off matches its own reference (the natural world's trees differ between runs: vanilla's world
+  generation), each off shot whole (`docs/ci-limits.md`, "Package 12": the references, samples and limits); far terrain showed
+  (at least 2% from the same view off); the seam (the brightness step across the marked band against the picture's own
+  change around it); the probes (sampled before, the gold platform after; nothing then real on superflat); every far
+  step settled; the server sent its generator in the far runs.
+- **Speed:** `option.far-terrain=96` in spawn (cost) and the fly-through (background CPU while moving), both speed runs;
+  gates in `ci/speed-gates.json`. Measured (run 45873928148, `option.far-terrain=96` on/off, median of the rounds' ratios):
+  - **Cost:** old-GPU spawn frame time **x1.283** (117.3 to 152.4 ms; full profile x1.298). Of that, real terrain
+    triangles +8.5% (the moved fog shows land fog-sections used to leave out), the rest far terrain's own 171 tiles,
+    39k quads and their pixels (software rendering). Before the off-screen test and the plain stage: x1.484 (505
+    tiles, 135k quads). Gate: at most 1.35.
+  - **Background CPU:** the fly-through (moving fast, tiles made all the time) **678 ms a second** on old-GPU, 681 on
+    full: one thread, at most about 70% of a core (it was 761 before the rest-as-long-as-it-worked cap). Standing still
+    (spawn) 1.6 ms a second. Gate: at most 850.
+- **ci/pin-mod:** the End's sky flash held at rest in every CI client, vanilla and Quicksilver alike (it relit the
+  whole End picture between runs).
+
+**What the shots show** (CI screenshots, 1280 x 720):
+- **Terralith's overworld** (fresh world, generator from the handshake): mountains, snow, spruce forests and cliffs out
+  to the horizon where vanilla shows fog; colours from the blocks' own textures and biome tints.
+- **Terralith's nether** (render distance 2, an air pocket): the floor heights under the roof as tall walls in a dark
+  fog, as the nether is.
+- **Superflat:** nothing beyond what was seen, then (after a ring of visits) the grass out to the horizon.
+- **Core:** the gold platform built 700 blocks east shows in far terrain from spawn (a real chunk replacing its
+  sample); the End's islands out to the horizon.
+- **The seam:** across the 32-block band real terrain gives way to far terrain pixel by pixel (an ordered dither),
+  not along a line. In the core view the step across the band's edges is 60.8 against the picture's own change of 39.2
+  (inside the check's 2x + 4). Far terrain is smoother than real terrain (one quad per sample, blocks only within 16
+  chunks), so up close it reads as a softer copy, as intended.
+
+**Independent review** (a fresh agent, on the first build): fixed: far-compare crashed on the steps' strings (no far
+check ran); the fog moved out while far terrain did not draw (the terrain hand-back, a pipeline failure; real-only
+dimensions); a stopped session's thread could stage tiles into the next one, and a tile removed while queued came back
+(sessions are numbered; removal purges the queue); the nether sampled its roof, not its floor; the handshake could throw
+on the server thread, answered every repeat, and the client read it without size limits; channels now carry the
+version; the band's far side drew in front of real terrain still there; store resets resampled everything (now
+re-meshed); paused sessions queued chunk reads; the end compared with the overworld's off view. Withdrawn:
+`NoiseBasedChunkGenerator` is final, so the generator test is exact. Kept as a decision (reversed in 12b: off by default): the server shares the seed by
+default. Left as nits: water only where all four corners are water (coasts drop to the floor); real columns read the
+world surface (leaves become the ground there); tree chance capped at one per cell.
+
+**Second review** (a fresh agent, on everything since the first review's fixes): fixed: tiles past the band were drawn
+behind real terrain again (real sections reach a chunk past the render distance: a line at the band's end); the
+off-screen test missed the hurt and death roll, nausea and view bob (now off then, plus 2 degrees of margin); tile boxes
+ignored tree crowns past the tile's edge (now the mesh's own box); the superflat fog radius counted chunks whose tiles
+weren't made yet (holes inside the fog after flying back); the share of a far shot compared wasn't reported or floored;
+under a ceiling (the nether) far terrain past the band was drawn in front of real terrain, though its surface (the
+first floor below the roof) isn't the caverns real terrain shows, so its walls covered real lava and floor in the
+outer chunk ring (seen in the last shots; there it now stays behind real terrain everywhere, and starts only two chunks past the
+render distance, past every real section, with no band: even its columns from real chunks are the first floor below
+the roof, which inside real terrain stood as walls in open cavern); the far plane followed the cloud distance (far terrain clipped with clouds set near); bench counters went stale on early
+returns; the fog radius was recomputed every loop. Found by CI after it (Terralith's view, 230 high over the ocean):
+fog-sections left out real sections past vanilla's fog end while far terrain had moved the fog out (the real ocean far
+below the camera showed the clear colour inside the band); it now uses far terrain's fog end while far terrain draws. Left: the reviewer's note that limits came from fewer than three runs
+for some shots (they are re-collected as runs come, `docs/ci-limits.md`).
+
+**Open: a gap where vanilla draws no sections** (fixed in 12b, see "Package 12b"; Terralith's view, CI failed it on purpose: the check isn't loosened).
+From 230 high over Terralith's ocean, vanilla's own section graph doesn't hand the ocean's sections far below the camera
+to the renderer (135 sections with far terrain off, 136 with it on; fog-sections leaves out none; the client has the
+chunks: gravel at 42-49 under water to 63). Vanilla's fog hides them anyway. Far terrain moves the fog out, so inside
+the hand-over band (where far terrain gives way to real terrain) a disc of the clear colour shows, which the seam check
+catches (a step of about 50 against the picture's own 7). Nothing wrong is drawn, but it is a hole. Ways to fix, for the
+next chat: (a) while far terrain draws, have the visibility module add the sections within the render distance that
+vanilla's graph dropped (cost: those sections drawn); (b) let far terrain draw behind real terrain inside the band too
+(risk: it shows through real gaps, cave mouths, glass); (c) keep the real terrain's own fog at vanilla's distance
+(needs the terrain shaders to take their own fog end). (a) is the safest; not done here as it changes the visibility
+module, which every scene depends on.
+
+**Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
+1. **(Superseded by 12b: off by default.)** **A server shares its seed and generators with Quicksilver clients that ask, by default** (logged once). Alternative:
+   off by default (far terrain would be off on every server until its owner switched it on). Switch:
+   `far-terrain-share=off` in the server's `config/quicksilver.properties`; to flip the default, `FarNet`.
+2. **CI's preset runs keep far terrain off** (`quicksilver.ci.farTerrainOff`), so Quality's 96 isn't in shots compared
+   with vanilla. Alternative: a Quality-with-far shot against its own reference. Switch: `ci/client-run.sh`.
+3. **Hand-over band:** 32 blocks inside the render distance's edge, an ordered 4x4 dither, far terrain drawn 1.5% further
+   than it is (real terrain wins) and beyond the band 0.5% nearer (real sections reach a chunk past the render distance);
+   under a ceiling (the nether) always behind real terrain, and only from two chunks past the render distance (no band).
+   Alternative: alpha blending (needs sorting, costs more). Switch: `FarTerrain.frame` (start, end), `FarLayer` (1.015,
+   0.995).
+4. **The fog moves out only while far terrain draws:** to the far distance from a generator, and without one (superflat)
+   to the radius within which every chunk was seen and its tile made. Alternative: vanilla's fog there (far terrain
+   would always be inside it, never seen). Switch: `FarTerrain.frame`, `fogEnd`.
+5. **Real chunks re-read in turn** (8 a tick, about every two seconds for render distance 12), so built and mined blocks
+   reach far terrain. Alternative: only on load and unload (misses edits). Switch: `FarTerrain.rereadChunks`.
+6. **Trees:** boxes from each biome's tree features at their average count per chunk, within 32 chunks; at most one per
+   sample cell; no structures. Alternative: no trees, or per-species shapes. Switch: `FarTrees`, `FarTiles` (`s <= 8`).
+7. **Water only where all four corners of a quad are water** (coasts drop to the floor). Alternative: per-corner water
+   heights. Switch: `FarTiles` mesh.
+8. **The handshake sends every world registry** (Fabric's list, vanilla's and mods'), 98 KB core and 141 KB Terralith.
+   Alternative: only those the generators use (smaller, needs a dependency walk). Switch: `FarNet.write`.
+9. **Sampling rests as long as each tile took** (about half a core while making tiles). Alternative: a whole core (fills
+   twice as fast). Switch: `FarTiles` (the sleep after `make`).
+10. **Off-screen tiles aren't drawn** (side planes of the camera's view, the mesh's own box plus a block and 2 degrees;
+    no test while hurt, dying, with nausea or a portal's warp, whose roll the matrix lacks). Alternative: draw all
+    (x1.48 frame time at spawn on old-GPU). Switch: `FarLayer.view`.
+11. **Tiles past the band use a plain fragment stage** (`far_simple.fsh` with `far_front.vsh`, no dither or depth of its
+    own) so hidden pixels are rejected before shading. Alternative: one stage for all (slower). Switch: `FarLayer.draw`.
+12. **The camera's far plane grows to cover far terrain while it draws** (vanilla: the larger of render distance x 4 and
+    the cloud distance). Alternative: vanilla's plane (far terrain clipped when clouds are set near). Switch:
+    `CameraDepthFarMixin`.
+13. **Nether checked by a probe in core and by shots in the far suite at render distance 2 from an air pocket** (its own
+    walls hide far terrain almost everywhere). Alternative: a natural cavern view (none known in CI's worlds).
+    Switch: `scenes/far.json`, `core.json` (lights `ciFarSteps`).
+14. **The End's sky flash pinned in CI** (`ci/pin-mod`, vanilla and Quicksilver alike). Alternative: End shots with a
+    limit of about 50% (checking little). Switch: `EndFlashMixin` in `quicksilver_ci_pin.mixins.json`.
+15. **Far shots compared only where the off view matched its reference** (the natural world differs between runs).
+    Alternative: whole pictures with limits near 25% (checking little). Switch: `pct_where_same` in `ci/far-compare.py`.
 
 ## Fixes before package 12 (2026-11-26, branch `fix-runtime-flakes`)
 
@@ -126,6 +398,13 @@ in a row). 45820211704 (`6190e22`): every client check green (pictures, island, 
 failed only the server suite's churn check, one chunk's `LastUpdate` outside vanilla's noise in Quicksilver's round 3,
 the timing flake package L and package B each met once, on server code this branch doesn't touch; not GitHub
 infrastructure, so no `[rerun]` (it re-runs main only); the branch was run again: run 45836033291 (`cbdf54b`), every client check passed and the churn too; its only failure was the server perf gate's random-tick scene at a median ratio of 1.108 (rounds 0.85 to 1.28, the noise `docs/ci-limits.md` "Perf job" describes; the branch changes no server code), so that one job was re-run with GitHub's job re-run (not `[rerun]`, which re-runs main only): median 1.032, run green. See decision 10.
+
+**Merged and measured on main:** squash `3ee91df`, main's full run 45856403966 green (release `latest` rebuilt). Against
+main's run 45785048470 (package 11): longest job 34.1 to 28.7 min (the longest client job 34.1 to 21.3; now a
+server churn job), the path build, world, longest client, compare about 44 to 31 min; runner time about the same (814
+to 838 min, more jobs). Wall time 96 to 83 min, both runs queued behind other branches' runs (up to 51 and 46 min
+waiting for a runner), so the gain shows when runners are free; with ~20 runners, 838 runner-minutes take at least
+about 42 min.
 
 **Decisions for Andre** (each the safest choice that can be undone; how to switch is in each line)
 1. **Three client shards, two jobs per speed run, four fly-over groups, long jobs first** (more runners, no check

@@ -50,7 +50,7 @@ jobs:
           # (SIFTEC is cancelled).
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2,3],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":1},{"suite":"core","run":"speed-old","shard":2},{"suite":"core","run":"speed-full","shard":1},{"suite":"core","run":"speed-full","shard":2},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0}]}'
+            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2,3],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":1},{"suite":"core","run":"speed-old","shard":2},{"suite":"core","run":"speed-full","shard":1},{"suite":"core","run":"speed-full","shard":2},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0},{"suite":"far","run":"far-terralith","shard":0},{"suite":"far","run":"far-flat","shard":0},{"suite":"far","run":"far-default","shard":0}]}'
             server_suites='["core","terralith"]'
           else
             matrix='{"suite":["core"],"run":["quicksilver-old","quicksilver-2p-old","vanilla-a","vanilla-b"],"shard":[1,2,3]}'
@@ -69,6 +69,10 @@ jobs:
             case "$MESSAGE" in *"[create]"*)
               matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).append({"suite":"create","run":"quicksilver-smoke","shard":0}); print(json.dumps(m,separators=(",",":")))');;
             esac
+            # package 12b: [far] adds the far suite's runs (far-terralith, far-flat, far-default; ci/far-compare.py) to a quick run
+            case "$MESSAGE" in *"[far]"*)
+              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"far","run":r,"shard":0} for r in ("far-terralith","far-flat","far-default")]); print(json.dumps(m,separators=(",",":")))');;
+            esac
             # package 9: [presets] adds the three preset runs (ci/preset-compare.py; the balanced one runs the options screen's test)
             case "$MESSAGE" in *"[presets]"*)
               matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"core","run":"preset-%s-old" % p,"shard":0} for p in ("low","balanced","quality")]); print(json.dumps(m,separators=(",",":")))');;
@@ -80,7 +84,7 @@ jobs:
             server_suites="[$suites]"
           fi
           # package A: the matrix's speed and smoke runs, so their checks fail on a run that produced nothing
-          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke","preset-"))))')" >> "$GITHUB_OUTPUT"
+          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke","preset-","far-"))))')" >> "$GITHUB_OUTPUT"
           echo "server_suites=$server_suites" >> "$GITHUB_OUTPUT"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           # run-time fix (2026-11-26): the long client runs (Quicksilver's, the measure runs, the speed runs) in `client`,
@@ -443,7 +447,11 @@ jobs:
           CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 ci/preset-compare.py /tmp/res /tmp/ci/compare > /dev/null
           pr=$?
           cat /tmp/ci/compare/presets.md >> "$GITHUB_STEP_SUMMARY"
-          echo "status=$(( st || p2 || sp || cs || up || pr ))" >> "$GITHUB_OUTPUT"
+          # package 12: far terrain's shots, seam and probes (ci/far-compare.py)
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 ci/far-compare.py /tmp/res /tmp/ci/compare > /dev/null
+          fa=$?
+          cat /tmp/ci/compare/far.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$(( st || p2 || sp || cs || up || pr || fa ))" >> "$GITHUB_OUTPUT"
       - name: Publish logs, bench results and screenshots to the branch's ci-logs-<branch> branch
         if: always()
         shell: bash

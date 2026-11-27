@@ -174,11 +174,13 @@ final class SpeedBench {
                     if (why != null) problems.add(current.setting.key + ": " + why);
                     remesh = current.setting.remesh;
                 }
-                if (remesh) {
+                // package 12: far terrain switched on samples its tiles first (its first pass); waited for like meshing
+                boolean far = current.setting == Speed.FAR_TERRAIN && current.value > 0;
+                if (remesh || far) {
                     lastMeshed = com.meakaandre.quicksilver.mesher.MesherStats.meshedCount();
                     meshStableSince = now;
                     until = now + 3_000_000_000L;
-                    meshWaitEnd = now + 90_000_000_000L;
+                    meshWaitEnd = now + (far ? 240_000_000_000L : 90_000_000_000L);
                     phase = Phase.WAIT_MESH;
                 } else {
                     startWarm(now);
@@ -194,6 +196,7 @@ final class SpeedBench {
             case WARM -> {
                 if (now < until) return false;
                 Speed.SECTIONS_IN_FOG.reset();
+                com.meakaandre.quicksilver.far.FarTerrain.startWindow();
                 Speed.SECTIONS_SEEN.reset();
                 Speed.CUTOUT_SKIPPED.reset();
                 Speed.ENTITIES_HIDDEN.reset();
@@ -239,7 +242,9 @@ final class SpeedBench {
     private boolean quiet(long now) {
         long m = com.meakaandre.quicksilver.mesher.MesherStats.meshedCount();
         if (now - meshStableSince >= 2_000_000_000L) {
-            boolean q = m - lastMeshed <= QUIET_SECTIONS && com.meakaandre.quicksilver.terrain.UploadBudget.lastWaiting == 0;
+            boolean q = m - lastMeshed <= QUIET_SECTIONS && com.meakaandre.quicksilver.terrain.UploadBudget.lastWaiting == 0
+                // package 12: with far terrain on, its first pass done too (every wanted tile made)
+                && (Speed.FAR_TERRAIN.value() == 0 || com.meakaandre.quicksilver.far.FarTerrain.settled());
             lastMeshed = m;
             meshStableSince = now;
             return q;
@@ -294,6 +299,10 @@ final class SpeedBench {
         o.addProperty("occlusionCulledPct", oc[1] + oc[2] == 0 ? 0 : r2(100.0 * oc[2] / (oc[1] + oc[2])));
         o.addProperty("stillFramesDrawnInFull", oc[3]);
         o.addProperty("fogSections", com.meakaandre.quicksilver.speed.SpeedTerrain.fogState());
+        // package 12: far terrain in the window (its sampling thread's CPU per second, what it drew)
+        o.addProperty("farCpuMsPerSecond", r2(com.meakaandre.quicksilver.far.FarTerrain.windowCpuMsPerSecond()));
+        o.addProperty("farQuadsPerFrame", com.meakaandre.quicksilver.terrain.FarLayer.lastQuads());
+        o.addProperty("farTilesPerFrame", com.meakaandre.quicksilver.terrain.FarLayer.lastTiles());
         return o;
     }
 
@@ -354,7 +363,7 @@ final class SpeedBench {
             for (String k : List.of("frameMsAvg", "frameMsP50", "fps", "low1pctFps", "drawCallsPerFrame", "uploadBytesPerFrame",
                 "terrainTrianglesPerFrame", "sectionsInFogPerFrame", "cutoutLayersSkippedPerFrame", "entitiesHiddenPerFrame",
                 "blockEntitiesHiddenPerFrame", "particlesDropped", "occlusionDrawnPerFrame", "occlusionCulledPerFrame", "occlusionCulledPct",
-                "stillFramesDrawnInFull")) {
+                "stillFramesDrawnInFull", "farCpuMsPerSecond", "farQuadsPerFrame", "farTilesPerFrame")) {
                 double a = median(off, k), b = median(on, k);
                 JsonObject m = new JsonObject();
                 m.addProperty("off", r2(a));

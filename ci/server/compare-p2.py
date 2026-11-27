@@ -85,6 +85,23 @@ def scenes(suite):
     return out
 
 
+def steady_from(suite, scene):
+    """Package 12b: the scene's first steady tick (perf-<suite>.txt's fifth column, steady=N), or 0 (the whole run)."""
+    path = os.path.join(HERE, "perf-%s.txt" % suite)
+    if not os.path.exists(path):
+        return 0
+    for line in open(path):
+        p = line.split()
+        if p and not p[0].startswith("#") and p[0] == scene and len(p) > 4 and p[4].startswith("steady="):
+            return int(p[4][len("steady="):])
+    return 0
+
+
+def mspt(j):
+    """The MSPT a perf round is gated on: its steady part where the scene has one (msptAvgSteady), else the whole run."""
+    return j.get("msptAvgSteady", j.get("msptAvg"))
+
+
 def suite_of(failure):
     """The suite a compare-server.py or compare.py failure is about: its first word, up to a space, slash or colon
     ("siftec worldgen ...", "siftec/quicksilver-vk: ...", "siftec: ...")."""
@@ -166,6 +183,8 @@ def perf(res, rep, lines, fails, owed, summary):
                         sink.append("%s: %d commands failed" % (where, j["commandErrors"]))
                     if j.get("ticks") != ticks:
                         sink.append("%s: ran %s ticks, the scene asks for %d" % (where, j.get("ticks"), ticks))
+                    if steady_from(suite, scene) and j.get("steadyFrom") != steady_from(suite, scene):
+                        sink.append("%s: no steady part from tick %d in its result" % (where, steady_from(suite, scene)))
                     loaded = bool(re.search(r"^\s*- quicksilver ", log, re.M))
                     if loaded != (side == "quicksilver"):
                         sink.append("%s: Quicksilver loaded: %s" % (where, loaded))
@@ -173,12 +192,15 @@ def perf(res, rep, lines, fails, owed, summary):
                     got[(side, r)] = j
             med = {}
             for side in ("vanilla", "quicksilver"):
-                vals = [got[(side, r)]["msptAvg"] for r in PLAIN_ROUNDS if (side, r) in got]
+                vals = [mspt(got[(side, r)]) for r in PLAIN_ROUNDS if (side, r) in got]
                 p99 = [got[(side, r)]["msptP99"] for r in PLAIN_ROUNDS if (side, r) in got]
                 med[side] = (statistics.median(vals) if vals else None, vals, statistics.median(p99) if p99 else None)
             v, q = med["vanilla"][0], med["quicksilver"][0]
-            ratios = [got[("quicksilver", r)]["msptAvg"] / got[("vanilla", r)]["msptAvg"] for r in PLAIN_ROUNDS
-                      if ("quicksilver", r) in got and ("vanilla", r) in got and got[("vanilla", r)]["msptAvg"]]
+            ratios = [mspt(got[("quicksilver", r)]) / mspt(got[("vanilla", r)]) for r in PLAIN_ROUNDS
+                      if ("quicksilver", r) in got and ("vanilla", r) in got and mspt(got[("vanilla", r)])]
+            # package 12b: the whole runs' ratios too, for the report (the gate takes the steady part where there is one)
+            whole = [got[("quicksilver", r)]["msptAvg"] / got[("vanilla", r)]["msptAvg"] for r in PLAIN_ROUNDS
+                     if ("quicksilver", r) in got and ("vanilla", r) in got and got[("vanilla", r)]["msptAvg"]]
             ratio = statistics.median(ratios) if ratios else None
             change = "-" if ratio is None else "%+.1f%%" % ((ratio - 1) * 100)
             gated = (suite, scene) in GATED_SCENES
@@ -188,7 +210,12 @@ def perf(res, rep, lines, fails, owed, summary):
                 fmt(q), ", ".join("%.3f" % x for x in med["quicksilver"][1]), ", ".join("%.3f" % x for x in ratios), change,
                 fmt(med["vanilla"][2]), fmt(med["quicksilver"][2])))
             summary.setdefault(suite, {})[scene] = {"vanilla": med["vanilla"][1], "quicksilver": med["quicksilver"][1],
-                                                    "vanillaMedian": v, "quicksilverMedian": q, "ratios": ratios, "medianRatio": ratio}
+                                                    "vanillaMedian": v, "quicksilverMedian": q, "ratios": ratios, "medianRatio": ratio,
+                                                    "steadyFrom": steady_from(suite, scene), "wholeRunRatios": whole,
+                                                    "wholeRunMedianRatio": statistics.median(whole) if whole else None}
+            if steady_from(suite, scene):
+                lines.append("| %s (whole run, reported) | - | | | %s | %s | |" % (scene, ", ".join("%.3f" % x for x in whole),
+                             "-" if not whole else "%+.1f%%" % ((statistics.median(whole) - 1) * 100)))
             if gated and ratio is not None and kind == "faster" and not ratio < limit:
                 sink.append("%s perf %s: the median of Quicksilver's per-round MSPT ratios to vanilla is %.3f, not below %.2f" % (suite, scene, ratio, limit))
             if gated and ratio is not None and kind == "no-regression" and ratio > limit:
