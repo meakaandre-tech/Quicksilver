@@ -32,6 +32,8 @@ public final class SpeedMixins implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // release prep: none of Quicksilver's mixins next to Sodium or Iris (bench/StandDown)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return false;
         String simple = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
         String[][] need = NEEDS.get(simple);
         if (need == null) return true;

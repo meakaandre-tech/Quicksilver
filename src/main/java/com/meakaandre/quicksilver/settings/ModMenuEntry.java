@@ -10,6 +10,8 @@ import com.terraformersmc.modmenu.api.ModMenuApi;
 public final class ModMenuEntry implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
+        // release prep: next to Sodium or Iris, the button shows why Quicksilver is off
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return com.meakaandre.quicksilver.compat.StandDownMessage::screen;
         return SettingsScreen::new;
     }
 }

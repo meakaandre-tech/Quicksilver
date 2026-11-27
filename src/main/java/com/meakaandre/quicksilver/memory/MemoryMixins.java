@@ -42,11 +42,15 @@ public final class MemoryMixins implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
+        // release prep: nothing read, written or logged next to Sodium or Iris (bench/StandDown)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return;
         Memory.load();
     }
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // release prep: none of Quicksilver's mixins next to Sodium or Iris (bench/StandDown)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return false;
         String id = OWNER.get(mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1));
         return id != null && Memory.on(id);
     }

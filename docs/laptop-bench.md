@@ -14,13 +14,13 @@ Run the plain instance (vanilla Fabric, Fabric API, Quicksilver). The SIFTEC ins
 
 ## Get Quicksilver
 
-Download `quicksilver-26.3.jar` from the `latest` release of meakaandre-tech/Quicksilver on GitHub.
+Download `quicksilver-1.0.0+26.3.jar` from the `latest` release of meakaandre-tech/Quicksilver on GitHub.
 
 ## Instance 1: plain
 
 1. In Prism: **Add Instance** → Minecraft **26.3** → Mod loader **Fabric**, loader **0.19.5** → OK.
 2. Instance → **Edit** → **Mods** → **Download mods** → add **Fabric API** for 26.3 (0.161.0+26.3 or newer).
-   Then **Add file** → `quicksilver-26.3.jar`.
+   Then **Add file** → `quicksilver-1.0.0+26.3.jar`.
 3. Edit → **Settings** → Java: use a **Java 25** runtime (Prism can download it). Memory: on an 8 GB machine (the
    school laptop) set max memory to **1536 MiB** (1.5 GB) in every instance; elsewhere what you normally give Minecraft.
    Write it down.
@@ -66,21 +66,22 @@ If a scene says it stopped (for example "the HubScreen screen was not opened wit
 ## Vanilla, Sodium and Quicksilver side by side (package 4b)
 
 One plain instance, three mod sets, the same seed and scenes, so the three logs compare directly. The **bench-only
-jar** (`quicksilver-bench-26.3.jar`, in the same `latest` release as `quicksilver-26.3.jar`) is `/quicksilver bench`, its
+jar** (`quicksilver-bench-1.0.0+26.3.jar`, in the same `latest` release as `quicksilver-1.0.0+26.3.jar`) is `/quicksilver bench`, its
 counters and its scenes with every Quicksilver module left out: it changes nothing, so with it the game draws as vanilla
 does (or as Sodium does, next to Sodium). Quicksilver itself has the same bench built in.
 
 | run | mods folder (besides Fabric API) |
 |---|---|
-| vanilla | `quicksilver-bench-26.3.jar` |
-| Sodium | `quicksilver-bench-26.3.jar` and Sodium **0.9.2** for 26.3 (Prism: Download mods, Modrinth, "Sodium", pick 0.9.2) |
-| Quicksilver | `quicksilver-26.3.jar` only |
+| vanilla | `quicksilver-bench-1.0.0+26.3.jar` |
+| Sodium | `quicksilver-bench-1.0.0+26.3.jar` and Sodium **0.9.2** for 26.3 (Prism: Download mods, Modrinth, "Sodium", pick 0.9.2) |
+| Quicksilver | `quicksilver-1.0.0+26.3.jar` only |
 
-Never put the bench-only jar next to Quicksilver, or Quicksilver next to Sodium: the game refuses to start (each says so).
+Never put the bench-only jar next to Quicksilver (the game refuses to start), or Quicksilver next to Sodium (Quicksilver
+turns itself off and says so, and you would measure Sodium).
 
 1. Make the plain instance as in "Instance 1: plain" above (steps 1-5: Fabric 26.3, loader 0.19.5, Fabric API, Java 25,
    1280 x 720, Max Framerate Unlimited, VSync Off, GUI Scale 2), but add only the jars in the table above, not step 2's
-   `quicksilver-26.3.jar` in every copy. Then copy it twice in Prism (right-click, **Copy
+   `quicksilver-1.0.0+26.3.jar` in every copy. Then copy it twice in Prism (right-click, **Copy
    Instance**) and name the three copies `bench-vanilla`, `bench-sodium`, `bench-quicksilver`. Put the mods from the table
    in each. Sodium has its own video settings screen: set the same Max Framerate, VSync and GUI Scale there, leave the
    rest on Sodium's defaults. Sodium's screen does not save "Reduce FPS when", so set the video options once in the
@@ -151,7 +152,7 @@ comparable, do these the same way every time:
    the "no server tick over 50 ms" target reads).
 
 Optional, a dedicated server (only if you want to see a server on its own; the laptop targets are single player):
-start a Fabric 26.3 server with Fabric API and the same Quicksilver jar (`quicksilver-26.3.jar`) in its
+start a Fabric 26.3 server with Fabric API and the same Quicksilver jar (`quicksilver-1.0.0+26.3.jar`) in its
 `mods` folder, join it, play or wait
 a minute, then type `quicksilver bench 60` (or `qs bench 60`) in the server console. It writes the same `server:` numbers between
 `===== QUICKSILVER SERVER BENCH BEGIN =====` and `===== QUICKSILVER SERVER BENCH END =====` in the server's

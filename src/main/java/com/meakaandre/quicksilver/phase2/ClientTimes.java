@@ -1,5 +1,6 @@
 package com.meakaandre.quicksilver.phase2;
 
+import com.meakaandre.quicksilver.bench.StandDown;
 import java.lang.management.ManagementFactory;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -15,6 +16,8 @@ public final class ClientTimes implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // release prep: nothing next to Sodium or Iris (bench/StandDown)
+        if (StandDown.active()) return;
         ScreenEvents.AFTER_INIT.register((client, screen, w, h) -> {
             if (ServerNumbers.clientStartupMs != 0) return;
             long ms = System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime();

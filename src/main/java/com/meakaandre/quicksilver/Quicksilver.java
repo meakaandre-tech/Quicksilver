@@ -12,6 +12,9 @@ import net.fabricmc.loader.api.FabricLoader;
 public final class Quicksilver implements ModInitializer {
     @Override
     public void onInitialize() {
+        // release prep: next to Sodium or Iris, Quicksilver registers nothing (not its renderer: Sodium's draws) and
+        // stands down (bench/StandDown; the client says so once)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return;
         // phase 2 (P2-0): the server's numbers for the bench, on both sides (measurement only)
         com.meakaandre.quicksilver.phase2.ServerNumbers.init();
         // phase 2 (P2-1): the Memory module's switches and status line (its mixins are chosen by its mixin plugin)

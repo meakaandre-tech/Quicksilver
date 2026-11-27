@@ -40,11 +40,15 @@ public final class ChunksMixins implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
+        // release prep: nothing read, written or logged next to Sodium or Iris (bench/StandDown)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return;
         Chunks.load();
     }
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // release prep: none of Quicksilver's mixins next to Sodium or Iris (bench/StandDown)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) return false;
         for (String id : Chunks.owners(mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1))) {
             if (Chunks.on(id)) return true;
         }

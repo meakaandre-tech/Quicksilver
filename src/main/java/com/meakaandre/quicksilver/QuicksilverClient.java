@@ -28,6 +28,11 @@ public final class QuicksilverClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // release prep: next to Sodium or Iris, Quicksilver registers nothing and says so once (bench/StandDown)
+        if (com.meakaandre.quicksilver.bench.StandDown.active()) {
+            com.meakaandre.quicksilver.compat.StandDownMessage.init();
+            return;
+        }
         // what each module reports in the bench (package 4b: the bench-only jar has the bench without them)
         BenchSections.register();
         init();

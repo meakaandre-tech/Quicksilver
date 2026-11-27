@@ -50,7 +50,7 @@ jobs:
           # (SIFTEC is cancelled).
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2,3],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":1},{"suite":"core","run":"speed-old","shard":2},{"suite":"core","run":"speed-full","shard":1},{"suite":"core","run":"speed-full","shard":2},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0},{"suite":"far","run":"far-terralith","shard":0},{"suite":"far","run":"far-flat","shard":0},{"suite":"far","run":"far-default","shard":0}]}'
+            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2,3],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":1},{"suite":"core","run":"speed-old","shard":2},{"suite":"core","run":"speed-full","shard":1},{"suite":"core","run":"speed-full","shard":2},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0},{"suite":"far","run":"far-terralith","shard":0},{"suite":"far","run":"far-flat","shard":0},{"suite":"far","run":"far-default","shard":0},{"suite":"core","run":"conflict-sodium","shard":0},{"suite":"core","run":"conflict-iris","shard":0}]}'
             server_suites='["core","terralith"]'
           else
             matrix='{"suite":["core"],"run":["quicksilver-old","quicksilver-2p-old","vanilla-a","vanilla-b"],"shard":[1,2,3]}'
@@ -73,6 +73,10 @@ jobs:
             case "$MESSAGE" in *"[far]"*)
               matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"far","run":r,"shard":0} for r in ("far-terralith","far-flat","far-default")]); print(json.dumps(m,separators=(",",":")))');;
             esac
+            # release prep: [conflict] adds the two runs of Quicksilver next to Sodium and Iris (ci/conflict-check.py)
+            case "$MESSAGE" in *"[conflict]"*)
+              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"core","run":r,"shard":0} for r in ("conflict-sodium","conflict-iris")]); print(json.dumps(m,separators=(",",":")))');;
+            esac
             # package 9: [presets] adds the three preset runs (ci/preset-compare.py; the balanced one runs the options screen's test)
             case "$MESSAGE" in *"[presets]"*)
               matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"core","run":"preset-%s-old" % p,"shard":0} for p in ("low","balanced","quality")]); print(json.dumps(m,separators=(",",":")))');;
@@ -84,7 +88,7 @@ jobs:
             server_suites="[$suites]"
           fi
           # package A: the matrix's speed and smoke runs, so their checks fail on a run that produced nothing
-          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke","preset-","far-"))))')" >> "$GITHUB_OUTPUT"
+          echo "extra_runs=$(echo "$matrix" | python3 -c 'import json,sys; print(" ".join(i["run"] for i in json.load(sys.stdin).get("include",[]) if i["run"].startswith(("speed-","quicksilver-smoke","preset-","far-","conflict-"))))')" >> "$GITHUB_OUTPUT"
           echo "server_suites=$server_suites" >> "$GITHUB_OUTPUT"
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           # run-time fix (2026-11-26): the long client runs (Quicksilver's, the measure runs, the speed runs) in `client`,
@@ -451,7 +455,11 @@ jobs:
           CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 ci/far-compare.py /tmp/res /tmp/ci/compare > /dev/null
           fa=$?
           cat /tmp/ci/compare/far.md >> "$GITHUB_STEP_SUMMARY"
-          echo "status=$(( st || p2 || sp || cs || up || pr || fa ))" >> "$GITHUB_OUTPUT"
+          # release prep: Quicksilver next to Sodium and Iris stands down with one message (ci/conflict-check.py)
+          CI_MODE="${{ needs.mode.outputs.mode }}" CI_EXTRA_RUNS="${{ needs.mode.outputs.extra_runs }}" python3 -I ci/conflict-check.py /tmp/res /tmp/ci/compare > /dev/null
+          co=$?
+          cat /tmp/ci/compare/conflict.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$(( st || p2 || sp || cs || up || pr || fa || co ))" >> "$GITHUB_OUTPUT"
       - name: Publish logs, bench results and screenshots to the branch's ci-logs-<branch> branch
         if: always()
         shell: bash
@@ -784,6 +792,10 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.mode.outputs.mode == 'full'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: gradle.properties
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v4
         with:
           name: quicksilver-jar
@@ -795,7 +807,9 @@ jobs:
         run: |
           gh release delete latest -y --cleanup-tag -R "${{ github.repository }}" || true
           sleep 3
-          cp dist/quicksilver.jar quicksilver-26.3.jar
+          # release prep: the jars carry the version, as Gradle names them (quicksilver-1.0.0+26.3.jar)
+          v=$(grep '^mod_version' gradle.properties | sed 's/.*= *//')+$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
+          cp dist/quicksilver.jar "quicksilver-$v.jar"
           # package 4b: the bench-only jar next to it (for comparing vanilla, Sodium and Quicksilver, docs/laptop-bench.md)
-          cp dist/quicksilver-bench.jar quicksilver-bench-26.3.jar
-          gh release create latest quicksilver-26.3.jar quicksilver-bench-26.3.jar -R "${{ github.repository }}" --target "${GITHUB_SHA}" --title "Quicksilver (latest build)" --notes "Built from main at ${GITHUB_SHA}. Fabric 26.3, needs Fabric API. quicksilver-26.3.jar: Quicksilver (draws what vanilla draws, faster). quicksilver-bench-26.3.jar: only /quicksilver bench, its counters and scenes, with every Quicksilver module left out; use it instead of Quicksilver on plain Fabric or next to Sodium to compare them (docs/laptop-bench.md). Never both in one instance. Known trade: while flying into new terrain, a visible section can appear up to 15 frames later than in vanilla (terrain uploads are spread over frames), for smoother frame times."
+          cp dist/quicksilver-bench.jar "quicksilver-bench-$v.jar"
+          gh release create latest "quicksilver-$v.jar" "quicksilver-bench-$v.jar" -R "${{ github.repository }}" --target "${GITHUB_SHA}" --title "Quicksilver (latest build)" --notes "Built from main at ${GITHUB_SHA}. Fabric 26.3, needs Fabric API. quicksilver-$v.jar: Quicksilver. quicksilver-bench-$v.jar: only /quicksilver bench, its counters and scenes, with every Quicksilver module left out; use it instead of Quicksilver on plain Fabric or next to Sodium to compare them (docs/laptop-bench.md). Never both in one instance. Known trade: while flying into new terrain, a visible section can appear up to 15 frames later than in vanilla (terrain uploads are spread over frames), for smoother frame times."

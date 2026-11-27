@@ -38,7 +38,8 @@ import net.minecraft.client.color.block.BlockColors;
  * is lost.
  *
  * <p>Only one renderer can be registered: with another renderer mod present, whichever registers second fails. Quicksilver
- * logs one error naming the other mod and which renderer won; Sodium is declared incompatible outright.
+ * logs one error naming the other mod and which renderer won. With Sodium or Iris, Quicksilver stands down before it
+ * registers anything (bench/StandDown).
  */
 public final class QuicksilverRenderer implements Renderer {
     public static final QuicksilverRenderer INSTANCE = new QuicksilverRenderer();

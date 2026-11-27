@@ -30,7 +30,10 @@ loader=$(grep '^loader_version' gradle.properties | sed 's/.*= *//')
 fapi=$(grep '^fabric_version' gradle.properties | sed 's/.*= *//')
 suitefile=src/main/resources/quicksilver/scenes/$SUITE.json
 
-case "$RUN" in quicksilver-*|measure-*|speed-*|preset-*|far-*) qs=1;; *) qs=0;; esac
+case "$RUN" in quicksilver-*|measure-*|speed-*|preset-*|far-*|conflict-*) qs=1;; *) qs=0;; esac
+# release prep: conflict-sodium / conflict-iris load Quicksilver next to Sodium (and Iris): it must stand down, say so once
+# and let the game run (ci/conflict-check.py); no scenes, two short sessions (the title screen, then a world)
+case "$RUN" in conflict-*) conflict=1;; *) conflict=0;; esac
 # package 9: preset-low-old / preset-balanced-old / preset-quality-old: Quicksilver on the old-GPU profile (the laptop's
 # plain path) with "preset=<preset>" in its config file, in PRESET_SCENES only, shots only (no bench, so none of the
 # verify* checks, whose results go to the bench: only the upload-queue log the driver waits on); ci/preset-compare.py
@@ -193,6 +196,15 @@ if [ $benchonly = 1 ]; then
     cp /tmp/sodium-check/sodium.jar run/mods/
   fi
 fi
+# release prep: the conflict runs' Sodium (pinned and locked as for bench-sodium) and, in conflict-iris, Iris
+if [ $conflict = 1 ]; then
+  PACK_REPORT="$OUT/pack-sha256.txt" bash ci/pack-fetch.sh sodium /tmp/sodium-check || { echo "could not fetch Sodium, or it changed (see above)"; exit 1; }
+  cp /tmp/sodium-check/sodium.jar run/mods/
+  if [ "$RUN" = conflict-iris ]; then
+    PACK_REPORT="$OUT/pack-sha256-iris.txt" bash ci/pack-fetch.sh iris /tmp/iris-check || { echo "could not fetch Iris, or it changed (see above)"; exit 1; }
+    cp /tmp/iris-check/*.jar run/mods/
+  fi
+fi
 # package 9: Mod Menu in the balanced preset run (the options screen's test opens the screen through Mod Menu's factory)
 if [ "$preset" = balanced ]; then
   if PACK_REPORT="$OUT/pack-sha256-modmenu.txt" bash ci/pack-fetch.sh modmenu /tmp/modmenu; then cp /tmp/modmenu/*.jar run/mods/
@@ -215,6 +227,50 @@ export DISPLAY=:99
 sleep 2
 (glxinfo -B; eglinfo -B 2>/dev/null | head -60; vulkaninfo --summary 2>/dev/null | head -60) > "$OUT/gfx.txt" 2>&1
 echo "op @a" >&3
+
+# release prep: the conflict runs. Session 1 starts at the title screen (Quicksilver's turned-off screen must show),
+# session 2 goes straight into the world (the chat line instead, and the world drawn by Sodium); a screenshot of each.
+if [ $conflict = 1 ]; then
+  printf 'pauseOnLostFocus:false\nonboardAccessibility:false\ntutorialStep:none\nnarrator:0\nrenderDistance:8\nguiScale:2\nmaxFps:30\nsoundCategory_master:0.0\n' > run/options.txt
+  mkdir -p "$OUT/shots"
+  for ln in 1 2; do
+    if pgrep -f KnotClient >/dev/null; then pkill -9 -f KnotClient; sleep 2; fi
+    rm -f run/logs/latest.log
+    before=$(grep -c 'joined the game' server/server.log)
+    args="--width 1280 --height 720 --username QuicksilverCI"
+    [ $ln = 2 ] && args="--quickPlayMultiplayer localhost $args"
+    (env -u CI timeout 900 ./gradlew runClient --no-daemon -Dorg.gradle.console=plain -x compileJava -x processResources -x classes \
+       --args="$args" > "$OUT/client-gradle-$ln.log" 2>&1; echo "EXIT $?" >> "$OUT/client-gradle-$ln.log") &
+    client_pid=$!
+    for i in $(seq 1 150); do
+      if [ $ln = 1 ] && grep -q 'told the player it is turned off' run/logs/latest.log 2>/dev/null; then break; fi
+      if [ $ln = 2 ] && [ "$(grep -c 'joined the game' server/server.log)" -gt "$before" ]; then break; fi
+      grep -q '^EXIT' "$OUT/client-gradle-$ln.log" && break
+      sleep 5
+    done
+    if [ $ln = 1 ]; then
+      sleep 5; import -window root "$OUT/shots/conflict.title.png"
+    else
+      sleep 10; import -window root "$OUT/shots/conflict.world.png"
+      xdotool key t; sleep 2; import -window root "$OUT/shots/conflict.chat.png"; xdotool key Escape
+      sleep 20
+    fi
+    # still running (not crashed) when the session ends
+    if pgrep -f KnotClient >/dev/null; then echo "session $ln: the game was running at the end"; else echo "session $ln: the game was NOT running at the end"; fi
+    pkill -f KnotClient
+    for i in $(seq 1 60); do pgrep -f KnotClient >/dev/null || break; sleep 1; done
+    pgrep -f KnotClient >/dev/null && { pkill -9 -f KnotClient; sleep 2; }
+    for i in $(seq 1 30); do kill -0 "$client_pid" 2>/dev/null || break; sleep 1; done
+    cp run/logs/latest.log "$OUT/client-$ln.log" 2>/dev/null
+    cp -r run/crash-reports "$OUT/client-crash-reports" 2>/dev/null
+  done
+  grep -c 'joined the game' server/server.log > "$OUT/joins.txt"
+  echo "stop" >&3
+  for i in $(seq 1 60); do grep -q '^EXIT' server/server.log && break; sleep 2; done
+  exec 3>&-
+  cp server/server.log "$OUT/server.log"
+  exit 0
+fi
 
 # one client session per render distance and set of client options (package 3: scenes with "clientOptions", e.g.
 # Improved Transparency, get their own session with those lines in options.txt; the same in every run; package 4:

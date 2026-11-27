@@ -43,3 +43,14 @@ saying where it came from and what was changed:
                                                                     chunk_tickable/LevelMixin)
 
 The rest of Quicksilver is its own work under the LGPL-3.0-only.
+
+Clean room. Quicksilver contains no code from Sodium (PolyForm Shield License), Ecstatic (CC BY-NC-SA 4.0),
+LambDynamicLights, ImmediatelyFast, Entity Culling, More Culling, Dynamic FPS, C2ME, Krypton, ModernFix, or any other mod
+not listed above. Where Quicksilver does a job one of those mods also does (compact terrain vertices, region buffers and
+back-face skipping as Sodium does; sampling the world's terrain noise for far terrain as Ecstatic does; moving light
+sources as LambDynamicLights does), only the idea was taken: the code was written from Minecraft's own behaviour (through
+mixins; no decompiled Minecraft code is in this repository or the jar), public documentation and Quicksilver's own
+measurements, and the design notes (docs/progress.md) name where each idea came from. Code is reused only from the projects above, under
+their licences (Apache-2.0, MIT, LGPL-3.0), with each file's header saying where it came from and what was changed.
+
+Quicksilver is not affiliated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios.

@@ -1,0 +1,123 @@
+name: Publish
+
+# Release prep (2026-11-27): uploads a release to Modrinth when a tag v* is pushed (e.g. v1.0.0), and only then:
+# - the tag's version is gradle.properties' mod_version at that commit (v1.0.0 <-> mod_version 1.0.0);
+# - main's Build run on that exact commit (a push to main: always the full matrix) finished green;
+# - a MODRINTH_TOKEN secret exists (without one it stops with a message, and nothing is uploaded); a Modrinth personal
+#   access token with PROJECT_READ, VERSION_READ and VERSION_CREATE.
+# The jar uploaded is the one that green run built and tested (its quicksilver-jar artifact), named as Gradle names it
+# (quicksilver-<version>+<minecraft>.jar), to the Modrinth project "quicksilver", with the tag's CHANGELOG.md entry as the
+# changelog. A version already on Modrinth is not uploaded again. Nothing here creates tags or the Modrinth project.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the token, the version and main's run
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MODRINTH_TOKEN:-}" ]; then
+            msg="Skipped: no MODRINTH_TOKEN secret in this repository (Settings > Secrets and variables > Actions). Nothing was uploaded."
+            echo "$msg"; echo "## Publish skipped" >> "$GITHUB_STEP_SUMMARY"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            echo "go=0" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          mod=$(grep '^mod_version' gradle.properties | sed 's/.*= *//')
+          mc=$(grep '^minecraft_version' gradle.properties | sed 's/.*= *//')
+          if [ "$TAG" != "v$mod" ]; then
+            echo "::error::tag $TAG doesn't match mod_version $mod in gradle.properties (expected v$mod); nothing uploaded"; exit 1
+          fi
+          entry=$(awk -v v="$mod" '$0 ~ "^## "v"( |$)" {f=1; next} f && /^## / {exit} f {print}' CHANGELOG.md)
+          if [ -z "$(echo "$entry" | tr -d '[:space:]')" ]; then
+            echo "::error::CHANGELOG.md has no '## $mod' entry; nothing uploaded"; exit 1
+          fi
+          printf '%s\n' "$entry" > /tmp/changelog.md
+          # main's Build run on this exact commit, finished green
+          runs=$(gh api "repos/$REPO/actions/workflows/build.yml/runs?head_sha=$GITHUB_SHA&branch=main&event=push&status=completed&per_page=20")
+          run=$(echo "$runs" | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["workflow_runs"] if x["conclusion"]=="success"]; print(r[0]["id"] if r else "")')
+          if [ -z "$run" ]; then
+            echo "::error::main's Build run on $GITHUB_SHA isn't there, isn't finished or isn't green (only a green full run on main is published); nothing uploaded"
+            echo "$runs" | python3 -c 'import json,sys; [print(x["id"], x["head_branch"], x["status"], x["conclusion"]) for x in json.load(sys.stdin)["workflow_runs"]]'
+            exit 1
+          fi
+          echo "main's green Build run on $GITHUB_SHA: $run"
+          {
+            echo "go=1"; echo "run=$run"; echo "version=$mod"; echo "mc=$mc"
+          } >> "$GITHUB_OUTPUT"
+      - name: Get the jar main's green run built
+        if: steps.check.outputs.go == '1'
+        uses: actions/download-artifact@v4
+        with:
+          name: quicksilver-jar
+          path: dist
+          run-id: ${{ steps.check.outputs.run }}
+          github-token: ${{ github.token }}
+      - name: Upload to Modrinth
+        if: steps.check.outputs.go == '1'
+        shell: bash
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          VERSION: ${{ steps.check.outputs.version }}
+          MC: ${{ steps.check.outputs.mc }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          api=https://api.modrinth.com/v2
+          ua="$REPO/$VERSION (GitHub Actions publish)"
+          jar="quicksilver-$VERSION+$MC.jar"
+          cp dist/quicksilver.jar "$jar"
+          # the jar must be the version being published
+          unzip -p "$jar" fabric.mod.json | python3 -c 'import json,sys,os; v=json.load(sys.stdin)["version"]; e=os.environ["VERSION"]+"+"+os.environ["MC"]; sys.exit(0 if v==e else "the jar says version %s, expected %s" % (v,e))'
+          # with the token: a new project is a draft until Modrinth approves it, and a draft is not found without one
+          # (the token needs PROJECT_READ, VERSION_READ and VERSION_CREATE)
+          auth="Authorization: $MODRINTH_TOKEN"
+          project=$(curl -fsS -A "$ua" -H "$auth" "$api/project/quicksilver" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])') \
+            || { echo "::error::the Modrinth project 'quicksilver' wasn't found (create it first, and check the token's scopes); nothing uploaded"; exit 1; }
+          pid() { curl -fsS -A "$ua" "$api/project/$1" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])'; }
+          fabric_api=$(pid fabric-api); modmenu=$(pid modmenu); sodium=$(pid sodium); iris=$(pid iris)
+          number="$VERSION+$MC"
+          existing=$(curl -fsS -A "$ua" -H "$auth" "$api/project/$project/version" | N="$number" python3 -c 'import json,sys,os; print("yes" if any(v["version_number"]==os.environ["N"] for v in json.load(sys.stdin)) else "no")')
+          if [ "$existing" = yes ]; then
+            echo "Version $number is already on Modrinth: not uploaded again"; echo "Version $number was already on Modrinth" >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          PROJECT="$project" FABRIC_API="$fabric_api" MODMENU="$modmenu" SODIUM="$sodium" IRIS="$iris" NUMBER="$number" python3 - <<'PY' > /tmp/data.json
+          import json, os
+          print(json.dumps({
+              "name": "Quicksilver %s for %s" % (os.environ["VERSION"], os.environ["MC"]),
+              "version_number": os.environ["NUMBER"],
+              "changelog": open("/tmp/changelog.md").read().strip(),
+              "dependencies": [{"project_id": os.environ["FABRIC_API"], "dependency_type": "required"},
+                               {"project_id": os.environ["MODMENU"], "dependency_type": "optional"},
+                               {"project_id": os.environ["SODIUM"], "dependency_type": "incompatible"},
+                               {"project_id": os.environ["IRIS"], "dependency_type": "incompatible"}],
+              "game_versions": [os.environ["MC"]],
+              "version_type": "release",
+              "loaders": ["fabric"],
+              "featured": True,
+              "project_id": os.environ["PROJECT"],
+              "file_parts": ["file"],
+              "primary_file": "file",
+          }))
+          PY
+          code=$(curl -sS -o /tmp/answer.json -w '%{http_code}' -A "$ua" -H "Authorization: $MODRINTH_TOKEN" \
+            -F "data=</tmp/data.json;type=application/json" -F "file=@$jar;type=application/java-archive" "$api/version")
+          if [ "$code" != 200 ]; then echo "::error::Modrinth answered $code"; cat /tmp/answer.json; exit 1; fi
+          id=$(python3 -c 'import json; print(json.load(open("/tmp/answer.json"))["id"])')
+          echo "Uploaded $jar as Modrinth version $number ($id)"
+          echo "## Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "$jar as https://modrinth.com/mod/quicksilver/version/$id" >> "$GITHUB_STEP_SUMMARY"

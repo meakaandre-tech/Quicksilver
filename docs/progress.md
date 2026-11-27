@@ -59,6 +59,13 @@ into main 2026-11-27 as `3ee91df` (see "Fixes before package 12" below); main's 
 squash-merged into main 2026-11-27 (branch full run 45960358116 green; see "Package 12b" and "Package 12" below,
 "Decisions for Andre" in both).
 
+**Release prep** (README, Modrinth listing, CHANGELOG 1.0.0, NOTICE, version 1.0.0, publish workflow, Sodium/Iris
+stand-down): squash-merged into main 2026-11-27 (branch full run 45978133664 green; see "Release prep" below,
+"Decisions for Andre" there). To publish: create the Modrinth project `quicksilver`, add the `MODRINTH_TOKEN` secret,
+push the tag `v1.0.0` on a green main (after R2).
+
+**Branch cleanup** (2026-11-27): `package-12`, `release-prep` and their `ci-logs-*` branches deleted with `[cleanup]`.
+
 **Still to do, in order:** R2 (laptop bench,
 `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two lines, which the file now reads as `preset=custom`, and
 `preset=low-end` turns on more; add pixel art against Normal), R (release: laptop bench, then Modrinth).
@@ -68,6 +75,71 @@ squash-merged into main 2026-11-27 (branch full run 45960358116 green; see "Pack
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+## Release prep (2026-11-27, branch `release-prep`)
+
+**Status:** squash-merged into main 2026-11-27 (branch full run 45978133664 green on its second attempt, see Runs).
+
+**What it adds**
+- **README.md:** what Quicksilver does; its features (renderer, speed options, presets, dynamic lights, pixel art look,
+  far terrain, server and memory modules, bench); the settings screen; server owners' `far-terrain-share=on`; R1's laptop
+  results (`docs/laptop-results/r1.md`); known limits (no Sodium or Iris; far terrain needs the seed; Create and
+  Flywheel smoke-tested only); reporting bugs; building; licence.
+- **docs/modrinth.md:** the project's summary line, categories, environment (client and server, both optional),
+  licence and links; version 1.0.0's number, loaders, game version and dependencies (Fabric API required, Mod Menu
+  optional, Sodium and Iris incompatible); a ready-to-paste description.
+- **CHANGELOG.md:** the 1.0.0 entry (the publish workflow uploads it as the changelog).
+- **NOTICE:** every reused third-party code as before (Fabric API/Indigo, Apache-2.0; FerriteCore, MIT; Lithium,
+  LGPL-3.0, each file listed) plus the clean-room statement (no code from Sodium, Ecstatic and the other mods named; ideas
+  only; no decompiled Minecraft code) and the trademark line.
+- **Version 1.0.0:** `mod_version = 1.0.0`, so Gradle builds `quicksilver-1.0.0+26.3.jar` (and
+  `quicksilver-bench-1.0.0+26.3.jar`); the `latest` release now carries those names (`docs/laptop-bench.md` updated);
+  `fabric.mod.json` gets a description of the whole mod and homepage and issues links.
+- **Publish workflow** (`.github/workflows/publish.yml`): on a pushed tag `v*` only. It stops with a message (green,
+  nothing uploaded) if there is no `MODRINTH_TOKEN` secret; fails if the tag isn't `v` + `mod_version`, if `CHANGELOG.md`
+  has no entry for it, or if main's Build run on that exact commit isn't finished and green. It uploads the jar that green
+  run built (its `quicksilver-jar` artifact, renamed `quicksilver-<version>+<mc>.jar`, its `fabric.mod.json` version
+  checked) to the Modrinth project `quicksilver` as a release for Fabric and 26.3 with Fabric API required and the
+  changelog entry; a version already there isn't uploaded again. It creates no tag and no project.
+- **Sodium or Iris: one clear message instead of a crash** (`bench/StandDown`, `compat/StandDownMessage`): with Sodium or
+  Iris installed, none of Quicksilver's mixins apply (every mixin config has a plugin that asks; the configs without one
+  got `StandDown`), its entrypoints register nothing (not its renderer: Sodium's draws), and the player is told once: a
+  screen on the first title screen, or one chat line when the game goes straight into a world. Mod Menu's Configure
+  button shows the same screen. The loader's `breaks: sodium` is gone (it stopped the game at the loader). The bench-only
+  jar is unaffected (Quicksilver itself isn't loaded there).
+- **CI:** two runs, `conflict-sodium` (Quicksilver and Sodium 0.9.2) and `conflict-iris` (and Iris 1.11.6), in full mode
+  and with `[conflict]`: two sessions each (the title screen; straight into the world). `ci/conflict-check.py`: the
+  turned-off line naming the mods, the message shown once in each session (title screen, chat), the game still running at
+  the end, no crash report, no mixin failure, none of Quicksilver's modules started, the world joined, three screenshots.
+  Iris is pinned in `ci/pack-sources.txt` and locked in `ci/pack-lock.txt`.
+
+**Runs:** 45967306527 (`c5cf545`): the build failed (26.3's screen calls are `mc.gui.screen()` / `mc.gui.setScreen`;
+fixed). 45968647778 (`b08d8e7`, quick with `[conflict]`): both conflict runs passed every check (title screen and chat
+shown, game running, world joined); Iris's hash recorded and locked from it. Independent review (fresh agent): fixed: the
+publish job read the Modrinth project without the token (a new project is a draft and would not be found); it now also
+sends Mod Menu optional and Sodium and Iris incompatible; the Memory, Logic and Chunks plugins still read and wrote the
+config next to Sodium; the conflict check now covers every module's log lines, the renderer's registration and
+Quicksilver mixin errors; the docs said far terrain shows seen land on any server (on a server without Quicksilver it
+stays off); the settings screen's sections were out of order; softer claims (uploads, translucent order); categories.
+45978133664 (`b0a4617`, full): every check passed but `spawn.pixel_island` on Vulkan, 0.0049% against its 0.004% (two
+pixel art cells at the sand's edge and the oak's foot, 45 pixels; nothing rendering-related changed on this branch, and
+main's full run on the same rendering code passed it). Not raised: the Vulkan client job and the compare were re-run
+with GitHub's job re-run (as package 12's perf job was): green, Vulkan 0.002 and full 0.0029. **Open for Andre:** the
+island sits close to its limit (samples now up to 0.0049%; the rule would give 0.0098%, still below the 0.011% of one
+missing flower); re-collect it by the rule, or leave it and re-run when it flakes.
+
+**Decisions for Andre** (each the safest that can be undone; how to switch is in each line)
+1. **Stand down next to Sodium or Iris** (the game runs with them; Quicksilver says so once). Alternatives: the loader's
+   `breaks` (the game doesn't start; the loader's own dialog); keep the server and memory modules on next to Sodium
+   (untested together). Switch: `bench/StandDown` (`active`), `fabric.mod.json` (`breaks`).
+2. **The message: a screen on the title screen, else one chat line.** Alternative: a toast. Switch: `compat/StandDownMessage`.
+3. **The jar Modrinth gets is the one main's green run tested** (its artifact), not a fresh build of the tag. Alternative:
+   build the tag in the publish job. Switch: `publish.yml` ("Get the jar...").
+4. **The `latest` release's jars carry the version** (`quicksilver-1.0.0+26.3.jar`). Alternative: keep
+   `quicksilver-26.3.jar`. Switch: the workflow's `release` job.
+5. **Modrinth categories:** Optimization, Utility, Decoration; environment client and server, both optional. Switch:
+   `docs/modrinth.md` (pasted by hand).
+6. **README's results are R1's** (before packages A and B); R2 will replace them. Switch: README.
 
 ## Package 12b: the Terralith hole, seed sharing, the perf flake (2026-11-27, branch `package-12`)
 
