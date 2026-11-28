@@ -25,6 +25,10 @@ layout(std140) uniform QsPixelArt {
     vec4 QsDepth;
     // x, y: where the fog starts and ends (blocks); z: 1 if there is fog to fade by; w: the projection's m11
     vec4 QsFog;
+    // package 12c: rgb the fog's colour now, w: 1 for the fog tones and the dithering's fade in the fog
+    vec4 QsFogColour;
+    // rgb the sky's colour now
+    vec4 QsSkyColour;
 };
 
 layout(location = 0) in vec2 qsNdc;
@@ -35,6 +39,46 @@ const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0
 vec3 paletteColour(vec3 c) {
     ivec3 q = ivec3(clamp(floor(c * 31.0 + 0.5), 0.0, 31.0));
     return texelFetch(Sampler2, ivec2(q.r + 32 * q.b, q.g), 0).rgb;
+}
+
+// the palette's "redmean" distance (Palette.nearest), in 0..1 colours
+float redmean(vec3 a, vec3 b) {
+    vec3 d = (a - b) * 255.0;
+    float rm = (a.r + b.r) * 127.5;
+    return (512.0 + rm) * d.r * d.r + 1024.0 * d.g * d.g + (767.0 - rm) * d.b * d.b;
+}
+
+// package 12c: the palette colour, or a fog tone where one is nearer: the fog's and the sky's colours and their blends, and
+// the palette colour blended toward the fog at 25, 50 and 75% (hazy far land), so pale fog and sky aren't dithered
+// between far-apart palette colours (a heavy checkerboard over far terrain and the sky)
+vec3 toned(vec3 c, vec3 p) {
+    if (QsFogColour.w < 0.5) return p;
+    vec3 f = QsFogColour.rgb, s = QsSkyColour.rgb;
+    vec3 best = p;
+    float bd = redmean(c, p);
+    vec3 cand[8] = vec3[8](f, s, mix(f, s, 0.25), mix(f, s, 0.5), mix(f, s, 0.75), mix(p, f, 0.25), mix(p, f, 0.5), mix(p, f, 0.75));
+    for (int i = 0; i < 8; i++) {
+        float d = redmean(c, cand[i]);
+        if (d < bd) {
+            bd = d;
+            best = cand[i];
+        }
+    }
+    return best;
+}
+
+// package 12c: how far into the fog this pixel is (0 near, 1 at the fog's end; the sky, at the far plane: 1)
+float fogShare(ivec2 p, ivec2 size) {
+    if (QsFog.z < 0.5 || QsDepth.y == 0.0) return 0.0;
+    float d = texelFetch(Sampler1, p, 0).r;
+    float ndc = QsDepth.z > 0.5 ? d : d * 2.0 - 1.0;
+    vec2 sxy = (vec2(p) + 0.5) / vec2(size) * 2.0 - 1.0;
+    vec2 slope = sxy / vec2(QsDepth.w, QsFog.w);
+    float denom = ndc + QsDepth.x;
+    if (abs(denom) < 1.0e-6) return 1.0;
+    float dist = QsDepth.y / denom * sqrt(1.0 + dot(slope, slope));
+    if (dist < 0.0) return 1.0;
+    return smoothstep(QsFog.x, QsFog.y, dist);
 }
 
 // larger is nearer, whichever way the depth test runs
@@ -76,9 +120,12 @@ void main() {
         c *= mix(1.0, 0.45, strength);
     }
 #endif
+    vec3 plain = c;
 #ifdef QS_DITHER
     float t = (BAYER[(p.y & 3) * 4 + (p.x & 3)] + 0.5) / 16.0 - 0.5;
-    c += t * 0.1;
+    // package 12c: the dithering fades out in the fog, as the outlines do (and is gone in the sky)
+    float amount = QsFogColour.w > 0.5 ? 1.0 - fogShare(p, size) : 1.0;
+    c += t * 0.1 * amount;
 #endif
-    fragColor = vec4(paletteColour(c), 1.0);
+    fragColor = vec4(toned(c, paletteColour(c)), 1.0);
 }

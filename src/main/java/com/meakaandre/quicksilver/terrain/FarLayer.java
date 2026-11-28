@@ -146,7 +146,7 @@ public final class FarLayer {
     public static boolean covers(int x, int z) {
         long key = (long) Math.floorDiv(x, 128) << 32 | (Math.floorDiv(z, 128) & 0xFFFFFFFFL);
         java.util.Set<Long> cur = currentTiles;
-        return cur != null && (PARTS.containsKey(key) || PARTS.containsKey(beyondKey(key))) && cur.contains(key);
+        return cur != null && PARTS.containsKey(key) && cur.contains(key);
     }
 
     /** A real section left out under far terrain this frame (bench). */
@@ -234,25 +234,8 @@ public final class FarLayer {
         }
     }
 
-    /** Package 12c: the key of a tile's second part (its quads past the band; FarTiles splits tiles near the band). */
-    public static long beyondKey(long key) {
-        return key ^ 0x40000000L;
-    }
-
-    /** Package 12c: the key of a tile's third part (its quads wholly inside the hand-over circle: drawn for holes only). */
-    public static long insideKey(long key) {
-        return key ^ 0x20000000L;
-    }
-
-    /** A tile goes, all its parts (and any of their quads still waiting to be copied in). Any thread. */
+    /** A tile goes (and any of its quads still waiting to be copied in). Any thread. */
     public static void remove(long key, int fromSession) {
-        removePart(key, fromSession);
-        removePart(beyondKey(key), fromSession);
-        removePart(insideKey(key), fromSession);
-    }
-
-    /** One part of a tile goes. Any thread. */
-    public static void removePart(long key, int fromSession) {
         synchronized (QUEUE) {
             if (fromSession != session) return;
             STAGED.removeIf(s -> {

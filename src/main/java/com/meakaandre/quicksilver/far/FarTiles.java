@@ -50,9 +50,6 @@ final class FarTiles implements Runnable {
         FarSource.Heights[] hs;
         /** Package 12c: per column, bit 1 a snowy top, bit 2 a biome with trees, bit 4 water (CI's find). */
         byte[] kind;
-        /** Package 12c: the camera when staged, whether split in two parts (band, beyond), and whether the beyond part is held. */
-        double stageCamX, stageCamZ;
-        boolean split, hadBeyond, hadInside;
         /** Package 12c: the big structures starting in this tile (from the seed), drawn as silhouettes. */
         java.util.List<FarStructures.Site> sites = java.util.List.of();
         boolean sitesKnown;
@@ -195,7 +192,7 @@ final class FarTiles implements Runnable {
                 }
                 boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
                 int look = (com.meakaandre.quicksilver.speed.Speed.CI_FAR_BOX_TREES.on() ? 1 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on() ? 2 : 0)
-                    | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SPLIT.on() ? 4 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_INSIDE.on() ? 8 : 0);
+                    | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_FULL_TREES.on() ? 4 : 0);
                 if (oldMesh != stagedOldMesh || look != stagedLook) {
                     stagedOldMesh = oldMesh;
                     stagedLook = look;
@@ -266,16 +263,6 @@ final class FarTiles implements Runnable {
                     Tile t = tiles.remove(k);
                     if (t != null) tileHeapBytes.addAndGet(-heapOf(t));
                     if (t != null && t.staged) FarLayer.remove(k, id);
-                }
-                // package 12c: split tiles (near the band) staged again once the camera moved 24 blocks from where they were
-                // split, so their second part stays past the band
-                for (Tile t : tiles.values()) {
-                    if (!t.staged) continue;
-                    double mx = cx - t.stageCamX, mz = cz - t.stageCamZ;
-                    if (mx * mx + mz * mz < 24 * 24) continue;
-                    double nx = Math.max(Math.max(t.tx * TILE - cx, cx - (t.tx * TILE + TILE)), 0), nz = Math.max(Math.max(t.tz * TILE - cz, cz - (t.tz * TILE + TILE)), 0);
-                    boolean wants = Math.sqrt(nx * nx + nz * nz) < handEnd + 32;
-                    if (t.split || wants) stage(t);
                 }
                 if (source == null) {
                     // again only when something it reads changed (the camera's chunk, real chunks in, tiles made)
@@ -754,33 +741,7 @@ final class FarTiles implements Runnable {
             buf.putShort((short) vx).putShort((short) vy).putShort((short) vz).putShort((short) c565);
         }
 
-        /**
-         * Package 12c: where a tile reaches into the hand-over band, its quads wholly past {@link #split} blocks from
-         * {@link #scx}, {@link #scz} (the camera as it is staged) go to a second mesh, drawn with the plain stage (early
-         * depth rejection), not the band's (which writes its own depth). Null: one mesh.
-         */
-        Mesh beyond, inside;
-        double scx, scz, split, insideR;
-
         void quad(float[] p, int c0, int c1, int c2, int c3) {
-            if (beyond != null) {
-                float x0 = Math.min(Math.min(p[0], p[3]), Math.min(p[6], p[9])), x1 = Math.max(Math.max(p[0], p[3]), Math.max(p[6], p[9]));
-                float z0 = Math.min(Math.min(p[2], p[5]), Math.min(p[8], p[11])), z1 = Math.max(Math.max(p[2], p[5]), Math.max(p[8], p[11]));
-                double nx = Math.max(Math.max(x0 - scx, scx - x1), 0), nz = Math.max(Math.max(z0 - scz, scz - z1), 0);
-                if (nx * nx + nz * nz >= split * split) {
-                    beyond.quad(p, c0, c1, c2, c3);
-                    return;
-                }
-                // package 12c: wholly inside the hand-over circle (its farthest point): a third part, drawn only where
-                // real terrain leaves a hole there (as tiles wholly inside the circle are)
-                if (inside != null) {
-                    double fx = Math.max(Math.abs(x0 - scx), Math.abs(x1 - scx)), fz = Math.max(Math.abs(z0 - scz), Math.abs(z1 - scz));
-                    if (fx * fx + fz * fz < insideR * insideR) {
-                        inside.quad(p, c0, c1, c2, c3);
-                        return;
-                    }
-                }
-            }
             vertex(p[0], p[1], p[2], c0);
             vertex(p[3], p[4], p[5], c1);
             vertex(p[6], p[7], p[8], c2);
@@ -808,27 +769,6 @@ final class FarTiles implements Runnable {
     private void stage(Tile t) {
         Mesh m = new Mesh(anchorX, anchorZ, floorY);
         int n = t.n, s = t.spacing, ox = t.tx * TILE, oz = t.tz * TILE;
-        // package 12c: a tile reaching into the band (its nearest point within it) is split: its quads 32 blocks or more
-        // past the band's end go to a second mesh drawn with the plain stage; staged again as the camera moves 24 blocks
-        double scx = camX, scz = camZ;
-        int he = handEnd;
-        double tnx = Math.max(Math.max(ox - scx, scx - (ox + TILE)), 0), tnz = Math.max(Math.max(oz - scz, scz - (oz + TILE)), 0);
-        boolean split = !com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SPLIT.on() && he > 0 && Math.sqrt(tnx * tnx + tnz * tnz) < he + 32;
-        if (split) {
-            m.beyond = new Mesh(anchorX, anchorZ, floorY);
-            m.scx = scx;
-            m.scz = scz;
-            m.split = he + 32;
-            // the circle's inside: the band starts 32 blocks inside its end; 8 more of margin (the camera moves 24 before
-            // the tile is split again)
-            if (he > 64 && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_INSIDE.on()) {
-                m.inside = new Mesh(anchorX, anchorZ, floorY);
-                m.insideR = he - 56;
-            }
-        }
-        t.stageCamX = scx;
-        t.stageCamZ = scz;
-        t.split = split;
         float[] q = new float[12];
         boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
         boolean oldLook = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on();
@@ -981,12 +921,15 @@ final class FarTiles implements Runnable {
                     int x = ox + i * s, z = oz + j * s;
                     float expected = info.perChunk() * (s * s) / 256f;
                     long h = hash(x, z);
-                    if ((h & 0xFFFF) / 65536f >= Math.min(1f, expected)) continue;
+                    // package 12c: past 16 chunks (8-block cells) at most one tree in two cells, each a quarter bigger: about
+                    // half the quads of a forest there, its canopy as dense from afar
+                    boolean sparse = s >= 8 && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_FULL_TREES.on();
+                    if ((h & 0xFFFF) / 65536f >= Math.min(sparse ? 0.5f : 1f, expected)) continue;
                     FarTrees.Tree tree = info.trees().get((int) ((h >>> 16) & 0x7FFFFFFF) % info.trees().size());
                     float cx = x + s / 2f + (((h >>> 40) & 255) / 255f - 0.5f) * (s - 2), cz = z + s / 2f + (((h >>> 48) & 255) / 255f - 0.5f) * (s - 2);
                     float ground = t.solidTop[a];
                     float crownTop = ground + tree.height() + 1, crownBottom = Math.max(ground + 1, crownTop - tree.crown() - 1);
-                    float r = tree.radius() + 0.5f;
+                    float r = (tree.radius() + 0.5f) * (sparse ? 1.25f : 1f);
                     int leaves = FarColors.color(tree.leaves(), t.biome[a], x, (int) crownTop, z);
                     // package 12c: snow on the crowns where vanilla's freeze step would put it (half the leaves' colour)
                     if (source != null && source.snowAt(t.biome[a], x, (int) crownTop + 1, z)) leaves = mix(leaves, SNOW_RGB);
@@ -1000,47 +943,21 @@ final class FarTiles implements Runnable {
         if (!com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on()) {
             for (FarStructures.Site site : t.sites) structure(m, q, t, site);
         }
-        int total = m.quads + (m.beyond != null ? m.beyond.quads : 0) + (m.inside != null ? m.inside.quads : 0);
-        if (total == 0) {
+        if (m.quads == 0) {
             MemoryUtil.memFree(m.buf);
-            if (m.beyond != null) MemoryUtil.memFree(m.beyond.buf);
-            if (m.inside != null) MemoryUtil.memFree(m.inside.buf);
             if (t.staged) FarLayer.remove(key(t.tx, t.tz), id);
             t.staged = false;
             current.remove(key(t.tx, t.tz));
             return;
         }
-        quadsMade.addAndGet(total);
-        stagePart(key(t.tx, t.tz), m);
-        // the second part: staged, or (no split now, or nothing past it) removed
-        long k2 = FarLayer.beyondKey(key(t.tx, t.tz));
-        if (m.beyond != null && m.beyond.quads > 0) stagePart(k2, m.beyond);
-        else {
-            if (m.beyond != null) MemoryUtil.memFree(m.beyond.buf);
-            if (t.hadBeyond) FarLayer.removePart(k2, id);
-        }
-        t.hadBeyond = m.beyond != null && m.beyond.quads > 0;
-        long k3 = FarLayer.insideKey(key(t.tx, t.tz));
-        if (m.inside != null && m.inside.quads > 0) stagePart(k3, m.inside);
-        else {
-            if (m.inside != null) MemoryUtil.memFree(m.inside.buf);
-            if (t.hadInside) FarLayer.removePart(k3, id);
-        }
-        t.hadInside = m.inside != null && m.inside.quads > 0;
+        quadsMade.addAndGet(m.quads);
+        m.buf.flip();
+        FarLayer.stage(key(t.tx, t.tz), m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
+            (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
         t.staged = true;
         if (!t.dirty) current.add(key(t.tx, t.tz));
     }
 
-    private void stagePart(long key, Mesh m) {
-        if (m.quads == 0) {
-            MemoryUtil.memFree(m.buf);
-            FarLayer.removePart(key, id);
-            return;
-        }
-        m.buf.flip();
-        FarLayer.stage(key, m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
-            (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
-    }
 
     private static int shoreCliff(Tile t, int k, float y, float top, int[] lit, int[] rock) {
         return y >= top - 2 ? (t.fluidTop[k] != FarSource.NONE ? t.fluidColor[k] : lit[k]) : rock[k];
@@ -1189,26 +1106,18 @@ final class FarTiles implements Runnable {
     private static void treeShape(Mesh m, float[] q, int shape, float cx, float cz, float ground, float bottom, float top, float r, int leaves, int log,
                                   boolean trunk) {
         float hgt = top - bottom;
+        // package 12c: each shape no more quads than a box (a box cost 2% more frame time on the old-GPU profile when the
+        // shapes had two parts each): a cone's four sides, a blob's four tapered sides and its top
         switch (shape) {
-            case FarTrees.CONE -> {
-                // two tiers: a wide lower one and a narrower upper one to the tip
-                float mid = bottom + hgt * 0.55f;
-                frustum(m, q, cx, cz, bottom, r, mid + hgt * 0.1f, r * 0.35f, leaves);
-                frustum(m, q, cx, cz, mid - hgt * 0.1f, r * 0.75f, top + 0.5f, 0f, leaves);
-            }
+            case FarTrees.CONE -> frustum(m, q, cx, cz, bottom, r, top + 0.5f, 0f, leaves);
             case FarTrees.BLOB, FarTrees.THIN, FarTrees.WIDE -> {
                 float rr = shape == FarTrees.THIN ? Math.max(1f, r * 0.7f) : shape == FarTrees.WIDE ? r * 1.25f : r;
-                float in = Math.max(0.5f, hgt * 0.22f);
-                box(m, q, cx - rr, bottom + in, cz - rr, cx + rr, top - in, cz + rr, leaves, true);
-                float rn = rr * 0.62f;
-                box(m, q, cx - rn, bottom, cz - rn, cx + rn, top, cz + rn, leaves, true);
+                blob(m, q, cx, cz, bottom, top, rr, leaves);
             }
             case FarTrees.TALL -> {
                 // a tall trunk (wider for the big ones) and a blob on top
-                float rr = r;
                 float cb = Math.max(bottom, top - Math.max(3f, hgt * 0.6f));
-                box(m, q, cx - rr, cb + 1, cz - rr, cx + rr, top - 1, cz + rr, leaves, true);
-                box(m, q, cx - rr * 0.6f, cb, cz - rr * 0.6f, cx + rr * 0.6f, top, cz + rr * 0.6f, leaves, true);
+                blob(m, q, cx, cz, cb, top, r, leaves);
                 bottom = cb;
                 if (trunk || r > 2.5f) {
                     float w = r > 3 ? 1f : 0.5f;
@@ -1225,6 +1134,14 @@ final class FarTiles implements Runnable {
             default -> box(m, q, cx - r, bottom, cz - r, cx + r, top, cz + r, leaves, true);
         }
         if (trunk && bottom > ground + 0.5f) box(m, q, cx - 0.5f, ground, cz - 0.5f, cx + 0.5f, bottom, cz + 0.5f, log, false);
+    }
+
+    /** A rounded crown: four sides tapering from r at the bottom to 0.6 r at the top, and the top. */
+    private static void blob(Mesh m, float[] q, float cx, float cz, float y0, float y1, float r, int rgb) {
+        frustum(m, q, cx, cz, y0, r, y1, r * 0.6f, rgb);
+        float t = r * 0.6f;
+        set(q, cx - t, y1, cz - t, cx - t, y1, cz + t, cx + t, y1, cz + t, cx + t, y1, cz - t);
+        m.quad(q, rgb, rgb, rgb, rgb);
     }
 
     /** Four sloped sides from a square of half-width r0 at y0 to one of r1 at y1 (r1 0: a point), shaded by their facing. */

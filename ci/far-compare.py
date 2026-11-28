@@ -176,6 +176,36 @@ def seam_truth(shot, mark, truth, off):
     return {"columns": cols, "excess": round(float(np.mean(excess)), 2), "own": round(float(np.mean(own)), 2), "gaps": gaps}
 
 
+# package 12c: shots taken for a check only (no stored reference)
+CHECK_ONLY = {"far/far_land.pixel_old"}
+CHECKER_MAX_SHARE = 0.5
+
+
+def checker_share(img, flat_from, step=3):
+    """Package 12c: the share of checkerboard pixels of a pixel art shot (its art pixels sampled at their centres, 3 window
+    pixels a side), counted in the pale, flat areas of the same view without pixel art (fog, haze, sky): a pixel whose right
+    and lower neighbours both differ from it by over 12 and whose diagonal neighbour matches it (within 6)."""
+    if img is None or flat_from is None or img.shape != flat_from.shape:
+        return None, 0
+    lum = lambda im: im[:, :, 0] * 0.299 + im[:, :, 1] * 0.587 + im[:, :, 2] * 0.114
+    a = lum(img)[1::step, 1::step]
+    f = lum(flat_from)
+    # flat and pale in the plain view: a 9-pixel neighbourhood's spread under 3, brighter than 140
+    h, w = f.shape
+    flat = np.zeros_like(f, dtype=bool)
+    from numpy.lib.stride_tricks import sliding_window_view
+    win = sliding_window_view(f, (9, 9))
+    spread = win.max(axis=(2, 3)) - win.min(axis=(2, 3))
+    flat[4:h - 4, 4:w - 4] = (spread < 3) & (f[4:h - 4, 4:w - 4] > 140)
+    m = flat[1::step, 1::step]
+    hh, ww = a.shape
+    a0, ar, ad, ag = a[:hh - 1, :ww - 1], a[:hh - 1, 1:], a[1:, :ww - 1], a[1:, 1:]
+    chk = (np.abs(a0 - ar) > 12) & (np.abs(a0 - ad) > 12) & (np.abs(a0 - ag) <= 6)
+    mm = m[:hh - 1, :ww - 1]
+    n = int(mm.sum())
+    return (round(float((chk & mm).sum() / n * 100), 3) if n else None), n
+
+
 def status_lines(log):
     """Package 12c: far terrain's status lines' memory part, parsed (CI's flight)."""
     out = []
@@ -327,7 +357,9 @@ def main():
                     limit = limits.get(suite, {}).get(shot_id)
                     vs = None
                     same_share = None
-                    if not os.path.exists(ref):
+                    if f"{suite}/{shot_id}" in CHECK_ONLY:
+                        pass
+                    elif not os.path.exists(ref):
                         os.makedirs(os.path.join(rep, "new-references", suite), exist_ok=True)
                         shutil.copy(got, os.path.join(rep, "new-references", suite, f"{shot_id}-{run}.png"))
                         failures.append(f"{suite}/{run}/{shot_id}: no stored reference (copied to new-references)")
@@ -379,6 +411,14 @@ def main():
                             failures.append(f"{suite}/{run}/{shot_id}: the cliff seam against real terrain: {st}")
                         # the seam rule of 12b can't hold where a real cliff stands in the band: the truth rule replaces it
                         sm = None
+                    if f"{suite}/{shot_id}" == "far/far_land.pixel":
+                        flat_src = load(os.path.join(d, "shots", f"{sid}.far.png"))
+                        new, n = checker_share(a, flat_src)
+                        old, _ = checker_share(load(os.path.join(d, "shots", f"{sid}.pixel_old.png")), flat_src)
+                        ok = new is not None and old is not None and n > 200 and (new <= old * CHECKER_MAX_SHARE or new <= 0.5)
+                        lines.append(f"| {suite}-{run} | {shot_id}: checkerboard in pale flat fog ({n} art pixels) | {new}% with the fog tones, {old}% without (at most {CHECKER_MAX_SHARE} x, or 0.5%) | | | {'ok' if ok else '**FAIL**'} |")
+                        if not ok:
+                            failures.append(f"{suite}/{run}/{shot_id}: pixel art's checkerboard in the fog didn't drop: {new}% against {old}% without the fog tones ({n} art pixels)")
                     seam_txt = f"{sm.get('step')} / {sm.get('own')} ({sm.get('columns')})" if sm else ""
                     lines.append(f"| {suite}-{run} | {shot_id} | {vs} ({limit}){'' if same_share is None else f', on {same_share}%'} | {applied if applied is not None else ''} | {seam_txt} | |")
                 for (key, x, z, which, rx) in PROBES:

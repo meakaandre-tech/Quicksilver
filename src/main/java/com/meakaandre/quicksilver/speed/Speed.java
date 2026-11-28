@@ -171,10 +171,6 @@ public final class Speed {
         "CI only: real sections past far terrain's hand-over band are drawn (12b)"));
     public static final Setting CI_FAR_NO_SORT = ci(new Setting("ci.far-no-sort", false, false, 0, 0, 1, "",
         "CI only: far tiles drawn in the map's order (12b)"));
-    public static final Setting CI_FAR_NO_SPLIT = ci(new Setting("ci.far-no-split", false, false, 0, 0, 1, "",
-        "CI only: far tiles near the band drawn in one part with the band's stage (12b)"));
-    public static final Setting CI_FAR_NO_INSIDE = ci(new Setting("ci.far-no-inside", false, false, 0, 0, 1, "",
-        "CI only: a split far tile's quads inside the hand-over circle stay in its band part"));
     public static final Setting CI_FAR_OLD_MESH = ci(new Setting("ci.far-old-mesh", false, false, 0, 0, 1, "",
         "CI only: far tiles with skirts on every edge, no merged runs, 32-block spacing at most (12b)"));
 
@@ -187,8 +183,14 @@ public final class Speed {
         "CI only: far terrain's 12b look (no snow or ice, water at the block top, all-water quads, facing shade only, no haze)"));
     public static final Setting CI_FAR_BOX_TREES = ci(new Setting("ci.far-box-trees", false, false, 0, 0, 1, "",
         "CI only: far trees as boxes (12b)"));
+    public static final Setting CI_FAR_FULL_TREES = ci(new Setting("ci.far-full-trees", false, false, 0, 0, 1, "",
+        "CI only: far trees past 16 chunks at full density (12b)"));
     public static final Setting CI_FAR_NO_STRUCTURES = ci(new Setting("ci.far-no-structures", false, false, 0, 0, 1, "",
         "CI only: no structure silhouettes in far terrain (12b)"));
+
+    /** Package 12c: CI's check of pixel art's fog tones (on: without them, and with the dithering at full strength in the fog, as before). */
+    public static final Setting CI_PIXEL_OLD_FOG = ci(new Setting("ci.pixel-old-fog", false, false, 0, 0, 1, "",
+        "CI only: pixel art without the fog and sky tones, its dithering not faded in the fog (package 11)"));
 
     /** Package 12c: CI's A/B of far terrain standing down underground (on: drawn underground too, as in 12b). */
     public static final Setting CI_FAR_NO_UNDERGROUND = ci(new Setting("ci.far-no-underground", false, false, 0, 0, 1, "",
@@ -202,7 +204,8 @@ public final class Speed {
     /** A switch by name, the CI-only ones included (the speed bench's lookup). */
     public static Setting byKey(String key) {
         Setting s = ALL.get(key);
-        return s != null ? s : Boolean.getBoolean("quicksilver.ci.speed") ? CI.get(key) : null;
+        // package 12c: the far suite's runs switch CI-only switches too (pixel art's old fog, for its checkerboard check)
+        return s != null ? s : Boolean.getBoolean("quicksilver.ci.speed") || Boolean.getBoolean("quicksilver.ci.farCommands") ? CI.get(key) : null;
     }
 
     /** Counted while a speed bench window measures (bench only). */

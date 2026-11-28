@@ -66,6 +66,11 @@
         "#client quicksilver speed option.look pixel-art",
         "#wait 4",
         "#shot pixel",
+        "#client quicksilver speed ci.pixel-old-fog 1",
+        "#wait 3",
+        "#shot pixel_old",
+        "#client quicksilver speed ci.pixel-old-fog 0",
+        "#wait 2",
         "#client quicksilver speed option.look normal",
         "#wait 2",
         "#client quicksilver speed option.dynamic-lights 1",
@@ -75,7 +80,8 @@
         "#far off"
       ],
       "ciViewNote": "package 12b: looking north-west (yaw 135), not east: from the east view a 100-block real cliff stood inside the hand-over band, so the seam check compared the island's top just beyond the band with the ocean just nearer it (a step of about 120 in those columns with no hole at all); of seven other directions shot in run 45939071469, north-west keeps real terrain, ocean and mountains in view and its band crosses no cliff (docs/ci-limits.md, Package 12b)",
-      "ciConditionsNote": "package 12c: the same view at sunset, night, in rain and thunder, with pixel art and with dynamic lights (far terrain follows the sky light, the fog's colour and the weather like real terrain)"
+      "ciConditionsNote": "package 12c: the same view at sunset, night, in rain and thunder, with pixel art and with dynamic lights (far terrain follows the sky light, the fog's colour and the weather like real terrain)",
+      "ciPixelNote": "package 12c: pixel_old is the same pixel art shot without the fog tones and the dithering's fade (package 11's), for the checkerboard check only (no reference): the share of checkerboard pixels in the pale, flat fog areas of the far shot must drop to at most half of it"
     },
     {
       "id": "far_nether",
