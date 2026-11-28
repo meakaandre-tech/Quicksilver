@@ -383,6 +383,8 @@ def pixel_check(name, scenes, runs, rep, sd, failures, lines):
                 if not os.path.exists(got):
                     failures.append(f"{name}/{shot_id}: no {prof} pixel art screenshot")
                     continue
+                # package 12c: a profile may have its own limit ("<shot>.<profile>", Vulkan's island: its own samples)
+                limit = limits.get(name, {}).get(f"{shot_id}.{prof}", limits.get(name, {}).get(shot_id))
                 normal = diff(got, os.path.join(runs[b], "shots", sc["id"] + ".png"))
                 if extra["name"] == "pixel" and (normal is None or normal["pct"] < PIXEL_MIN_PCT):
                     failures.append(f"{name}/{shot_id}: {prof} differs from the Normal shot on only {normal['pct'] if normal else None}% of pixels (at least {PIXEL_MIN_PCT}%): the look did not apply")

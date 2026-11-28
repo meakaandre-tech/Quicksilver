@@ -173,6 +173,8 @@ public final class Speed {
         "CI only: far tiles drawn in the map's order (12b)"));
     public static final Setting CI_FAR_NO_SPLIT = ci(new Setting("ci.far-no-split", false, false, 0, 0, 1, "",
         "CI only: far tiles near the band drawn in one part with the band's stage (12b)"));
+    public static final Setting CI_FAR_NO_INSIDE = ci(new Setting("ci.far-no-inside", false, false, 0, 0, 1, "",
+        "CI only: a split far tile's quads inside the hand-over circle stay in its band part"));
     public static final Setting CI_FAR_OLD_MESH = ci(new Setting("ci.far-old-mesh", false, false, 0, 0, 1, "",
         "CI only: far tiles with skirts on every edge, no merged runs, 32-block spacing at most (12b)"));
 

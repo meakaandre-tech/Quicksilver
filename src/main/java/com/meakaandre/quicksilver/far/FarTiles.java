@@ -52,7 +52,7 @@ final class FarTiles implements Runnable {
         byte[] kind;
         /** Package 12c: the camera when staged, whether split in two parts (band, beyond), and whether the beyond part is held. */
         double stageCamX, stageCamZ;
-        boolean split, hadBeyond;
+        boolean split, hadBeyond, hadInside;
         /** Package 12c: the big structures starting in this tile (from the seed), drawn as silhouettes. */
         java.util.List<FarStructures.Site> sites = java.util.List.of();
         boolean sitesKnown;
@@ -154,7 +154,10 @@ final class FarTiles implements Runnable {
 
     /** Whether the camera moved so far from the anchor that the vertices' 16 bits no longer reach (then a new session). */
     boolean anchorTooFar(double x, double z) {
-        return Math.abs(x - anchorX) > 12000 || Math.abs(z - anchorZ) > 12000;
+        // package 12c: as far as the 16 bits reach with the far distance and a tile of slack around the camera (12b: 12000,
+        // which a 10-minute flight crossed: the session started over and the tiles near it were holes for a while)
+        int limit = 30000 - (radius + 2 * TILE);
+        return Math.abs(x - anchorX) > limit || Math.abs(z - anchorZ) > limit;
     }
 
     static long key(int tx, int tz) {
@@ -192,7 +195,7 @@ final class FarTiles implements Runnable {
                 }
                 boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
                 int look = (com.meakaandre.quicksilver.speed.Speed.CI_FAR_BOX_TREES.on() ? 1 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on() ? 2 : 0)
-                    | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SPLIT.on() ? 4 : 0);
+                    | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SPLIT.on() ? 4 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_INSIDE.on() ? 8 : 0);
                 if (oldMesh != stagedOldMesh || look != stagedLook) {
                     stagedOldMesh = oldMesh;
                     stagedLook = look;
@@ -756,8 +759,8 @@ final class FarTiles implements Runnable {
          * {@link #scx}, {@link #scz} (the camera as it is staged) go to a second mesh, drawn with the plain stage (early
          * depth rejection), not the band's (which writes its own depth). Null: one mesh.
          */
-        Mesh beyond;
-        double scx, scz, split;
+        Mesh beyond, inside;
+        double scx, scz, split, insideR;
 
         void quad(float[] p, int c0, int c1, int c2, int c3) {
             if (beyond != null) {
@@ -767,6 +770,15 @@ final class FarTiles implements Runnable {
                 if (nx * nx + nz * nz >= split * split) {
                     beyond.quad(p, c0, c1, c2, c3);
                     return;
+                }
+                // package 12c: wholly inside the hand-over circle (its farthest point): a third part, drawn only where
+                // real terrain leaves a hole there (as tiles wholly inside the circle are)
+                if (inside != null) {
+                    double fx = Math.max(Math.abs(x0 - scx), Math.abs(x1 - scx)), fz = Math.max(Math.abs(z0 - scz), Math.abs(z1 - scz));
+                    if (fx * fx + fz * fz < insideR * insideR) {
+                        inside.quad(p, c0, c1, c2, c3);
+                        return;
+                    }
                 }
             }
             vertex(p[0], p[1], p[2], c0);
@@ -807,6 +819,12 @@ final class FarTiles implements Runnable {
             m.scx = scx;
             m.scz = scz;
             m.split = he + 32;
+            // the circle's inside: the band starts 32 blocks inside its end; 8 more of margin (the camera moves 24 before
+            // the tile is split again)
+            if (he > 64 && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_INSIDE.on()) {
+                m.inside = new Mesh(anchorX, anchorZ, floorY);
+                m.insideR = he - 56;
+            }
         }
         t.stageCamX = scx;
         t.stageCamZ = scz;
@@ -898,8 +916,18 @@ final class FarTiles implements Runnable {
                 if (!oldLook && (t.fluidTop[a] != FarSource.NONE || t.fluidTop[b] != FarSource.NONE || t.fluidTop[c] != FarSource.NONE || t.fluidTop[d] != FarSource.NONE)) {
                     // package 12c: a shore: the water corners at the water's surface in the water's colour, the others the
                     // ground, so the coast blends from land to sea in one quad (12b dropped such quads to the sea floor)
-                    set(q, x0, shoreY(t, a, wl), z0, x0, shoreY(t, d, wl), z1, x1, shoreY(t, c, wl), z1, x1, shoreY(t, b, wl), z0);
-                    m.quad(q, shoreC(t, a, lit), shoreC(t, d, lit), shoreC(t, c, lit), shoreC(t, b, lit));
+                    float ya = shoreY(t, a, wl), yb = shoreY(t, b, wl), yc = shoreY(t, c, wl), yd = shoreY(t, d, wl);
+                    set(q, x0, ya, z0, x0, yd, z1, x1, yc, z1, x1, yb, z0);
+                    float smax = Math.max(Math.max(ya, yb), Math.max(yc, yd)), smin = Math.min(Math.min(ya, yb), Math.min(yc, yd));
+                    if (rock != null && smax - smin > 2 * s) {
+                        // a cliff meeting the water: stone from below its top edge down to the water (no land-to-water
+                        // gradient a hundred blocks tall)
+                        m.quad(q, shoreCliff(t, a, ya, smax, lit, rock), shoreCliff(t, d, yd, smax, lit, rock), shoreCliff(t, c, yc, smax, lit, rock),
+                            shoreCliff(t, b, yb, smax, lit, rock));
+                        cliffQuads.incrementAndGet();
+                    } else {
+                        m.quad(q, shoreC(t, a, lit), shoreC(t, d, lit), shoreC(t, c, lit), shoreC(t, b, lit));
+                    }
                     continue;
                 }
                 set(q, x0, t.solidTop[a], z0, x0, t.solidTop[d], z1, x1, t.solidTop[c], z1, x1, t.solidTop[b], z0);
@@ -972,10 +1000,11 @@ final class FarTiles implements Runnable {
         if (!com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on()) {
             for (FarStructures.Site site : t.sites) structure(m, q, t, site);
         }
-        int total = m.quads + (m.beyond != null ? m.beyond.quads : 0);
+        int total = m.quads + (m.beyond != null ? m.beyond.quads : 0) + (m.inside != null ? m.inside.quads : 0);
         if (total == 0) {
             MemoryUtil.memFree(m.buf);
             if (m.beyond != null) MemoryUtil.memFree(m.beyond.buf);
+            if (m.inside != null) MemoryUtil.memFree(m.inside.buf);
             if (t.staged) FarLayer.remove(key(t.tx, t.tz), id);
             t.staged = false;
             current.remove(key(t.tx, t.tz));
@@ -991,6 +1020,13 @@ final class FarTiles implements Runnable {
             if (t.hadBeyond) FarLayer.removePart(k2, id);
         }
         t.hadBeyond = m.beyond != null && m.beyond.quads > 0;
+        long k3 = FarLayer.insideKey(key(t.tx, t.tz));
+        if (m.inside != null && m.inside.quads > 0) stagePart(k3, m.inside);
+        else {
+            if (m.inside != null) MemoryUtil.memFree(m.inside.buf);
+            if (t.hadInside) FarLayer.removePart(k3, id);
+        }
+        t.hadInside = m.inside != null && m.inside.quads > 0;
         t.staged = true;
         if (!t.dirty) current.add(key(t.tx, t.tz));
     }
@@ -1004,6 +1040,10 @@ final class FarTiles implements Runnable {
         m.buf.flip();
         FarLayer.stage(key, m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
             (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
+    }
+
+    private static int shoreCliff(Tile t, int k, float y, float top, int[] lit, int[] rock) {
+        return y >= top - 2 ? (t.fluidTop[k] != FarSource.NONE ? t.fluidColor[k] : lit[k]) : rock[k];
     }
 
     private static int cliff(Tile t, int k, int hmax, int[] lit, int[] rock) {
