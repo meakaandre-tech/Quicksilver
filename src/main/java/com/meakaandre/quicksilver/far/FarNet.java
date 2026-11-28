@@ -53,6 +53,11 @@ import org.slf4j.LoggerFactory;
  */
 public final class FarNet {
     static final Logger LOG = LoggerFactory.getLogger("Quicksilver");
+
+    /** Package 12c: the mod's version (the disk cache's identities hold it). */
+    static String modVersion() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("quicksilver").map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
+    }
     /** The handshake's version: a client and server of different versions don't talk (the client stays off). */
     public static final int VERSION = 2;
     /** The largest answer (Fabric splits it into packets); a world whose registries need more stays off. */

@@ -32,7 +32,8 @@ final class FarTiles implements Runnable {
     static final int REAL_MAX = 200_000;
 
     /** A real chunk's columns at 4-block steps (16 of them, x and z at 0, 4, 8, 12), as the client had it. */
-    record RealChunk(int cx, int cz, int[] solidTop, int[] fluidTop, int[] color, int[] fluidColor, BlockState[] block) {
+    record RealChunk(int cx, int cz, int[] solidTop, int[] fluidTop, int[] color, int[] fluidColor, BlockState[] block, BlockState[] fluidBlock,
+                     Holder<Biome>[] biome) {
     }
 
     private static final class Tile {
@@ -44,6 +45,11 @@ final class FarTiles implements Runnable {
         Holder<Biome>[] biome;
         boolean dirty, staged;
         int realChunks;
+        /** Package 12c: the edges staged with a skirt (bit e: edge e of {@link #stage}), and the generator's heights (reused at another spacing). */
+        int skirtMask;
+        FarSource.Heights[] hs;
+        /** Package 12c: per column, bit 1 a snowy top, bit 2 a biome with trees, bit 4 water (CI's find). */
+        byte[] kind;
 
         Tile(int tx, int tz) {
             this.tx = tx;
@@ -69,11 +75,20 @@ final class FarTiles implements Runnable {
     /** Real chunks by chunk key (the sampling thread writes, a probe may read). */
     final ConcurrentHashMap<Long, RealChunk> real = new ConcurrentHashMap<>();
     private final Long2ObjectOpenHashMap<Tile> tiles = new Long2ObjectOpenHashMap<>();
+    /**
+     * Package 12c: the tiles whose staged mesh is current (made at the spacing wanted, no real chunk waiting, with quads):
+     * real sections past the hand-over band are left out only over these ({@code FarLayer.covers}). Any thread reads.
+     */
+    final java.util.Set<Long> current = ConcurrentHashMap.newKeySet();
 
     // numbers for the bench and the log (any thread reads)
     final AtomicLong columnsSampled = new AtomicLong(), columnsReal = new AtomicLong(), tilesMade = new AtomicLong(), quadsMade = new AtomicLong(),
-        sampleNanos = new AtomicLong(), meshNanos = new AtomicLong(), tilesFromReal = new AtomicLong(), realChunksIn = new AtomicLong();
+        sampleNanos = new AtomicLong(), meshNanos = new AtomicLong(), tilesFromReal = new AtomicLong(), realChunksIn = new AtomicLong(),
+        heightsReused = new AtomicLong(), quadsMerged = new AtomicLong(), skirtsLeftOut = new AtomicLong(), columnsCached = new AtomicLong(),
+        seenLoaded = new AtomicLong();
     volatile int tilesWanted, tilesDone;
+    /** Package 12c: the nearest wanted tile (blocks from the camera to its nearest point) not made at all yet; -1 for none. */
+    volatile int nearestMissing = -1;
     /** Package 12c: the bytes the tiles' samples hold on the heap (estimated from their arrays; the sampling thread writes). */
     final AtomicLong tileHeapBytes = new AtomicLong();
     /** From real chunks only: the radius within which every chunk is known (see {@link #coveredRadius}). */
@@ -86,8 +101,12 @@ final class FarTiles implements Runnable {
     /** This session's id (FarLayer drops tiles of any other). */
     final int id;
 
-    FarTiles(ResourceKey<Level> dimension, FarSource source, int floorY, double camX, double camZ, int id) {
+    /** Package 12c: the disk cache (sampled tiles, seen chunks), or null. */
+    final FarCache cache;
+
+    FarTiles(ResourceKey<Level> dimension, FarSource source, int floorY, double camX, double camZ, int id, FarCache cache) {
         this.id = id;
+        this.cache = cache;
         this.dimension = dimension;
         this.source = source;
         this.trees = source == null ? null : new FarTrees(source.generator);
@@ -111,6 +130,18 @@ final class FarTiles implements Runnable {
         thread.interrupt();
     }
 
+    /** Package 12c: stops, and waits a moment for the disk cache's last write (leaving a server, closing the game). */
+    void stopAndWait() {
+        stop();
+        if (cache != null) {
+            try {
+                thread.join(1500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     long threadId() {
         return thread.threadId();
     }
@@ -132,8 +163,15 @@ final class FarTiles implements Runnable {
         if (chunks < 16) return 4;
         if (chunks < 32) return 8;
         if (chunks < 64) return 16;
-        return 32;
+        // package 12c: 64 blocks past 128 chunks (192 and 256 chunks reach there; at that distance a 64-block step is a
+        // pixel or two)
+        if (chunks < 128 || com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on()) return 32;
+        return 64;
     }
+
+    /** Package 12c: the mesh mode the tiles were staged with (CI's A/B re-stages them all when it changes). */
+    private boolean stagedOldMesh, sampledOldLook;
+    private int stagedLook;
 
     @Override
     public void run() {
@@ -146,6 +184,19 @@ final class FarTiles implements Runnable {
                     Thread.sleep(250);
                     continue;
                 }
+                boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
+                int look = (com.meakaandre.quicksilver.speed.Speed.CI_FAR_BOX_TREES.on() ? 1 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on() ? 2 : 0);
+                if (oldMesh != stagedOldMesh || look != stagedLook) {
+                    stagedOldMesh = oldMesh;
+                    stagedLook = look;
+                    remeshRequested = true;
+                }
+                // the old look changes the sampled colours (snow, ice): every tile sampled again
+                boolean oldLook = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on();
+                if (oldLook != sampledOldLook) {
+                    sampledOldLook = oldLook;
+                    clearRequested = true;
+                }
                 if (remeshRequested) {
                     remeshRequested = false;
                     for (Tile t : tiles.values()) {
@@ -156,6 +207,7 @@ final class FarTiles implements Runnable {
                 }
                 if (clearRequested) {
                     clearRequested = false;
+                    current.clear();
                     for (Tile t : tiles.values()) {
                         t.spacing = 0;
                         t.staged = false;
@@ -171,11 +223,27 @@ final class FarTiles implements Runnable {
                         && java.util.Arrays.equals(was.color, rc.color) && java.util.Arrays.equals(was.fluidColor, rc.fluidColor)) continue;
                     real.put(chunkKey(rc.cx, rc.cz), rc);
                     realChunksIn.incrementAndGet();
-                    Tile t = tiles.get(key(Math.floorDiv(rc.cx * 16, TILE), Math.floorDiv(rc.cz * 16, TILE)));
-                    if (t != null) t.dirty = true;
+                    if (cache != null && rc.block() != null) cache.putSeen(new FarCache.SeenChunk(rc.cx, rc.cz, rc.solidTop, rc.fluidTop, rc.block, rc.fluidBlock, rc.biome));
+                    int rtx = Math.floorDiv(rc.cx * 16, TILE), rtz = Math.floorDiv(rc.cz * 16, TILE);
+                    markDirty(rtx, rtz);
+                    // package 12c: a chunk at a tile's low edge also holds the edge samples of the tiles before it (their
+                    // last row and column), which must match (skirts are only where spacings differ now)
+                    boolean lowX = Math.floorMod(rc.cx * 16, TILE) == 0, lowZ = Math.floorMod(rc.cz * 16, TILE) == 0;
+                    if (lowX) markDirty(rtx - 1, rtz);
+                    if (lowZ) markDirty(rtx, rtz - 1);
+                    if (lowX && lowZ) markDirty(rtx - 1, rtz - 1);
                 }
+                if (cache != null) cache.flush(false);
+                answerFind();
                 double cx = camX, cz = camZ;
                 int r = radius;
+                // package 12c: real chunks (and the disk cache's regions) far behind the far distance leave memory every
+                // few seconds, so a long flight doesn't grow it (the seen-chunks cache keeps them on disk and reads them
+                // again when the camera comes back)
+                if (System.nanoTime() - lastEvict > 5_000_000_000L) {
+                    lastEvict = System.nanoTime();
+                    evictFar(cx, cz, r + 512);
+                }
                 int ctx = Math.floorDiv((int) Math.floor(cx), TILE), ctz = Math.floorDiv((int) Math.floor(cz), TILE);
                 int reach = r / TILE + 1;
                 // tiles beyond the far distance go
@@ -184,6 +252,7 @@ final class FarTiles implements Runnable {
                     if (Math.max(Math.abs(t.tx - ctx), Math.abs(t.tz - ctz)) > reach + 1) gone.add(key(t.tx, t.tz));
                 }
                 for (long k : gone) {
+                    current.remove(k);
                     Tile t = tiles.remove(k);
                     if (t != null) tileHeapBytes.addAndGet(-heapOf(t));
                     if (t != null && t.staged) FarLayer.remove(k, id);
@@ -203,6 +272,7 @@ final class FarTiles implements Runnable {
                 double bestDist = Double.MAX_VALUE;
                 boolean bestCapped = false;
                 int wanted = 0, done = 0;
+                double missing = Double.MAX_VALUE;
                 long now = System.nanoTime();
                 if (now - cappedSince > 1_000_000_000L) {
                     cappedSince = now;
@@ -211,6 +281,8 @@ final class FarTiles implements Runnable {
                 for (int dz = -reach; dz <= reach; dz++) {
                     for (int dx = -reach; dx <= reach; dx++) {
                         int tx = ctx + dx, tz = ctz + dz;
+                        // package 12c: the seen chunks the disk cache holds around this tile, once per region
+                        if (cache != null && !cache.seenRead(tx * (TILE / 16), tz * (TILE / 16))) loadSeen(tx * (TILE / 16), tz * (TILE / 16));
                         double mx = tx * TILE + TILE / 2.0 - cx, mz = tz * TILE + TILE / 2.0 - cz;
                         double dist = Math.sqrt(mx * mx + mz * mz);
                         // the tile's nearest point inside the far distance, and the tile not wholly inside the hand-over circle
@@ -221,6 +293,7 @@ final class FarTiles implements Runnable {
                         Tile t = tiles.get(key(tx, tz));
                         int sp = spacingFor(near / 16.0);
                         boolean need = t == null || t.spacing != sp;
+                        if ((t == null || t.solidTop == null) && near < missing) missing = near;
                         boolean capped = false;
                         if (!need && t.dirty) {
                             need = true;
@@ -246,6 +319,7 @@ final class FarTiles implements Runnable {
                 }
                 tilesWanted = wanted;
                 tilesDone = done;
+                nearestMissing = missing == Double.MAX_VALUE ? -1 : (int) missing;
                 if (best == null) {
                     if (firstPassNanos < 0 && wanted > 0 && done == wanted) firstPassNanos = System.nanoTime() - started;
                     Thread.sleep(50);
@@ -265,8 +339,84 @@ final class FarTiles implements Runnable {
         } catch (Throwable t) {
             problem = t.toString();
             FarNet.LOG.error("Quicksilver far terrain: its sampling thread stopped; far terrain shows what it had", t);
+        } finally {
+            // package 12c: what the disk cache doesn't have yet is written now (the interrupt that stopped the thread is
+            // cleared first: file channels close on an interrupted thread)
+            if (cache != null) {
+                Thread.interrupted();
+                try {
+                    cache.flush(true);
+                } catch (Throwable t) {
+                    FarNet.LOG.warn("Quicksilver far terrain: its disk cache could not be written ({})", t.toString());
+                }
+                flushed = true;
+            }
         }
     }
+
+    /** Package 12c: a CI find request ({@link FarTerrain#find}), answered on the sampling thread. */
+    volatile String findRequest;
+
+    private void answerFind() {
+        String kind = findRequest;
+        if (kind == null) return;
+        findRequest = null;
+        double cx = camX, cz = camZ;
+        int sea = source != null ? source.seaLevel : 63;
+        double best = -1;
+        int bx = 0, by = 0, bz = 0;
+        java.util.List<Long> keys = new java.util.ArrayList<>(tiles.keySet());
+        java.util.Collections.sort(keys);
+        for (long key : keys) {
+            Tile t = tiles.get(key);
+            if (t.kind == null || t.spacing > 16) continue;
+            int n = t.n, s = t.spacing;
+            for (int j = 2; j < n - 2; j++) {
+                for (int i = 2; i < n - 2; i++) {
+                    int k = j * n + i;
+                    if ((t.flags[k] & 1) == 0) continue;
+                    int x = t.tx * TILE + i * s, z = t.tz * TILE + j * s;
+                    double d = Math.hypot(x - cx, z - cz);
+                    if (d < 300 || d > 900) continue;
+                    double score;
+                    switch (kind) {
+                        case "snow" -> score = (t.kind[k] & 1) != 0 && t.solidTop[k] > sea + 50 ? t.solidTop[k] : -1;
+                        case "forest" -> {
+                            boolean edge = (t.kind[k] & 6) == 2 && ((t.kind[k + 2] & 6) == 0 || (t.kind[k - 2] & 6) == 0 || (t.kind[k + 2 * n] & 6) == 0 || (t.kind[k - 2 * n] & 6) == 0);
+                            score = edge ? 1000 - Math.abs(d - 500) : -1;
+                        }
+                        case "shore" -> {
+                            boolean shore = (t.kind[k] & 4) != 0 && ((t.kind[k + 2] & 4) == 0 || (t.kind[k - 2] & 4) == 0 || (t.kind[k + 2 * n] & 4) == 0 || (t.kind[k - 2 * n] & 4) == 0);
+                            score = shore ? 1000 - Math.abs(d - 500) : -1;
+                        }
+                        default -> score = -1;
+                    }
+                    if (score > best) {
+                        best = score;
+                        bx = x;
+                        by = Math.max(t.solidTop[k], t.fluidTop[k] == FarSource.NONE ? 0 : t.fluidTop[k]);
+                        bz = z;
+                    }
+                }
+            }
+        }
+        if (best < 0) {
+            FarNet.LOG.info("Quicksilver far terrain find {}: none", kind);
+            return;
+        }
+        // the viewpoint: 220 blocks from the target, toward the camera, 90 above it, looking at it (past the band at
+        // render distance 8, so far terrain draws the target)
+        double dx = cx - bx, dz = cz - bz, len = Math.max(1, Math.hypot(dx, dz));
+        double vx = bx + dx / len * 220, vz = bz + dz / len * 220, vy = by + 90;
+        float yaw = (float) Math.toDegrees(Math.atan2(-(bx - vx), bz - vz));
+        float pitch = (float) Math.toDegrees(Math.atan2(vy - by, 220));
+        FarNet.LOG.info("Quicksilver far terrain find {}: {} {} {} {} {} (target {} {} {})", kind, String.format(java.util.Locale.ROOT, "%.1f", vx),
+            String.format(java.util.Locale.ROOT, "%.1f", vy), String.format(java.util.Locale.ROOT, "%.1f", vz), String.format(java.util.Locale.ROOT, "%.1f", yaw),
+            String.format(java.util.Locale.ROOT, "%.1f", pitch), bx, by, bz);
+    }
+
+    /** Package 12c: set once the thread wrote the disk cache at its end (stop waits a moment for it). */
+    volatile boolean flushed;
 
     /**
      * From real chunks only: how far from the camera (blocks) every chunk is known (rings of chunks around the camera's
@@ -298,6 +448,47 @@ final class FarTiles implements Runnable {
         return t != null && t.staged && !t.dirty;
     }
 
+    /** Package 12c: a region of seen chunks from the disk cache into the real chunks (chunks the client has now win). */
+    private void loadSeen(int cx, int cz) {
+        for (FarCache.SeenChunk c : cache.seenAround(cx, cz)) {
+            long k = chunkKey(c.cx(), c.cz());
+            if (real.containsKey(k) || real.size() >= REAL_MAX) continue;
+            int[] color = new int[16], fcolor = new int[16];
+            for (int i = 0; i < 16; i++) {
+                if (c.solid()[i] == FarSource.NONE) continue;
+                int x = c.cx() * 16 + (i & 3) * 4, z = c.cz() * 16 + (i >> 2) * 4;
+                if (c.block()[i] != null) color[i] = FarColors.color(c.block()[i], c.biome()[i], x, c.solid()[i] - 1, z);
+                if (c.fluid()[i] != FarSource.NONE && c.fluidBlock()[i] != null) fcolor[i] = FarColors.color(c.fluidBlock()[i], c.biome()[i], x, c.fluid()[i] - 1, z);
+            }
+            real.put(k, new RealChunk(c.cx(), c.cz(), c.solid(), c.fluid(), color, fcolor, c.block(), c.fluidBlock(), c.biome()));
+            realChunksIn.incrementAndGet();
+            seenLoaded.incrementAndGet();
+            int rtx = Math.floorDiv(c.cx() * 16, TILE), rtz = Math.floorDiv(c.cz() * 16, TILE);
+            markDirty(rtx, rtz);
+        }
+    }
+
+    private long lastEvict = System.nanoTime();
+
+    private void evictFar(double cx, double cz, double keep) {
+        double k2 = keep * keep;
+        // by the disk cache's regions (64 x 64 chunks): a region's chunks go together, as the cache reads them back
+        int span = FarCache.REGION_TILES * TILE;
+        real.keySet().removeIf(key -> {
+            int rx = Math.floorDiv((int) (key >> 32) * 16, span), rz = Math.floorDiv((int) (long) key * 16, span);
+            double nx = Math.max(Math.max(rx * span - cx, cx - (rx + 1) * span), 0), nz = Math.max(Math.max(rz * span - cz, cz - (rz + 1) * span), 0);
+            return nx * nx + nz * nz > k2;
+        });
+        if (cache != null) cache.evict(cx, cz, keep);
+    }
+
+    private void markDirty(int tx, int tz) {
+        Tile t = tiles.get(key(tx, tz));
+        if (t == null) return;
+        t.dirty = true;
+        current.remove(key(tx, tz));
+    }
+
     private boolean hasReal(int tx, int tz) {
         int cx0 = tx * (TILE / 16), cz0 = tz * (TILE / 16);
         for (int dz = 0; dz < TILE / 16; dz++) for (int dx = 0; dx < TILE / 16; dx++) if (real.containsKey(chunkKey(cx0 + dx, cz0 + dz))) return true;
@@ -314,6 +505,16 @@ final class FarTiles implements Runnable {
         @SuppressWarnings("unchecked")
         Holder<Biome>[] biome = new Holder[n * n];
         FarSource.Heights[] hs = source == null ? null : new FarSource.Heights[n * n];
+        // package 12c: the generator's heights from the tile's earlier spacing are reused where the grids share a column
+        // (spacings are powers of two on the same 128-block tile, so every other or every fourth column, both ways)
+        FarSource.Heights[] old = t.hs;
+        byte[] oldFlags = t.flags;
+        int s0 = t.spacing, n0 = t.n;
+        boolean reuse = old != null && oldFlags != null && s0 > 0;
+        // package 12c: the disk cache's columns for this tile (any spacing; used where its grid shares a column)
+        FarCache.GenTile cached = cache != null && source != null ? cache.genTile(t.tx, t.tz) : null;
+        BlockState[] blockOf = new BlockState[n * n], fluidOf = new BlockState[n * n];
+        boolean[] fromCache = cached != null ? new boolean[n * n] : null;
         int realChunks = 0;
         // real columns first, then the generator's heights for the rest
         for (int j = 0; j < n; j++) {
@@ -334,12 +535,39 @@ final class FarTiles implements Runnable {
                     continue;
                 }
                 if (hs != null) {
-                    FarSource.Heights h = source.heights(x, z);
+                    int ox0 = i * spacing, oz0 = j * spacing;
+                    if (cached != null && ox0 % cached.spacing() == 0 && oz0 % cached.spacing() == 0) {
+                        int kc = (oz0 / cached.spacing()) * cached.n() + ox0 / cached.spacing();
+                        if (kc < cached.known().length && (cached.known()[kc] & 1) != 0) {
+                            fromCache[k] = true;
+                            columnsCached.incrementAndGet();
+                            flags[k] = 4;
+                            if ((cached.known()[kc] & 2) != 0) {
+                                solid[k] = cached.solid()[kc];
+                                fluid[k] = cached.fluid()[kc];
+                                blockOf[k] = cached.block()[kc];
+                                fluidOf[k] = cached.fluidBlock()[kc];
+                                biome[k] = cached.biome()[kc];
+                                hs[k] = new FarSource.Heights(solid[k], fluid[k], fluidOf[k] != null ? fluidOf[k] : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                                flags[k] = 5;
+                            }
+                            continue;
+                        }
+                    }
+                    FarSource.Heights h;
+                    if (reuse && ox0 % s0 == 0 && oz0 % s0 == 0 && (oldFlags[(oz0 / s0) * n0 + ox0 / s0] & 4) != 0) {
+                        h = old[(oz0 / s0) * n0 + ox0 / s0];
+                        heightsReused.incrementAndGet();
+                    } else {
+                        h = source.heights(x, z);
+                    }
                     hs[k] = h;
+                    // bit 4: the generator's heights are known for this column (null: nothing there, the End's void)
+                    flags[k] = 4;
                     if (h != null) {
                         solid[k] = h.solidTop();
                         fluid[k] = h.fluidTop();
-                        flags[k] = 1;
+                        flags[k] = 5;
                     }
                 }
             }
@@ -350,15 +578,34 @@ final class FarTiles implements Runnable {
                     int k = j * n + i;
                     if (hs[k] == null || (flags[k] & 2) != 0) continue;
                     int x = ox + i * spacing, z = oz + j * spacing;
+                    if (fromCache != null && fromCache[k]) {
+                        // from the disk cache: its blocks and biome; only the colours are worked out (they follow the resource pack)
+                        color[k] = FarColors.color(blockOf[k], biome[k], x, solid[k] - 1, z);
+                        if (fluid[k] != FarSource.NONE && fluidOf[k] != null) fcolor[k] = FarColors.color(fluidOf[k], biome[k], x, fluid[k] - 1, z);
+                        continue;
+                    }
                     float gx = (solid[j * n + Math.min(i + 1, n - 1)] - solid[j * n + Math.max(i - 1, 0)]) / (float) (2 * spacing);
                     float gz = (solid[Math.min(j + 1, n - 1) * n + i] - solid[Math.max(j - 1, 0) * n + i]) / (float) (2 * spacing);
                     FarSource.Column c = source.column(x, z, hs[k], gx, gz);
                     biome[k] = c.biome();
+                    blockOf[k] = c.block();
+                    fluidOf[k] = c.fluidTop() != FarSource.NONE ? c.fluid() : null;
                     color[k] = FarColors.color(c.block(), c.biome(), x, c.top() - 1, z);
                     if (c.fluidTop() != FarSource.NONE) fcolor[k] = FarColors.color(c.fluid(), c.biome(), x, c.fluidTop() - 1, z);
                     columnsSampled.incrementAndGet();
                 }
             }
+        }
+        // package 12c: this tile's generator columns into the disk cache (kept there if finer than what it has)
+        if (cache != null && source != null) {
+            byte[] known = new byte[n * n];
+            boolean any = false;
+            for (int k = 0; k < n * n; k++) {
+                if ((flags[k] & 4) == 0) continue;
+                known[k] = (byte) ((flags[k] & 1) != 0 && blockOf[k] != null ? 3 : 1);
+                any = true;
+            }
+            if (any) cache.putGen(t.tx, t.tz, new FarCache.GenTile(spacing, n, solid.clone(), fluid.clone(), blockOf, fluidOf, biome.clone(), known));
         }
         long t1 = System.nanoTime();
         sampleNanos.addAndGet(t1 - t0);
@@ -371,20 +618,56 @@ final class FarTiles implements Runnable {
         t.fluidColor = fcolor;
         t.flags = flags;
         t.biome = biome;
+        t.hs = hs;
+        byte[] kinds = new byte[n * n];
+        for (int k = 0; k < n * n; k++) {
+            BlockState b = blockOf[k];
+            if (b != null && (b.is(net.minecraft.world.level.block.Blocks.SNOW_BLOCK) || b.is(net.minecraft.world.level.block.Blocks.SNOW)
+                || b.is(net.minecraft.world.level.block.Blocks.POWDER_SNOW))) kinds[k] |= 1;
+            if (trees != null && biome[k] != null && !trees.of(biome[k]).trees().isEmpty()) kinds[k] |= 2;
+            if (fluid[k] != FarSource.NONE) kinds[k] |= 4;
+        }
+        t.kind = kinds;
         t.dirty = false;
         t.realChunks = realChunks;
         tileHeapBytes.addAndGet(heapOf(t));
         if (realChunks > 0) tilesFromReal.incrementAndGet();
         stage(t);
+        // package 12c: the neighbours' skirts toward this tile follow its spacing (a skirt only where spacings differ)
+        restageNeighbours(t);
         meshNanos.addAndGet(System.nanoTime() - t1);
         tilesMade.incrementAndGet();
+    }
+
+    /** Package 12c: neighbours staged with a skirt toward {@code t} that it no longer needs (or the other way) are staged again. */
+    private void restageNeighbours(Tile t) {
+        for (int e = 0; e < 4; e++) {
+            int[] d = EDGE[e];
+            Tile nb = tiles.get(key(t.tx + d[0], t.tz + d[1]));
+            if (nb == null || nb.spacing == 0 || !nb.staged && nb.solidTop == null) continue;
+            int back = e ^ 1;
+            boolean had = (nb.skirtMask & (1 << back)) != 0;
+            if (had != skirtWanted(nb, back)) stage(nb);
+        }
+    }
+
+    /** Edge e's neighbour offset (0: z low, 1: z high, 2: x low, 3: x high; e ^ 1 is the opposite edge). */
+    private static final int[][] EDGE = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}};
+
+    /** Package 12c: whether edge e of a tile needs a skirt: its neighbour there isn't made, or at another spacing. */
+    private boolean skirtWanted(Tile t, int e) {
+        if (com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on()) return true;
+        int[] d = EDGE[e];
+        Tile nb = tiles.get(key(t.tx + d[0], t.tz + d[1]));
+        return nb == null || nb.spacing != t.spacing || nb.solidTop == null;
     }
 
     /** A tile's samples on the heap, estimated: four int arrays, the flags, the biome references (4 bytes each) and headers. */
     private static long heapOf(Tile t) {
         if (t.solidTop == null) return 0;
         long cells = (long) t.n * t.n;
-        return cells * (4 * 4 + 1 + 4) + 6 * 16 + 64;
+        // with a generator also its heights: a reference and a small record per column
+        return cells * (4 * 4 + 1 + 4 + (t.hs != null ? 4 + 24 : 0)) + 7 * 16 + 64;
     }
 
     /** Package 12c: the samples and the real chunks this session holds on the heap (estimated; any thread). */
@@ -460,25 +743,101 @@ final class FarTiles implements Runnable {
         Mesh m = new Mesh(anchorX, anchorZ, floorY);
         int n = t.n, s = t.spacing, ox = t.tx * TILE, oz = t.tz * TILE;
         float[] q = new float[12];
-        // the ground and the water
-        for (int j = 0; j < n - 1; j++) {
-            for (int i = 0; i < n - 1; i++) {
+        boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
+        boolean oldLook = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on();
+        // package 12c: water at vanilla's surface (a source block's top is 8/9 of a block up: 1/8 below the block's top in
+        // the vertex's 1/16 steps), not at the block's top
+        float wl = oldLook ? 0 : 0.125f;
+        // each sample's ground colour with its facing's shade (the normal from the neighbouring heights)
+        int[] lit = new int[n * n];
+        for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) lit[j * n + i] = oldLook ? lit(t, i, j) : relief(t, i, j, source != null ? source.seaLevel : 63);
+        // the ground and the water. Package 12c: a cell whose four corners share one height and one colour (flat water,
+        // flat ground of one block) joins its neighbours of the same height and colour in one quad (rows, then whole rows
+        // down): the same picture with fewer quads
+        int cells = n - 1;
+        long[] keyOf = new long[cells * cells];
+        boolean[] used = new boolean[cells * cells];
+        final long NO = Long.MIN_VALUE;
+        for (int j = 0; j < cells; j++) {
+            for (int i = 0; i < cells; i++) {
                 int a = j * n + i, b = j * n + i + 1, c = (j + 1) * n + i + 1, d = (j + 1) * n + i;
-                if ((t.flags[a] & t.flags[b] & t.flags[c] & t.flags[d] & 1) == 0) continue;
+                int ci = j * cells + i;
+                keyOf[ci] = NO;
+                if ((t.flags[a] & t.flags[b] & t.flags[c] & t.flags[d] & 1) == 0) {
+                    used[ci] = true;
+                    continue;
+                }
+                boolean water = t.fluidTop[a] != FarSource.NONE && t.fluidTop[b] != FarSource.NONE && t.fluidTop[c] != FarSource.NONE && t.fluidTop[d] != FarSource.NONE;
+                if (oldMesh) continue;
+                if (water) {
+                    int h = t.fluidTop[a], col = t.fluidColor[a];
+                    if (t.fluidTop[b] == h && t.fluidTop[c] == h && t.fluidTop[d] == h && t.fluidColor[b] == col && t.fluidColor[c] == col && t.fluidColor[d] == col)
+                        keyOf[ci] = 1L << 62 | (long) (h & 0xFFFF) << 32 | (col & 0xFFFFFFFFL);
+                } else {
+                    int h = t.solidTop[a], col = lit[a];
+                    if (t.solidTop[b] == h && t.solidTop[c] == h && t.solidTop[d] == h && lit[b] == col && lit[c] == col && lit[d] == col)
+                        keyOf[ci] = (long) (h & 0xFFFF) << 32 | (col & 0xFFFFFFFFL);
+                }
+            }
+        }
+        for (int j = 0; j < cells; j++) {
+            for (int i = 0; i < cells; i++) {
+                int ci = j * cells + i;
+                if (used[ci]) continue;
+                int a = j * n + i, b = j * n + i + 1, c = (j + 1) * n + i + 1, d = (j + 1) * n + i;
+                long key = keyOf[ci];
+                if (key != NO) {
+                    // the run: as wide as the row allows, then as many rows down as are wholly the same
+                    int w = 1;
+                    while (i + w < cells && !used[ci + w] && keyOf[ci + w] == key) w++;
+                    int h = 1;
+                    grow:
+                    while (j + h < cells) {
+                        for (int k = 0; k < w; k++) {
+                            int cj = (j + h) * cells + i + k;
+                            if (used[cj] || keyOf[cj] != key) break grow;
+                        }
+                        h++;
+                    }
+                    for (int dj = 0; dj < h; dj++) for (int di = 0; di < w; di++) used[(j + dj) * cells + i + di] = true;
+                    float x0 = ox + i * s, x1 = ox + (i + w) * s, z0 = oz + j * s, z1 = oz + (j + h) * s;
+                    float y = (short) (key >>> 32);
+                    if ((key >>> 62 & 1) != 0) y -= wl;
+                    int col = (int) key;
+                    set(q, x0, y, z0, x0, y, z1, x1, y, z1, x1, y, z0);
+                    m.quad(q, col, col, col, col);
+                    if (w * h > 1) quadsMerged.addAndGet(w * h - 1);
+                    continue;
+                }
+                used[ci] = true;
                 float x0 = ox + i * s, x1 = x0 + s, z0 = oz + j * s, z1 = z0 + s;
                 boolean water = t.fluidTop[a] != FarSource.NONE && t.fluidTop[b] != FarSource.NONE && t.fluidTop[c] != FarSource.NONE && t.fluidTop[d] != FarSource.NONE;
                 if (water) {
                     // vanilla's up-face corner order: (x0, z0), (x0, z1), (x1, z1), (x1, z0)
-                    set(q, x0, t.fluidTop[a], z0, x0, t.fluidTop[d], z1, x1, t.fluidTop[c], z1, x1, t.fluidTop[b], z0);
+                    set(q, x0, t.fluidTop[a] - wl, z0, x0, t.fluidTop[d] - wl, z1, x1, t.fluidTop[c] - wl, z1, x1, t.fluidTop[b] - wl, z0);
                     m.quad(q, t.fluidColor[a], t.fluidColor[d], t.fluidColor[c], t.fluidColor[b]);
                     continue;
                 }
+                if (!oldLook && (t.fluidTop[a] != FarSource.NONE || t.fluidTop[b] != FarSource.NONE || t.fluidTop[c] != FarSource.NONE || t.fluidTop[d] != FarSource.NONE)) {
+                    // package 12c: a shore: the water corners at the water's surface in the water's colour, the others the
+                    // ground, so the coast blends from land to sea in one quad (12b dropped such quads to the sea floor)
+                    set(q, x0, shoreY(t, a, wl), z0, x0, shoreY(t, d, wl), z1, x1, shoreY(t, c, wl), z1, x1, shoreY(t, b, wl), z0);
+                    m.quad(q, shoreC(t, a, lit), shoreC(t, d, lit), shoreC(t, c, lit), shoreC(t, b, lit));
+                    continue;
+                }
                 set(q, x0, t.solidTop[a], z0, x0, t.solidTop[d], z1, x1, t.solidTop[c], z1, x1, t.solidTop[b], z0);
-                m.quad(q, lit(t, i, j), lit(t, i, j + 1), lit(t, i + 1, j + 1), lit(t, i + 1, j));
+                m.quad(q, lit[a], lit[d], lit[c], lit[b]);
             }
         }
-        // skirts down from each edge, so tiles of other spacings beside it show no gaps
+        // skirts down from the edges, so tiles of other spacings beside it show no gaps. Package 12c: only on an edge
+        // whose neighbour is at another spacing or not made (tiles of one spacing share their edge samples exactly)
+        int mask = 0;
         for (int e = 0; e < 4; e++) {
+            if (!skirtWanted(t, e)) {
+                skirtsLeftOut.incrementAndGet();
+                continue;
+            }
+            mask |= 1 << e;
             for (int k = 0; k < n - 1; k++) {
                 int i0, j0, i1, j1;
                 switch (e) {
@@ -497,12 +856,13 @@ final class FarTiles implements Runnable {
                 m.quad(q, ca, ca, cb, cb);
             }
         }
+        t.skirtMask = mask;
         // trees on generated (not real) ground, near enough to see their shape
         if (trees != null && s <= 8) {
             for (int j = 0; j < n - 1; j++) {
                 for (int i = 0; i < n - 1; i++) {
                     int a = j * n + i;
-                    if (t.flags[a] != 1 || t.fluidTop[a] != FarSource.NONE || t.biome[a] == null) continue;
+                    if ((t.flags[a] & 3) != 1 || t.fluidTop[a] != FarSource.NONE || t.biome[a] == null) continue;
                     FarTrees.Info info = trees.of(t.biome[a]);
                     if (info.trees().isEmpty()) continue;
                     int x = ox + i * s, z = oz + j * s;
@@ -515,11 +875,11 @@ final class FarTiles implements Runnable {
                     float crownTop = ground + tree.height() + 1, crownBottom = Math.max(ground + 1, crownTop - tree.crown() - 1);
                     float r = tree.radius() + 0.5f;
                     int leaves = FarColors.color(tree.leaves(), t.biome[a], x, (int) crownTop, z);
-                    box(m, q, cx - r, crownBottom, cz - r, cx + r, crownTop, cz + r, leaves, true);
-                    if (s == 4 && crownBottom > ground + 0.5f) {
-                        int log = FarColors.color(tree.log(), t.biome[a], x, (int) ground, z);
-                        box(m, q, cx - 0.5f, ground, cz - 0.5f, cx + 0.5f, crownBottom, cz + 0.5f, log, false);
-                    }
+                    // package 12c: snow on the crowns where vanilla's freeze step would put it (half the leaves' colour)
+                    if (source != null && source.snowAt(t.biome[a], x, (int) crownTop + 1, z)) leaves = mix(leaves, SNOW_RGB);
+                    int log = FarColors.color(tree.log(), t.biome[a], x, (int) ground, z);
+                    boolean boxes = com.meakaandre.quicksilver.speed.Speed.CI_FAR_BOX_TREES.on();
+                    treeShape(m, q, boxes ? FarTrees.BOX : tree.shape(), cx, cz, ground, crownBottom, crownTop, r, leaves, log, s == 4);
                 }
             }
         }
@@ -527,6 +887,7 @@ final class FarTiles implements Runnable {
             MemoryUtil.memFree(m.buf);
             if (t.staged) FarLayer.remove(key(t.tx, t.tz), id);
             t.staged = false;
+            current.remove(key(t.tx, t.tz));
             return;
         }
         m.buf.flip();
@@ -534,6 +895,36 @@ final class FarTiles implements Runnable {
         FarLayer.stage(key(t.tx, t.tz), m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
             (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
         t.staged = true;
+        if (!t.dirty) current.add(key(t.tx, t.tz));
+    }
+
+    private static float shoreY(Tile t, int k, float wl) {
+        return t.fluidTop[k] != FarSource.NONE ? Math.max(t.solidTop[k], t.fluidTop[k] - wl) : t.solidTop[k];
+    }
+
+    private static int shoreC(Tile t, int k, int[] lit) {
+        return t.fluidTop[k] != FarSource.NONE ? t.fluidColor[k] : lit[k];
+    }
+
+    /**
+     * Package 12c: a ground corner's colour shaded so hills and mountains read as 3D from afar: the game's facing shade,
+     * a little darker in hollows and lighter on ridges (the heights around it against its own), and a touch lighter
+     * with height above the sea (as distant peaks look).
+     */
+    private static int relief(Tile t, int i, int j, int seaLevel) {
+        int n = t.n, s = t.spacing;
+        int k = j * n + i;
+        int h = t.solidTop[k];
+        int l = t.solidTop[j * n + Math.max(i - 1, 0)], r = t.solidTop[j * n + Math.min(i + 1, n - 1)];
+        int u = t.solidTop[Math.max(j - 1, 0) * n + i], d = t.solidTop[Math.min(j + 1, n - 1) * n + i];
+        float span = 2f * s;
+        float f = facing(-(r - l) / span, 1f, -(d - u) / span);
+        // hollow (neighbours higher) darker, ridge lighter: up to 12% either way
+        float lap = ((l + r + u + d) * 0.25f - h) / Math.max(2f, s);
+        f *= 1f - Math.max(-0.06f, Math.min(0.12f, lap * 0.12f));
+        // height: up to 6% lighter 200 blocks above the sea
+        f *= 1f + 0.06f * Math.max(0f, Math.min(1f, (h - seaLevel) / 200f));
+        return shade(t.color[k], f);
     }
 
     private static float top(Tile t, int k) {
@@ -552,6 +943,80 @@ final class FarTiles implements Runnable {
         float hz = t.solidTop[Math.min(j + 1, n - 1) * n + i] - t.solidTop[Math.max(j - 1, 0) * n + i];
         float span = 2f * s;
         return shade(t.color[k], facing(-hx / span, 1f, -hz / span));
+    }
+
+    private static final int SNOW_RGB = 0xF0F4F8;
+
+    private static int mix(int a, int b) {
+        return (((a >> 16) & 255) + ((b >> 16) & 255)) / 2 << 16 | (((a >> 8) & 255) + ((b >> 8) & 255)) / 2 << 8 | ((a & 255) + (b & 255)) / 2;
+    }
+
+    /**
+     * Package 12c: a far tree by its kind's shape (FarTrees): a spruce's two-tier cone, an oak's rounded blob (a wide box
+     * with a narrower, taller one through it), a birch's thinner one, a jungle tree's tall trunk under a blob, an acacia's
+     * flat wide crown, a dark oak's or cherry's wide blob; anything else a box. The trunk shows only within 16 chunks
+     * ({@code trunk}).
+     */
+    private static void treeShape(Mesh m, float[] q, int shape, float cx, float cz, float ground, float bottom, float top, float r, int leaves, int log,
+                                  boolean trunk) {
+        float hgt = top - bottom;
+        switch (shape) {
+            case FarTrees.CONE -> {
+                // two tiers: a wide lower one and a narrower upper one to the tip
+                float mid = bottom + hgt * 0.55f;
+                frustum(m, q, cx, cz, bottom, r, mid + hgt * 0.1f, r * 0.35f, leaves);
+                frustum(m, q, cx, cz, mid - hgt * 0.1f, r * 0.75f, top + 0.5f, 0f, leaves);
+            }
+            case FarTrees.BLOB, FarTrees.THIN, FarTrees.WIDE -> {
+                float rr = shape == FarTrees.THIN ? Math.max(1f, r * 0.7f) : shape == FarTrees.WIDE ? r * 1.25f : r;
+                float in = Math.max(0.5f, hgt * 0.22f);
+                box(m, q, cx - rr, bottom + in, cz - rr, cx + rr, top - in, cz + rr, leaves, true);
+                float rn = rr * 0.62f;
+                box(m, q, cx - rn, bottom, cz - rn, cx + rn, top, cz + rn, leaves, true);
+            }
+            case FarTrees.TALL -> {
+                // a tall trunk (wider for the big ones) and a blob on top
+                float rr = r;
+                float cb = Math.max(bottom, top - Math.max(3f, hgt * 0.6f));
+                box(m, q, cx - rr, cb + 1, cz - rr, cx + rr, top - 1, cz + rr, leaves, true);
+                box(m, q, cx - rr * 0.6f, cb, cz - rr * 0.6f, cx + rr * 0.6f, top, cz + rr * 0.6f, leaves, true);
+                bottom = cb;
+                if (trunk || r > 2.5f) {
+                    float w = r > 3 ? 1f : 0.5f;
+                    if (bottom > ground + 0.5f) box(m, q, cx - w, ground, cz - w, cx + w, bottom, cz + w, log, false);
+                    return;
+                }
+            }
+            case FarTrees.FLAT -> {
+                // a flat crown, wider than tall, on a bare trunk
+                float rr = r * 1.3f, cb = Math.max(bottom, top - 2f);
+                box(m, q, cx - rr, cb, cz - rr, cx + rr, top, cz + rr, leaves, true);
+                bottom = cb;
+            }
+            default -> box(m, q, cx - r, bottom, cz - r, cx + r, top, cz + r, leaves, true);
+        }
+        if (trunk && bottom > ground + 0.5f) box(m, q, cx - 0.5f, ground, cz - 0.5f, cx + 0.5f, bottom, cz + 0.5f, log, false);
+    }
+
+    /** Four sloped sides from a square of half-width r0 at y0 to one of r1 at y1 (r1 0: a point), shaded by their facing. */
+    private static void frustum(Mesh m, float[] q, float cx, float cz, float y0, float r0, float y1, float r1, int rgb) {
+        int ns = shade(rgb, 0.8f), ew = shade(rgb, 0.6f), up = shade(rgb, 0.92f);
+        // the sides lean toward the sky: between their facing's shade and the top's
+        int sn = mixShade(ns, up), se = mixShade(ew, up);
+        float a0 = cx - r0, b0 = cx + r0, c0 = cz - r0, d0 = cz + r0;
+        float a1 = cx - r1, b1 = cx + r1, c1 = cz - r1, d1 = cz + r1;
+        set(q, b1, y1, c1, b0, y0, c0, a0, y0, c0, a1, y1, c1);
+        m.quad(q, sn, sn, sn, sn);
+        set(q, a1, y1, d1, a0, y0, d0, b0, y0, d0, b1, y1, d1);
+        m.quad(q, sn, sn, sn, sn);
+        set(q, a1, y1, c1, a0, y0, c0, a0, y0, d0, a1, y1, d1);
+        m.quad(q, se, se, se, se);
+        set(q, b1, y1, d1, b0, y0, d0, b0, y0, c0, b1, y1, c1);
+        m.quad(q, se, se, se, se);
+    }
+
+    private static int mixShade(int a, int b) {
+        return mix(a, b);
     }
 
     private static void box(Mesh m, float[] q, float x0, float y0, float z0, float x1, float y1, float z1, int rgb, boolean topFace) {

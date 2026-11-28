@@ -50,7 +50,7 @@ jobs:
           # (SIFTEC is cancelled).
           if [ $mode = full ]; then
             # package 4b: two more core runs with only the bench-only jar, on plain Fabric and next to Sodium
-            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2,3],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":1},{"suite":"core","run":"speed-old","shard":2},{"suite":"core","run":"speed-full","shard":1},{"suite":"core","run":"speed-full","shard":2},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0},{"suite":"far","run":"far-terralith","shard":0},{"suite":"far","run":"far-flat","shard":0},{"suite":"far","run":"far-default","shard":0},{"suite":"core","run":"conflict-sodium","shard":0},{"suite":"core","run":"conflict-iris","shard":0}]}'
+            matrix='{"suite":["core"],"run":["quicksilver-full","quicksilver-old","quicksilver-vk","quicksilver-2p-old","measure-full","measure-old","measure-vk","vanilla-a","vanilla-b","vanilla-old","vanilla-vk"],"shard":[1,2,3],"include":[{"suite":"core","run":"bench-plain","shard":0},{"suite":"core","run":"bench-sodium","shard":0},{"suite":"core","run":"sp-quicksilver","shard":0},{"suite":"core","run":"speed-old","shard":1},{"suite":"core","run":"speed-old","shard":2},{"suite":"core","run":"speed-full","shard":1},{"suite":"core","run":"speed-full","shard":2},{"suite":"create","run":"quicksilver-smoke","shard":0},{"suite":"core","run":"preset-low-old","shard":0},{"suite":"core","run":"preset-balanced-old","shard":0},{"suite":"core","run":"preset-quality-old","shard":0},{"suite":"far","run":"far-terralith","shard":0},{"suite":"far","run":"far-flat","shard":0},{"suite":"far","run":"far-default","shard":0},{"suite":"far","run":"far-vanilla","shard":0},{"suite":"far","run":"far-amplified","shard":0},{"suite":"far","run":"far-largebiomes","shard":0},{"suite":"far","run":"far-nullscape","shard":0},{"suite":"far","run":"far-flight","shard":0},{"suite":"core","run":"conflict-sodium","shard":0},{"suite":"core","run":"conflict-iris","shard":0}]}'
             server_suites='["core","terralith"]'
           else
             matrix='{"suite":["core"],"run":["quicksilver-old","quicksilver-2p-old","vanilla-a","vanilla-b"],"shard":[1,2,3]}'
@@ -69,9 +69,10 @@ jobs:
             case "$MESSAGE" in *"[create]"*)
               matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).append({"suite":"create","run":"quicksilver-smoke","shard":0}); print(json.dumps(m,separators=(",",":")))');;
             esac
-            # package 12b: [far] adds the far suite's runs (far-terralith, far-flat, far-default; ci/far-compare.py) to a quick run
+            # package 12b: [far] adds the far suite's runs (far-terralith, far-flat, far-default; package 12c: far-vanilla,
+            # far-amplified, far-largebiomes, far-nullscape, far-flight; ci/far-compare.py) to a quick run
             case "$MESSAGE" in *"[far]"*)
-              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"far","run":r,"shard":0} for r in ("far-terralith","far-flat","far-default")]); print(json.dumps(m,separators=(",",":")))');;
+              matrix=$(echo "$matrix" | python3 -c 'import json,sys; m=json.load(sys.stdin); m.setdefault("include",[]).extend([{"suite":"far","run":r,"shard":0} for r in ("far-terralith","far-flat","far-default","far-vanilla","far-amplified","far-largebiomes","far-nullscape","far-flight")]); print(json.dumps(m,separators=(",",":")))');;
             esac
             # release prep: [conflict] adds the two runs of Quicksilver next to Sodium and Iris (ci/conflict-check.py)
             case "$MESSAGE" in *"[conflict]"*)

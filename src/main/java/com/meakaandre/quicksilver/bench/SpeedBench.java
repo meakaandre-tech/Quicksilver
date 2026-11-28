@@ -121,6 +121,27 @@ final class SpeedBench {
                 queue.add(new Window("reset", ps, ps.value(), false));
                 continue;
             }
+            // package 12c: "<switch>=<value>|<held>=<value>" measures the switch with another held at a value during
+            // its rounds (a far terrain switch with far terrain on), put back afterwards
+            Speed.Setting held = null;
+            int heldValue = 0;
+            String with = null;
+            int bar = entry.indexOf('|');
+            if (bar > 0) {
+                with = entry.substring(bar + 1);
+                entry = entry.substring(0, bar);
+                int heq = with.indexOf('=');
+                held = Speed.byKey(heq > 0 ? with.substring(0, heq) : with);
+                try {
+                    heldValue = heq > 0 ? Integer.parseInt(with.substring(heq + 1).trim()) : 1;
+                } catch (NumberFormatException ex) {
+                    held = null;
+                }
+                if (held == null) {
+                    problems.add("bad held switch in " + entry + "|" + with);
+                    continue;
+                }
+            }
             String key = entry, val = null;
             int eq = entry.indexOf('=');
             if (eq > 0) {
@@ -140,7 +161,8 @@ final class SpeedBench {
                 continue;
             }
             int off = s.key.equals(Speed.PARTICLE_DENSITY.key) ? 100 : 0;
-            tested.add(new Object[] {s, on, s.value(), tested.size()});
+            tested.add(new Object[] {s, on, s.value(), tested.size(), with});
+            if (held != null) queue.add(new Window("base", held, heldValue, false));
             for (int r = 0, n = rounds(s); r < n; r++) {
                 boolean onFirst = r % 2 == 1;
                 queue.add(new Window(onFirst ? "on" : "off", s, onFirst ? on : off, false).of(tested.size() - 1));
@@ -148,6 +170,7 @@ final class SpeedBench {
             }
             // back to its configured value before the next switch, so each switch is measured against the defaults
             queue.add(new Window("reset", s, s.value(), false));
+            if (held != null) queue.add(new Window("reset", held, held.value(), false));
         }
         Minecraft mc = Minecraft.getInstance();
         previousLimit = mc.options.framerateLimit().get();
@@ -196,7 +219,9 @@ final class SpeedBench {
                     remesh = current.setting.remesh;
                 }
                 // package 12: far terrain switched on samples its tiles first (its first pass); waited for like meshing
-                boolean far = current.setting == Speed.FAR_TERRAIN && current.value > 0;
+                boolean far = (current.setting == Speed.FAR_TERRAIN && current.value > 0)
+                    // package 12c: far terrain's own CI switches re-make its tiles while it is on
+                    || (current.setting != null && current.setting.key.startsWith("ci.far-") && Speed.FAR_TERRAIN.value() > 0);
                 if (remesh || far) {
                     lastMeshed = com.meakaandre.quicksilver.mesher.MesherStats.meshedCount();
                     meshStableSince = now;
@@ -210,7 +235,7 @@ final class SpeedBench {
             case WAIT_MESH -> {
                 boolean settled = now >= until && quiet(now);
                 if (settled || now >= meshWaitEnd) {
-                    if (!settled) problems.add(current.label + " " + current.setting.key + ": meshing still busy after 90 s");
+                    if (!settled) problems.add(current.label + " " + current.setting.key + ": meshing (or far terrain's first pass) still busy at its wait's end");
                     startWarm(now);
                 }
             }
@@ -224,6 +249,7 @@ final class SpeedBench {
                 Speed.BLOCK_ENTITIES_HIDDEN.reset();
                 Speed.PARTICLES_DROPPED.reset();
                 Speed.TERRAIN_TRIANGLES.reset();
+                Speed.SECTIONS_UNDER_FAR.reset();
                 com.meakaandre.quicksilver.occlusion.OcclusionStats.speedReset();
                 Speed.counting = true;
                 if (current.profile) {
@@ -276,7 +302,7 @@ final class SpeedBench {
     static final int QUIET_SECTIONS = 4;
 
     private void startWarm(long now) {
-        if (current != null && current.label.equals("reset")) {
+        if (current != null && (current.label.equals("reset") || current.label.equals("base"))) {
             phase = Phase.APPLY; // nothing measured: the switch is back at its configured value
             return;
         }
@@ -308,6 +334,8 @@ final class SpeedBench {
         o.addProperty("terrainTrianglesPerFrame", Math.round(Speed.TERRAIN_TRIANGLES.sum() / fr));
         o.addProperty("sectionsSeenPerFrame", r2(Speed.SECTIONS_SEEN.sum() / fr));
         o.addProperty("sectionsInFogPerFrame", r2(Speed.SECTIONS_IN_FOG.sum() / fr));
+        // package 12c: real sections left out past the hand-over band (far terrain drawn in front there)
+        o.addProperty("sectionsUnderFarPerFrame", r2(Speed.SECTIONS_UNDER_FAR.sum() / fr));
         o.addProperty("cutoutLayersSkippedPerFrame", r2(Speed.CUTOUT_SKIPPED.sum() / fr));
         o.addProperty("entitiesHiddenPerFrame", r2(Speed.ENTITIES_HIDDEN.sum() / fr));
         o.addProperty("blockEntitiesHiddenPerFrame", r2(Speed.BLOCK_ENTITIES_HIDDEN.sum() / fr));
@@ -383,6 +411,7 @@ final class SpeedBench {
             e.addProperty("setting", s.key);
             e.addProperty("approximation", s.approximation);
             e.addProperty("onValue", (int) t[1]);
+            if (t[4] != null) e.addProperty("with", (String) t[4]);
             e.addProperty("rounds", rounds(s));
             JsonArray windows = new JsonArray();
             List<JsonObject> on = new ArrayList<>(), off = new ArrayList<>();
@@ -397,7 +426,7 @@ final class SpeedBench {
             e.add("windows", windows);
             JsonObject sum = new JsonObject();
             for (String k : List.of("frameMsAvg", "frameMsP50", "fps", "low1pctFps", "drawCallsPerFrame", "uploadBytesPerFrame",
-                "terrainTrianglesPerFrame", "sectionsInFogPerFrame", "cutoutLayersSkippedPerFrame", "entitiesHiddenPerFrame",
+                "terrainTrianglesPerFrame", "sectionsInFogPerFrame", "sectionsUnderFarPerFrame", "cutoutLayersSkippedPerFrame", "entitiesHiddenPerFrame",
                 "blockEntitiesHiddenPerFrame", "particlesDropped", "occlusionDrawnPerFrame", "occlusionCulledPerFrame", "occlusionCulledPct",
                 "stillFramesDrawnInFull", "farCpuMsPerSecond", "farQuadsPerFrame", "farTilesPerFrame", "farGpuKB", "farVramKB", "farHeapKB", "farTilesHeld",
                 "heapUsedMB")) {

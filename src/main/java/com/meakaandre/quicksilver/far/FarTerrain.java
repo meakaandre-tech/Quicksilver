@@ -91,7 +91,7 @@ public final class FarTerrain {
     }
 
     private static void left() {
-        stopSession();
+        stopSession(true);
         world = null;
         worldFor = null;
         asked = false;
@@ -191,9 +191,11 @@ public final class FarTerrain {
                     ClientPlayNetworking.send(new FarNet.Hello(FarNet.VERSION));
                     QuicksilverClient.LOG.info("Quicksilver far terrain: asked the server for its world generator");
                 } else {
-                    unavailable = "the server doesn't run Quicksilver";
-                    QuicksilverClient.LOG.info("Quicksilver far terrain: off on this server (it doesn't run Quicksilver, so it can't share its world seed)");
-                    note("far terrain is off on this server (it needs Quicksilver on the server too)");
+                    // package 12c: a server without Quicksilver can't share its seed: far terrain from the chunks seen
+                    // there (this visit's and, with the seen-chunks cache, earlier ones), never a guessed seed
+                    world = FarWorld.realOnly("the server doesn't run Quicksilver");
+                    QuicksilverClient.LOG.info("Quicksilver far terrain: the server doesn't run Quicksilver (it can't share its world seed); real chunks only");
+                    note("far terrain shows only land you have seen here (the server doesn't run Quicksilver)");
                 }
             }
             if (world == null) return;
@@ -216,7 +218,8 @@ public final class FarTerrain {
             }
             int id = nextId++;
             FarLayer.removeAll(id);
-            s = new FarTiles(dim, source, level.getMinY(), camX, camZ, id);
+            FarCache cache = cacheFor(mc, level, dim, source);
+            s = new FarTiles(dim, source, level.getMinY(), camX, camZ, id, cache);
             sessionNote = source != null ? "the dimension's own generator" : !world.shares() ? world.describe()
                 : known ? "real chunks only (the generator isn't noise-based)" : "real chunks only (the dimension's generator isn't known here)";
             session = s;
@@ -232,6 +235,38 @@ public final class FarTerrain {
         }
         rereadChunks(level);
     }
+
+    /**
+     * Package 12c: the disk cache for a session: sampled tiles (with {@code option.far-cache}, and a generator) and seen
+     * chunks (with {@code option.far-seen}); in the world's folder in single player, per server address otherwise.
+     */
+    private static FarCache cacheFor(Minecraft mc, ClientLevel level, ResourceKey<Level> dim, FarSource source) {
+        if (CI_NO_CACHE || Speed.CI_FAR_OLD_LOOK.on()) return null;
+        boolean gen = Speed.FAR_CACHE.on() && source != null, seen = Speed.FAR_SEEN.on();
+        if (!gen && !seen) return null;
+        try {
+            java.nio.file.Path root;
+            var server = mc.getSingleplayerServer();
+            if (server != null && mc.isLocalServer()) {
+                root = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("quicksilver").resolve("far-cache");
+            } else {
+                var data = mc.getCurrentServer();
+                String address = data != null ? data.ip : "unknown-server";
+                root = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("quicksilver").resolve("far-cache").resolve(FarCache.safe(address.toLowerCase(java.util.Locale.ROOT)));
+            }
+            String identity = gen ? world.identity(dim) : null;
+            var seenBiomes = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+            FarCache c = FarCache.of(root, dim.identifier().toString(), identity, seen, source != null ? source.biomeLookup() : null, seenBiomes);
+            if (c != null) QuicksilverClient.LOG.info("Quicksilver far terrain: disk cache in {} (sampled tiles {}, seen chunks {})", root, identity != null ? "on" : "off", seen ? "on" : "off");
+            return c;
+        } catch (Throwable t) {
+            QuicksilverClient.LOG.warn("Quicksilver far terrain: no disk cache here ({})", t.toString());
+            return null;
+        }
+    }
+
+    /** CI: no disk cache (a run that must sample from scratch). */
+    private static final boolean CI_NO_CACHE = Boolean.getBoolean("quicksilver.ci.farNoCache");
 
     private static java.util.List<LevelChunk> rereadList;
     private static int rereadAt, rereadAge;
@@ -265,10 +300,15 @@ public final class FarTerrain {
     }
 
     private static void stopSession() {
+        stopSession(false);
+    }
+
+    private static void stopSession(boolean wait) {
         FarTiles s = session;
         session = null;
         if (s != null) {
-            s.stop();
+            if (wait) s.stopAndWait();
+            else s.stop();
             QuicksilverClient.LOG.info("Quicksilver far terrain: off in {} ({} tiles made, {} columns sampled, {} real chunks)", s.dimension.identifier(),
                 s.tilesMade.get(), s.columnsSampled.get(), s.real.size());
         }
@@ -283,7 +323,9 @@ public final class FarTerrain {
         try {
             int ox = chunk.getPos().getMinBlockX(), oz = chunk.getPos().getMinBlockZ();
             int[] solid = new int[16], fluid = new int[16], color = new int[16], fcolor = new int[16];
-            BlockState[] block = new BlockState[16];
+            BlockState[] block = new BlockState[16], fblock = new BlockState[16];
+            @SuppressWarnings("unchecked")
+            Holder<Biome>[] biomes = new Holder[16];
             boolean ceiling = level.dimensionType().hasCeiling();
             int minY = level.getMinY(), maxY = level.getMinY() + level.getHeight();
             int scanTop = Math.min(maxY, minY + level.dimensionType().logicalHeight()) - 1;
@@ -309,9 +351,11 @@ public final class FarTerrain {
                 }
                 BlockState top = chunk.getBlockState(p.set(x, y, z));
                 Holder<Biome> biome = level.getBiome(p);
+                biomes[k] = biome;
                 fluid[k] = FarSource.NONE;
                 if (!top.getFluidState().isEmpty() && top.getFluidState().isSource() || top.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock) {
                     fluid[k] = y + 1;
+                    fblock[k] = top;
                     fcolor[k] = FarColors.color(top, biome, x, y, z);
                     int floor = y;
                     while (floor > minY && !chunk.getBlockState(p.set(x, floor, z)).getFluidState().isEmpty() && fluid[k] - floor < 128) floor--;
@@ -323,7 +367,7 @@ public final class FarTerrain {
                 block[k] = top;
                 any = true;
             }
-            if (any) s.realIn.add(new FarTiles.RealChunk(chunk.getPos().x(), chunk.getPos().z(), solid, fluid, color, fcolor, block));
+            if (any) s.realIn.add(new FarTiles.RealChunk(chunk.getPos().x(), chunk.getPos().z(), solid, fluid, color, fcolor, block, fblock, biomes));
         } catch (Throwable t) {
             // a chunk that can't be read keeps its samples
         }
@@ -342,6 +386,7 @@ public final class FarTerrain {
      * the fog stays vanilla's).
      */
     public static void frame(boolean terrainDrawing) {
+        frameTimed();
         FarTiles s = session;
         Minecraft mc = Minecraft.getInstance();
         if (s == null || s.paused || !FarLayer.usable() || !terrainDrawing) {
@@ -374,6 +419,15 @@ public final class FarTerrain {
         s.camZ = camZ;
         s.radius = Speed.FAR_TERRAIN.value() * 16;
         s.handEnd = (int) end;
+        // package 12c: underground (no sky light at the camera in a dimension with a sky: a cave, a sealed room) far terrain
+        // isn't drawn at all and the fog is vanilla's (it could only show through openings real terrain draws, and cost
+        // there); it comes back as soon as the camera has sky light again. The tiles stay. Under a ceiling (the nether) its
+        // own rule holds (behind real terrain, past every real section)
+        if (!ceilingHere && underground(mc)) {
+            drawing = false;
+            FarLayer.frame(false, camX, camY, camZ, 0, 0, 0, 0, 0);
+            return;
+        }
         drawing = true;
         // the fog moves out as far as far terrain covers the land: from a generator, the far distance; from real chunks
         // only, the radius within which every chunk was seen (beyond the band's end; else vanilla's fog)
@@ -389,8 +443,57 @@ public final class FarTerrain {
             belowGround = camY < top - 4;
         }
         FarLayer.fill(!ceilingHere && !belowGround, (Mth.floor(camY) >> 4) - rd);
+        FarLayer.currentTiles(s.current);
+        // package 12c: the haze, stronger in rain and thunder (the sky darkens through the lightmap already)
+        float rain = 0, thunder = 0;
+        try {
+            if (mc.level != null) {
+                float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+                rain = mc.level.getRainLevel(pt);
+                thunder = mc.level.getThunderLevel(pt);
+            }
+        } catch (Throwable t) {
+            // no weather: no extra haze
+        }
+        FarLayer.haze(Speed.CI_FAR_OLD_LOOK.on() || ceilingHere ? 0f : 0.22f + 0.2f * rain + 0.1f * thunder);
         s.inside = !ceilingHere;
         FarLayer.frame(true, camX, camY, camZ, s.anchorX, s.anchorZ, s.floorY, start, end);
+    }
+
+    private static int darkFrames;
+    private static boolean undergroundNow;
+
+    /**
+     * Package 12c: whether the camera is underground: no sky light at the camera's block in a dimension that has sky light,
+     * for 10 frames in a row (so a frame's light update doesn't flicker it); any sky light ends it at once.
+     */
+    private static boolean underground(Minecraft mc) {
+        if (Speed.CI_FAR_NO_UNDERGROUND.on()) return false;
+        ClientLevel level = mc.level;
+        if (level == null || !level.dimensionType().hasSkyLight()) {
+            darkFrames = 0;
+            undergroundNow = false;
+            return false;
+        }
+        BlockPos p = BlockPos.containing(camX, camY, camZ);
+        int sky;
+        try {
+            sky = level.getBrightness(net.minecraft.world.level.LightLayer.SKY, p);
+        } catch (Throwable t) {
+            sky = 15;
+        }
+        if (sky > 0) {
+            darkFrames = 0;
+            undergroundNow = false;
+        } else if (++darkFrames >= 10) {
+            undergroundNow = true;
+        }
+        return undergroundNow;
+    }
+
+    /** Package 12c: whether far terrain stood down this frame because the camera is underground (bench, CI). */
+    public static boolean undergroundNow() {
+        return undergroundNow;
     }
 
     /** Render thread: the fog values vanilla is about to write; the render-distance fog ends at the far distance while far terrain draws. */
@@ -474,6 +577,16 @@ public final class FarTerrain {
             o.addProperty("columnsFromRealChunks", s.columnsReal.get());
             o.addProperty("realChunks", s.real.size());
             o.addProperty("quadsMade", s.quadsMade.get());
+            // package 12c: the lighter mesh and the reused samples
+            o.addProperty("quadsMerged", s.quadsMerged.get());
+            o.addProperty("skirtsLeftOut", s.skirtsLeftOut.get());
+            o.addProperty("heightsReused", s.heightsReused.get());
+            o.addProperty("columnsFromDiskCache", s.columnsCached.get());
+            o.addProperty("seenChunksLoaded", s.seenLoaded.get());
+            if (s.cache != null) {
+                o.addProperty("diskCache", s.cache.describe());
+                o.addProperty("diskCacheKB", s.cache.folderBytes() / 1024);
+            }
             o.addProperty("sampleMs", s.sampleNanos.get() / 1_000_000);
             o.addProperty("meshMs", s.meshNanos.get() / 1_000_000);
             o.addProperty("firstPassMs", s.firstPassNanos < 0 ? -1 : s.firstPassNanos / 1_000_000);
@@ -494,12 +607,14 @@ public final class FarTerrain {
         o.addProperty("viewTested", FarLayer.viewTested());
         o.addProperty("quadsDrawnLastFrame", FarLayer.lastQuads());
         o.addProperty("drawsLastFrame", FarLayer.lastDraws());
+        o.addProperty("realSectionsUnderFarLastFrame", FarLayer.lastCovered());
         o.addProperty("fogEnd", drawing ? fogEnd : -1);
         // package 12b: holes inside the hand-over circle filled by far terrain
         o.addProperty("holeColumnsLastFrame", FarLayer.lastHoles());
         o.addProperty("partialColumnsLastFrame", FarLayer.lastPartial());
         o.addProperty("cutColumnsLastFrame", FarLayer.lastCut());
         o.addProperty("underCeiling", drawing && FarLayer.isBehindOnly());
+        o.addProperty("underground", undergroundNow);
         o.addProperty("tilesInsideForHolesLastFrame", FarLayer.lastInsideTiles());
         if (FarLayer.failure() != null) o.addProperty("failure", FarLayer.failure());
         return o;
@@ -523,13 +638,76 @@ public final class FarTerrain {
         if (s.source == null) return "nothing (no real chunk there, and no generator)";
         // the column's heights (one column of the generator's noise; heights() keeps no shared state)
         FarSource.Heights h = s.source.heights(x, z);
-        return "sampled from the generator, top " + (h == null ? "none" : String.valueOf(h.solidTop() - 1));
+        // package 12c: and the biome there (CI's world-gen data pack run checks its custom biome reaches far terrain)
+        String biome = "?";
+        try {
+            if (h != null) biome = s.source.biome(x, h.solidTop(), z).unwrapKey().map(k -> k.identifier().toString()).orElse("?");
+        } catch (Throwable t) {
+            // not reported
+        }
+        return "sampled from the generator, top " + (h == null ? "none" : String.valueOf(h.solidTop() - 1)) + ", biome " + biome;
+    }
+
+    /**
+     * Package 12c: {@code /quicksilver far find snow|forest|shore} (CI's report views): the sampling thread looks through
+     * its tiles for a snowy peak, a forest's edge or a shore 300 to 900 blocks away and logs a viewpoint looking at it
+     * ("Quicksilver far terrain find <kind>: x y z yaw pitch", or "none").
+     */
+    public static void find(String kind) {
+        FarTiles s = session;
+        if (s == null) {
+            QuicksilverClient.LOG.info("Quicksilver far terrain find {}: none (far terrain is off)", kind);
+            return;
+        }
+        s.findRequest = kind;
     }
 
     /** {@code /quicksilver far status}: one line. */
     public static String status() {
         return line(json()) + "; " + com.meakaandre.quicksilver.terrain.TerrainRenderer.sectionCounts() + ", fog end "
-            + fogEndNow() + "; " + holes();
+            + fogEndNow() + "; " + holes() + "; " + memory();
+    }
+
+    // package 12c: frames since the last status line (CI's flight: no stalls)
+    private static long lastFrameNanos, slowFrames, framesSince, worstFrameNanos;
+
+    private static void frameTimed() {
+        long now = System.nanoTime();
+        if (lastFrameNanos != 0) {
+            long d = now - lastFrameNanos;
+            framesSince++;
+            if (d > worstFrameNanos) worstFrameNanos = d;
+            if (d > 1_000_000_000L) slowFrames++;
+        }
+        lastFrameNanos = now;
+    }
+
+    /**
+     * Package 12c: memory and frames for the status line (CI's 10-minute flight reads it): the JVM's used heap and direct
+     * buffers, far terrain's samples (heap), vertices and arenas (GPU), the disk cache's size; the frames since the last
+     * line, the slowest, how many took over a second; the nearest wanted tile not made yet.
+     */
+    private static String memory() {
+        Runtime rt = Runtime.getRuntime();
+        long direct = -1;
+        try {
+            for (java.lang.management.BufferPoolMXBean b : ManagementFactory.getPlatformMXBeans(java.lang.management.BufferPoolMXBean.class))
+                if (b.getName().equals("direct")) direct = b.getMemoryUsed();
+        } catch (Throwable t) {
+            // not reported
+        }
+        FarTiles s = session;
+        String out = "memory: heap used " + (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024) + " MB, direct " + (direct < 0 ? "?" : String.valueOf(direct / (1024 * 1024)))
+            + " MB, far samples " + heapBytes() / 1024 + " KB, far vertices " + FarLayer.bytesHeld() / 1024 + " KB, far arenas "
+            + com.meakaandre.quicksilver.terrain.TerrainStore.farArenaBytes() / 1024 + " KB, disk cache " + (s != null && s.cache != null ? s.cache.folderBytes() / 1024 : -1)
+            + " KB; frames " + framesSince + ", slowest " + worstFrameNanos / 1_000_000 + " ms, " + slowFrames + " over 1 s; nearest missing tile "
+            + (s == null ? -1 : s.nearestMissing) + " blocks; real chunks " + (s == null ? 0 : s.real.size()) + "; disk cache columns "
+            + (s == null ? 0 : s.columnsCached.get()) + ", seen chunks loaded " + (s == null ? 0 : s.seenLoaded.get())
+            + (undergroundNow ? "; underground: not drawn" : "");
+        framesSince = 0;
+        worstFrameNanos = 0;
+        slowFrames = 0;
+        return out;
     }
 
     /**

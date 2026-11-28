@@ -7,6 +7,7 @@ Quicksilver run it then types `/quicksilver bench <scene> <seconds>` and waits f
 
 usage: drive.py SUITE_FILE FIFO OUT_DIR LATEST_LOG MODE(vanilla|quicksilver) BENCH_SECONDS SCENE_ID...
 """
+import re
 import json
 import os
 import subprocess
@@ -411,6 +412,61 @@ def main():
                 elif step.startswith("#client "):
                     chat(step[8:])
                     time.sleep(2)
+                elif step.startswith("#fly "):
+                    # package 12c: "#fly <vx> <vz> <seconds> [<status every s>]": the player moved at vx, vz blocks a
+                    # second (elytra speed is about 30) by server teleports four times a second, far terrain's status
+                    # logged every so often (tiles, memory, frames), then once at the end
+                    parts = step.split()
+                    vx, vz, secs = float(parts[1]), float(parts[2]), float(parts[3])
+                    every = float(parts[4]) if len(parts) > 4 else 60.0
+                    t0 = time.time()
+                    last = t0
+                    next_status = t0 + 20
+                    while time.time() - t0 < secs:
+                        time.sleep(0.25)
+                        now = time.time()
+                        dt, last = now - last, now
+                        # by the time passed (a status line's typing takes a few seconds), so the speed holds
+                        console.write(f"execute as @a at @s run tp @s ~{vx * dt:.2f} ~ ~{vz * dt:.2f}\n")
+                        if now >= next_status:
+                            next_status += every
+                            chat("quicksilver far status")
+                    chat("quicksilver far status")
+                    far_log.append({"step": step, "seconds": round(time.time() - t0, 1)})
+                elif step.startswith("#find "):
+                    # package 12c: "#find <kind> [dimension]": far terrain looks for a snowy peak, a forest's edge or a
+                    # shore 300-900 blocks away (ci: the report's views) and the player is put at the viewpoint it logs
+                    parts = step.split()
+                    kind = parts[1]
+                    dim = parts[2] if len(parts) > 2 else "minecraft:overworld"
+                    before = open(latest, errors="replace").read().count(f"Quicksilver far terrain find {kind}:") if os.path.exists(latest) else 0
+                    chat(f"quicksilver far find {kind}")
+                    found = None
+                    for _ in range(30):
+                        time.sleep(1)
+                        text = open(latest, errors="replace").read() if os.path.exists(latest) else ""
+                        hits = re.findall(rf"Quicksilver far terrain find {kind}: ([^\n]*)", text)
+                        if len(hits) > before:
+                            found = hits[-1].strip()
+                            break
+                    far_log.append({"step": step, "found": found})
+                    if found and not found.startswith("none"):
+                        x, y, z, yaw, pitch = found.split()[:5]
+                        send(f"execute in {dim} run tp @a {x} {y} {z} {yaw} {pitch}")
+                elif step.startswith("#settle"):
+                    # package 12c: "#settle": waits (up to 270 s) for far terrain to settle where it is now, recording
+                    # how long that took (after a teleport, a dimension change, a relog)
+                    before = open(latest, errors="replace").read().count("Quicksilver far terrain: settled") if os.path.exists(latest) else 0
+                    t0 = time.time()
+                    chat("quicksilver far wait")
+                    ok = False
+                    while time.time() - t0 < 270:
+                        time.sleep(1)
+                        text = open(latest, errors="replace").read() if os.path.exists(latest) else ""
+                        if text.count("Quicksilver far terrain: settled") > before:
+                            ok = True
+                            break
+                    far_log.append({"step": step, "settled": ok, "seconds": round(time.time() - t0, 1)})
                 else:
                     send(step)
             entry["farSteps"] = far_log

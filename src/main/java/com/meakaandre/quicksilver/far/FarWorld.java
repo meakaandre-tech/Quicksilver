@@ -52,6 +52,26 @@ abstract class FarWorld {
     abstract String describe();
 
     /**
+     * Package 12c: what a dimension's sampled tiles depend on, for the disk cache (another identity empties it): single
+     * player, the world's seed, the dimension's generator as its codec writes it and the data packs; a server, a hash of
+     * its whole handshake. Null: nothing to cache (real chunks only).
+     */
+    String identity(ResourceKey<Level> dimension) {
+        return null;
+    }
+
+    static String sha256(byte[] data) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(data);
+            StringBuilder b = new StringBuilder();
+            for (byte x : d) b.append(String.format("%02x", x));
+            return b.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(java.util.Arrays.hashCode(data));
+        }
+    }
+
+    /**
      * Package 12b: a server that runs Quicksilver but doesn't share its seed (the default): no generator for any
      * dimension, so far terrain is drawn from real chunks only (land the client has had).
      */
@@ -104,11 +124,27 @@ abstract class FarWorld {
             String describe() {
                 return "the integrated server's generators";
             }
+
+            @Override
+            String identity(ResourceKey<Level> dimension) {
+                ServerLevel l = server.getLevel(dimension);
+                if (l == null) return null;
+                StringBuilder b = new StringBuilder("single player\nseed " + l.getSeed() + "\npacks " + server.getPackRepository().getSelectedIds() + "\n");
+                try {
+                    var ops = RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, server.registryAccess());
+                    var enc = net.minecraft.world.level.chunk.ChunkGenerator.CODEC.encodeStart(ops, l.getChunkSource().getGenerator());
+                    b.append("generator ").append(sha256(String.valueOf(enc.result().orElse(null)).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                } catch (Throwable t) {
+                    b.append("generator ").append(l.getChunkSource().getGenerator().getClass().getName());
+                }
+                return b.toString();
+            }
         };
     }
 
     /** A server's handshake data (deflated, {@link FarNet#write}); throws if it can't be read or loaded. Any thread. */
     static FarWorld decode(byte[] deflated) throws Exception {
+        String handshake = sha256(deflated);
         byte[] raw;
         try (InflaterInputStream in = new InflaterInputStream(new ByteArrayInputStream(deflated))) {
             ByteArrayOutputStream bos = new ByteArrayOutputStream(deflated.length * 4);
@@ -180,6 +216,11 @@ abstract class FarWorld {
             @Override
             String describe() {
                 return "the server's generators (" + decoded.size() + " dimensions, " + entries + " registry entries, " + deflated.length / 1024 + " KB)";
+            }
+
+            @Override
+            String identity(ResourceKey<Level> dimension) {
+                return decoded.containsKey(dimension.identifier()) ? "server handshake " + handshake : null;
             }
         };
     }

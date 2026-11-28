@@ -26,6 +26,14 @@ layout(location = 1) in vec4 qsColor;
 
 layout(location = 0) out vec4 fragColor;
 
+// package 12c: a light haze toward the fog's colour with distance past the hand-over band (none at the band, so real and
+// far terrain meet unchanged), stronger in rain and thunder (qsFarGrid.w: its share at the fog's end; 0 for 12b's look);
+// at sunset and night it takes the fog's colour like everything else
+vec4 qsHaze(vec4 c, vec3 eye) {
+    float h = qsFarGrid.w * smoothstep(qsFarHand.y, max(FogRenderDistanceEnd, qsFarHand.y + 1.0), length(eye.xz));
+    return vec4(mix(c.rgb, FogColor.rgb, h), c.a);
+}
+
 const float QS_BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 
 // whether this far terrain point lies below every section of real terrain drawn in its chunk column (or the column has
@@ -74,7 +82,7 @@ void main() {
         } else {
             gl_FragDepth = gl_FragCoord.z;
         }
-        fragColor = apply_fog(qsColor, fog_spherical_distance(qsEye), fog_cylindrical_distance(qsEye), FogEnvironmentalStart, FogEnvironmentalEnd,
+        fragColor = apply_fog(qsHaze(qsColor, qsEye), fog_spherical_distance(qsEye), fog_cylindrical_distance(qsEye), FogEnvironmentalStart, FogEnvironmentalEnd,
             FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
         return;
     }
@@ -98,6 +106,6 @@ void main() {
         fragColor = vec4(1.0, 0.0, 1.0, 1.0);
         return;
     }
-    fragColor = apply_fog(qsColor, fog_spherical_distance(qsEye), fog_cylindrical_distance(qsEye), FogEnvironmentalStart, FogEnvironmentalEnd,
+    fragColor = apply_fog(qsHaze(qsColor, qsEye), fog_spherical_distance(qsEye), fog_cylindrical_distance(qsEye), FogEnvironmentalStart, FogEnvironmentalEnd,
         FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
 }

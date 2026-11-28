@@ -29,9 +29,12 @@ import net.minecraft.world.level.levelgen.placement.RepeatingPlacement;
  * log, leaves, height and crown radius (its own providers and placers). Sampling thread only.
  */
 final class FarTrees {
-    /** One kind of tree. */
-    record Tree(BlockState log, BlockState leaves, int height, int radius, int crown) {
+    /** One kind of tree; package 12c: its shape ({@link #BOX}...), from its own foliage and trunk placers and its log. */
+    record Tree(BlockState log, BlockState leaves, int height, int radius, int crown, int shape) {
     }
+
+    /** Package 12c: far tree shapes. A box (unknown kinds), a spruce's cone, an oak's round blob, a birch's thin blob, a jungle's tall one, an acacia's flat crown, a dark oak's (and cherry's) wide blob. */
+    static final int BOX = 0, CONE = 1, BLOB = 2, THIN = 3, TALL = 4, FLAT = 5, WIDE = 6;
 
     /** A biome's trees: the kinds (equal shares) and how many a chunk holds on average. */
     record Info(List<Tree> trees, float perChunk) {
@@ -100,7 +103,24 @@ final class FarTrees {
         } catch (Throwable e) {
             // the defaults: a small oak's shape
         }
-        return new Tree(log, leaves, Math.min(height, 32), radius, crown);
+        return new Tree(log, leaves, Math.min(height, 32), radius, crown, shape(t, log));
+    }
+
+    /** Package 12c: the shape a tree reads as from afar, by its placers' kinds (the game's own classes) and its log. */
+    private static int shape(TreeFeature t, BlockState log) {
+        try {
+            String foliage = t.foliagePlacer().getClass().getSimpleName(), trunk = t.trunkPlacer().getClass().getSimpleName();
+            String wood = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(log.getBlock()).getPath();
+            if (foliage.contains("Spruce") || foliage.contains("Pine")) return CONE;
+            if (foliage.contains("Acacia") || trunk.contains("Forking")) return FLAT;
+            if (foliage.contains("Jungle") || trunk.contains("Jungle")) return TALL;
+            if (foliage.contains("DarkOak") || trunk.contains("DarkOak") || foliage.contains("Cherry")) return WIDE;
+            if (wood.contains("birch")) return THIN;
+            if (foliage.contains("Blob") || foliage.contains("Fancy") || foliage.contains("Bush")) return BLOB;
+        } catch (Throwable e) {
+            // a mod's tree: a box
+        }
+        return BOX;
     }
 
     private static BlockState state(BlockStateProvider p, RandomSource r, BlockState fallback) {

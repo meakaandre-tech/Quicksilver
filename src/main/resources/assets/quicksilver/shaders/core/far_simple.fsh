@@ -22,9 +22,17 @@ layout(location = 1) in vec4 qsColor;
 
 layout(location = 0) out vec4 fragColor;
 
+// package 12c: a light haze toward the fog's colour with distance past the hand-over band (none at the band, so real and
+// far terrain meet unchanged), stronger in rain and thunder (qsFarGrid.w: its share at the fog's end; 0 for 12b's look);
+// at sunset and night it takes the fog's colour like everything else
+vec4 qsHaze(vec4 c, vec3 eye) {
+    float h = qsFarGrid.w * smoothstep(qsFarHand.y, max(FogRenderDistanceEnd, qsFarHand.y + 1.0), length(eye.xz));
+    return vec4(mix(c.rgb, FogColor.rgb, h), c.a);
+}
+
 void main() {
     // the block stays in use (the pipeline binds it); qsFarDebug.y is always 0
     vec4 color = qsFarDebug.y > 0.5 ? vec4(1.0, 0.0, 1.0, 1.0) : qsColor;
-    fragColor = apply_fog(color, fog_spherical_distance(qsEye), fog_cylindrical_distance(qsEye), FogEnvironmentalStart, FogEnvironmentalEnd,
+    fragColor = apply_fog(qsHaze(color, qsEye), fog_spherical_distance(qsEye), fog_cylindrical_distance(qsEye), FogEnvironmentalStart, FogEnvironmentalEnd,
         FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
 }
