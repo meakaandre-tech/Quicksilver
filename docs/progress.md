@@ -68,7 +68,7 @@ push the tag `v1.0.0` on a green main (after R2).
 
 **Package 12c** (far terrain, round two: cheaper, further, disk and seen-chunks caches, a better look, the cliff seam,
 underground, pixel art over far terrain, a much wider far suite): see "Package 12c" below, "Decisions for Andre" there.
-Squash-merged into main 2026-11-28 (branch full run FINAL_RUNS green).
+Squash-merged into main 2026-11-28 (branch full run 46162284047 green).
 
 **Still to do, in order:** R2 (laptop bench,
 `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two lines, which the file now reads as `preset=custom`, and
@@ -121,14 +121,14 @@ speed varies by 5% between runs, so two runs each):
 | chunks | old-GPU before | old-GPU after | full before | full after | far quads after (before) | far vertices / arenas (VRAM) | far samples (heap) |
 |---|---|---|---|---|---|---|---|
 | 64 | 1.318 | 1.129-1.152 | 1.283 | 1.092-1.119 | 21,980 (40,900) | 2.7 MB / 4-16 MB | 2.9 MB |
-| 96 | 1.291 | 1.157-1.166 | 1.286 | 1.123-1.145 | 22,450 (41,700) | 2.8 MB / 8-16 MB | 3.0 MB |
+| 96 | 1.291 | 1.157-1.172 | 1.286 | 1.123-1.145 | 22,450 (41,700) | 2.8 MB / 8-16 MB | 3.0 MB |
 | 128 | 1.314 | 1.138-1.163 | 1.333 | 1.124-1.147 | 24,460 (45,600) | 3.0 MB / 8-16 MB | 3.5 MB |
 | 192 | 1.383 | 1.157-1.173 | 1.378 | 1.133-1.169 | 26,100 (56,300) | 3.1 MB / 8-16 MB | 4.1 MB |
 | 256 | 1.433 | 1.155-1.206 | 1.450 | 1.145-1.181 | 28,060 (70,900) | 3.3 MB / 8-16 MB | 5.0 MB |
 
-Before: run 46099439850 (12b's code). After: runs 46119875322 and 46129755154 (and 46115575878 within the range). The
+Before: run 46099439850 (12b's code). After: runs 46119875322, 46129755154 and the green full run 46162284047 (and 46115575878 within the range). The
 arenas are allocated in 4 MB steps up to 16 MB (12b: 16 MB at every distance). The JVM's heap with far terrain on read
-the same as off within its GC swings (300-700 MB either way). Old-GPU at 96 chunks is x1.16, a little over the x1.15
+the same as off within its GC swings (300-700 MB either way). Old-GPU at 96 chunks is x1.16-1.17, a little over the x1.15
 target (full x1.12-1.15); what is left is far terrain's own draw (`terrain.far` 16 ms of 111 in the profile, 14%).
 
 The gate (`ci/speed-gates.json`): 1.35 to **1.22** at 96 chunks and the same at 128 (Quality's value now): measured 1.157-1.166 at 96, 1.138-1.163 at 128 in three runs, plus the runner's noise between runs (one run read 1.246 at 96 with the same code).
@@ -211,7 +211,7 @@ world (y -30) the status says it isn't drawn.
 **Settings:** Quality's far terrain is 128 chunks (as cheap as 96 now); Low-end and Balanced keep it off. Two new rows
 under Far terrain, each with a tooltip: Far cache and Seen chunks (on, in no preset).
 
-**Runs:** 46099439850 (quick, 12b's code measured), 46103443750 (first cut: water untinted, seen in its shots), 46107679286, 46111938126 (band split tried), 46115575878, 46119875322 (quick, [speed][far]); full runs 46123595090 (the reference run), 46129755154 (after the review fixes), 46135147414 (third sample; the far limits by the rule over three runs, the settings screen's tooltip check caught the two new rows), 46139927177 (a mob in Large Biomes' ocean, re-collected; the flight's job lost to Maven's 429), 46145552939 (attempt 1: Maven's 429 and a server kill-check chunk, which package 12c's code doesn't reach; attempt 2: the server suite green, the flight's heap check read the GC saw, now the heap's floor), 46157031656 (the far terrain at the band's edge covered or not by timing: fixed, decision 21), FINAL_RUNS.
+**Runs:** 46099439850 (quick, 12b's code measured), 46103443750 (first cut: water untinted, seen in its shots), 46107679286, 46111938126 (band split tried), 46115575878, 46119875322 (quick, [speed][far]); full runs 46123595090 (the reference run), 46129755154 (after the review fixes), 46135147414 (third sample; the far limits by the rule over three runs, the settings screen's tooltip check caught the two new rows), 46139927177 (a mob in Large Biomes' ocean, re-collected; the flight's job lost to Maven's 429), 46145552939 (attempt 1: Maven's 429 and a server kill-check chunk, which package 12c's code doesn't reach; attempt 2: the server suite green, the flight's heap check read the GC saw, now the heap's floor), 46157031656 (the far terrain at the band's edge covered or not by timing: fixed, decision 21), **46162284047 green** (64 min, push to the last job; far at 96: x1.17 old-GPU, x1.14 at 128).
 
 **Review:** a fresh agent read 13e78d5..HEAD (23 items). Fixed: seen chunks a cache write loaded first were never handed over (the seen land could stay hidden); chunks the client has were dropped once the disk's seen chunks filled the map (the disk's now held to three quarters); two sessions could write the same cache file (now one lock per folder, unique temporary files, and the next session waits for the last one's write); the single-player cache identity hashed only registry names (now the world registries' contents, as a server's handshake); a server's cache is per address and hashed seed (a map reset or another world behind the address gets its own); an overall 1 GB cap over servers' caches and leftover temporary files removed; no cache while CI's old look is on; skirts while a neighbour waits to be remade (cracks for seconds otherwise); shore cells never merged as flat ground; no section culling without sky light (the End's islands' sides and undersides); the find command CI-only; the mesh's buffer freed if staging fails; a failed eviction write kept in memory; `#settle` waits for the teleport to reach the client; the relog check reads its own session's line; stale comments. Kept as decisions: culling past the band also drops overhangs and builds in the last chunk and a half past the render distance in the overworld (decision 1); structure placement close to vanilla's check, not exact (14); underground means no sky light, so the bottom of a deep ocean or a room lit only through a door counts (9).
 
