@@ -1,5 +1,5 @@
 {
-  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame. Package B: the fog-sections auto-off check (ci.fog-unconfirmed), translucent terrain by region (approx.translucent-regions), and fog-sections in the nether's environmental fog. Package 13: option.dynamic-lights=1 (Fast) in the lights scene, speed-old, frame time on/off at most 1.05 (Fancy reported). Package 11: option.look=1 (pixel art) in spawn, speed-old, frame time on/off at most 1.00 (it draws the world at a ninth of the pixels; speed-full reported). Package 12: option.far-terrain=96 in spawn, speed-old: frame time on/off at most 1.35 (measured 1.283, rounds 1.281-1.310, in run 45873928148; most of it the land the moved fog now shows, terrain triangles +8.5%, and far terrain's own pixels on the software renderer); fly-through, both speed runs: the sampling thread's CPU at most 850 ms a second (one thread; measured 678 and 681).",
+  "note": "Package A: gates on the speed runs (ci/speed-compare.py). Each default-on approximation keeps removing work and doesn't make frames slower, in the scenes where it was measured to help. Options (off by default) are reported, not gated. approx.fog-sections measured in full run 45310672623 (on/off, median of the rounds' own ratios): spawn triangles 0.927 / 0.920, frame ms 0.920 / 0.928, 31.5 sections in fog a frame; fly-through 19-26 sections a frame. Package B: the fog-sections auto-off check (ci.fog-unconfirmed), translucent terrain by region (approx.translucent-regions), and fog-sections in the nether's environmental fog. Package 13: option.dynamic-lights=1 (Fast) in the lights scene, speed-old, frame time on/off at most 1.05 (Fancy reported). Package 11: option.look=1 (pixel art) in spawn, speed-old, frame time on/off at most 1.00 (it draws the world at a ninth of the pixels; speed-full reported). Package 12: option.far-terrain=96 in spawn, speed-old: frame time on/off at most 1.35 (measured 1.283, rounds 1.281-1.310, in run 45873928148; most of it the land the moved fog now shows, terrain triangles +8.5%, and far terrain's own pixels on the software renderer); fly-through, both speed runs: the sampling thread's CPU at most 850 ms a second (one thread; measured 678 and 681). Package 12c: the far terrain gate tightened from 1.35 to 1.22 (96 and the Quality preset's 128).",
   "gates": [
     {
       "setting": "approx.fog-sections",
@@ -132,8 +132,8 @@
         "speed-old"
       ],
       "metric": "frameMsAvg",
-      "max": 1.35,
-      "reason": "package 12: far terrain at 96 chunks may cost at most 35% of frame time on the old-GPU profile at spawn (measured 1.283, rounds 1.281-1.310, run 45873928148: the land the moved fog shows, +8.5% terrain triangles, and far terrain's own pixels)"
+      "max": 1.22,
+      "reason": "package 12c: far terrain at 96 chunks may cost at most 22% of frame time on the old-GPU profile at spawn: measured 1.157, 1.166, 1.163 at 96 and 1.141, 1.163, 1.138 at 128 in three runs (46115575878, 46119875322, 46129755154), plus the runner's noise between runs (one run read 1.246 at 96 with the same code); 12b's gate was 1.35 (measured 1.29-1.32)"
     },
     {
       "setting": "option.far-terrain",
@@ -143,8 +143,8 @@
         "speed-old"
       ],
       "metric": "frameMsAvg",
-      "max": 1.35,
-      "reason": "package 12c: the Quality preset's far terrain (128 chunks): the same gate as 96"
+      "max": 1.22,
+      "reason": "package 12c: far terrain at 128 chunks may cost at most 22% of frame time on the old-GPU profile at spawn: measured 1.157, 1.166, 1.163 at 96 and 1.141, 1.163, 1.138 at 128 in three runs (46115575878, 46119875322, 46129755154), plus the runner's noise between runs (one run read 1.246 at 96 with the same code); 12b's gate was 1.35 (measured 1.29-1.32)"
     },
     {
       "setting": "option.far-terrain",

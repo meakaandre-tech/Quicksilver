@@ -68,7 +68,7 @@ push the tag `v1.0.0` on a green main (after R2).
 
 **Package 12c** (far terrain, round two: cheaper, further, disk and seen-chunks caches, a better look, the cliff seam,
 underground, pixel art over far terrain, a much wider far suite): see "Package 12c" below, "Decisions for Andre" there.
-STATUS_12C
+Squash-merged into main 2026-11-28 (branch full run FINAL_RUNS green).
 
 **Still to do, in order:** R2 (laptop bench,
 `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two lines, which the file now reads as `preset=custom`, and
@@ -80,7 +80,177 @@ STATUS_12C
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
 
-PACKAGE_12C_SECTION
+## Package 12c: far terrain, round two (2026-11-28, branch `package-12c`)
+
+**Status:** built, reviewed (fresh agent) and fixed; the merge is recorded at the top of this file.
+
+**Measured first** (run 46099439850, 12b's code with far terrain's own stages in the stage profile, a profile with far
+terrain on, and 64 to 256 chunks): at spawn far terrain was a fifth of the frame (`terrain.far` 21 ms of 101 ms on the
+old-GPU profile, two draws), 41,700 quads at 96 chunks and almost as many at 64 (the near tiles at 4-block spacing were
+most of them), and real terrain drew 8% more triangles because the moved fog showed the sections fog culling used to
+leave out. Its sampling thread could not keep up with fast flight (a 10-minute flight in CI left holes 160-230 blocks
+away), and water was drawn untinted (a pale grey: water has no block tint source; 12b's shots show it).
+
+**Cheaper** (each measured on its own in the speed runs, `ci.far-*` switches against far terrain at 96; on/off is
+frame time on the old-GPU / full profile, five rounds):
+- **Real sections past the band left out under far terrain** (`FarLayer.coverFrom`, `covers`): beyond the hand-over
+  band far terrain is drawn in front of real terrain everywhere, so a real section wholly past the band's end (across
+  the ground) is left out where far terrain's tile there is made, current and in the arenas. 31.6 sections a frame at
+  spawn; real triangles back to far-terrain-off's (0.99). Worth 4-6% (`ci.far-no-cover`: 1.042-1.059).
+- **A lighter mesh** (`FarTiles.stage`): skirts only on an edge whose neighbour is at another spacing or not made (tiles of
+  one spacing share their edge samples exactly; a real chunk at a tile's low edge marks the tiles before it too); runs of
+  flat cells of one height and colour merged into one quad (water, flat ground); 64-block spacing past 128 chunks. Worth
+  9-11% (`ci.far-old-mesh`: 1.088-1.110).
+- **Fewer far trees past 16 chunks** (one in two 8-block cells at most, a quarter bigger), and every tree shape no dearer
+  than a box (four sides for a cone, four tapered sides and a top for a blob). Quads at 96 chunks: 34,100 to 22,500.
+- **Holes before refinements, no rest while catching up** (`FarTiles.run`): a tile not made at all is made before one
+  only waiting for a finer spacing, and the thread doesn't rest while such a hole is within 512 blocks past the band. The
+  vertices' anchor now reaches as far as 16 bits allow (12b: 12,000 blocks; the flight crossed it and the session started
+  over). CI's flight: no wanted tile missing at any status line (12b's code: 155-235 blocks).
+- **Cheaper sampling:** the generator's heights are reused between spacings (every other or fourth column), and the disk
+  cache below gives blocks and biomes without sampling.
+- **Tried and dropped:** drawing far tiles nearest first (`ci.far-no-sort` 1.006, kept as it costs nothing: a sort of
+  under 200 entries); splitting the tiles near the band into a band part and a part past it (drawn with the plain stage),
+  and a third part inside the hand-over circle drawn only for holes (`ci.far-no-split` 0.989-1.019, `ci.far-no-inside`
+  0.989-1.004: no gain measured; removed, it added a tile key per part and a re-split as the camera moved).
+  Horizon culling of far tiles behind hills: not built (spawn's camera is 165 high; the near tiles are what costs).
+
+**Cost before and after** (spawn, frame time with far terrain on over off, median of the rounds' ratios; the runner's
+speed varies by 5% between runs, so two runs each):
+
+| chunks | old-GPU before | old-GPU after | full before | full after | far quads after (before) | far vertices / arenas (VRAM) | far samples (heap) |
+|---|---|---|---|---|---|---|---|
+| 64 | 1.318 | 1.129-1.152 | 1.283 | 1.092-1.119 | 21,980 (40,900) | 2.7 MB / 4-16 MB | 2.9 MB |
+| 96 | 1.291 | 1.157-1.166 | 1.286 | 1.123-1.145 | 22,450 (41,700) | 2.8 MB / 8-16 MB | 3.0 MB |
+| 128 | 1.314 | 1.138-1.163 | 1.333 | 1.124-1.147 | 24,460 (45,600) | 3.0 MB / 8-16 MB | 3.5 MB |
+| 192 | 1.383 | 1.157-1.173 | 1.378 | 1.133-1.169 | 26,100 (56,300) | 3.1 MB / 8-16 MB | 4.1 MB |
+| 256 | 1.433 | 1.155-1.206 | 1.450 | 1.145-1.181 | 28,060 (70,900) | 3.3 MB / 8-16 MB | 5.0 MB |
+
+Before: run 46099439850 (12b's code). After: runs 46119875322 and 46129755154 (and 46115575878 within the range). The
+arenas are allocated in 4 MB steps up to 16 MB (12b: 16 MB at every distance). The JVM's heap with far terrain on read
+the same as off within its GC swings (300-700 MB either way). Old-GPU at 96 chunks is x1.16, a little over the x1.15
+target (full x1.12-1.15); what is left is far terrain's own draw (`terrain.far` 16 ms of 111 in the profile, 14%).
+
+The gate (`ci/speed-gates.json`): 1.35 to **1.22** at 96 chunks and the same at 128 (Quality's value now): measured 1.157-1.166 at 96, 1.138-1.163 at 128 in three runs, plus the runner's noise between runs (one run read 1.246 at 96 with the same code).
+
+**Further:** 192 and 256 chunks (`option.far-terrain`, the settings screen's choices, `/qs speed`), for strong GPUs (the
+tooltip says so). Their cost and memory are in the table above.
+
+**Disk cache** (`far/FarCache`, `option.far-cache`, on by default): sampled tiles per world (single player: the world's
+folder, `quicksilver/far-cache/<dimension>`; a server: `<game dir>/quicksilver/far-cache/<address>/<dimension>`), region
+files of 8 x 8 tiles, gzipped, at the finest spacing sampled so far: heights, the top block, the fluid and the biome per
+column (never colours: they follow the resource pack and are worked out again when read). Emptied when its identity
+changes: single player the seed, the dimension's generator (its codec's output, hashed) and the data packs; a server the
+hash of its whole handshake; both the mod's version and the file format. Capped at 256 MB per world or server (the
+least recently written regions go first). Written every 30 s and when the session ends; regions far behind leave memory.
+CI: after a relog (`far_relog`, the flight's world) far terrain settled in 4.5 s against 34.5-58.5 s on the first visit,
+with 175,000-265,000 columns from the cache.
+
+**Seen chunks** (`option.far-seen`, on by default, it costs nothing measurable: the columns are read from every chunk
+the client has anyway): the real chunks the client has had are kept on disk with the tiles (`s.<rx>.<rz>.bin`), per
+server and world, local only (nothing is sent), valid across seeds. A server that doesn't share its seed, Quicksilver's
+default, or one that doesn't run Quicksilver (new: 12b kept far terrain off there) gets far terrain from them. CI: on
+both kinds of server the second session (after a relog) showed the land seen in the first at once (0.0% and 0.08-0.12%
+of the view different; 1,573 and 1,372 seen chunks read from disk).
+
+**Better looking** (each looked at in CI's shots; the costs are the switches above):
+- **Water:** its biome's water colour (12b's grey was untinted); at vanilla's surface (8/9 of a block up); shores
+  blended per corner (12b dropped any quad with a land corner to the sea floor); ice on still water and snow on the
+  ground where vanilla's freeze step would put them (the biome cold enough at that height: frozen oceans and rivers,
+  snow caps on mountains in temperate biomes too); snow on tree crowns there.
+- **Relief:** the game's facing shade, hollows up to 12% darker, ridges 6% lighter, up to 6% lighter with height; cliffs
+  (a cell's corners more than two cells' width apart in height) in the generator's stone below their top edge, also where
+  they meet the water.
+- **Haze:** toward the fog's colour with distance past the band (22% at the fog's end, +20% in rain, +10% in thunder): it
+  takes the fog's colour at sunset and night like everything else. Far terrain follows the sky light through the
+  lightmap as before (night, rain and thunder darken it). CI shots at sunset, night, rain and thunder.
+- **Trees by kind** (`FarTrees`: their own foliage and trunk placers): spruce and pine cones, oak and fancy oak blobs,
+  thinner birches, dark oak and cherry wider (cherry pink from its own leaves), jungle tall with a trunk, acacia flat;
+  anything else a box. Free (`ci.far-box-trees` 1.003-1.011).
+- **Structures** (`FarStructures`): villages (their kind's wood or sandstone, darker roofs), woodland mansions (dark oak,
+  cobblestone top) and ocean monuments (dark prismarine at the water's surface), placed where the world's own structure
+  sets put them from the seed alone, as `/locate` finds them: the random-spread grid's one possible chunk per cell, kept if
+  the biome at its centre is one of the structure's. Strongholds stay hidden. Vanilla's checks after that (a village's
+  ground, a mansion's) can drop a few; a data pack's own sets aren't drawn. Free (`ci.far-no-structures` 0.987-1.002).
+- **Pixel art over far terrain** (Andre's addition): the palette pass gets the fog's colour as extra tones, with its
+  blends with the sky's (the sky's colour where the game gives it; otherwise the fog's) and the palette colour blended
+  toward the fog at 25, 50 and 75%, and the dithering fades out with the fog distance as the outlines do; only while far
+  terrain draws (pixel art without far terrain is package 11's exactly). CI: in the Terralith view's pale, flat fog and sky the share of checkerboard pixels fell from 24.8% to 0.48% (clear) and from 7.5-11.8% to 0.0% (rain); far terrain off, every pixel art shot unchanged.
+
+**The seam with cliffs:** the 12b east view is back (`far_cliff`), with a rule that makes sense for cliffs: the same view
+with far terrain off at render distance 12 (`far_truth`: real terrain across the band) is the truth; per screen column the
+step across the band's edges in the far shot may exceed the truth's step at the same rows by at most 2x the picture's own
+change + 4, and the band's strip may hold at most 0.5% gaps (the fog's colour where the truth shows land). East view:
+excess 2.78-2.87 against own 6.8-7.0, gaps 0.0%. Amplified's view gets the same rule (its cliffs stand in the band): 1.3-1.95
+against 9.7-10.4, gaps 0.004%. The cliffs themselves: stone below their top edge, including down to the water (12b smeared
+the top block's colour down a hundred-block face in a gradient).
+
+**Underground** (12b left the nether ceiling and caves without fill): far terrain stands down when the camera has no sky
+light in a dimension with one (10 frames in a row; any sky light brings it back at once): nothing drawn, vanilla's fog,
+the tiles kept. The nether keeps its own rule (behind real terrain, past every real section). CI: under the flight's
+world (y -30) the status says it isn't drawn.
+
+**Tests** (the far suite, `scenes/far.json`, `ci/far-compare.py`; full runs, and quick runs with `[far]`):
+- **Worlds:** Terralith (two shards now), superflat, Amplified (seed 424242), Large Biomes (98765), the Nullscape data pack
+  (777: custom End biomes; its probe must name a `nullscape:` biome), the nether, the End (core and Nullscape), and the
+  flight's vanilla world (12345): three more seeds and four more world kinds.
+- **Movement** (`far-flight`): a 10-minute flight at 30 blocks a second with far terrain's status every minute (no frame
+  over a second, no wanted tile missing within 160 blocks), a 10,000-block teleport, the nether and back (each must
+  settle), and a relog (the disk cache: settled at once).
+- **Conditions:** the Terralith view at sunset, night, rain and thunder, with pixel art (and pixel art in rain), with
+  dynamic lights.
+- **Servers:** sharing on (every other run), sharing off (`far-default`, seen chunks across a relog) and without
+  Quicksilver (`far-vanilla`, the same).
+- **Memory:** over the flight far terrain's samples, vertices and arenas, the real chunks held, the heap and the direct
+  buffers may not grow (last three status lines against the first three after warm-up: 1.3x plus a margin; the heap 1.5x
+  plus 256 MB for the GC's swings), and the disk cache stays under its cap. Measured: far samples 4.1 to 4.8 MB, vertices 3.2 to 2.8 MB, arenas 8 MB flat, real chunks held 2,300-3,400, direct buffers 3-8 MB flat, the heap within its GC swings, the disk cache 0.1 to 1.5 MB; no frame over a second (slowest 139-203 ms); no wanted tile missing.
+- **Report views:** a snowy peak, a forest's edge and a shore, found by far terrain itself 300-900 blocks away
+  (`/qs far find`) and seen from 220 blocks off, past the band.
+- Every far shot against stored Quicksilver references by the 3-run rule (`docs/ci-limits.md`, "Package 12c").
+
+**Settings:** Quality's far terrain is 128 chunks (as cheap as 96 now); Low-end and Balanced keep it off. Two new rows
+under Far terrain, each with a tooltip: Far cache and Seen chunks (on, in no preset).
+
+**Runs:** 46099439850 (quick, 12b's code measured), 46103443750 (first cut: water untinted, seen in its shots), 46107679286, 46111938126 (band split tried), 46115575878, 46119875322 (quick, [speed][far]); full runs 46123595090 (the reference run), 46129755154 (after the review fixes), FINAL_RUNS.
+
+**Review:** a fresh agent read 13e78d5..HEAD (23 items). Fixed: seen chunks a cache write loaded first were never handed over (the seen land could stay hidden); chunks the client has were dropped once the disk's seen chunks filled the map (the disk's now held to three quarters); two sessions could write the same cache file (now one lock per folder, unique temporary files, and the next session waits for the last one's write); the single-player cache identity hashed only registry names (now the world registries' contents, as a server's handshake); a server's cache is per address and hashed seed (a map reset or another world behind the address gets its own); an overall 1 GB cap over servers' caches and leftover temporary files removed; no cache while CI's old look is on; skirts while a neighbour waits to be remade (cracks for seconds otherwise); shore cells never merged as flat ground; no section culling without sky light (the End's islands' sides and undersides); the find command CI-only; the mesh's buffer freed if staging fails; a failed eviction write kept in memory; `#settle` waits for the teleport to reach the client; the relog check reads its own session's line; stale comments. Kept as decisions: culling past the band also drops overhangs and builds in the last chunk and a half past the render distance in the overworld (decision 1); structure placement close to vanilla's check, not exact (14); underground means no sky light, so the bottom of a deep ocean or a room lit only through a door counts (9).
+
+**Decisions for Andre** (each the safest that can be undone; how to switch is in each line)
+1. **Real sections past the band left out under far terrain.** Alternative: draw them (12b; 4-6% dearer). Switch:
+   `FarLayer.coverFrom`.
+2. **Skirts only where spacings differ, flat runs merged, 64-block spacing past 128 chunks.** Alternative: 12b's mesh
+   (9-11% dearer). Switch: `FarTiles.skirtWanted`, `stage`, `spacingFor`.
+3. **Half the trees past 16 chunks, a quarter bigger.** Alternative: full density (no cost measured either way, more
+   quads). Switch: `FarTiles.stage` (`sparse`).
+4. **Holes first, no rest while one is within 512 blocks past the band** (the thread can take a whole core then, at the
+   lowest priority). Alternative: always rest as long as it worked (12b: holes when flying fast). Switch: `FarTiles.run`.
+5. **The anchor reaches 30,000 less the far distance** (a session starts over only past that). Alternative: 12b's 12,000.
+   Switch: `FarTiles.anchorTooFar`.
+6. **Disk cache on by default, 256 MB per world or server, in the world's folder in single player.** Alternatives: off by
+   default; another cap; everything under the game directory. Switch: `option.far-cache`, `FarCache.DEFAULT_CAP`,
+   `FarTerrain.cacheFor`.
+7. **Seen-chunks cache on by default.** Alternative: opt-in. Switch: `option.far-seen`.
+8. **A server without Quicksilver gets far terrain from the land seen there** (12b: off). Alternative: off. Switch:
+   `FarTerrain.tick` (the `canSend` branch).
+9. **Underground (no sky light at the camera) far terrain isn't drawn.** Alternative: draw it (12b). Switch:
+   `FarTerrain.underground`.
+10. **Snow and ice by vanilla's freeze rule, water tinted by its biome, shores blended, water at 8/9 of a block.**
+    Alternative: 12b's look. Switch: `FarSource.column`, `FarColors.color`, `FarTiles.stage` (`wl`, shores).
+11. **Relief shading and stone cliffs.** Alternative: the facing shade only. Switch: `FarTiles.relief`, `cliff`.
+12. **Haze: 22% at the fog's end, more in rain and thunder.** Alternative: none (far terrain crisp to the fog). Switch:
+    `FarTerrain.frame` (`FarLayer.haze`).
+13. **Tree shapes by kind** (free). Alternative: boxes. Switch: `FarTrees.shape`.
+14. **Structures from the seed's placement and the biome at the start's centre** (a few vanilla would drop still show;
+    strongholds hidden; data packs' sets not drawn). Alternative: none. Switch: `FarStructures`, `FarTiles.structure`.
+15. **Pixel art's fog tones only while far terrain draws**, the sky's colour by the level's own method if it has one (else
+    the fog's). Alternative: always (would change every pixel art shot). Switch: `PixelArt.writeParams` (`tones`).
+16. **Quality's far terrain at 128 chunks.** Alternative: 96. Switch: `Settings` (Quality).
+17. **The cliff seam judged against real terrain at render distance 12**, and Amplified's too. Alternative: 12b's rule
+    (can't pass with a cliff in the band). Switch: `ci/far-compare.py` (`seam_truth`), `scenes/far.json`.
+18. **The far suite in full runs and with `[far]`** (as before), the Terralith run in two shards. Full runs took 64 minutes (runners queued; far-terralith is the longest far job at 25-28 min). Switch: the workflow's matrix.
+19. **The flight's limits:** no frame over a second more than 3 times, no wanted tile missing within 160 blocks, memory
+    1.3x plus a margin. Switch: `ci/far-compare.py` (`flight_checks`).
+20. **Vulkan's pixel art island has its own limit** (`spawn.pixel_island.vulkan`), re-collected by the rule: samples 0.0029 and 0.002 in this package's full runs and 0.0049 in release prep's: **0.01%** (still below one missing flower, 0.011%); the other profiles keep 0.004%. Switch: `ci/pixel-art-limits.json`.
 
 ## Release prep (2026-11-27, branch `release-prep`)
 

@@ -286,7 +286,7 @@ def seen_checks(d, run, log, lines, failures, limits):
     a = load(os.path.join(d, "shots", f"far_seen1_{tag}.seen.png"))
     b = load(os.path.join(d, "shots", f"far_seen2_{tag}.seen.png"))
     v = pct(a, b)
-    lim = limits.get("far", {}).get(f"far_seen2_{tag}.vs_first", 5.0)
+    lim = limits.get("far", {}).get(f"far_seen2_{tag}.vs_first", 0.001)
     loaded = [int(c) for c in re.findall(r"seen chunks loaded (\d+)", log)]
     ok = v is not None and v <= lim and loaded and max(loaded) > 0
     lines.append(f"| far-{run[4:]} | seen chunks after a relog | second session's view {v}% from the first's (limit {lim}%), seen chunks loaded from disk {max(loaded) if loaded else 0} | | | {'ok' if ok else '**FAIL**'} |")
