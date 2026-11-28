@@ -1,0 +1,77 @@
+suite=core run=preset-balanced-old shard=0
+old-GPU profile: MESA_EXTENSION_OVERRIDE='-GL_ARB_multi_draw_indirect -GL_ARB_buffer_storage' MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330
+old-GPU Quicksilver run: -Dquicksilver.debug.forceIntelMdiIssue=true
+preset run JVM properties:-Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.ci.farTerrainOff=true -Dquicksilver.ci.screenTest=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:12 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:12 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:12 quicksilver.jar
+pack: modmenu/modmenu.jar <- https://cdn.modrinth.com/data/mOgUt4GM/versions/kyy7dbrZ/modmenu-21.0.0.jar
+pack lock: set modmenu matches ci/pack-lock.txt
+total 1888
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:12 ci-pin.jar
+-rw-r--r-- 1 runner runner  856779 Nov 28 17:12 modmenu.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:12 quicksilver.jar
+sessions: 1|8|-|spawn,water_glass,nether,mobs,outline 1|12|-|flythrough 2|8|-|translucent_move,particles,animation,animated_items,block_entities 2|8|improvedTransparency=true|water_glass_oit,translucent_move_oit 3|8|-|occlusion,occlusion_move,occlusion_corner,lights 3|8|ao=false|flat_plants 3|8|ao=false,quicksilver.block-renderer=off|renderer_off
+scene spawn: setting up
+scene water_glass: setting up
+scene nether: setting up
+scene mobs: setting up
+screen test: QUICKSILVER SCREEN TEST END passed=21 failed=0 (shot taken: 1)
+scene flythrough: setting up
+scene particles: setting up
+scene block_entities: setting up
+session 4: no scene of PRESET_SCENES, not started
+session 5: no scene of PRESET_SCENES, not started
+session 6 client options: ao=false
+scene flat_plants: setting up
+session 7: no scene of PRESET_SCENES, not started
+/tmp/out/core-preset-balanced-old:
+bench
+client-1.log
+client-2.log
+client-3.log
+client-6.log
+client-gradle-1.log
+client-gradle-2.log
+client-gradle-3.log
+client-gradle-6.log
+drive-flat_plants.json
+drive-flythrough.json
+drive-particles-block_entities.json
+drive-spawn-water_glass-nether-mobs.json
+gfx.txt
+joined-1.txt
+joined-2.txt
+joined-3.txt
+joined-6.txt
+mod-ids.txt
+pack-sha256-modmenu.txt
+pack-sha256.txt
+run.txt
+server.log
+settings
+shots
+
+/tmp/out/core-preset-balanced-old/bench:
+
+/tmp/out/core-preset-balanced-old/settings:
+settings-screen.png
+
+/tmp/out/core-preset-balanced-old/shots:
+block_entities.chest_open.png
+block_entities.closed.png
+block_entities.png
+block_entities.sign_edit.png
+flat_plants.png
+flythrough.png
+mobs.far.png
+mobs.png
+nether.png
+particles.bare.png
+particles.png
+spawn.png
+water_glass.png

@@ -1,0 +1,64 @@
+suite=core run=speed-old shard=1
+old-GPU profile: MESA_EXTENSION_OVERRIDE='-GL_ARB_multi_draw_indirect -GL_ARB_buffer_storage' MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330
+old-GPU Quicksilver run: -Dquicksilver.debug.forceIntelMdiIssue=true
+speed run JVM properties:-Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.ci.speed=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:28 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:28 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:28 quicksilver.jar
+total 1048
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:28 ci-pin.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:28 quicksilver.jar
+sessions: 1|8|-|spawn,water_glass,nether,mobs,outline 1|12|-|flythrough 2|8|-|translucent_move,particles,animation,animated_items,block_entities 2|8|improvedTransparency=true|water_glass_oit,translucent_move_oit 3|8|-|occlusion,occlusion_move,occlusion_corner,lights 3|8|ao=false|flat_plants 3|8|ao=false,quicksilver.block-renderer=off|renderer_off
+scene spawn: setting up
+scene spawn: bench done
+scene flythrough: setting up
+scene flythrough: bench done
+scene block_entities: setting up
+scene block_entities: bench done
+session 4: no scene with speedAb, not started
+session 5: no scene with speedAb, not started
+session 6: no scene with speedAb, not started
+session 7: no scene with speedAb, not started
+/tmp/out/core-speed-old:
+bench
+client-1.log
+client-2.log
+client-3.log
+client-gradle-1.log
+client-gradle-2.log
+client-gradle-3.log
+drive-block_entities.json
+drive-flythrough.json
+drive-spawn.json
+gfx.txt
+joined-1.txt
+joined-2.txt
+joined-3.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+speed
+
+/tmp/out/core-speed-old/bench:
+20261128-175931-spawn.json
+20261128-180708-flythrough.json
+20261128-181128-block_entities.json
+
+/tmp/out/core-speed-old/shots:
+block_entities.chest_open.png
+block_entities.closed.png
+block_entities.png
+block_entities.sign_edit.png
+flythrough.png
+spawn.png
+
+/tmp/out/core-speed-old/speed:
+20261128-175911-spawn.json
+20261128-180648-flythrough.json
+20261128-181107-block_entities.json

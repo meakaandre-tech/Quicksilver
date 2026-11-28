@@ -1,0 +1,56 @@
+suite=far run=far-nullscape shard=0
+far run JVM properties: -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.ci.farCommands=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack: nullscape/lithostitched.jar <- https://cdn.modrinth.com/data/XaDC71GB/versions/pZgI6b2t/lithostitched-2.0.6-fabric-26.3.jar
+pack: nullscape/nullscape.jar <- https://cdn.modrinth.com/data/LPjGiSO4/versions/79OyFQtd/Nullscape_26.3_v2.0.1%2B26.3.jar
+pack lock: set nullscape matches ci/pack-lock.txt
+pack lock: set nullscape matches ci/pack-lock.txt
+total 4840
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:49 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:49 fabric-api.jar
+-rw-r--r-- 1 runner runner  997092 Nov 28 17:49 lithostitched.jar
+-rw-r--r-- 1 runner runner  259205 Nov 28 17:49 nullscape.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:49 quicksilver.jar
+total 2280
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:49 ci-pin.jar
+-rw-r--r-- 1 runner runner  997092 Nov 28 17:49 lithostitched.jar
+-rw-r--r-- 1 runner runner  259205 Nov 28 17:49 nullscape.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:49 quicksilver.jar
+sessions: 1|2|-|far_nether 1|8|-|far_land,far_flat,far_amplified,far_largebiomes,far_nullscape,far_end 1|8|ciFlightSession=1|far_flight 1|8|ciFlightSession=2|far_relog 1|8|ciSeenSession=1|far_seen1_vanilla,far_seen1_default 1|8|ciSeenSession=2|far_seen2_vanilla,far_seen2_default 2|8|-|far_cliff,far_views
+session 1: every scene skipped in far-nullscape, not started
+scene far_nullscape: setting up
+scene far_nullscape: bench done
+scene far_end: setting up
+scene far_end: bench done
+session 3: every scene skipped in far-nullscape, not started
+session 4: every scene skipped in far-nullscape, not started
+session 5: every scene skipped in far-nullscape, not started
+session 6: every scene skipped in far-nullscape, not started
+session 7: every scene skipped in far-nullscape, not started
+/tmp/out/far-far-nullscape:
+bench
+client-2.log
+client-gradle-2.log
+drive-far_nullscape-far_end.json
+gfx.txt
+joined-2.txt
+mod-ids.txt
+pack-sha256-nullscape.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+
+/tmp/out/far-far-nullscape/bench:
+20261128-175434-far_nullscape.json
+20261128-175727-far_end.json
+
+/tmp/out/far-far-nullscape/shots:
+far_end.far.png
+far_end.far_off.png
+far_end.png
+far_nullscape.far.png
+far_nullscape.far_mark.png
+far_nullscape.far_off.png
+far_nullscape.png

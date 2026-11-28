@@ -1,0 +1,2383 @@
+{
+  "scene": "flythrough",
+  "time": "2026-11-28T18:06:48.767448186",
+  "rounds": 3,
+  "gatedRounds": 5,
+  "abSeconds": 5.0,
+  "capabilities": "gpuVendor\u003d\"Mesa\" renderer\u003d\"llvmpipe (LLVM 21.1.8, 256 bits)\" driver\u003d\"Mesa 26.0.8-1ubuntu0.3\" gl\u003d3.3 backend\u003dOpenGL os\u003d\"Linux 7.0.0-1020-azure amd64\" windowSystem\u003dX11 cpuCores\u003d4 GL_ARB_multi_draw_indirect\u003dno GL_ARB_buffer_storage\u003dno deviceType\u003dCPU vanilla.multiDrawIndirect\u003dno vanilla.persistentMapping\u003dno vanilla.mdiKnownIssues\u003dyes",
+  "settings": {
+    "approx.fog-sections": "on",
+    "approx.translucent-regions": "on",
+    "option.opaque-leaves": "off",
+    "option.simple-water": "off",
+    "option.far-detail": "off",
+    "option.entity-distance": "off",
+    "option.block-entity-distance": "off",
+    "option.particle-distance": "off",
+    "option.particle-density": "100%",
+    "option.dynamic-lights": "off",
+    "option.look": "normal",
+    "option.pixel-size": "medium",
+    "option.pixel-dither": "on",
+    "option.pixel-outlines": "on",
+    "option.far-terrain": "off",
+    "option.far-cache": "on",
+    "option.far-seen": "on",
+    "fogSectionsState": "on (fog end confirmed: render distance 1536.0, environmental 1024.0 blocks; using the render-distance fog)"
+  },
+  "hooks": {
+    "ParticleAccessor": "applied",
+    "LightUpdatesProfileMixin": "applied",
+    "FogRendererMixin": "applied",
+    "ParticleEngineSpeedMixin": "applied"
+  },
+  "profile": {
+    "frames": 44,
+    "gpuWaitAtEachStage": true,
+    "profiledFrameMs": 185.83,
+    "stages": [
+      {
+        "stage": "terrain.cutout",
+        "msPerFrame": 61.07,
+        "pct": 32.8,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 14.48
+      },
+      {
+        "stage": "terrain.solid",
+        "msPerFrame": 53.58,
+        "pct": 28.8,
+        "entriesPerFrame": 2.0,
+        "drawsPerFrame": 14.39
+      },
+      {
+        "stage": "terrain.translucent",
+        "msPerFrame": 27.98,
+        "pct": 15.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 7.34
+      },
+      {
+        "stage": "other",
+        "msPerFrame": 25.95,
+        "pct": 13.9,
+        "entriesPerFrame": 26.9,
+        "drawsPerFrame": 1.0
+      },
+      {
+        "stage": "gui",
+        "msPerFrame": 8.85,
+        "pct": 4.8,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 1.0
+      },
+      {
+        "stage": "animation",
+        "msPerFrame": 5.23,
+        "pct": 2.8,
+        "entriesPerFrame": 12.3,
+        "drawsPerFrame": 5.11
+      },
+      {
+        "stage": "sky",
+        "msPerFrame": 1.6,
+        "pct": 0.9,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 3.0
+      },
+      {
+        "stage": "light.updates",
+        "msPerFrame": 1.23,
+        "pct": 0.7,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.prepare",
+        "msPerFrame": 0.58,
+        "pct": 0.3,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.far",
+        "msPerFrame": 0.02,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "particles.tick",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 3.6,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.far-upload",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "particles.extract",
+        "msPerFrame": 0.0,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "weather",
+        "msPerFrame": 0.0,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      }
+    ],
+    "note": "time per frame in each stage of the render thread while profiling; on OpenGL every stage boundary waits for the GPU (glFinish), so a stage holds its CPU time and the GPU work it queued (on CI\u0027s software rasteriser the GPU work is CPU time too); the waits make profiled frames slower than plain ones, so read shares, not frame rates. \u0027other\u0027 is everything outside the named stages (the game tick, extraction, vanilla\u0027s frame graph set-up, the frame limiter\u0027s wait if any)."
+  },
+  "profiles": {
+    "option.far-terrain\u003d96": {
+      "frames": 76,
+      "gpuWaitAtEachStage": true,
+      "profiledFrameMs": 105.19,
+      "stages": [
+        {
+          "stage": "terrain.cutout",
+          "msPerFrame": 30.6,
+          "pct": 29.1,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 16.76
+        },
+        {
+          "stage": "terrain.solid",
+          "msPerFrame": 29.11,
+          "pct": 27.7,
+          "entriesPerFrame": 2.0,
+          "drawsPerFrame": 17.58
+        },
+        {
+          "stage": "terrain.far",
+          "msPerFrame": 17.15,
+          "pct": 16.3,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 2.0
+        },
+        {
+          "stage": "terrain.translucent",
+          "msPerFrame": 14.43,
+          "pct": 13.7,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 7.58
+        },
+        {
+          "stage": "other",
+          "msPerFrame": 8.56,
+          "pct": 8.1,
+          "entriesPerFrame": 25.3,
+          "drawsPerFrame": 1.0
+        },
+        {
+          "stage": "gui",
+          "msPerFrame": 3.2,
+          "pct": 3.0,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 1.0
+        },
+        {
+          "stage": "animation",
+          "msPerFrame": 1.19,
+          "pct": 1.1,
+          "entriesPerFrame": 12.2,
+          "drawsPerFrame": 5.07
+        },
+        {
+          "stage": "sky",
+          "msPerFrame": 0.52,
+          "pct": 0.5,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 3.0
+        },
+        {
+          "stage": "terrain.prepare",
+          "msPerFrame": 0.36,
+          "pct": 0.3,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 0.0
+        },
+        {
+          "stage": "terrain.far-upload",
+          "msPerFrame": 0.05,
+          "pct": 0.1,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 0.0
+        },
+        {
+          "stage": "light.updates",
+          "msPerFrame": 0.05,
+          "pct": 0.0,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 0.0
+        },
+        {
+          "stage": "particles.tick",
+          "msPerFrame": 0.0,
+          "pct": 0.0,
+          "entriesPerFrame": 2.1,
+          "drawsPerFrame": 0.0
+        },
+        {
+          "stage": "particles.extract",
+          "msPerFrame": 0.0,
+          "pct": 0.0,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 0.0
+        },
+        {
+          "stage": "weather",
+          "msPerFrame": 0.0,
+          "pct": 0.0,
+          "entriesPerFrame": 1.0,
+          "drawsPerFrame": 0.0
+        }
+      ],
+      "note": "time per frame in each stage of the render thread while profiling; on OpenGL every stage boundary waits for the GPU (glFinish), so a stage holds its CPU time and the GPU work it queued (on CI\u0027s software rasteriser the GPU work is CPU time too); the waits make profiled frames slower than plain ones, so read shares, not frame rates. \u0027other\u0027 is everything outside the named stages (the game tick, extraction, vanilla\u0027s frame graph set-up, the frame limiter\u0027s wait if any)."
+    }
+  },
+  "ab": [
+    {
+      "setting": "approx.fog-sections",
+      "approximation": true,
+      "onValue": 1,
+      "rounds": 5,
+      "windows": [
+        {
+          "frames": 54,
+          "frameMsAvg": 92.11,
+          "frameMsP50": 90.08,
+          "fps": 10.86,
+          "low1pctFps": 8.28,
+          "drawCallsPerFrame": 54.09,
+          "uploadBytesPerFrame": 260895,
+          "terrainTrianglesPerFrame": 618827,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 426.65,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off (switched off)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 478,
+          "state": "off"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 81.46,
+          "frameMsP50": 78.73,
+          "fps": 12.28,
+          "low1pctFps": 9.24,
+          "drawCallsPerFrame": 53.72,
+          "uploadBytesPerFrame": 225144,
+          "terrainTrianglesPerFrame": 668045,
+          "sectionsSeenPerFrame": 442.57,
+          "sectionsInFogPerFrame": 26.36,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 406.97,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 580,
+          "state": "on"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 81.36,
+          "frameMsP50": 78.43,
+          "fps": 12.29,
+          "low1pctFps": 8.83,
+          "drawCallsPerFrame": 53.25,
+          "uploadBytesPerFrame": 215672,
+          "terrainTrianglesPerFrame": 679290,
+          "sectionsSeenPerFrame": 442.2,
+          "sectionsInFogPerFrame": 24.72,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 408.32,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 442,
+          "state": "on"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 81.97,
+          "frameMsP50": 79.29,
+          "fps": 12.2,
+          "low1pctFps": 9.31,
+          "drawCallsPerFrame": 53.56,
+          "uploadBytesPerFrame": 195097,
+          "terrainTrianglesPerFrame": 660824,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 429.84,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off (switched off)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 537,
+          "state": "off"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 81.63,
+          "frameMsP50": 79.47,
+          "fps": 12.25,
+          "low1pctFps": 8.71,
+          "drawCallsPerFrame": 53.66,
+          "uploadBytesPerFrame": 219346,
+          "terrainTrianglesPerFrame": 685932,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 428.69,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off (switched off)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 392,
+          "state": "off"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 81.19,
+          "frameMsP50": 78.07,
+          "fps": 12.32,
+          "low1pctFps": 8.67,
+          "drawCallsPerFrame": 53.28,
+          "uploadBytesPerFrame": 205424,
+          "terrainTrianglesPerFrame": 673278,
+          "sectionsSeenPerFrame": 438.46,
+          "sectionsInFogPerFrame": 26.15,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 404.1,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 492,
+          "state": "on"
+        },
+        {
+          "frames": 64,
+          "frameMsAvg": 77.85,
+          "frameMsP50": 76.57,
+          "fps": 12.84,
+          "low1pctFps": 9.95,
+          "drawCallsPerFrame": 53.38,
+          "uploadBytesPerFrame": 175728,
+          "terrainTrianglesPerFrame": 639400,
+          "sectionsSeenPerFrame": 436.19,
+          "sectionsInFogPerFrame": 23.03,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 404.77,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 588,
+          "state": "on"
+        },
+        {
+          "frames": 60,
+          "frameMsAvg": 82.9,
+          "frameMsP50": 80.9,
+          "fps": 12.06,
+          "low1pctFps": 9.15,
+          "drawCallsPerFrame": 54.02,
+          "uploadBytesPerFrame": 208048,
+          "terrainTrianglesPerFrame": 679994,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 435.7,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off (switched off)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 418,
+          "state": "off"
+        },
+        {
+          "frames": 58,
+          "frameMsAvg": 85.46,
+          "frameMsP50": 82.6,
+          "fps": 11.7,
+          "low1pctFps": 8.9,
+          "drawCallsPerFrame": 54.02,
+          "uploadBytesPerFrame": 205254,
+          "terrainTrianglesPerFrame": 744178,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 442.63,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off (switched off)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 508,
+          "state": "off"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 79.72,
+          "frameMsP50": 77.85,
+          "fps": 12.54,
+          "low1pctFps": 9.67,
+          "drawCallsPerFrame": 53.42,
+          "uploadBytesPerFrame": 200293,
+          "terrainTrianglesPerFrame": 679870,
+          "sectionsSeenPerFrame": 444.52,
+          "sectionsInFogPerFrame": 27.52,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 408.48,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 609,
+          "state": "on"
+        }
+      ],
+      "medians": {
+        "frameMsAvg": {
+          "off": 82.9,
+          "on": 81.19,
+          "onOverOff": 0.9545,
+          "roundRatios": [
+            0.8844,
+            0.9328,
+            0.9391,
+            0.9926,
+            0.9946
+          ]
+        },
+        "frameMsP50": {
+          "off": 80.9,
+          "on": 78.07,
+          "onOverOff": 0.957,
+          "roundRatios": [
+            0.874,
+            0.9425,
+            0.9465,
+            0.9824,
+            0.9892
+          ]
+        },
+        "fps": {
+          "off": 12.06,
+          "on": 12.32,
+          "onOverOff": 1.0475,
+          "roundRatios": [
+            1.0057,
+            1.0074,
+            1.0647,
+            1.0718,
+            1.1308
+          ]
+        },
+        "low1pctFps": {
+          "off": 8.9,
+          "on": 9.24,
+          "onOverOff": 1.0556,
+          "roundRatios": [
+            0.9484,
+            0.9954,
+            1.0865,
+            1.0874,
+            1.1159
+          ]
+        },
+        "drawCallsPerFrame": {
+          "off": 54.02,
+          "on": 53.38,
+          "onOverOff": 0.9917,
+          "roundRatios": [
+            0.9882,
+            0.9889,
+            0.9929,
+            0.9932,
+            0.9942
+          ]
+        },
+        "uploadBytesPerFrame": {
+          "off": 208048.0,
+          "on": 205424.0,
+          "onOverOff": 0.9239,
+          "roundRatios": [
+            0.8447,
+            0.863,
+            0.9365,
+            0.9758,
+            1.1055
+          ]
+        },
+        "terrainTrianglesPerFrame": {
+          "off": 679994.0,
+          "on": 673278.0,
+          "onOverOff": 0.9826,
+          "roundRatios": [
+            0.9136,
+            0.9403,
+            0.9816,
+            1.0279,
+            1.0795
+          ]
+        },
+        "sectionsInFogPerFrame": {
+          "off": 0.0,
+          "on": 26.15,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "sectionsUnderFarPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "cutoutLayersSkippedPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "entitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "blockEntitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "particlesDropped": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionDrawnPerFrame": {
+          "off": 429.84,
+          "on": 406.97,
+          "onOverOff": 0.9405,
+          "roundRatios": [
+            0.9228,
+            0.929,
+            0.9426,
+            0.9499,
+            0.9539
+          ]
+        },
+        "occlusionCulledPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPct": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "stillFramesDrawnInFull": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farCpuMsPerSecond": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farQuadsPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farGpuKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farVramKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farHeapKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesHeld": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "heapUsedMB": {
+          "off": 478.0,
+          "on": 580.0,
+          "onOverOff": 1.2222,
+          "roundRatios": [
+            0.8231,
+            1.1988,
+            1.2134,
+            1.2551,
+            1.4067
+          ]
+        }
+      }
+    },
+    {
+      "setting": "approx.translucent-regions",
+      "approximation": true,
+      "onValue": 1,
+      "rounds": 5,
+      "windows": [
+        {
+          "frames": 63,
+          "frameMsAvg": 79.46,
+          "frameMsP50": 77.81,
+          "fps": 12.59,
+          "low1pctFps": 10.07,
+          "drawCallsPerFrame": 72.44,
+          "uploadBytesPerFrame": 189466,
+          "terrainTrianglesPerFrame": 670727,
+          "sectionsSeenPerFrame": 437.86,
+          "sectionsInFogPerFrame": 24.68,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 404.64,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 439,
+          "state": "off"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 79.85,
+          "frameMsP50": 78.65,
+          "fps": 12.52,
+          "low1pctFps": 9.74,
+          "drawCallsPerFrame": 53.44,
+          "uploadBytesPerFrame": 198426,
+          "terrainTrianglesPerFrame": 698255,
+          "sectionsSeenPerFrame": 440.65,
+          "sectionsInFogPerFrame": 24.05,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 407.94,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 535,
+          "state": "on"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 80.83,
+          "frameMsP50": 78.53,
+          "fps": 12.37,
+          "low1pctFps": 9.29,
+          "drawCallsPerFrame": 53.46,
+          "uploadBytesPerFrame": 183588,
+          "terrainTrianglesPerFrame": 697078,
+          "sectionsSeenPerFrame": 442.77,
+          "sectionsInFogPerFrame": 28.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 405.56,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 635,
+          "state": "on"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 80.12,
+          "frameMsP50": 77.43,
+          "fps": 12.48,
+          "low1pctFps": 9.09,
+          "drawCallsPerFrame": 72.6,
+          "uploadBytesPerFrame": 176096,
+          "terrainTrianglesPerFrame": 644382,
+          "sectionsSeenPerFrame": 439.08,
+          "sectionsInFogPerFrame": 25.48,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 405.17,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 423,
+          "state": "off"
+        },
+        {
+          "frames": 63,
+          "frameMsAvg": 79.1,
+          "frameMsP50": 76.97,
+          "fps": 12.64,
+          "low1pctFps": 10.0,
+          "drawCallsPerFrame": 73.17,
+          "uploadBytesPerFrame": 174350,
+          "terrainTrianglesPerFrame": 672162,
+          "sectionsSeenPerFrame": 441.57,
+          "sectionsInFogPerFrame": 26.46,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 406.58,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 523,
+          "state": "off"
+        },
+        {
+          "frames": 61,
+          "frameMsAvg": 81.27,
+          "frameMsP50": 78.02,
+          "fps": 12.3,
+          "low1pctFps": 7.98,
+          "drawCallsPerFrame": 53.41,
+          "uploadBytesPerFrame": 191962,
+          "terrainTrianglesPerFrame": 689157,
+          "sectionsSeenPerFrame": 443.26,
+          "sectionsInFogPerFrame": 27.18,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 406.06,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 621,
+          "state": "on"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 79.42,
+          "frameMsP50": 77.54,
+          "fps": 12.59,
+          "low1pctFps": 9.65,
+          "drawCallsPerFrame": 53.08,
+          "uploadBytesPerFrame": 180222,
+          "terrainTrianglesPerFrame": 641812,
+          "sectionsSeenPerFrame": 437.81,
+          "sectionsInFogPerFrame": 26.34,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 403.14,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 428,
+          "state": "on"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 80.09,
+          "frameMsP50": 77.98,
+          "fps": 12.49,
+          "low1pctFps": 9.81,
+          "drawCallsPerFrame": 72.98,
+          "uploadBytesPerFrame": 203682,
+          "terrainTrianglesPerFrame": 683407,
+          "sectionsSeenPerFrame": 442.84,
+          "sectionsInFogPerFrame": 24.77,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 408.11,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 529,
+          "state": "off"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 80.39,
+          "frameMsP50": 77.55,
+          "fps": 12.44,
+          "low1pctFps": 9.86,
+          "drawCallsPerFrame": 72.81,
+          "uploadBytesPerFrame": 176252,
+          "terrainTrianglesPerFrame": 686336,
+          "sectionsSeenPerFrame": 446.34,
+          "sectionsInFogPerFrame": 25.06,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 412.49,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 626,
+          "state": "off"
+        },
+        {
+          "frames": 63,
+          "frameMsAvg": 79.09,
+          "frameMsP50": 76.66,
+          "fps": 12.64,
+          "low1pctFps": 9.25,
+          "drawCallsPerFrame": 53.59,
+          "uploadBytesPerFrame": 174212,
+          "terrainTrianglesPerFrame": 641432,
+          "sectionsSeenPerFrame": 435.65,
+          "sectionsInFogPerFrame": 24.68,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 402.52,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 362,
+          "state": "on"
+        }
+      ],
+      "medians": {
+        "frameMsAvg": {
+          "off": 80.09,
+          "on": 79.85,
+          "onOverOff": 1.0018,
+          "roundRatios": [
+            0.9838,
+            0.9916,
+            1.0049,
+            1.0089,
+            1.0274
+          ]
+        },
+        "frameMsP50": {
+          "off": 77.55,
+          "on": 78.02,
+          "onOverOff": 1.0062,
+          "roundRatios": [
+            0.9885,
+            0.9944,
+            1.0108,
+            1.0136,
+            1.0142
+          ]
+        },
+        "fps": {
+          "off": 12.49,
+          "on": 12.52,
+          "onOverOff": 0.9979,
+          "roundRatios": [
+            0.9731,
+            0.9912,
+            0.9944,
+            1.008,
+            1.0161
+          ]
+        },
+        "low1pctFps": {
+          "off": 9.86,
+          "on": 9.29,
+          "onOverOff": 0.9628,
+          "roundRatios": [
+            0.798,
+            0.9381,
+            0.9672,
+            0.9837,
+            1.022
+          ]
+        },
+        "drawCallsPerFrame": {
+          "off": 72.81,
+          "on": 53.44,
+          "onOverOff": 0.7341,
+          "roundRatios": [
+            0.7273,
+            0.7299,
+            0.736,
+            0.7364,
+            0.7377
+          ]
+        },
+        "uploadBytesPerFrame": {
+          "off": 176252.0,
+          "on": 183588.0,
+          "onOverOff": 1.0257,
+          "roundRatios": [
+            0.8848,
+            0.9884,
+            1.0425,
+            1.0473,
+            1.101
+          ]
+        },
+        "terrainTrianglesPerFrame": {
+          "off": 672162.0,
+          "on": 689157.0,
+          "onOverOff": 1.0008,
+          "roundRatios": [
+            0.9346,
+            0.9391,
+            1.0253,
+            1.041,
+            1.0818
+          ]
+        },
+        "sectionsInFogPerFrame": {
+          "off": 25.06,
+          "on": 26.34,
+          "onOverOff": 1.0246,
+          "roundRatios": [
+            0.9745,
+            0.9848,
+            1.0272,
+            1.0634,
+            1.0989
+          ]
+        },
+        "sectionsUnderFarPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "cutoutLayersSkippedPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "entitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "blockEntitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "particlesDropped": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionDrawnPerFrame": {
+          "off": 406.58,
+          "on": 405.56,
+          "onOverOff": 0.9958,
+          "roundRatios": [
+            0.9758,
+            0.9878,
+            0.9987,
+            1.001,
+            1.0082
+          ]
+        },
+        "occlusionCulledPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPct": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "stillFramesDrawnInFull": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farCpuMsPerSecond": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farQuadsPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farGpuKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farVramKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farHeapKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesHeld": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "heapUsedMB": {
+          "off": 523.0,
+          "on": 535.0,
+          "onOverOff": 1.054,
+          "roundRatios": [
+            0.5783,
+            0.8091,
+            1.1874,
+            1.2187,
+            1.5012
+          ]
+        }
+      }
+    },
+    {
+      "setting": "option.far-detail",
+      "approximation": false,
+      "onValue": 6,
+      "rounds": 3,
+      "windows": [
+        {
+          "frames": 62,
+          "frameMsAvg": 79.67,
+          "frameMsP50": 77.66,
+          "fps": 12.55,
+          "low1pctFps": 9.08,
+          "drawCallsPerFrame": 53.87,
+          "uploadBytesPerFrame": 199319,
+          "terrainTrianglesPerFrame": 674977,
+          "sectionsSeenPerFrame": 444.05,
+          "sectionsInFogPerFrame": 26.32,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 409.32,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 455,
+          "state": "off"
+        },
+        {
+          "frames": 82,
+          "frameMsAvg": 60.53,
+          "frameMsP50": 59.61,
+          "fps": 16.52,
+          "low1pctFps": 11.49,
+          "drawCallsPerFrame": 42.33,
+          "uploadBytesPerFrame": 220581,
+          "terrainTrianglesPerFrame": 465610,
+          "sectionsSeenPerFrame": 442.16,
+          "sectionsInFogPerFrame": 35.07,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 264.16,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 400.53,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 601,
+          "state": "on"
+        },
+        {
+          "frames": 85,
+          "frameMsAvg": 58.39,
+          "frameMsP50": 56.31,
+          "fps": 17.13,
+          "low1pctFps": 11.86,
+          "drawCallsPerFrame": 42.0,
+          "uploadBytesPerFrame": 152662,
+          "terrainTrianglesPerFrame": 461189,
+          "sectionsSeenPerFrame": 436.4,
+          "sectionsInFogPerFrame": 33.87,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 258.64,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 396.1,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 385,
+          "state": "on"
+        },
+        {
+          "frames": 63,
+          "frameMsAvg": 78.28,
+          "frameMsP50": 76.31,
+          "fps": 12.77,
+          "low1pctFps": 10.31,
+          "drawCallsPerFrame": 53.6,
+          "uploadBytesPerFrame": 178590,
+          "terrainTrianglesPerFrame": 637210,
+          "sectionsSeenPerFrame": 438.16,
+          "sectionsInFogPerFrame": 23.7,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 405.91,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 483,
+          "state": "off"
+        },
+        {
+          "frames": 63,
+          "frameMsAvg": 79.04,
+          "frameMsP50": 76.13,
+          "fps": 12.65,
+          "low1pctFps": 8.85,
+          "drawCallsPerFrame": 53.1,
+          "uploadBytesPerFrame": 178715,
+          "terrainTrianglesPerFrame": 647290,
+          "sectionsSeenPerFrame": 435.37,
+          "sectionsInFogPerFrame": 23.43,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 403.95,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 585,
+          "state": "off"
+        },
+        {
+          "frames": 85,
+          "frameMsAvg": 58.56,
+          "frameMsP50": 56.66,
+          "fps": 17.08,
+          "low1pctFps": 11.14,
+          "drawCallsPerFrame": 41.85,
+          "uploadBytesPerFrame": 146630,
+          "terrainTrianglesPerFrame": 463691,
+          "sectionsSeenPerFrame": 438.02,
+          "sectionsInFogPerFrame": 36.18,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 258.87,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 395.6,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 365,
+          "state": "on"
+        }
+      ],
+      "medians": {
+        "frameMsAvg": {
+          "off": 79.04,
+          "on": 58.56,
+          "onOverOff": 0.7459,
+          "roundRatios": [
+            0.7409,
+            0.7459,
+            0.7598
+          ]
+        },
+        "frameMsP50": {
+          "off": 76.31,
+          "on": 56.66,
+          "onOverOff": 0.7443,
+          "roundRatios": [
+            0.7379,
+            0.7443,
+            0.7676
+          ]
+        },
+        "fps": {
+          "off": 12.65,
+          "on": 17.08,
+          "onOverOff": 1.3414,
+          "roundRatios": [
+            1.3163,
+            1.3414,
+            1.3502
+          ]
+        },
+        "low1pctFps": {
+          "off": 9.08,
+          "on": 11.49,
+          "onOverOff": 1.2588,
+          "roundRatios": [
+            1.1503,
+            1.2588,
+            1.2654
+          ]
+        },
+        "drawCallsPerFrame": {
+          "off": 53.6,
+          "on": 42.0,
+          "onOverOff": 0.7858,
+          "roundRatios": [
+            0.7836,
+            0.7858,
+            0.7881
+          ]
+        },
+        "uploadBytesPerFrame": {
+          "off": 178715.0,
+          "on": 152662.0,
+          "onOverOff": 0.8548,
+          "roundRatios": [
+            0.8205,
+            0.8548,
+            1.1067
+          ]
+        },
+        "terrainTrianglesPerFrame": {
+          "off": 647290.0,
+          "on": 463691.0,
+          "onOverOff": 0.7164,
+          "roundRatios": [
+            0.6898,
+            0.7164,
+            0.7238
+          ]
+        },
+        "sectionsInFogPerFrame": {
+          "off": 23.7,
+          "on": 35.07,
+          "onOverOff": 1.4291,
+          "roundRatios": [
+            1.3324,
+            1.4291,
+            1.5442
+          ]
+        },
+        "sectionsUnderFarPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "cutoutLayersSkippedPerFrame": {
+          "off": 0.0,
+          "on": 258.87,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "entitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "blockEntitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "particlesDropped": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionDrawnPerFrame": {
+          "off": 405.91,
+          "on": 396.1,
+          "onOverOff": 0.9785,
+          "roundRatios": [
+            0.9758,
+            0.9785,
+            0.9793
+          ]
+        },
+        "occlusionCulledPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPct": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "stillFramesDrawnInFull": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farCpuMsPerSecond": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farQuadsPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farGpuKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farVramKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farHeapKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesHeld": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "heapUsedMB": {
+          "off": 483.0,
+          "on": 385.0,
+          "onOverOff": 0.7971,
+          "roundRatios": [
+            0.6239,
+            0.7971,
+            1.3209
+          ]
+        }
+      }
+    },
+    {
+      "setting": "option.far-terrain",
+      "approximation": false,
+      "onValue": 96,
+      "rounds": 3,
+      "windows": [
+        {
+          "frames": 63,
+          "frameMsAvg": 78.63,
+          "frameMsP50": 76.04,
+          "fps": 12.72,
+          "low1pctFps": 9.28,
+          "drawCallsPerFrame": 53.3,
+          "uploadBytesPerFrame": 195141,
+          "terrainTrianglesPerFrame": 672839,
+          "sectionsSeenPerFrame": 438.92,
+          "sectionsInFogPerFrame": 25.79,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 404.64,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 464,
+          "state": "off"
+        },
+        {
+          "frames": 47,
+          "frameMsAvg": 104.37,
+          "frameMsP50": 101.66,
+          "fps": 9.58,
+          "low1pctFps": 6.97,
+          "drawCallsPerFrame": 55.6,
+          "uploadBytesPerFrame": 371293,
+          "terrainTrianglesPerFrame": 600770,
+          "sectionsSeenPerFrame": 414.64,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 25.26,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 402.63,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 1536.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 371.08,
+          "farQuadsPerFrame": 40810,
+          "farTilesPerFrame": 184,
+          "farGpuKB": 2361,
+          "farVramKB": 16384,
+          "farHeapKB": 3223,
+          "farTilesHeld": 524,
+          "heapUsedMB": 458,
+          "state": "on"
+        },
+        {
+          "frames": 56,
+          "frameMsAvg": 88.37,
+          "frameMsP50": 86.7,
+          "fps": 11.32,
+          "low1pctFps": 6.84,
+          "drawCallsPerFrame": 55.38,
+          "uploadBytesPerFrame": 396073,
+          "terrainTrianglesPerFrame": 632813,
+          "sectionsSeenPerFrame": 411.64,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 25.05,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 401.65,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 1536.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 34.74,
+          "farQuadsPerFrame": 40810,
+          "farTilesPerFrame": 184,
+          "farGpuKB": 2361,
+          "farVramKB": 16384,
+          "farHeapKB": 3225,
+          "farTilesHeld": 524,
+          "heapUsedMB": 682,
+          "state": "on"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 79.89,
+          "frameMsP50": 76.63,
+          "fps": 12.52,
+          "low1pctFps": 8.93,
+          "drawCallsPerFrame": 53.56,
+          "uploadBytesPerFrame": 199234,
+          "terrainTrianglesPerFrame": 655095,
+          "sectionsSeenPerFrame": 434.82,
+          "sectionsInFogPerFrame": 25.87,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 400.37,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.2,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 3225,
+          "farTilesHeld": 0,
+          "heapUsedMB": 412,
+          "state": "off"
+        },
+        {
+          "frames": 62,
+          "frameMsAvg": 79.51,
+          "frameMsP50": 77.67,
+          "fps": 12.58,
+          "low1pctFps": 9.51,
+          "drawCallsPerFrame": 53.5,
+          "uploadBytesPerFrame": 193911,
+          "terrainTrianglesPerFrame": 660191,
+          "sectionsSeenPerFrame": 441.11,
+          "sectionsInFogPerFrame": 24.26,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 408.19,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 192.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 3225,
+          "farTilesHeld": 0,
+          "heapUsedMB": 506,
+          "state": "off"
+        },
+        {
+          "frames": 55,
+          "frameMsAvg": 90.38,
+          "frameMsP50": 90.19,
+          "fps": 11.06,
+          "low1pctFps": 9.08,
+          "drawCallsPerFrame": 55.8,
+          "uploadBytesPerFrame": 364035,
+          "terrainTrianglesPerFrame": 603443,
+          "sectionsSeenPerFrame": 414.15,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 25.13,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 403.89,
+          "occlusionCulledPerFrame": 0.0,
+          "occlusionCulledPct": 0.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "on (fog end confirmed: render distance 1536.0, environmental 1024.0 blocks; using the render-distance fog)",
+          "farCpuMsPerSecond": 15.13,
+          "farQuadsPerFrame": 40810,
+          "farTilesPerFrame": 184,
+          "farGpuKB": 2361,
+          "farVramKB": 16384,
+          "farHeapKB": 3223,
+          "farTilesHeld": 524,
+          "heapUsedMB": 340,
+          "state": "on"
+        }
+      ],
+      "medians": {
+        "frameMsAvg": {
+          "off": 79.51,
+          "on": 90.38,
+          "onOverOff": 1.1367,
+          "roundRatios": [
+            1.1061,
+            1.1367,
+            1.3274
+          ]
+        },
+        "frameMsP50": {
+          "off": 76.63,
+          "on": 90.19,
+          "onOverOff": 1.1612,
+          "roundRatios": [
+            1.1314,
+            1.1612,
+            1.3369
+          ]
+        },
+        "fps": {
+          "off": 12.58,
+          "on": 11.06,
+          "onOverOff": 0.8792,
+          "roundRatios": [
+            0.7531,
+            0.8792,
+            0.9042
+          ]
+        },
+        "low1pctFps": {
+          "off": 9.28,
+          "on": 6.97,
+          "onOverOff": 0.766,
+          "roundRatios": [
+            0.7511,
+            0.766,
+            0.9548
+          ]
+        },
+        "drawCallsPerFrame": {
+          "off": 53.5,
+          "on": 55.6,
+          "onOverOff": 1.043,
+          "roundRatios": [
+            1.034,
+            1.043,
+            1.0432
+          ]
+        },
+        "uploadBytesPerFrame": {
+          "off": 195141.0,
+          "on": 371293.0,
+          "onOverOff": 1.9027,
+          "roundRatios": [
+            1.8773,
+            1.9027,
+            1.988
+          ]
+        },
+        "terrainTrianglesPerFrame": {
+          "off": 660191.0,
+          "on": 603443.0,
+          "onOverOff": 0.914,
+          "roundRatios": [
+            0.8929,
+            0.914,
+            0.966
+          ]
+        },
+        "sectionsInFogPerFrame": {
+          "off": 25.79,
+          "on": 0.0,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "sectionsUnderFarPerFrame": {
+          "off": 0.0,
+          "on": 25.13,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "cutoutLayersSkippedPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "entitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "blockEntitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "particlesDropped": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionDrawnPerFrame": {
+          "off": 404.64,
+          "on": 402.63,
+          "onOverOff": 0.995,
+          "roundRatios": [
+            0.9895,
+            0.995,
+            1.0032
+          ]
+        },
+        "occlusionCulledPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPct": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "stillFramesDrawnInFull": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farCpuMsPerSecond": {
+          "off": 0.0,
+          "on": 34.74,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            173.7
+          ]
+        },
+        "farQuadsPerFrame": {
+          "off": 0.0,
+          "on": 40810.0,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "farTilesPerFrame": {
+          "off": 0.0,
+          "on": 184.0,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "farGpuKB": {
+          "off": 0.0,
+          "on": 2361.0,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "farVramKB": {
+          "off": 0.0,
+          "on": 16384.0,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "farHeapKB": {
+          "off": 3225.0,
+          "on": 3223.0,
+          "onOverOff": 0.9994,
+          "roundRatios": [
+            0.0,
+            0.9994,
+            1.0
+          ]
+        },
+        "farTilesHeld": {
+          "off": 0.0,
+          "on": 524.0,
+          "onOverOff": 0.0,
+          "roundRatios": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "heapUsedMB": {
+          "off": 464.0,
+          "on": 458.0,
+          "onOverOff": 0.9871,
+          "roundRatios": [
+            0.6719,
+            0.9871,
+            1.6553
+          ]
+        }
+      }
+    }
+  ],
+  "problems": []
+}

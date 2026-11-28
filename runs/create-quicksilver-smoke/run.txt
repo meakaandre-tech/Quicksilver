@@ -1,0 +1,37 @@
+suite=create run=quicksilver-smoke shard=0
+Quicksilver run JVM properties: -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack: create/create-fly-26.3.jar <- https://github.com/meakaandre-tech/Quicksilver/releases/download/pack-snapshot/create-fly-26.3.jar
+pack lock: set create matches ci/pack-lock.txt
+pack lock: set create matches ci/pack-lock.txt
+total 24256
+-rw-r--r-- 1 runner runner    32720 Nov 28 17:49 ci-pin.jar
+-rw-r--r-- 1 runner runner 21140042 Nov 28 17:49 create-fly-26.3.jar
+-rw-r--r-- 1 runner runner  2620967 Nov 28 17:49 fabric-api.jar
+-rw-r--r-- 1 runner runner  1037364 Nov 28 17:49 quicksilver.jar
+total 21696
+-rw-r--r-- 1 runner runner    32720 Nov 28 17:50 ci-pin.jar
+-rw-r--r-- 1 runner runner 21140042 Nov 28 17:50 create-fly-26.3.jar
+-rw-r--r-- 1 runner runner  1037364 Nov 28 17:50 quicksilver.jar
+sessions: 1|8|-|create_smoke
+scene create_smoke: setting up
+scene create_smoke: bench done
+/tmp/out/create-quicksilver-smoke:
+bench
+client-1.log
+client-gradle-1.log
+drive-create_smoke.json
+gfx.txt
+joined-1.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+
+/tmp/out/create-quicksilver-smoke/bench:
+20261128-175303-create_smoke.json
+
+/tmp/out/create-quicksilver-smoke/shots:
+create_smoke.png

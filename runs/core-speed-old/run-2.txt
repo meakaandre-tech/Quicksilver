@@ -1,0 +1,64 @@
+suite=core run=speed-old shard=2
+old-GPU profile: MESA_EXTENSION_OVERRIDE='-GL_ARB_multi_draw_indirect -GL_ARB_buffer_storage' MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330
+old-GPU Quicksilver run: -Dquicksilver.debug.forceIntelMdiIssue=true
+speed run JVM properties:-Dquicksilver.debug.forceIntelMdiIssue=true -Dquicksilver.ci.speed=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:30 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:30 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:30 quicksilver.jar
+total 1048
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:31 ci-pin.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:31 quicksilver.jar
+sessions: 1|8|-|spawn,water_glass,nether,mobs,outline 1|12|-|flythrough 2|8|-|translucent_move,particles,animation,animated_items,block_entities 2|8|improvedTransparency=true|water_glass_oit,translucent_move_oit 3|8|-|occlusion,occlusion_move,occlusion_corner,lights 3|8|ao=false|flat_plants 3|8|ao=false,quicksilver.block-renderer=off|renderer_off
+scene water_glass: setting up
+scene water_glass: bench done
+scene nether: setting up
+scene nether: bench done
+scene mobs: setting up
+scene mobs: bench done
+session 2: no scene with speedAb, not started
+session 3: no scene with speedAb, not started
+session 4: no scene with speedAb, not started
+scene lights: setting up
+scene lights: bench done
+session 6: no scene with speedAb, not started
+session 7: no scene with speedAb, not started
+/tmp/out/core-speed-old:
+bench
+client-21.log
+client-25.log
+client-gradle-21.log
+client-gradle-25.log
+drive-lights.json
+drive-water_glass-nether-mobs.json
+gfx.txt
+joined-21.txt
+joined-25.txt
+mod-ids.txt
+pack-sha256.txt
+run-2.txt
+server-2.log
+shots
+speed
+
+/tmp/out/core-speed-old/bench:
+20261128-173534-water_glass.json
+20261128-173822-nether.json
+20261128-174122-mobs.json
+20261128-174653-lights.json
+
+/tmp/out/core-speed-old/shots:
+lights.png
+mobs.far.png
+mobs.png
+nether.png
+water_glass.png
+
+/tmp/out/core-speed-old/speed:
+20261128-173514-water_glass.json
+20261128-173802-nether.json
+20261128-174101-mobs.json
+20261128-174633-lights.json

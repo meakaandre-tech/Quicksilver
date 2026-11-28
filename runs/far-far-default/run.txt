@@ -1,0 +1,59 @@
+suite=far run=far-default shard=0
+far run JVM properties: -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.ci.farCommands=true
+core server and world: from the core-world job
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:45 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:45 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:45 quicksilver.jar
+total 1048
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:46 ci-pin.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:46 quicksilver.jar
+sessions: 1|2|-|far_nether 1|8|-|far_land,far_flat,far_amplified,far_largebiomes,far_nullscape,far_end 1|8|ciFlightSession=1|far_flight 1|8|ciFlightSession=2|far_relog 1|8|ciSeenSession=1|far_seen1_vanilla,far_seen1_default 1|8|ciSeenSession=2|far_seen2_vanilla,far_seen2_default 2|8|-|far_cliff,far_views
+session 1: every scene skipped in far-default, not started
+scene far_flat: setting up
+scene far_flat: bench done
+session 3: every scene skipped in far-default, not started
+session 4: every scene skipped in far-default, not started
+session 5 client options: ciSeenSession=1
+scene far_seen1_default: setting up
+scene far_seen1_default: bench done
+session 6 client options: ciSeenSession=2
+scene far_seen2_default: setting up
+scene far_seen2_default: bench done
+session 7: every scene skipped in far-default, not started
+/tmp/out/far-far-default:
+bench
+client-2.log
+client-5.log
+client-6.log
+client-gradle-2.log
+client-gradle-5.log
+client-gradle-6.log
+drive-far_flat.json
+drive-far_seen1_default.json
+drive-far_seen2_default.json
+gfx.txt
+joined-2.txt
+joined-5.txt
+joined-6.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+
+/tmp/out/far-far-default/bench:
+20261128-175120-far_flat.json
+20261128-175536-far_seen1_default.json
+20261128-175845-far_seen2_default.json
+
+/tmp/out/far-far-default/shots:
+far_flat.far.png
+far_flat.far_off.png
+far_flat.far_seen.png
+far_flat.png
+far_seen1_default.png
+far_seen1_default.seen.png
+far_seen2_default.png
+far_seen2_default.seen.png

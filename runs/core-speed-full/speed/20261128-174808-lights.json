@@ -1,0 +1,1418 @@
+{
+  "scene": "lights",
+  "time": "2026-11-28T17:48:08.836385645",
+  "rounds": 3,
+  "gatedRounds": 5,
+  "abSeconds": 5.0,
+  "capabilities": "gpuVendor\u003d\"Mesa\" renderer\u003d\"llvmpipe (LLVM 21.1.8, 256 bits)\" driver\u003d\"Mesa 26.0.8-1ubuntu0.3\" gl\u003d4.5 backend\u003dOpenGL os\u003d\"Linux 7.0.0-1020-azure amd64\" windowSystem\u003dX11 cpuCores\u003d4 GL_ARB_multi_draw_indirect\u003dyes GL_ARB_buffer_storage\u003dyes deviceType\u003dCPU vanilla.multiDrawIndirect\u003dyes vanilla.persistentMapping\u003dyes vanilla.mdiKnownIssues\u003dno",
+  "settings": {
+    "approx.fog-sections": "on",
+    "approx.translucent-regions": "on",
+    "option.opaque-leaves": "off",
+    "option.simple-water": "off",
+    "option.far-detail": "off",
+    "option.entity-distance": "off",
+    "option.block-entity-distance": "off",
+    "option.particle-distance": "off",
+    "option.particle-density": "100%",
+    "option.dynamic-lights": "off",
+    "option.look": "normal",
+    "option.pixel-size": "medium",
+    "option.pixel-dither": "on",
+    "option.pixel-outlines": "on",
+    "option.far-terrain": "off",
+    "option.far-cache": "on",
+    "option.far-seen": "on",
+    "fogSectionsState": "off: not used here: the camera is above the clouds"
+  },
+  "hooks": {
+    "ParticleAccessor": "applied",
+    "LightUpdatesProfileMixin": "applied",
+    "FogRendererMixin": "applied",
+    "ParticleEngineSpeedMixin": "applied"
+  },
+  "profile": {
+    "frames": 392,
+    "gpuWaitAtEachStage": true,
+    "profiledFrameMs": 20.38,
+    "stages": [
+      {
+        "stage": "terrain.solid",
+        "msPerFrame": 8.19,
+        "pct": 40.2,
+        "entriesPerFrame": 2.0,
+        "drawsPerFrame": 1.0
+      },
+      {
+        "stage": "other",
+        "msPerFrame": 7.55,
+        "pct": 37.0,
+        "entriesPerFrame": 25.3,
+        "drawsPerFrame": 1.41
+      },
+      {
+        "stage": "gui",
+        "msPerFrame": 2.74,
+        "pct": 13.4,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 4.0
+      },
+      {
+        "stage": "features.Item",
+        "msPerFrame": 0.59,
+        "pct": 2.9,
+        "entriesPerFrame": 2.0,
+        "drawsPerFrame": 2.0
+      },
+      {
+        "stage": "features.Entity Model",
+        "msPerFrame": 0.52,
+        "pct": 2.5,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 3.0
+      },
+      {
+        "stage": "sky",
+        "msPerFrame": 0.47,
+        "pct": 2.3,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 3.0
+      },
+      {
+        "stage": "features.Flame",
+        "msPerFrame": 0.14,
+        "pct": 0.7,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 1.0
+      },
+      {
+        "stage": "entities.submit",
+        "msPerFrame": 0.07,
+        "pct": 0.3,
+        "entriesPerFrame": 4.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.prepare",
+        "msPerFrame": 0.06,
+        "pct": 0.3,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "animation",
+        "msPerFrame": 0.01,
+        "pct": 0.1,
+        "entriesPerFrame": 4.9,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "blockEntities.submit",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "light.updates",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.cutout",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.translucent",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.far",
+        "msPerFrame": 0.01,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "terrain.far-upload",
+        "msPerFrame": 0.0,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "particles.extract",
+        "msPerFrame": 0.0,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "particles.tick",
+        "msPerFrame": 0.0,
+        "pct": 0.0,
+        "entriesPerFrame": 0.4,
+        "drawsPerFrame": 0.0
+      },
+      {
+        "stage": "weather",
+        "msPerFrame": 0.0,
+        "pct": 0.0,
+        "entriesPerFrame": 1.0,
+        "drawsPerFrame": 0.0
+      }
+    ],
+    "note": "time per frame in each stage of the render thread while profiling; on OpenGL every stage boundary waits for the GPU (glFinish), so a stage holds its CPU time and the GPU work it queued (on CI\u0027s software rasteriser the GPU work is CPU time too); the waits make profiled frames slower than plain ones, so read shares, not frame rates. \u0027other\u0027 is everything outside the named stages (the game tick, extraction, vanilla\u0027s frame graph set-up, the frame limiter\u0027s wait if any)."
+  },
+  "ab": [
+    {
+      "setting": "option.dynamic-lights",
+      "approximation": false,
+      "onValue": 1,
+      "rounds": 5,
+      "windows": [
+        {
+          "frames": 262,
+          "frameMsAvg": 19.18,
+          "frameMsP50": 18.48,
+          "fps": 52.14,
+          "low1pctFps": 31.26,
+          "drawCallsPerFrame": 15.38,
+          "uploadBytesPerFrame": 33607,
+          "terrainTrianglesPerFrame": 13833,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 452,
+          "state": "off"
+        },
+        {
+          "frames": 265,
+          "frameMsAvg": 18.92,
+          "frameMsP50": 18.56,
+          "fps": 52.86,
+          "low1pctFps": 35.65,
+          "drawCallsPerFrame": 15.38,
+          "uploadBytesPerFrame": 34151,
+          "terrainTrianglesPerFrame": 13832,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 300,
+          "state": "on"
+        },
+        {
+          "frames": 261,
+          "frameMsAvg": 19.33,
+          "frameMsP50": 18.68,
+          "fps": 51.75,
+          "low1pctFps": 36.08,
+          "drawCallsPerFrame": 15.38,
+          "uploadBytesPerFrame": 34151,
+          "terrainTrianglesPerFrame": 13833,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 367,
+          "state": "on"
+        },
+        {
+          "frames": 263,
+          "frameMsAvg": 19.06,
+          "frameMsP50": 18.26,
+          "fps": 52.47,
+          "low1pctFps": 33.69,
+          "drawCallsPerFrame": 15.38,
+          "uploadBytesPerFrame": 33607,
+          "terrainTrianglesPerFrame": 13832,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 433,
+          "state": "off"
+        },
+        {
+          "frames": 270,
+          "frameMsAvg": 18.6,
+          "frameMsP50": 18.22,
+          "fps": 53.75,
+          "low1pctFps": 31.05,
+          "drawCallsPerFrame": 15.74,
+          "uploadBytesPerFrame": 34313,
+          "terrainTrianglesPerFrame": 13831,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 272,
+          "state": "off"
+        },
+        {
+          "frames": 270,
+          "frameMsAvg": 18.62,
+          "frameMsP50": 18.12,
+          "fps": 53.69,
+          "low1pctFps": 34.42,
+          "drawCallsPerFrame": 15.37,
+          "uploadBytesPerFrame": 34150,
+          "terrainTrianglesPerFrame": 13831,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 340,
+          "state": "on"
+        },
+        {
+          "frames": 263,
+          "frameMsAvg": 18.95,
+          "frameMsP50": 18.63,
+          "fps": 52.76,
+          "low1pctFps": 33.94,
+          "drawCallsPerFrame": 15.38,
+          "uploadBytesPerFrame": 34151,
+          "terrainTrianglesPerFrame": 13832,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 407,
+          "state": "on"
+        },
+        {
+          "frames": 266,
+          "frameMsAvg": 18.74,
+          "frameMsP50": 18.29,
+          "fps": 53.36,
+          "low1pctFps": 37.09,
+          "drawCallsPerFrame": 15.37,
+          "uploadBytesPerFrame": 33606,
+          "terrainTrianglesPerFrame": 13832,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 473,
+          "state": "off"
+        },
+        {
+          "frames": 265,
+          "frameMsAvg": 18.97,
+          "frameMsP50": 18.09,
+          "fps": 52.72,
+          "low1pctFps": 25.44,
+          "drawCallsPerFrame": 15.38,
+          "uploadBytesPerFrame": 33607,
+          "terrainTrianglesPerFrame": 13832,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 306,
+          "state": "off"
+        },
+        {
+          "frames": 276,
+          "frameMsAvg": 18.23,
+          "frameMsP50": 18.03,
+          "fps": 54.86,
+          "low1pctFps": 38.63,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 34149,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 374,
+          "state": "on"
+        }
+      ],
+      "medians": {
+        "frameMsAvg": {
+          "off": 18.97,
+          "on": 18.92,
+          "onOverOff": 0.9995,
+          "roundRatios": [
+            0.961,
+            0.9864,
+            1.0011,
+            1.0112,
+            1.0142
+          ]
+        },
+        "frameMsP50": {
+          "off": 18.26,
+          "on": 18.56,
+          "onOverOff": 1.0065,
+          "roundRatios": [
+            0.9945,
+            0.9967,
+            1.0043,
+            1.0186,
+            1.023
+          ]
+        },
+        "fps": {
+          "off": 52.72,
+          "on": 52.86,
+          "onOverOff": 1.0004,
+          "roundRatios": [
+            0.9863,
+            0.9888,
+            0.9989,
+            1.0138,
+            1.0406
+          ]
+        },
+        "low1pctFps": {
+          "off": 31.26,
+          "on": 35.65,
+          "onOverOff": 1.1063,
+          "roundRatios": [
+            0.9151,
+            1.0709,
+            1.1085,
+            1.1404,
+            1.5185
+          ]
+        },
+        "drawCallsPerFrame": {
+          "off": 15.38,
+          "on": 15.38,
+          "onOverOff": 0.9996,
+          "roundRatios": [
+            0.9765,
+            0.9987,
+            1.0,
+            1.0,
+            1.0007
+          ]
+        },
+        "uploadBytesPerFrame": {
+          "off": 33607.0,
+          "on": 34151.0,
+          "onOverOff": 1.0162,
+          "roundRatios": [
+            0.9952,
+            1.0161,
+            1.0162,
+            1.0162,
+            1.0162
+          ]
+        },
+        "terrainTrianglesPerFrame": {
+          "off": 13832.0,
+          "on": 13832.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            0.9999,
+            0.9999,
+            1.0,
+            1.0,
+            1.0001
+          ]
+        },
+        "sectionsInFogPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sectionsUnderFarPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "cutoutLayersSkippedPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "entitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "blockEntitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "particlesDropped": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionDrawnPerFrame": {
+          "off": 9.0,
+          "on": 9.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPerFrame": {
+          "off": 3.0,
+          "on": 3.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPct": {
+          "off": 25.0,
+          "on": 25.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "stillFramesDrawnInFull": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farCpuMsPerSecond": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farQuadsPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farGpuKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farVramKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farHeapKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesHeld": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "heapUsedMB": {
+          "off": 433.0,
+          "on": 367.0,
+          "onOverOff": 0.9624,
+          "roundRatios": [
+            0.6637,
+            0.8476,
+            0.8605,
+            1.2222,
+            1.25
+          ]
+        }
+      }
+    },
+    {
+      "setting": "option.dynamic-lights",
+      "approximation": false,
+      "onValue": 2,
+      "rounds": 5,
+      "windows": [
+        {
+          "frames": 275,
+          "frameMsAvg": 18.28,
+          "frameMsP50": 17.86,
+          "fps": 54.71,
+          "low1pctFps": 35.92,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 33605,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 441,
+          "state": "off"
+        },
+        {
+          "frames": 269,
+          "frameMsAvg": 18.7,
+          "frameMsP50": 18.02,
+          "fps": 53.47,
+          "low1pctFps": 32.5,
+          "drawCallsPerFrame": 15.37,
+          "uploadBytesPerFrame": 34150,
+          "terrainTrianglesPerFrame": 13831,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 270,
+          "state": "on"
+        },
+        {
+          "frames": 272,
+          "frameMsAvg": 18.32,
+          "frameMsP50": 17.97,
+          "fps": 54.59,
+          "low1pctFps": 38.76,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 34149,
+          "terrainTrianglesPerFrame": 13831,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 337,
+          "state": "on"
+        },
+        {
+          "frames": 276,
+          "frameMsAvg": 18.07,
+          "frameMsP50": 17.83,
+          "fps": 55.34,
+          "low1pctFps": 38.47,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 33605,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 405,
+          "state": "off"
+        },
+        {
+          "frames": 278,
+          "frameMsAvg": 18.1,
+          "frameMsP50": 17.66,
+          "fps": 55.24,
+          "low1pctFps": 33.33,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 33605,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 472,
+          "state": "off"
+        },
+        {
+          "frames": 277,
+          "frameMsAvg": 18.14,
+          "frameMsP50": 17.78,
+          "fps": 55.14,
+          "low1pctFps": 37.33,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 34149,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 301,
+          "state": "on"
+        },
+        {
+          "frames": 280,
+          "frameMsAvg": 17.92,
+          "frameMsP50": 17.74,
+          "fps": 55.81,
+          "low1pctFps": 39.15,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 34149,
+          "terrainTrianglesPerFrame": 13829,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 369,
+          "state": "on"
+        },
+        {
+          "frames": 279,
+          "frameMsAvg": 17.88,
+          "frameMsP50": 17.65,
+          "fps": 55.94,
+          "low1pctFps": 41.5,
+          "drawCallsPerFrame": 15.35,
+          "uploadBytesPerFrame": 33605,
+          "terrainTrianglesPerFrame": 13829,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 436,
+          "state": "off"
+        },
+        {
+          "frames": 273,
+          "frameMsAvg": 18.41,
+          "frameMsP50": 17.53,
+          "fps": 54.31,
+          "low1pctFps": 28.25,
+          "drawCallsPerFrame": 15.37,
+          "uploadBytesPerFrame": 33606,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 262,
+          "state": "off"
+        },
+        {
+          "frames": 274,
+          "frameMsAvg": 18.36,
+          "frameMsP50": 17.81,
+          "fps": 54.46,
+          "low1pctFps": 34.16,
+          "drawCallsPerFrame": 15.36,
+          "uploadBytesPerFrame": 34150,
+          "terrainTrianglesPerFrame": 13830,
+          "sectionsSeenPerFrame": 0.0,
+          "sectionsInFogPerFrame": 0.0,
+          "sectionsUnderFarPerFrame": 0.0,
+          "cutoutLayersSkippedPerFrame": 0.0,
+          "entitiesHiddenPerFrame": 0.0,
+          "blockEntitiesHiddenPerFrame": 0.0,
+          "particlesDropped": 0,
+          "occlusionDrawnPerFrame": 9.0,
+          "occlusionCulledPerFrame": 3.0,
+          "occlusionCulledPct": 25.0,
+          "stillFramesDrawnInFull": 0,
+          "fogSections": "off: not used here: the camera is above the clouds",
+          "farCpuMsPerSecond": 0.0,
+          "farQuadsPerFrame": 0,
+          "farTilesPerFrame": 0,
+          "farGpuKB": 0,
+          "farVramKB": 0,
+          "farHeapKB": 0,
+          "farTilesHeld": 0,
+          "heapUsedMB": 330,
+          "state": "on"
+        }
+      ],
+      "medians": {
+        "frameMsAvg": {
+          "off": 18.1,
+          "on": 18.32,
+          "onOverOff": 1.0061,
+          "roundRatios": [
+            0.9973,
+            1.0022,
+            1.0022,
+            1.0138,
+            1.023
+          ]
+        },
+        "frameMsP50": {
+          "off": 17.66,
+          "on": 17.81,
+          "onOverOff": 1.0079,
+          "roundRatios": [
+            1.0051,
+            1.0068,
+            1.0079,
+            1.009,
+            1.016
+          ]
+        },
+        "fps": {
+          "off": 55.24,
+          "on": 54.59,
+          "onOverOff": 0.9941,
+          "roundRatios": [
+            0.9773,
+            0.9864,
+            0.9977,
+            0.9982,
+            1.0028
+          ]
+        },
+        "low1pctFps": {
+          "off": 35.92,
+          "on": 37.33,
+          "onOverOff": 1.0211,
+          "roundRatios": [
+            0.9048,
+            0.9434,
+            1.0075,
+            1.12,
+            1.2092
+          ]
+        },
+        "drawCallsPerFrame": {
+          "off": 15.36,
+          "on": 15.36,
+          "onOverOff": 1.0002,
+          "roundRatios": [
+            0.9993,
+            1.0,
+            1.0,
+            1.0007,
+            1.0007
+          ]
+        },
+        "uploadBytesPerFrame": {
+          "off": 33605.0,
+          "on": 34149.0,
+          "onOverOff": 1.0162,
+          "roundRatios": [
+            1.0162,
+            1.0162,
+            1.0162,
+            1.0162,
+            1.0162
+          ]
+        },
+        "terrainTrianglesPerFrame": {
+          "off": 13830.0,
+          "on": 13830.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0001,
+            1.0001
+          ]
+        },
+        "sectionsInFogPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "sectionsUnderFarPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "cutoutLayersSkippedPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "entitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "blockEntitiesHiddenPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "particlesDropped": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionDrawnPerFrame": {
+          "off": 9.0,
+          "on": 9.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPerFrame": {
+          "off": 3.0,
+          "on": 3.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "occlusionCulledPct": {
+          "off": 25.0,
+          "on": 25.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "stillFramesDrawnInFull": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farCpuMsPerSecond": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farQuadsPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesPerFrame": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farGpuKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farVramKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farHeapKB": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "farTilesHeld": {
+          "off": 0.0,
+          "on": 0.0,
+          "onOverOff": 1.0,
+          "roundRatios": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "heapUsedMB": {
+          "off": 436.0,
+          "on": 330.0,
+          "onOverOff": 0.7658,
+          "roundRatios": [
+            0.6122,
+            0.6377,
+            0.8321,
+            0.8463,
+            1.2595
+          ]
+        }
+      }
+    }
+  ],
+  "problems": []
+}

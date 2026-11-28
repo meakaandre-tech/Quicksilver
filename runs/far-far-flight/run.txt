@@ -1,0 +1,53 @@
+suite=far run=far-flight shard=0
+far run JVM properties: -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.ci.farCommands=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:41 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:41 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:41 quicksilver.jar
+total 1048
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:41 ci-pin.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:41 quicksilver.jar
+sessions: 1|2|-|far_nether 1|8|-|far_land,far_flat,far_amplified,far_largebiomes,far_nullscape,far_end 1|8|ciFlightSession=1|far_flight 1|8|ciFlightSession=2|far_relog 1|8|ciSeenSession=1|far_seen1_vanilla,far_seen1_default 1|8|ciSeenSession=2|far_seen2_vanilla,far_seen2_default 2|8|-|far_cliff,far_views
+session 1: every scene skipped in far-flight, not started
+session 2: every scene skipped in far-flight, not started
+session 3 client options: ciFlightSession=1
+scene far_flight: setting up
+scene far_flight: bench done
+session 4 client options: ciFlightSession=2
+scene far_relog: setting up
+scene far_relog: bench done
+session 5: every scene skipped in far-flight, not started
+session 6: every scene skipped in far-flight, not started
+session 7: every scene skipped in far-flight, not started
+/tmp/out/far-far-flight:
+bench
+client-3.log
+client-4.log
+client-gradle-3.log
+client-gradle-4.log
+drive-far_flight.json
+drive-far_relog.json
+gfx.txt
+joined-3.txt
+joined-4.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+
+/tmp/out/far-far-flight/bench:
+20261128-175812-far_flight.json
+20261128-180132-far_relog.json
+
+/tmp/out/far-far-flight/shots:
+far_flight.after_flight.png
+far_flight.back.png
+far_flight.png
+far_flight.start.png
+far_flight.teleport.png
+far_relog.png
+far_relog.relog.png

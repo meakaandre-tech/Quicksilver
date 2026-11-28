@@ -1,0 +1,100 @@
+suite=core run=quicksilver-vk shard=3
+Vulkan profile: --graphicsBackend vulkan on lavapipe
+Quicksilver run JVM properties: -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.debug.verifyVisibility=true -Dquicksilver.debug.verifyTranslucency=true -Dquicksilver.debug.verifyRenderer=true -Dquicksilver.debug.animationUses=true -Dquicksilver.debug.verifyMesher=true -Dquicksilver.debug.verifyOcclusion=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:28 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:28 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:28 quicksilver.jar
+total 1048
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:28 ci-pin.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:28 quicksilver.jar
+sessions: 1|8|-|spawn,water_glass,nether,mobs,outline 1|12|-|flythrough 2|8|-|translucent_move,particles,animation,animated_items,block_entities 2|8|improvedTransparency=true|water_glass_oit,translucent_move_oit 3|8|-|occlusion,occlusion_move,occlusion_corner,lights 3|8|ao=false|flat_plants 3|8|ao=false,quicksilver.block-renderer=off|renderer_off
+session 1: shard 1, not this job's
+session 2: shard 1, not this job's
+session 3: shard 2, not this job's
+session 4: shard 2, not this job's
+scene occlusion: setting up
+scene occlusion: bench done
+scene occlusion_move: setting up
+scene occlusion_move: bench done
+scene occlusion_corner: setting up
+scene occlusion_corner: bench done
+scene lights: setting up
+scene lights: bench done
+session 6 client options: ao=false
+scene flat_plants: setting up
+scene flat_plants: bench done
+session 7 client options: ao=false,quicksilver.block-renderer=off
+scene renderer_off: setting up
+scene renderer_off: bench done
+/tmp/out/core-quicksilver-vk:
+bench
+client-5.log
+client-6.log
+client-7.log
+client-gradle-5.log
+client-gradle-6.log
+client-gradle-7.log
+drive-flat_plants.json
+drive-occlusion-occlusion_move-occlusion_corner-lights.json
+drive-renderer_off.json
+gfx.txt
+joined-5.txt
+joined-6.txt
+joined-7.txt
+mod-ids.txt
+pack-sha256.txt
+run-3.txt
+server-3.log
+shots
+
+/tmp/out/core-quicksilver-vk/bench:
+20261128-173135-occlusion.json
+20261128-173439-occlusion_move.json
+20261128-173647-occlusion_corner.json
+20261128-174554-lights.json
+20261128-174850-flat_plants.json
+20261128-175139-renderer_off.json
+
+/tmp/out/core-quicksilver-vk/shots:
+flat_plants.png
+lights.all_fancy.png
+lights.all_fancy_unlit.png
+lights.all_fast.png
+lights.all_fast_unlit.png
+lights.arrow.png
+lights.arrow_unlit.png
+lights.far.png
+lights.far_end.png
+lights.far_end_off.png
+lights.far_mark.png
+lights.far_off.png
+lights.far_real.png
+lights.lantern.png
+lights.lantern_unlit.png
+lights.mob.png
+lights.mob_unlit.png
+lights.pixel_lit.png
+lights.png
+lights.torch.png
+lights.torch_unlit.png
+occlusion.png
+occlusion_corner.png
+occlusion_corner.x-2916.png
+occlusion_corner.x-2930.png
+occlusion_corner.x-2944.png
+occlusion_move.bare_open.png
+occlusion_move.bare_x2297.png
+occlusion_move.bare_x2300.png
+occlusion_move.bare_x2305.png
+occlusion_move.bare_x2309.png
+occlusion_move.closed.png
+occlusion_move.open.png
+occlusion_move.png
+occlusion_move.x2297.png
+occlusion_move.x2305.png
+occlusion_move.x2309.png
+renderer_off.png

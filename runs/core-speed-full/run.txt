@@ -1,0 +1,62 @@
+suite=core run=speed-full shard=1
+speed run JVM properties: -Dquicksilver.ci.speed=true
+core server and world: from the core-world job
+server: far-terrain-share=on
+pack lock: set core matches ci/pack-lock.txt
+total 3608
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:32 ci-pin.jar
+-rw-r--r-- 1 runner runner 2620967 Nov 28 17:32 fabric-api.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:32 quicksilver.jar
+total 1048
+-rw-r--r-- 1 runner runner   32720 Nov 28 17:33 ci-pin.jar
+-rw-r--r-- 1 runner runner 1037364 Nov 28 17:33 quicksilver.jar
+sessions: 1|8|-|spawn,water_glass,nether,mobs,outline 1|12|-|flythrough 2|8|-|translucent_move,particles,animation,animated_items,block_entities 2|8|improvedTransparency=true|water_glass_oit,translucent_move_oit 3|8|-|occlusion,occlusion_move,occlusion_corner,lights 3|8|ao=false|flat_plants 3|8|ao=false,quicksilver.block-renderer=off|renderer_off
+scene spawn: setting up
+scene spawn: bench done
+scene flythrough: setting up
+scene flythrough: bench done
+scene block_entities: setting up
+scene block_entities: bench done
+session 4: no scene with speedAb, not started
+session 5: no scene with speedAb, not started
+session 6: no scene with speedAb, not started
+session 7: no scene with speedAb, not started
+/tmp/out/core-speed-full:
+bench
+client-1.log
+client-2.log
+client-3.log
+client-gradle-1.log
+client-gradle-2.log
+client-gradle-3.log
+drive-block_entities.json
+drive-flythrough.json
+drive-spawn.json
+gfx.txt
+joined-1.txt
+joined-2.txt
+joined-3.txt
+mod-ids.txt
+pack-sha256.txt
+run.txt
+server.log
+shots
+speed
+
+/tmp/out/core-speed-full/bench:
+20261128-180320-spawn.json
+20261128-181044-flythrough.json
+20261128-181458-block_entities.json
+
+/tmp/out/core-speed-full/shots:
+block_entities.chest_open.png
+block_entities.closed.png
+block_entities.png
+block_entities.sign_edit.png
+flythrough.png
+spawn.png
+
+/tmp/out/core-speed-full/speed:
+20261128-180300-spawn.json
+20261128-181024-flythrough.json
+20261128-181438-block_entities.json
