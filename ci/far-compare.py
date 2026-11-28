@@ -177,7 +177,7 @@ def seam_truth(shot, mark, truth, off):
 
 
 # package 12c: shots taken for a check only (no stored reference)
-CHECK_ONLY = {"far/far_land.pixel_old"}
+CHECK_ONLY = {"far/far_land.pixel_old", "far/far_land.pixel_rain_old"}
 CHECKER_MAX_SHARE = 0.5
 
 
@@ -411,10 +411,10 @@ def main():
                             failures.append(f"{suite}/{run}/{shot_id}: the cliff seam against real terrain: {st}")
                         # the seam rule of 12b can't hold where a real cliff stands in the band: the truth rule replaces it
                         sm = None
-                    if f"{suite}/{shot_id}" == "far/far_land.pixel":
-                        flat_src = load(os.path.join(d, "shots", f"{sid}.far.png"))
+                    if f"{suite}/{shot_id}" in ("far/far_land.pixel", "far/far_land.pixel_rain"):
+                        flat_src = load(os.path.join(d, "shots", f"{sid}.{'far' if name == 'pixel' else 'rain'}.png"))
                         new, n = checker_share(a, flat_src)
-                        old, _ = checker_share(load(os.path.join(d, "shots", f"{sid}.pixel_old.png")), flat_src)
+                        old, _ = checker_share(load(os.path.join(d, "shots", f"{sid}.{name}_old.png")), flat_src)
                         ok = new is not None and old is not None and n > 200 and (new <= old * CHECKER_MAX_SHARE or new <= 0.5)
                         lines.append(f"| {suite}-{run} | {shot_id}: checkerboard in pale flat fog ({n} art pixels) | {new}% with the fog tones, {old}% without (at most {CHECKER_MAX_SHARE} x, or 0.5%) | | | {'ok' if ok else '**FAIL**'} |")
                         if not ok:

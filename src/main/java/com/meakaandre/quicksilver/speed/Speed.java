@@ -127,7 +127,7 @@ public final class Speed {
      * Package 12: far terrain (design doc, "Far terrain (like Ecstatic)"): 0 off, else how far it reaches, in chunks
      * ({@link #FAR_TERRAIN_CHOICES}). Sampled from the dimension's own noise, biomes and surface rules on background
      * threads, never generating or loading chunks; real chunks replace the samples once they exist. Off by default, in
-     * Low-end and Balanced; 96 in Quality. {@code far/FarTerrain}.
+     * Low-end and Balanced; 128 in Quality (package 12c; 96 before). {@code far/FarTerrain}.
      */
     public static final Setting FAR_TERRAIN = add(new Setting("option.far-terrain", false, false, 0, 32, 256, "chunks",
         "terrain beyond the render distance out to this many chunks (32, 64, 96, 128, 192 or 256), sampled from the world's own generator and drawn simply (no structures); real chunks replace it once they exist"));

@@ -121,7 +121,7 @@ public final class SettingsScreen extends OptionsSubScreen {
         for (Speed.Setting s : LOOK_ROW) look.add(speedButton(s, locked));
         addRows(look);
 
-        // package 12: far terrain (off in Low-end and Balanced, 96 chunks in Quality)
+        // package 12: far terrain (off in Low-end and Balanced, 128 chunks in Quality since package 12c)
         this.list.addHeader(Component.literal("Far terrain"));
         List<AbstractWidget> far = new ArrayList<>();
         far.add(speedButton(Speed.FAR_TERRAIN, locked));

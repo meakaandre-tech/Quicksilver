@@ -268,6 +268,11 @@ public final class PixelArt {
         float[] sky = skyColour(fc);
         // only while far terrain draws: with it off, pixel art is package 11's exactly (every existing shot unchanged)
         boolean tones = fc != null && com.meakaandre.quicksilver.far.FarTerrain.drawing() && !com.meakaandre.quicksilver.speed.Speed.CI_PIXEL_OLD_FOG.on();
+        if (tones != tonesLogged) {
+            tonesLogged = tones;
+            com.meakaandre.quicksilver.QuicksilverClient.LOG.info("Quicksilver pixel art: fog tones {} (fog colour {}, sky colour {})", tones ? "on" : "off",
+                fc == null ? "none" : java.util.Arrays.toString(fc), java.util.Arrays.toString(sky));
+        }
         b.putFloat(32, fc != null ? fc[0] : 0f).putFloat(36, fc != null ? fc[1] : 0f).putFloat(40, fc != null ? fc[2] : 0f).putFloat(44, tones ? 1f : 0f);
         b.putFloat(48, sky[0]).putFloat(52, sky[1]).putFloat(56, sky[2]).putFloat(60, tones ? 1f : 0f);
         // written only when a value changed (review of run 45749687305: no upload a frame that isn't needed)
@@ -280,6 +285,7 @@ public final class PixelArt {
     }
 
     private static int[] lastParams;
+    private static boolean tonesLogged;
     private static java.lang.reflect.Method skyMethod;
     private static boolean skyLooked;
 
