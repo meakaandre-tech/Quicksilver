@@ -239,12 +239,16 @@ def flight_checks(d, log, drives, lines, failures):
         lines.append(f"| far-flight | flight memory: {label} | first {a}, last {b} (at most 1.3 x + {slack}) | | | {'ok' if ok else '**FAIL**'} |")
         if not ok:
             failures.append(f"far/far-flight: {label} grew during the flight: {a} to {b}")
-    ha = sorted(x["heap"] for x in warm)[1]
-    hb = sorted(x["heap"] for x in rest[-3:])[1]
+    # the heap saws between GCs (300-950 MB in one flight), so a median of three readings follows where the saw was;
+    # a leak raises the floor: the lowest reading of the flight's second half against the warm-up's lowest
+    ha = min(x["heap"] for x in warm)
+    second = rest[len(rest) // 2:]
+    hb = min(x["heap"] for x in second)
+    peak = max(x["heap"] for x in fly)
     ok = hb <= ha * 1.5 + 256
-    lines.append(f"| far-flight | flight memory: heap used MB (medians) | first {ha}, last {hb} (at most 1.5 x + 256) | | | {'ok' if ok else '**FAIL**'} |")
+    lines.append(f"| far-flight | flight memory: heap used MB (lowest reading, after GC) | warm-up {ha}, second half {hb}, peak {peak} (at most 1.5 x + 256) | | | {'ok' if ok else '**FAIL**'} |")
     if not ok:
-        failures.append(f"far/far-flight: the heap grew during the flight: {ha} to {hb} MB")
+        failures.append(f"far/far-flight: the heap's floor grew during the flight: {ha} to {hb} MB")
     caches = [x["cache"] for x in fly if x["cache"] >= 0]
     ok = not caches or max(caches) <= 256 * 1024
     lines.append(f"| far-flight | disk cache KB | {caches[:1]} to {caches[-1:]} (cap 262144) | | | {'ok' if ok else '**FAIL**'} |")

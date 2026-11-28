@@ -23,7 +23,7 @@ draws). New and changed, all in `ci/far-compare.py` and `ci/far-limits.json`:
   shows land). 12b's rule (2x own + 4 against no step) stays for views without a truth shot.
 - **Flight** (`far-flight`): no frame over a second more than 3 times while flying; no wanted tile missing within 160
   blocks; far samples, vertices, arenas, real chunks held and direct buffers at most 1.3x the first status lines after
-  warm-up plus a margin (2 MB, 2 MB, 16 MB, 4000 chunks, 64 MB), the heap's median at most 1.5x + 256 MB (GC), the disk
+  warm-up plus a margin (2 MB, 2 MB, 16 MB, 4000 chunks, 64 MB), the heap's lowest reading in the flight's second half at most 1.5x + 256 MB of the warm-up's lowest (the heap saws between GCs, 300-950 MB in one flight, so the medians of three readings 12c first used read 438 to 941 MB in run 46145552939's second attempt while the lowest readings were 386 and 514 MB and the heap fell back to 304 MB right after; a leak raises the floor), the disk
   cache under its cap; the teleport, the nether and back settle (after the teleport reaches the client); the relog
   settles in at most half the first visit's time with columns from the disk cache in its own status line.
 - **Seen chunks** (`far-default`, `far-vanilla`): the second session's view against the first's at most 0.001% and 0.24%
