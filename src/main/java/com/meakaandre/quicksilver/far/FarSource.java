@@ -51,6 +51,11 @@ final class FarSource {
     /** Package 12c: the biomes of this generator's world (the disk cache names them). */
     private final net.minecraft.core.HolderGetter<Biome> biomeLookup;
 
+    /** Package 12c: the generator's default block (stone in the overworld): far cliffs are drawn in it. */
+    BlockState rock() {
+        return defaultBlock;
+    }
+
     net.minecraft.core.HolderGetter<Biome> biomeLookup() {
         return biomeLookup;
     }
@@ -93,13 +98,17 @@ final class FarSource {
     }
 
     /** The source for a noise-based generator, or null for any other. */
-    static FarSource of(ChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access) {
+    static FarSource of(ChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access, long seed) {
         // NoiseBasedChunkGenerator is final: no mod's generator can pass as it
         if (!(generator instanceof NoiseBasedChunkGenerator n)) return null;
-        return new FarSource(n, random, height, ceiling, logicalHeight, access);
+        return new FarSource(n, random, height, ceiling, logicalHeight, access, seed);
     }
 
-    private FarSource(NoiseBasedChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access) {
+    /** Package 12c: the world's big structures from the seed (villages, mansions, ocean monuments), or null under a ceiling. */
+    final FarStructures structures;
+
+    private FarSource(NoiseBasedChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access,
+                      long seed) {
         this.generator = generator;
         this.noise = generator;
         this.random = random;
@@ -119,6 +128,7 @@ final class FarSource {
         this.scratch = new Scratch(height, PalettedContainerFactory.create(access));
         this.seaLevel = generator.getSeaLevel();
         this.biomeLookup = access.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+        this.structures = ceiling ? null : new FarStructures(access, seed, this);
         this.freezes = !ceiling;
     }
 

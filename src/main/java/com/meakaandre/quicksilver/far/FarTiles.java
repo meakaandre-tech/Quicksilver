@@ -50,6 +50,12 @@ final class FarTiles implements Runnable {
         FarSource.Heights[] hs;
         /** Package 12c: per column, bit 1 a snowy top, bit 2 a biome with trees, bit 4 water (CI's find). */
         byte[] kind;
+        /** Package 12c: the camera when staged, whether split in two parts (band, beyond), and whether the beyond part is held. */
+        double stageCamX, stageCamZ;
+        boolean split, hadBeyond;
+        /** Package 12c: the big structures starting in this tile (from the seed), drawn as silhouettes. */
+        java.util.List<FarStructures.Site> sites = java.util.List.of();
+        boolean sitesKnown;
 
         Tile(int tx, int tz) {
             this.tx = tx;
@@ -85,7 +91,7 @@ final class FarTiles implements Runnable {
     final AtomicLong columnsSampled = new AtomicLong(), columnsReal = new AtomicLong(), tilesMade = new AtomicLong(), quadsMade = new AtomicLong(),
         sampleNanos = new AtomicLong(), meshNanos = new AtomicLong(), tilesFromReal = new AtomicLong(), realChunksIn = new AtomicLong(),
         heightsReused = new AtomicLong(), quadsMerged = new AtomicLong(), skirtsLeftOut = new AtomicLong(), columnsCached = new AtomicLong(),
-        seenLoaded = new AtomicLong();
+        seenLoaded = new AtomicLong(), sitesCount = new AtomicLong(), cliffQuads = new AtomicLong();
     volatile int tilesWanted, tilesDone;
     /** Package 12c: the nearest wanted tile (blocks from the camera to its nearest point) not made at all yet; -1 for none. */
     volatile int nearestMissing = -1;
@@ -185,7 +191,8 @@ final class FarTiles implements Runnable {
                     continue;
                 }
                 boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
-                int look = (com.meakaandre.quicksilver.speed.Speed.CI_FAR_BOX_TREES.on() ? 1 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on() ? 2 : 0);
+                int look = (com.meakaandre.quicksilver.speed.Speed.CI_FAR_BOX_TREES.on() ? 1 : 0) | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on() ? 2 : 0)
+                    | (com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SPLIT.on() ? 4 : 0);
                 if (oldMesh != stagedOldMesh || look != stagedLook) {
                     stagedOldMesh = oldMesh;
                     stagedLook = look;
@@ -257,6 +264,16 @@ final class FarTiles implements Runnable {
                     if (t != null) tileHeapBytes.addAndGet(-heapOf(t));
                     if (t != null && t.staged) FarLayer.remove(k, id);
                 }
+                // package 12c: split tiles (near the band) staged again once the camera moved 24 blocks from where they were
+                // split, so their second part stays past the band
+                for (Tile t : tiles.values()) {
+                    if (!t.staged) continue;
+                    double mx = cx - t.stageCamX, mz = cz - t.stageCamZ;
+                    if (mx * mx + mz * mz < 24 * 24) continue;
+                    double nx = Math.max(Math.max(t.tx * TILE - cx, cx - (t.tx * TILE + TILE)), 0), nz = Math.max(Math.max(t.tz * TILE - cz, cz - (t.tz * TILE + TILE)), 0);
+                    boolean wants = Math.sqrt(nx * nx + nz * nz) < handEnd + 32;
+                    if (t.split || wants) stage(t);
+                }
                 if (source == null) {
                     // again only when something it reads changed (the camera's chunk, real chunks in, tiles made)
                     long ck = chunkKey(Math.floorDiv((int) Math.floor(cx), 16), Math.floorDiv((int) Math.floor(cz), 16));
@@ -268,6 +285,8 @@ final class FarTiles implements Runnable {
                 }
                 // the nearest tile that needs work: new, at another spacing now, or with new real chunks (capped)
                 Tile best = null;
+                boolean bestHole = false;
+                double bestNear = 0;
                 int bestSpacing = 0;
                 double bestDist = Double.MAX_VALUE;
                 boolean bestCapped = false;
@@ -309,7 +328,13 @@ final class FarTiles implements Runnable {
                         // package 12b: tiles wholly inside the circle (for holes only) after every other tile
                         // (with a generator only: real-only sessions keep the nearest first, which also sets their fog radius)
                         double order = source != null && farthest < handEnd - 32 ? dist + 1e7 : dist;
+                        // package 12c: with a generator, a tile not made at all (a hole) before one made at another spacing
+                        // (only blurrier), so moving fast fills ahead first (CI's flight found holes at 200 blocks)
+                        boolean hole = t == null || t.solidTop == null;
+                        if (source != null && !hole && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on()) order += 5e5;
                         if (order < bestDist) {
+                            bestHole = hole;
+                            bestNear = near;
                             bestDist = order;
                             best = t == null ? new Tile(tx, tz) : t;
                             bestSpacing = sp;
@@ -332,7 +357,9 @@ final class FarTiles implements Runnable {
                 // at most about half a core: rest as long as the tile took (up to 100 ms), so moving fast on a weak CPU
                 // doesn't take a whole core from the game
                 long worked = System.nanoTime() - w0;
-                Thread.sleep(Math.min(100, Math.max(1, worked / 1_000_000L)));
+                // package 12c: no rest while a hole lies within 512 blocks of the band (catching up while moving fast)
+                if (bestHole && bestNear < handEnd + 512) Thread.sleep(1);
+                else Thread.sleep(Math.min(100, Math.max(1, worked / 1_000_000L)));
             }
         } catch (InterruptedException e) {
             // stopped
@@ -466,6 +493,10 @@ final class FarTiles implements Runnable {
             int rtx = Math.floorDiv(c.cx() * 16, TILE), rtz = Math.floorDiv(c.cz() * 16, TILE);
             markDirty(rtx, rtz);
         }
+    }
+
+    private static boolean sitesDone(Tile t) {
+        return t.sitesKnown;
     }
 
     private long lastEvict = System.nanoTime();
@@ -628,6 +659,12 @@ final class FarTiles implements Runnable {
             if (fluid[k] != FarSource.NONE) kinds[k] |= 4;
         }
         t.kind = kinds;
+        // package 12c: the structures starting here (from the seed; cheap: one grid cell or two per set)
+        if (source != null && source.structures != null && t.sites.isEmpty() && !sitesDone(t)) {
+            t.sites = source.structures.in(t.tx, t.tz);
+            sitesCount.addAndGet(t.sites.size());
+        }
+        t.sitesKnown = true;
         t.dirty = false;
         t.realChunks = realChunks;
         tileHeapBytes.addAndGet(heapOf(t));
@@ -714,7 +751,24 @@ final class FarTiles implements Runnable {
             buf.putShort((short) vx).putShort((short) vy).putShort((short) vz).putShort((short) c565);
         }
 
+        /**
+         * Package 12c: where a tile reaches into the hand-over band, its quads wholly past {@link #split} blocks from
+         * {@link #scx}, {@link #scz} (the camera as it is staged) go to a second mesh, drawn with the plain stage (early
+         * depth rejection), not the band's (which writes its own depth). Null: one mesh.
+         */
+        Mesh beyond;
+        double scx, scz, split;
+
         void quad(float[] p, int c0, int c1, int c2, int c3) {
+            if (beyond != null) {
+                float x0 = Math.min(Math.min(p[0], p[3]), Math.min(p[6], p[9])), x1 = Math.max(Math.max(p[0], p[3]), Math.max(p[6], p[9]));
+                float z0 = Math.min(Math.min(p[2], p[5]), Math.min(p[8], p[11])), z1 = Math.max(Math.max(p[2], p[5]), Math.max(p[8], p[11]));
+                double nx = Math.max(Math.max(x0 - scx, scx - x1), 0), nz = Math.max(Math.max(z0 - scz, scz - z1), 0);
+                if (nx * nx + nz * nz >= split * split) {
+                    beyond.quad(p, c0, c1, c2, c3);
+                    return;
+                }
+            }
             vertex(p[0], p[1], p[2], c0);
             vertex(p[3], p[4], p[5], c1);
             vertex(p[6], p[7], p[8], c2);
@@ -742,6 +796,21 @@ final class FarTiles implements Runnable {
     private void stage(Tile t) {
         Mesh m = new Mesh(anchorX, anchorZ, floorY);
         int n = t.n, s = t.spacing, ox = t.tx * TILE, oz = t.tz * TILE;
+        // package 12c: a tile reaching into the band (its nearest point within it) is split: its quads 32 blocks or more
+        // past the band's end go to a second mesh drawn with the plain stage; staged again as the camera moves 24 blocks
+        double scx = camX, scz = camZ;
+        int he = handEnd;
+        double tnx = Math.max(Math.max(ox - scx, scx - (ox + TILE)), 0), tnz = Math.max(Math.max(oz - scz, scz - (oz + TILE)), 0);
+        boolean split = !com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SPLIT.on() && he > 0 && Math.sqrt(tnx * tnx + tnz * tnz) < he + 32;
+        if (split) {
+            m.beyond = new Mesh(anchorX, anchorZ, floorY);
+            m.scx = scx;
+            m.scz = scz;
+            m.split = he + 32;
+        }
+        t.stageCamX = scx;
+        t.stageCamZ = scz;
+        t.split = split;
         float[] q = new float[12];
         boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
         boolean oldLook = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on();
@@ -750,7 +819,15 @@ final class FarTiles implements Runnable {
         float wl = oldLook ? 0 : 0.125f;
         // each sample's ground colour with its facing's shade (the normal from the neighbouring heights)
         int[] lit = new int[n * n];
-        for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) lit[j * n + i] = oldLook ? lit(t, i, j) : relief(t, i, j, source != null ? source.seaLevel : 63);
+        for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) lit[j * n + i] = oldLook ? lit(t, i, j) : relief(t, i, j, source != null ? source.seaLevel : 63, t.color[j * n + i]);
+        // package 12c: cliffs (cells far steeper than a slope can be in blocks) in the generator's stone below their top
+        // edge, as real cliffs show their stone, not their top blocks smeared down the face
+        int[] rock = null;
+        if (!oldLook) {
+            int rockRgb = FarColors.color(source != null ? source.rock() : net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), null, ox, 0, oz);
+            rock = new int[n * n];
+            for (int j = 0; j < n; j++) for (int i = 0; i < n; i++) rock[j * n + i] = relief(t, i, j, source != null ? source.seaLevel : 63, rockRgb);
+        }
         // the ground and the water. Package 12c: a cell whose four corners share one height and one colour (flat water,
         // flat ground of one block) joins its neighbours of the same height and colour in one quad (rows, then whole rows
         // down): the same picture with fewer quads
@@ -826,7 +903,15 @@ final class FarTiles implements Runnable {
                     continue;
                 }
                 set(q, x0, t.solidTop[a], z0, x0, t.solidTop[d], z1, x1, t.solidTop[c], z1, x1, t.solidTop[b], z0);
-                m.quad(q, lit[a], lit[d], lit[c], lit[b]);
+                int hmax = Math.max(Math.max(t.solidTop[a], t.solidTop[b]), Math.max(t.solidTop[c], t.solidTop[d]));
+                int hmin = Math.min(Math.min(t.solidTop[a], t.solidTop[b]), Math.min(t.solidTop[c], t.solidTop[d]));
+                if (rock != null && hmax - hmin > 2 * s) {
+                    // a cliff: its top corners keep their ground's colour, the rest are rock
+                    m.quad(q, cliff(t, a, hmax, lit, rock), cliff(t, d, hmax, lit, rock), cliff(t, c, hmax, lit, rock), cliff(t, b, hmax, lit, rock));
+                    cliffQuads.incrementAndGet();
+                } else {
+                    m.quad(q, lit[a], lit[d], lit[c], lit[b]);
+                }
             }
         }
         // skirts down from the edges, so tiles of other spacings beside it show no gaps. Package 12c: only on an edge
@@ -852,7 +937,7 @@ final class FarTiles implements Runnable {
                 float bottom = Math.min(ya, yb) - Math.max(8, s * 2);
                 float xa = ox + i0 * s, za = oz + j0 * s, xb = ox + i1 * s, zb = oz + j1 * s;
                 set(q, xa, ya, za, xa, bottom, za, xb, bottom, zb, xb, yb, zb);
-                int ca = shade(surface(t, a), 0.7f), cb = shade(surface(t, b), 0.7f);
+                int ca = shade(rock != null && t.fluidTop[a] == FarSource.NONE ? rock[a] : surface(t, a), 0.7f), cb = shade(rock != null && t.fluidTop[b] == FarSource.NONE ? rock[b] : surface(t, b), 0.7f);
                 m.quad(q, ca, ca, cb, cb);
             }
         }
@@ -883,19 +968,46 @@ final class FarTiles implements Runnable {
                 }
             }
         }
-        if (m.quads == 0) {
+        // package 12c: the big structures as silhouettes, on generated ground (on real ground the real blocks show them)
+        if (!com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_STRUCTURES.on()) {
+            for (FarStructures.Site site : t.sites) structure(m, q, t, site);
+        }
+        int total = m.quads + (m.beyond != null ? m.beyond.quads : 0);
+        if (total == 0) {
             MemoryUtil.memFree(m.buf);
+            if (m.beyond != null) MemoryUtil.memFree(m.beyond.buf);
             if (t.staged) FarLayer.remove(key(t.tx, t.tz), id);
             t.staged = false;
             current.remove(key(t.tx, t.tz));
             return;
         }
-        m.buf.flip();
-        quadsMade.addAndGet(m.quads);
-        FarLayer.stage(key(t.tx, t.tz), m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
-            (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
+        quadsMade.addAndGet(total);
+        stagePart(key(t.tx, t.tz), m);
+        // the second part: staged, or (no split now, or nothing past it) removed
+        long k2 = FarLayer.beyondKey(key(t.tx, t.tz));
+        if (m.beyond != null && m.beyond.quads > 0) stagePart(k2, m.beyond);
+        else {
+            if (m.beyond != null) MemoryUtil.memFree(m.beyond.buf);
+            if (t.hadBeyond) FarLayer.removePart(k2, id);
+        }
+        t.hadBeyond = m.beyond != null && m.beyond.quads > 0;
         t.staged = true;
         if (!t.dirty) current.add(key(t.tx, t.tz));
+    }
+
+    private void stagePart(long key, Mesh m) {
+        if (m.quads == 0) {
+            MemoryUtil.memFree(m.buf);
+            FarLayer.removePart(key, id);
+            return;
+        }
+        m.buf.flip();
+        FarLayer.stage(key, m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
+            (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
+    }
+
+    private static int cliff(Tile t, int k, int hmax, int[] lit, int[] rock) {
+        return t.solidTop[k] >= hmax - 2 ? lit[k] : rock[k];
     }
 
     private static float shoreY(Tile t, int k, float wl) {
@@ -911,7 +1023,7 @@ final class FarTiles implements Runnable {
      * a little darker in hollows and lighter on ridges (the heights around it against its own), and a touch lighter
      * with height above the sea (as distant peaks look).
      */
-    private static int relief(Tile t, int i, int j, int seaLevel) {
+    private static int relief(Tile t, int i, int j, int seaLevel, int base) {
         int n = t.n, s = t.spacing;
         int k = j * n + i;
         int h = t.solidTop[k];
@@ -924,7 +1036,7 @@ final class FarTiles implements Runnable {
         f *= 1f - Math.max(-0.06f, Math.min(0.12f, lap * 0.12f));
         // height: up to 6% lighter 200 blocks above the sea
         f *= 1f + 0.06f * Math.max(0f, Math.min(1f, (h - seaLevel) / 200f));
-        return shade(t.color[k], f);
+        return shade(base, f);
     }
 
     private static float top(Tile t, int k) {
@@ -946,6 +1058,83 @@ final class FarTiles implements Runnable {
     }
 
     private static final int SNOW_RGB = 0xF0F4F8;
+
+    /**
+     * Package 12c: a structure's silhouette: a village as a cluster of small houses in its kind's wood or sandstone with
+     * darker roofs, a woodland mansion as one big dark-oak block with a cobblestone top, an ocean monument as a dark
+     * prismarine square just at the water's surface (it lies under water; far terrain's water is opaque).
+     */
+    private void structure(Mesh m, float[] q, Tile t, FarStructures.Site site) {
+        int n = t.n, s = t.spacing, ox = t.tx * TILE, oz = t.tz * TILE;
+        int i = Math.max(0, Math.min(n - 1, Math.round((site.x() - ox) / (float) s))), j = Math.max(0, Math.min(n - 1, Math.round((site.z() - oz) / (float) s)));
+        int k = j * n + i;
+        if ((t.flags[k] & 1) == 0 || (t.flags[k] & 2) != 0) return;
+        Holder<Biome> b = t.biome[k];
+        float ground = t.solidTop[k];
+        long h = hash(site.x(), site.z());
+        switch (site.kind()) {
+            case FarStructures.VILLAGE -> {
+                if (t.fluidTop[k] != FarSource.NONE) return;
+                BlockState wall, roof;
+                String v = site.variant();
+                if (v.contains("desert")) {
+                    wall = net.minecraft.world.level.block.Blocks.SMOOTH_SANDSTONE.defaultBlockState();
+                    roof = net.minecraft.world.level.block.Blocks.CUT_SANDSTONE.defaultBlockState();
+                } else if (v.contains("savanna")) {
+                    wall = net.minecraft.world.level.block.Blocks.ACACIA_PLANKS.defaultBlockState();
+                    roof = net.minecraft.world.level.block.Blocks.ACACIA_LOG.defaultBlockState();
+                } else if (v.contains("snowy")) {
+                    wall = net.minecraft.world.level.block.Blocks.SPRUCE_PLANKS.defaultBlockState();
+                    roof = net.minecraft.world.level.block.Blocks.SNOW_BLOCK.defaultBlockState();
+                } else if (v.contains("taiga")) {
+                    wall = net.minecraft.world.level.block.Blocks.SPRUCE_PLANKS.defaultBlockState();
+                    roof = net.minecraft.world.level.block.Blocks.SPRUCE_LOG.defaultBlockState();
+                } else {
+                    wall = net.minecraft.world.level.block.Blocks.OAK_PLANKS.defaultBlockState();
+                    roof = net.minecraft.world.level.block.Blocks.OAK_LOG.defaultBlockState();
+                }
+                int wc = FarColors.color(wall, b, site.x(), (int) ground, site.z()), rc = shade(FarColors.color(roof, b, site.x(), (int) ground, site.z()), 0.85f);
+                for (int u = 0; u < 9; u++) {
+                    long hu = hash(site.x() + u * 31, site.z() - u * 17);
+                    float dx = ((hu & 255) / 255f - 0.5f) * 80, dz = (((hu >>> 8) & 255) / 255f - 0.5f) * 80;
+                    float half = 2.5f + ((hu >>> 16) & 3), tall = 4 + ((hu >>> 20) & 3);
+                    float hx = site.x() + dx, hz = site.z() + dz;
+                    float g = groundAt(t, hx, hz, ground);
+                    box(m, q, hx - half, g, hz - half, hx + half, g + tall, hz + half, wc, false);
+                    set(q, hx - half, g + tall, hz - half, hx - half, g + tall, hz + half, hx + half, g + tall, hz + half, hx + half, g + tall, hz - half);
+                    m.quad(q, rc, rc, rc, rc);
+                }
+            }
+            case FarStructures.MANSION -> {
+                if (t.fluidTop[k] != FarSource.NONE) return;
+                int wc = FarColors.color(net.minecraft.world.level.block.Blocks.DARK_OAK_PLANKS.defaultBlockState(), b, site.x(), (int) ground, site.z());
+                int rc = FarColors.color(net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState(), b, site.x(), (int) ground, site.z());
+                float x0 = site.x() - 22, x1 = site.x() + 22, z0 = site.z() - 25, z1 = site.z() + 25, top = ground + 24;
+                box(m, q, x0, ground - 2, z0, x1, top, z1, wc, false);
+                set(q, x0, top, z0, x0, top, z1, x1, top, z1, x1, top, z0);
+                m.quad(q, rc, rc, rc, rc);
+            }
+            case FarStructures.MONUMENT -> {
+                if (t.fluidTop[k] == FarSource.NONE) return;
+                int pc = FarColors.color(net.minecraft.world.level.block.Blocks.DARK_PRISMARINE.defaultBlockState(), b, site.x(), (int) ground, site.z());
+                int c = mix(pc, t.fluidColor[k]);
+                float y = t.fluidTop[k] - 0.0625f, x0 = site.x() - 29, x1 = site.x() + 29, z0 = site.z() - 29, z1 = site.z() + 29;
+                set(q, x0, y, z0, x0, y, z1, x1, y, z1, x1, y, z0);
+                m.quad(q, c, c, c, c);
+            }
+            default -> {
+            }
+        }
+    }
+
+    /** The tile's ground at (x, z) (the nearest sample; generated ground only), or {@code fallback}. */
+    private static float groundAt(Tile t, float x, float z, float fallback) {
+        int n = t.n, s = t.spacing;
+        int i = Math.round((x - t.tx * TILE) / s), j = Math.round((z - t.tz * TILE) / s);
+        if (i < 0 || j < 0 || i >= n || j >= n) return fallback;
+        int k = j * n + i;
+        return (t.flags[k] & 1) != 0 && t.fluidTop[k] == FarSource.NONE ? t.solidTop[k] : fallback;
+    }
 
     private static int mix(int a, int b) {
         return (((a >> 16) & 255) + ((b >> 16) & 255)) / 2 << 16 | (((a >> 8) & 255) + ((b >> 8) & 255)) / 2 << 8 | ((a & 255) + (b & 255)) / 2;

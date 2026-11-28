@@ -582,6 +582,8 @@ public final class FarTerrain {
             o.addProperty("skirtsLeftOut", s.skirtsLeftOut.get());
             o.addProperty("heightsReused", s.heightsReused.get());
             o.addProperty("columnsFromDiskCache", s.columnsCached.get());
+            o.addProperty("structureSites", s.sitesCount.get());
+            if (s.source != null && s.source.structures != null && s.source.structures.problem != null) o.addProperty("structuresProblem", s.source.structures.problem);
             o.addProperty("seenChunksLoaded", s.seenLoaded.get());
             if (s.cache != null) {
                 o.addProperty("diskCache", s.cache.describe());
@@ -703,7 +705,7 @@ public final class FarTerrain {
             + " KB; frames " + framesSince + ", slowest " + worstFrameNanos / 1_000_000 + " ms, " + slowFrames + " over 1 s; nearest missing tile "
             + (s == null ? -1 : s.nearestMissing) + " blocks; real chunks " + (s == null ? 0 : s.real.size()) + "; disk cache columns "
             + (s == null ? 0 : s.columnsCached.get()) + ", seen chunks loaded " + (s == null ? 0 : s.seenLoaded.get())
-            + (undergroundNow ? "; underground: not drawn" : "");
+            + "; structures " + (s == null ? 0 : s.sitesCount.get()) + (undergroundNow ? "; underground: not drawn" : "");
         framesSince = 0;
         worstFrameNanos = 0;
         slowFrames = 0;

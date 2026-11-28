@@ -112,7 +112,7 @@ abstract class FarWorld {
                 ServerLevel l = server.getLevel(dimension);
                 if (l == null) return null;
                 return FarSource.of(l.getChunkSource().getGenerator(), l.getChunkSource().randomState(), l, l.dimensionType().hasCeiling(),
-                    l.dimensionType().logicalHeight(), server.registryAccess());
+                    l.dimensionType().logicalHeight(), server.registryAccess(), l.getSeed());
             }
 
             @Override
@@ -205,7 +205,7 @@ abstract class FarWorld {
                 LevelHeightAccessor height = LevelHeightAccessor.create(type.minY(), type.height());
                 if (!(stem.generator() instanceof NoiseBasedChunkGenerator n)) return null;
                 RandomState random = RandomState.create(noises, seed, n.generatorSettings().value());
-                return FarSource.of(n, random, height, type.hasCeiling(), type.logicalHeight(), loaded);
+                return FarSource.of(n, random, height, type.hasCeiling(), type.logicalHeight(), loaded, seed);
             }
 
             @Override

@@ -41,7 +41,7 @@ APPLIED = {"core/lights.far", "core/lights.far_real", "core/lights.far_end", "fa
            # package 12c
            "far/far_cliff.far", "far/far_views.snow", "far/far_views.forest", "far/far_views.shore", "far/far_amplified.far",
            "far/far_largebiomes.far", "far/far_nullscape.far", "far/far_end.far"}
-NETHER_FLOOR = r"sampled from the generator, top ([0-9]|[1-9][0-9]|1[01][0-9]|12[0-2])$"
+NETHER_FLOOR = r"sampled from the generator, top ([0-9]|[1-9][0-9]|1[01][0-9]|12[0-2])(, biome .*)?$"
 # probes: (suite/scene, x, z, which line of that probe, regex the line must match)
 PROBES = [
     ("core/lights", 800, -27, 0, r"sampled from the generator"),
@@ -179,6 +179,8 @@ def seam_truth(shot, mark, truth, off):
 def status_lines(log):
     """Package 12c: far terrain's status lines' memory part, parsed (CI's flight)."""
     out = []
+    # the logged status lines only (the chat echoes each one)
+    log = "\n".join(l for l in log.splitlines() if "Quicksilver far terrain status:" in l)
     for m in re.finditer(r"memory: heap used (\d+) MB, direct (\d+|\?) MB, far samples (\d+) KB, far vertices (\d+) KB, far arenas (\d+) KB, disk cache (-?\d+) KB; frames (\d+), slowest (\d+) ms, (\d+) over 1 s; nearest missing tile (-?\d+) blocks; real chunks (\d+)", log):
         g = m.groups()
         out.append({"heap": int(g[0]), "direct": -1 if g[1] == "?" else int(g[1]), "samples": int(g[2]), "vertices": int(g[3]), "arenas": int(g[4]),
@@ -305,6 +307,9 @@ def main():
                         if not st.get("found") or st["found"].startswith("none"):
                             failures.append(f"{suite}/{run}/{sid}: '{st['step']}' found nothing")
                 want = SOURCES.get(f"{suite}/{sid}")
+                # package 12c: a server that doesn't send its generator gives real chunks only, whatever the world
+                if run in NO_SHARE_RUNS and want:
+                    want = "from real chunks only"
                 if want and want not in log:
                     failures.append(f"{suite}/{run}/{sid}: far terrain never started {want} (no such line in the client log)")
                 shots = [st[6:].strip() for st in sc["ciFarSteps"] if st.startswith("#shot ")]
