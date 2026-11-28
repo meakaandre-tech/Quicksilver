@@ -181,7 +181,7 @@ CHECK_ONLY = {"far/far_land.pixel_old", "far/far_land.pixel_rain_old"}
 CHECKER_MAX_SHARE = 0.5
 
 
-def checker_share(img, flat_from, step=3):
+def checker_share(img, flat_from, step=3, pale=140):
     """Package 12c: the share of checkerboard pixels of a pixel art shot (its art pixels sampled at their centres, 3 window
     pixels a side), counted in the pale, flat areas of the same view without pixel art (fog, haze, sky): a pixel whose right
     and lower neighbours both differ from it by over 12 and whose diagonal neighbour matches it (within 6)."""
@@ -196,7 +196,7 @@ def checker_share(img, flat_from, step=3):
     from numpy.lib.stride_tricks import sliding_window_view
     win = sliding_window_view(f, (9, 9))
     spread = win.max(axis=(2, 3)) - win.min(axis=(2, 3))
-    flat[4:h - 4, 4:w - 4] = (spread < 3) & (f[4:h - 4, 4:w - 4] > 140)
+    flat[4:h - 4, 4:w - 4] = (spread < 3) & (f[4:h - 4, 4:w - 4] > pale)
     m = flat[1::step, 1::step]
     hh, ww = a.shape
     a0, ar, ad, ag = a[:hh - 1, :ww - 1], a[:hh - 1, 1:], a[1:, :ww - 1], a[1:, 1:]
@@ -413,8 +413,10 @@ def main():
                         sm = None
                     if f"{suite}/{shot_id}" in ("far/far_land.pixel", "far/far_land.pixel_rain"):
                         flat_src = load(os.path.join(d, "shots", f"{sid}.{'far' if name == 'pixel' else 'rain'}.png"))
-                        new, n = checker_share(a, flat_src)
-                        old, _ = checker_share(load(os.path.join(d, "shots", f"{sid}.{name}_old.png")), flat_src)
+                        # (in rain the fog is greyer and darker: pale there is over 90)
+                        pale = 140 if name == "pixel" else 90
+                        new, n = checker_share(a, flat_src, pale=pale)
+                        old, _ = checker_share(load(os.path.join(d, "shots", f"{sid}.{name}_old.png")), flat_src, pale=pale)
                         ok = new is not None and old is not None and n > 200 and (new <= old * CHECKER_MAX_SHARE or new <= 0.5)
                         lines.append(f"| {suite}-{run} | {shot_id}: checkerboard in pale flat fog ({n} art pixels) | {new}% with the fog tones, {old}% without (at most {CHECKER_MAX_SHARE} x, or 0.5%) | | | {'ok' if ok else '**FAIL**'} |")
                         if not ok:

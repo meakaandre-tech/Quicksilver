@@ -492,6 +492,8 @@ public final class Speed {
     private static Setting find(String name) {
         Setting s = ALL.get(name);
         if (s != null) return s;
+        // package 12c: CI's far suite switches its CI-only switches by command too
+        if (Boolean.getBoolean("quicksilver.ci.farCommands") && CI.containsKey(name)) return CI.get(name);
         for (Setting t : ALL.values()) if (t.key.endsWith("." + name)) return t;
         return null;
     }
