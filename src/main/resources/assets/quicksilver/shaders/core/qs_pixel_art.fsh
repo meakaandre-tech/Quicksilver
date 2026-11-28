@@ -120,7 +120,6 @@ void main() {
         c *= mix(1.0, 0.45, strength);
     }
 #endif
-    vec3 plain = c;
 #ifdef QS_DITHER
     float t = (BAYER[(p.y & 3) * 4 + (p.x & 3)] + 0.5) / 16.0 - 0.5;
     // package 12c: the dithering fades out in the fog, as the outlines do (and is gone in the sky)

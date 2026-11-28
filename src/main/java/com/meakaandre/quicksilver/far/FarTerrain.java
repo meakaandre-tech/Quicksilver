@@ -240,23 +240,33 @@ public final class FarTerrain {
      * Package 12c: the disk cache for a session: sampled tiles (with {@code option.far-cache}, and a generator) and seen
      * chunks (with {@code option.far-seen}); in the world's folder in single player, per server address otherwise.
      */
+    /** Package 12c: the last stopped session with a disk cache: the next one waits for its last write (review). */
+    private static FarTiles lastStopped;
+
     private static FarCache cacheFor(Minecraft mc, ClientLevel level, ResourceKey<Level> dim, FarSource source) {
-        if (CI_NO_CACHE || Speed.CI_FAR_OLD_LOOK.on()) return null;
+        if (Speed.CI_FAR_OLD_LOOK.on()) return null;
+        FarTiles prev = lastStopped;
+        lastStopped = null;
+        if (prev != null) prev.waitFlushed(3000);
         boolean gen = Speed.FAR_CACHE.on() && source != null, seen = Speed.FAR_SEEN.on();
         if (!gen && !seen) return null;
         try {
-            java.nio.file.Path root;
+            java.nio.file.Path root, serversRoot = null;
             var server = mc.getSingleplayerServer();
             if (server != null && mc.isLocalServer()) {
                 root = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("quicksilver").resolve("far-cache");
             } else {
                 var data = mc.getCurrentServer();
                 String address = data != null ? data.ip : "unknown-server";
-                root = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("quicksilver").resolve("far-cache").resolve(FarCache.safe(address.toLowerCase(java.util.Locale.ROOT)));
+                // per address and the world's hashed seed (which the server sends every client): a map reset or another
+                // world behind the same address gets its own folder (review)
+                serversRoot = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("quicksilver").resolve("far-cache");
+                root = serversRoot.resolve(FarCache.safe(address.toLowerCase(java.util.Locale.ROOT) + "-" + hashedSeed(level)));
             }
             String identity = gen ? world.identity(dim) : null;
             var seenBiomes = level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
             FarCache c = FarCache.of(root, dim.identifier().toString(), identity, seen, source != null ? source.biomeLookup() : null, seenBiomes);
+            if (c != null) c.serversRoot = serversRoot;
             if (c != null) QuicksilverClient.LOG.info("Quicksilver far terrain: disk cache in {} (sampled tiles {}, seen chunks {})", root, identity != null ? "on" : "off", seen ? "on" : "off");
             return c;
         } catch (Throwable t) {
@@ -265,8 +275,21 @@ public final class FarTerrain {
         }
     }
 
-    /** CI: no disk cache (a run that must sample from scratch). */
-    private static final boolean CI_NO_CACHE = Boolean.getBoolean("quicksilver.ci.farNoCache");
+    /** The world's hashed seed as the server sent it (the biome manager's zoom seed), in hex; "0" if it can't be read. */
+    private static String hashedSeed(ClientLevel level) {
+        try {
+            Object manager = level.getBiomeManager();
+            for (java.lang.reflect.Field f : manager.getClass().getDeclaredFields()) {
+                if (f.getType() == long.class && !java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+                    f.setAccessible(true);
+                    return Long.toHexString(f.getLong(manager));
+                }
+            }
+        } catch (Throwable t) {
+            // the address alone
+        }
+        return "0";
+    }
 
     private static java.util.List<LevelChunk> rereadList;
     private static int rereadAt, rereadAge;
@@ -309,6 +332,7 @@ public final class FarTerrain {
         if (s != null) {
             if (wait) s.stopAndWait();
             else s.stop();
+            if (s.cache != null) lastStopped = s;
             QuicksilverClient.LOG.info("Quicksilver far terrain: off in {} ({} tiles made, {} columns sampled, {} real chunks)", s.dimension.identifier(),
                 s.tilesMade.get(), s.columnsSampled.get(), s.real.size());
         }

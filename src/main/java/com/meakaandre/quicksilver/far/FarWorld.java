@@ -107,6 +107,8 @@ abstract class FarWorld {
     /** Single player: the integrated server's levels. */
     static FarWorld of(MinecraftServer server) {
         return new FarWorld() {
+            private String spIdentity;
+
             @Override
             FarSource source(ResourceKey<Level> dimension) {
                 ServerLevel l = server.getLevel(dimension);
@@ -129,15 +131,17 @@ abstract class FarWorld {
             String identity(ResourceKey<Level> dimension) {
                 ServerLevel l = server.getLevel(dimension);
                 if (l == null) return null;
-                StringBuilder b = new StringBuilder("single player\nseed " + l.getSeed() + "\npacks " + server.getPackRepository().getSelectedIds() + "\n");
-                try {
-                    var ops = RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, server.registryAccess());
-                    var enc = net.minecraft.world.level.chunk.ChunkGenerator.CODEC.encodeStart(ops, l.getChunkSource().getGenerator());
-                    b.append("generator ").append(sha256(String.valueOf(enc.result().orElse(null)).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                } catch (Throwable t) {
-                    b.append("generator ").append(l.getChunkSource().getGenerator().getClass().getName());
+                // the seed, every world registry's contents and every dimension's level stem, as a server's handshake packs
+                // them (review: the generator's codec wrote only registry names, so a world-gen mod's update under the
+                // same name kept its old land cached), hashed once per world
+                if (spIdentity == null) {
+                    try {
+                        spIdentity = "single player " + sha256(FarNet.write(server));
+                    } catch (Throwable t) {
+                        spIdentity = "single player seed " + l.getSeed() + " packs " + server.getPackRepository().getSelectedIds();
+                    }
                 }
-                return b.toString();
+                return spIdentity;
             }
         };
     }

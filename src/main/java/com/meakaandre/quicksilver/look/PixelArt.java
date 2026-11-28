@@ -264,10 +264,11 @@ public final class PixelArt {
         b.putFloat(16, fogOn ? fog[0] : 0f).putFloat(20, fogOn ? fog[1] : 0f).putFloat(24, fogOn ? 1f : 0f).putFloat(28, proj ? projM11 : 1f);
         // package 12c: the fog's and the sky's colours now, as extra tones beside the palette (pale fog, haze and sky had
         // only far-apart palette colours, so the dithering made a heavy checkerboard of them: far terrain with pixel art)
-        float[] fc = com.meakaandre.quicksilver.speed.SpeedTerrain.fogColour();
-        float[] sky = skyColour(fc);
         // only while far terrain draws: with it off, pixel art is package 11's exactly (every existing shot unchanged)
-        boolean tones = fc != null && com.meakaandre.quicksilver.far.FarTerrain.drawing() && !com.meakaandre.quicksilver.speed.Speed.CI_PIXEL_OLD_FOG.on();
+        boolean tones = com.meakaandre.quicksilver.far.FarTerrain.drawing() && !com.meakaandre.quicksilver.speed.Speed.CI_PIXEL_OLD_FOG.on();
+        float[] fc = tones ? com.meakaandre.quicksilver.speed.SpeedTerrain.fogColour() : null;
+        tones &= fc != null;
+        float[] sky = tones ? skyColour(fc) : new float[] {0, 0, 0};
         if (tones != tonesLogged) {
             tonesLogged = tones;
             com.meakaandre.quicksilver.QuicksilverClient.LOG.info("Quicksilver pixel art: fog tones {} (fog colour {}, sky colour {})", tones ? "on" : "off",

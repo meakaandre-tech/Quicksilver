@@ -16,8 +16,9 @@ import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement
  * Package 12c: big structures as simple silhouettes in far terrain (Andre: villages, mansions and ocean monuments;
  * strongholds stay hidden), placed where the world's own structure sets put them from the seed alone, as {@code /locate}
  * finds them, without generating a chunk: each set's random-spread grid gives the one possible chunk per grid cell (the
- * seed and the set's salt), and the structure is there if the biome at that chunk's centre, at the surface, is one of its
- * biomes (vanilla's own first check; the few starts vanilla's later checks drop still show). Only vanilla's three sets
+ * seed and the set's salt), and the structure is drawn if the biome at that chunk's centre, at the surface, is one of its
+ * biomes (close to vanilla's check, which reads the biome at the start's own position; vanilla's later checks can drop a
+ * few, and a few may differ either way). Only vanilla's three sets
  * (a data pack's own sets aren't drawn). Sampling thread.
  */
 final class FarStructures {

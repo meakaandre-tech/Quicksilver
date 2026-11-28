@@ -139,6 +139,10 @@ public final class FarLayer {
         coveredThisFrame = 0;
         if (!on || behindOnly || failed != null || currentTiles == null || PARTS.isEmpty() || mark
             || com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_COVER.on()) return 0;
+        // only where the ground is a height field: not in a dimension without sky light (the End's floating islands,
+        // whose sides and undersides far terrain can't show; review)
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level == null || !level.dimensionType().hasSkyLight()) return 0;
         return handEnd;
     }
 

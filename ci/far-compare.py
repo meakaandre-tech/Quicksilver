@@ -271,8 +271,10 @@ def flight_checks(d, log, drives, lines, failures):
     relog = next((e for e in drives if e.get("scene") == "far_relog"), None)
     first = next((st for st in entry.get("farSteps", []) if st["step"].startswith("#far ") and st.get("settled")), None)
     again = next((st for st in (relog or {}).get("farSteps", []) if st["step"].startswith("#far ") and st.get("settled")), None)
-    cached = [int(c) for c in re.findall(r"disk cache columns (\d+)", log)]
-    ok = again is not None and first is not None and again["seconds"] <= max(20.0, first["seconds"] * 0.5) and cached and max(cached) > 0
+    # the relog session's own status line: the last one in the log (review: the whole log's counted the flight's own reads)
+    cached = [int(c) for c in re.findall(r"disk cache columns (\d+)", "\n".join(l for l in log.splitlines() if "Quicksilver far terrain status:" in l))]
+    cached = cached[-1:]
+    ok = again is not None and first is not None and again["seconds"] <= first["seconds"] * 0.5 and cached and cached[0] > 0
     lines.append(f"| far-flight | relog: settled in {again and again['seconds']} s (first visit {first and first['seconds']} s), disk cache columns {max(cached) if cached else 0} | | | | {'ok' if ok else '**FAIL**'} |")
     if not ok:
         failures.append(f"far/far-flight: after the relog far terrain didn't come from the disk cache at once (settled in {again and again.get('seconds')} s, first {first and first.get('seconds')} s, cache columns {max(cached) if cached else 0})")

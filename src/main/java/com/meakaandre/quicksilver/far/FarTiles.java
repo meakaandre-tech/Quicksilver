@@ -17,7 +17,7 @@ import org.lwjgl.system.MemoryUtil;
 /**
  * Package 12: one dimension's far terrain, worked out on one background thread ("Quicksilver far terrain", the
  * lowest priority): tiles of 128 x 128 blocks around the camera out to the far distance, each sampled on a grid whose
- * spacing grows with distance (4 blocks within 16 chunks, 8 to 32, 16 to 64, 32 beyond: design doc), from real chunk data
+ * spacing grows with distance (4 blocks within 16 chunks, 8 to 32, 16 to 64, 32 to 128, 64 beyond: design doc and package 12c), from real chunk data
  * where the client has had the chunk ("real chunks win") and from the dimension's own generator elsewhere ({@link
  * FarSource}); with no generator (superflat, void, custom) from real chunks only, at a capped rate, and nothing where
  * none was seen. Each tile becomes one mesh of 8-byte vertices ({@link FarLayer}): the ground as a height field, water
@@ -114,7 +114,7 @@ final class FarTiles implements Runnable {
         this.source = source;
         this.trees = source == null ? null : new FarTrees(source.generator);
         this.floorY = floorY;
-        // the vertices' anchor: a multiple of 1024 near the camera; the far distance (2048 at most) stays well inside 16 bits
+        // the vertices' anchor: a multiple of 1024 near the camera; the far distance (4096 at most) stays inside 16 bits
         this.anchorX = Math.floorDiv((int) Math.floor(camX), 1024) * 1024;
         this.anchorZ = Math.floorDiv((int) Math.floor(camZ), 1024) * 1024;
         this.camX = camX;
@@ -131,6 +131,15 @@ final class FarTiles implements Runnable {
     void stop() {
         stop = true;
         thread.interrupt();
+    }
+
+    /** Package 12c: waits (at most {@code ms}) for the thread's last disk cache write. */
+    void waitFlushed(long ms) {
+        try {
+            thread.join(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** Package 12c: stops, and waits a moment for the disk cache's last write (leaving a server, closing the game). */
@@ -223,7 +232,8 @@ final class FarTiles implements Runnable {
                 // real chunks that arrived: kept, and their tiles marked to be made again
                 RealChunk rc;
                 while ((rc = realIn.poll()) != null) {
-                    if (real.size() >= REAL_MAX && !real.containsKey(chunkKey(rc.cx, rc.cz))) continue;
+                    // package 12c: a chunk the client has now always goes in (review: once the disk's seen chunks filled the
+                    // map, new ones were dropped); the cap holds the disk's back (loadSeen) and eviction keeps it bounded
                     RealChunk was = real.get(chunkKey(rc.cx, rc.cz));
                     // read again unchanged (the client re-reads its chunks in turn): nothing to make again
                     if (was != null && java.util.Arrays.equals(was.solidTop, rc.solidTop) && java.util.Arrays.equals(was.fluidTop, rc.fluidTop)
@@ -469,7 +479,7 @@ final class FarTiles implements Runnable {
     private void loadSeen(int cx, int cz) {
         for (FarCache.SeenChunk c : cache.seenAround(cx, cz)) {
             long k = chunkKey(c.cx(), c.cz());
-            if (real.containsKey(k) || real.size() >= REAL_MAX) continue;
+            if (real.containsKey(k) || real.size() >= REAL_MAX * 3 / 4) continue;
             int[] color = new int[16], fcolor = new int[16];
             for (int i = 0; i < 16; i++) {
                 if (c.solid()[i] == FarSource.NONE) continue;
@@ -506,8 +516,14 @@ final class FarTiles implements Runnable {
     private void markDirty(int tx, int tz) {
         Tile t = tiles.get(key(tx, tz));
         if (t == null) return;
+        boolean was = t.dirty;
         t.dirty = true;
         current.remove(key(tx, tz));
+        // (review) its edges get skirts at once while it waits for its capped remake, and its neighbours' toward it
+        if (!was && t.staged) {
+            stage(t);
+            restageNeighbours(t);
+        }
     }
 
     private boolean hasReal(int tx, int tz) {
@@ -533,7 +549,9 @@ final class FarTiles implements Runnable {
         int s0 = t.spacing, n0 = t.n;
         boolean reuse = old != null && oldFlags != null && s0 > 0;
         // package 12c: the disk cache's columns for this tile (any spacing; used where its grid shares a column)
-        FarCache.GenTile cached = cache != null && source != null ? cache.genTile(t.tx, t.tz) : null;
+        // (not while CI's old look is on: the cache holds the new look's blocks, and mustn't get the old look's)
+        boolean useCache = cache != null && source != null && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on();
+        FarCache.GenTile cached = useCache ? cache.genTile(t.tx, t.tz) : null;
         BlockState[] blockOf = new BlockState[n * n], fluidOf = new BlockState[n * n];
         boolean[] fromCache = cached != null ? new boolean[n * n] : null;
         int realChunks = 0;
@@ -618,7 +636,7 @@ final class FarTiles implements Runnable {
             }
         }
         // package 12c: this tile's generator columns into the disk cache (kept there if finer than what it has)
-        if (cache != null && source != null) {
+        if (useCache) {
             byte[] known = new byte[n * n];
             boolean any = false;
             for (int k = 0; k < n * n; k++) {
@@ -686,7 +704,8 @@ final class FarTiles implements Runnable {
         if (com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on()) return true;
         int[] d = EDGE[e];
         Tile nb = tiles.get(key(t.tx + d[0], t.tz + d[1]));
-        return nb == null || nb.spacing != t.spacing || nb.solidTop == null;
+        // a tile waiting to be made again (a real chunk at the shared edge) may not match its neighbour's edge yet
+        return nb == null || nb.spacing != t.spacing || nb.solidTop == null || nb.dirty || t.dirty;
     }
 
     /** A tile's samples on the heap, estimated: four int arrays, the flags, the biome references (4 bytes each) and headers. */
@@ -708,6 +727,8 @@ final class FarTiles implements Runnable {
     private static final class Mesh {
         ByteBuffer buf = MemoryUtil.memAlloc(64 * 1024);
         int quads;
+        /** Its buffer was handed to the far layer or freed. */
+        boolean handed;
         final int ax, az, floor;
 
         Mesh(int ax, int az, int floor) {
@@ -768,6 +789,16 @@ final class FarTiles implements Runnable {
 
     private void stage(Tile t) {
         Mesh m = new Mesh(anchorX, anchorZ, floorY);
+        try {
+            stageMesh(t, m);
+        } catch (Throwable e) {
+            // (review) the mesh's native buffer isn't left behind
+            if (!m.handed) MemoryUtil.memFree(m.buf);
+            throw e;
+        }
+    }
+
+    private void stageMesh(Tile t, Mesh m) {
         int n = t.n, s = t.spacing, ox = t.tx * TILE, oz = t.tz * TILE;
         float[] q = new float[12];
         boolean oldMesh = com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_MESH.on();
@@ -808,7 +839,8 @@ final class FarTiles implements Runnable {
                     int h = t.fluidTop[a], col = t.fluidColor[a];
                     if (t.fluidTop[b] == h && t.fluidTop[c] == h && t.fluidTop[d] == h && t.fluidColor[b] == col && t.fluidColor[c] == col && t.fluidColor[d] == col)
                         keyOf[ci] = 1L << 62 | (long) (h & 0xFFFF) << 32 | (col & 0xFFFFFFFFL);
-                } else {
+                } else if (t.fluidTop[a] == FarSource.NONE && t.fluidTop[b] == FarSource.NONE && t.fluidTop[c] == FarSource.NONE && t.fluidTop[d] == FarSource.NONE) {
+                    // (review: a shore cell with level ground under its water corners must keep the shore path)
                     int h = t.solidTop[a], col = lit[a];
                     if (t.solidTop[b] == h && t.solidTop[c] == h && t.solidTop[d] == h && lit[b] == col && lit[c] == col && lit[d] == col)
                         keyOf[ci] = (long) (h & 0xFFFF) << 32 | (col & 0xFFFFFFFFL);
@@ -944,6 +976,7 @@ final class FarTiles implements Runnable {
             for (FarStructures.Site site : t.sites) structure(m, q, t, site);
         }
         if (m.quads == 0) {
+            m.handed = true;
             MemoryUtil.memFree(m.buf);
             if (t.staged) FarLayer.remove(key(t.tx, t.tz), id);
             t.staged = false;
@@ -952,6 +985,7 @@ final class FarTiles implements Runnable {
         }
         quadsMade.addAndGet(m.quads);
         m.buf.flip();
+        m.handed = true;
         FarLayer.stage(key(t.tx, t.tz), m.buf, m.quads, id, (int) Math.floor(m.minX), (int) Math.floor(m.minZ), (int) Math.ceil(m.maxX),
             (int) Math.ceil(m.maxZ), (int) Math.floor(m.minY), (int) Math.ceil(m.maxY));
         t.staged = true;

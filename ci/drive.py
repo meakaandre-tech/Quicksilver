@@ -456,11 +456,14 @@ def main():
                 elif step.startswith("#settle"):
                     # package 12c: "#settle": waits (up to 270 s) for far terrain to settle where it is now, recording
                     # how long that took (after a teleport, a dimension change, a relog)
+                    # (review) the teleport or dimension change before it reaches the client first, and its new session
+                    # starts: asked at once, the old session answered settled
+                    time.sleep(6)
                     before = open(latest, errors="replace").read().count("Quicksilver far terrain: settled") if os.path.exists(latest) else 0
-                    t0 = time.time()
+                    t0 = time.time() - 6
                     chat("quicksilver far wait")
                     ok = False
-                    while time.time() - t0 < 270:
+                    while time.time() - t0 < 276:
                         time.sleep(1)
                         text = open(latest, errors="replace").read() if os.path.exists(latest) else ""
                         if text.count("Quicksilver far terrain: settled") > before:

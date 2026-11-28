@@ -130,7 +130,7 @@ public final class Speed {
      * Low-end and Balanced; 128 in Quality (package 12c; 96 before). {@code far/FarTerrain}.
      */
     public static final Setting FAR_TERRAIN = add(new Setting("option.far-terrain", false, false, 0, 32, 256, "chunks",
-        "terrain beyond the render distance out to this many chunks (32, 64, 96, 128, 192 or 256), sampled from the world's own generator and drawn simply (no structures); real chunks replace it once they exist"));
+        "terrain beyond the render distance out to this many chunks (32, 64, 96, 128, 192 or 256), sampled from the world's own generator and drawn simply (big structures as outlines); real chunks replace it once they exist"));
     /**
      * Package 12c: far terrain's disk cache of sampled tiles (on by default), in the world's folder in single player and
      * per server address otherwise, so a second visit shows far terrain at once. Not in presets.

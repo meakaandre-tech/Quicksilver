@@ -56,7 +56,9 @@ public final class SpeedTerrain {
     private static volatile float[] fogColour;
 
     public static void fogColour(float r, float g, float b) {
-        if (Float.isFinite(r) && Float.isFinite(g) && Float.isFinite(b)) fogColour = new float[] {r, g, b};
+        if (!(Float.isFinite(r) && Float.isFinite(g) && Float.isFinite(b))) return;
+        float[] f = fogColour;
+        if (f == null || f[0] != r || f[1] != g || f[2] != b) fogColour = new float[] {r, g, b};
     }
 
     public static float[] fogColour() {

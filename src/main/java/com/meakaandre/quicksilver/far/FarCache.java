@@ -68,6 +68,8 @@ final class FarCache {
         final Long2ObjectOpenHashMap<GenTile> gen = new Long2ObjectOpenHashMap<>();
         final Long2ObjectOpenHashMap<SeenChunk> seen = new Long2ObjectOpenHashMap<>();
         boolean genLoaded, seenLoaded, genDirty, seenDirty;
+        /** Whether its seen chunks went to the session's real chunks (loading them for a write doesn't hand them over). */
+        boolean seenHanded;
     }
 
     private final Path dir, root;
@@ -101,6 +103,10 @@ final class FarCache {
             Path dir = root.resolve(safe(dimension));
             Files.createDirectories(dir);
             String version = FarNet.modVersion() + "/" + FORMAT;
+            // a write a killed game left half done
+            try (Stream<Path> files = Files.list(dir)) {
+                for (Path p : (Iterable<Path>) files::iterator) if (p.getFileName().toString().endsWith(".tmp")) Files.deleteIfExists(p);
+            }
             if (genWanted) check(dir, "identity-gen.txt", version + "\n" + genIdentity, "g.");
             if (seenWanted) check(dir, "identity-seen.txt", version, "s.");
             return new FarCache(root, dir, genWanted, seenWanted && seenBiomes != null, genBiomes, seenBiomes, DEFAULT_CAP);
@@ -192,9 +198,13 @@ final class FarCache {
         if (!seen) return List.of();
         int rx = Math.floorDiv(cx, REGION_TILES * 8), rz = Math.floorDiv(cz, REGION_TILES * 8);
         Region r = region(rx, rz);
-        if (r.seenLoaded) return List.of();
-        r.seenLoaded = true;
-        readSeen(r, rx, rz);
+        if (r.seenHanded) return List.of();
+        r.seenHanded = true;
+        // (review: a region a real chunk's write loaded first was marked read and its chunks never handed over)
+        if (!r.seenLoaded) {
+            r.seenLoaded = true;
+            readSeen(r, rx, rz);
+        }
         chunksRead += r.seen.size();
         return new ArrayList<>(r.seen.values());
     }
@@ -203,7 +213,7 @@ final class FarCache {
     boolean seenRead(int cx, int cz) {
         if (!seen) return true;
         Region r = regions.get(regionKey(Math.floorDiv(cx, REGION_TILES * 8), Math.floorDiv(cz, REGION_TILES * 8)));
-        return r != null && r.seenLoaded;
+        return r != null && r.seenHanded;
     }
 
     void putSeen(SeenChunk c) {
@@ -232,7 +242,9 @@ final class FarCache {
                 if (r.genDirty) writeGen(r, rx, rz);
                 if (r.seenDirty) writeSeen(r, rx, rz);
             } catch (Throwable ex) {
+                // kept in memory and written again at the next flush (review: it was dropped with its changes)
                 problem = "writing " + dir + ": " + ex;
+                continue;
             }
             gone.add(e.getLongKey());
         }
@@ -275,9 +287,18 @@ final class FarCache {
 
     /** The cache folder (every dimension of this world or server) back under its cap: oldest region files first. */
     private void cap() {
+        capFolder(root, 2, capBytes);
+        // a server's cache: every server's together under 1 GB too (review: the cap was per server only)
+        if (serversRoot != null) capFolder(serversRoot, 3, 4 * DEFAULT_CAP);
+    }
+
+    /** Package 12c: the folder holding every server's cache (null in single player, whose cache is in the world's folder). */
+    Path serversRoot;
+
+    private void capFolder(Path root, int depth, long capBytes) {
         try {
             List<Path> files = new ArrayList<>();
-            try (Stream<Path> all = Files.walk(root, 2)) {
+            try (Stream<Path> all = Files.walk(root, depth)) {
                 all.filter(p -> p.getFileName().toString().endsWith(".bin")).forEach(files::add);
             }
             long total = 0;
@@ -510,9 +531,26 @@ final class FarCache {
         void write(DataOutputStream out) throws IOException;
     }
 
-    /** Written to a temporary file first, then moved over the old one (a crash mid-write leaves the old file). */
+    /** One lock per cache folder: a session's last write and the next session's never interleave (review). */
+    private static final java.util.concurrent.ConcurrentHashMap<Path, Object> LOCKS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Written to a temporary file of its own first, then moved over the old one (a crash mid-write leaves the old file),
+     * under the folder's lock; once more if an interrupt closed the file (a session stopping while it writes).
+     */
     private void write(Path f, Writer w) throws IOException {
-        Path tmp = f.resolveSibling(f.getFileName() + ".tmp");
+        synchronized (LOCKS.computeIfAbsent(dir.toAbsolutePath().normalize(), k -> new Object())) {
+            try {
+                writeOnce(f, w);
+            } catch (java.nio.channels.ClosedByInterruptException e) {
+                Thread.interrupted();
+                writeOnce(f, w);
+            }
+        }
+    }
+
+    private void writeOnce(Path f, Writer w) throws IOException {
+        Path tmp = f.resolveSibling(f.getFileName() + "." + Thread.currentThread().threadId() + "-" + System.nanoTime() + ".tmp");
         try (OutputStream os = Files.newOutputStream(tmp);
              DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new GZIPOutputStream(os, 65536), 65536))) {
             w.write(out);

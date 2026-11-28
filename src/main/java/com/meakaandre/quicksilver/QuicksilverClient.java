@@ -94,11 +94,6 @@ public final class QuicksilverClient implements ClientModInitializer {
                                 com.meakaandre.quicksilver.terrain.FarLayer.mark(false);
                                 return 1;
                             })))
-                        .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("find")
-                            .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("kind", com.mojang.brigadier.arguments.StringArgumentType.word()).executes(c -> {
-                                com.meakaandre.quicksilver.far.FarTerrain.find(com.mojang.brigadier.arguments.StringArgumentType.getString(c, "kind"));
-                                return 1;
-                            })))
                         .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("wait").executes(c -> {
                             com.meakaandre.quicksilver.far.FarTerrain.waitSettled();
                             return 1;
@@ -119,6 +114,11 @@ public final class QuicksilverClient implements ClientModInitializer {
         if (Boolean.getBoolean("quicksilver.ci.farCommands")) {
             ClientCommandRegistrationCallback.EVENT.register((dispatcher, context) -> dispatcher.register(
                 net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("quicksilver").then(
+                    net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("far").then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("find")
+                        .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("kind", com.mojang.brigadier.arguments.StringArgumentType.word()).executes(c -> {
+                            com.meakaandre.quicksilver.far.FarTerrain.find(com.mojang.brigadier.arguments.StringArgumentType.getString(c, "kind"));
+                            return 1;
+                        })))).then(
                     net.fabricmc.fabric.api.client.command.v2.ClientCommands.literal("cirenderdistance")
                         .then(net.fabricmc.fabric.api.client.command.v2.ClientCommands.argument("chunks", com.mojang.brigadier.arguments.IntegerArgumentType.integer(2, 32)).executes(c -> {
                             int n = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "chunks");
