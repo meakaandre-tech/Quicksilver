@@ -74,6 +74,8 @@ final class FarTiles implements Runnable {
     final AtomicLong columnsSampled = new AtomicLong(), columnsReal = new AtomicLong(), tilesMade = new AtomicLong(), quadsMade = new AtomicLong(),
         sampleNanos = new AtomicLong(), meshNanos = new AtomicLong(), tilesFromReal = new AtomicLong(), realChunksIn = new AtomicLong();
     volatile int tilesWanted, tilesDone;
+    /** Package 12c: the bytes the tiles' samples hold on the heap (estimated from their arrays; the sampling thread writes). */
+    final AtomicLong tileHeapBytes = new AtomicLong();
     /** From real chunks only: the radius within which every chunk is known (see {@link #coveredRadius}). */
     volatile int covered;
     private long coveredState = Long.MIN_VALUE;
@@ -183,6 +185,7 @@ final class FarTiles implements Runnable {
                 }
                 for (long k : gone) {
                     Tile t = tiles.remove(k);
+                    if (t != null) tileHeapBytes.addAndGet(-heapOf(t));
                     if (t != null && t.staged) FarLayer.remove(k, id);
                 }
                 if (source == null) {
@@ -359,6 +362,7 @@ final class FarTiles implements Runnable {
         }
         long t1 = System.nanoTime();
         sampleNanos.addAndGet(t1 - t0);
+        tileHeapBytes.addAndGet(-heapOf(t));
         t.spacing = spacing;
         t.n = n;
         t.solidTop = solid;
@@ -369,10 +373,24 @@ final class FarTiles implements Runnable {
         t.biome = biome;
         t.dirty = false;
         t.realChunks = realChunks;
+        tileHeapBytes.addAndGet(heapOf(t));
         if (realChunks > 0) tilesFromReal.incrementAndGet();
         stage(t);
         meshNanos.addAndGet(System.nanoTime() - t1);
         tilesMade.incrementAndGet();
+    }
+
+    /** A tile's samples on the heap, estimated: four int arrays, the flags, the biome references (4 bytes each) and headers. */
+    private static long heapOf(Tile t) {
+        if (t.solidTop == null) return 0;
+        long cells = (long) t.n * t.n;
+        return cells * (4 * 4 + 1 + 4) + 6 * 16 + 64;
+    }
+
+    /** Package 12c: the samples and the real chunks this session holds on the heap (estimated; any thread). */
+    long heapBytes() {
+        // a real chunk: five arrays of 16 (four of ints, one of references) with their headers, the record and its map entry
+        return tileHeapBytes.get() + (long) real.size() * (4 * 16 * 4 + 16 * 4 + 5 * 16 + 32 + 48);
     }
 
     // ---- the mesh

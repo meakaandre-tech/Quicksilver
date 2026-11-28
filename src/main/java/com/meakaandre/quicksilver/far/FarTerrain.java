@@ -417,6 +417,12 @@ public final class FarTerrain {
         return (float) (s.radius * 1.42 * 1.015 + 512);
     }
 
+    /** Package 12c: the heap far terrain's session holds (samples and real chunks, estimated), or 0. */
+    public static long heapBytes() {
+        FarTiles s = session;
+        return s == null ? 0 : s.heapBytes();
+    }
+
     /** Whether far terrain draws this frame (the fog hook and the bench). */
     public static boolean drawing() {
         return drawing;
@@ -480,6 +486,8 @@ public final class FarTerrain {
         }
         o.addProperty("tilesHeld", FarLayer.tilesHeld());
         o.addProperty("gpuKB", FarLayer.bytesHeld() / 1024);
+        o.addProperty("heapKB", heapBytes() / 1024);
+        o.addProperty("vramKB", com.meakaandre.quicksilver.terrain.TerrainStore.farArenaBytes() / 1024);
         o.addProperty("tilesDrawnLastFrame", FarLayer.lastTiles());
         o.addProperty("tilesOffScreenLastFrame", FarLayer.lastOffScreen());
         o.addProperty("tilesBeyondBandLastFrame", FarLayer.lastBeyond());

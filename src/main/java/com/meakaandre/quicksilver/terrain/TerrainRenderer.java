@@ -275,10 +275,13 @@ public final class TerrainRenderer {
             FarLayer.fail("finding far terrain's holes", t);
         }
         // package 12: far terrain's tiles, copied in before this frame's draws (their own budget)
+        com.meakaandre.quicksilver.bench.StageProfile.push("terrain.far-upload");
         try {
             FarLayer.upload();
         } catch (Throwable t) {
             FarLayer.fail("copying far terrain in", t);
+        } finally {
+            com.meakaandre.quicksilver.bench.StageProfile.pop("terrain.far-upload");
         }
         com.meakaandre.quicksilver.bench.StageProfile.push("terrain.prepare");
         try {
@@ -970,7 +973,13 @@ public final class TerrainRenderer {
     private static void drawFar(RenderPass pass) {
         try {
             TerrainGpuErrors.Mark mark = TerrainGpuErrors.mark();
-            FarLayer.draw(pass);
+            // package 12c: far terrain's own stage in the speed bench's profile (inside terrain.solid)
+            com.meakaandre.quicksilver.bench.StageProfile.push("terrain.far");
+            try {
+                FarLayer.draw(pass);
+            } finally {
+                com.meakaandre.quicksilver.bench.StageProfile.pop("terrain.far");
+            }
             String err = TerrainGpuErrors.since(mark);
             if (err != null) FarLayer.fail("drawing far terrain", new IllegalStateException("GPU error: " + err));
         } catch (Throwable t) {

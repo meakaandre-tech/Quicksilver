@@ -864,6 +864,15 @@ public final class TerrainStore {
         }
     }
 
+    /** Package 12c: the GPU bytes far terrain's arenas hold (their buffers' sizes, used or not). Any thread. */
+    public static long farArenaBytes() {
+        synchronized (LOCK) {
+            long b = 0;
+            for (Arena a : ARENAS) if (a.layer == FAR && !a.closed) b += a.capacity;
+            return b;
+        }
+    }
+
     /** The far arenas now (render thread, for the draw). */
     static List<Arena> farArenas() {
         synchronized (LOCK) {

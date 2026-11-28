@@ -100,6 +100,27 @@ final class SpeedBench {
         for (String entry : scene.speedAb) {
             // package B: "profile" alone in the list asks for the stage profile only (no switch measured)
             if (entry.equals("profile")) continue;
+            // package 12c: "profile:<switch>=<value>" adds a stage profile with that switch set (far terrain's own stages)
+            if (entry.startsWith("profile:")) {
+                String sw = entry.substring("profile:".length());
+                int peq = sw.indexOf('=');
+                Speed.Setting ps = Speed.byKey(peq > 0 ? sw.substring(0, peq) : sw);
+                int pv;
+                try {
+                    pv = peq > 0 ? Integer.parseInt(sw.substring(peq + 1).trim()) : 1;
+                } catch (NumberFormatException ex) {
+                    problems.add("bad value in " + entry);
+                    continue;
+                }
+                if (ps == null) {
+                    problems.add("unknown switch in " + entry);
+                    continue;
+                }
+                Window w = new Window("profile " + ps.key + "=" + pv, ps, pv, true);
+                queue.add(w);
+                queue.add(new Window("reset", ps, ps.value(), false));
+                continue;
+            }
             String key = entry, val = null;
             int eq = entry.indexOf('=');
             if (eq > 0) {
@@ -303,6 +324,14 @@ final class SpeedBench {
         o.addProperty("farCpuMsPerSecond", r2(com.meakaandre.quicksilver.far.FarTerrain.windowCpuMsPerSecond()));
         o.addProperty("farQuadsPerFrame", com.meakaandre.quicksilver.terrain.FarLayer.lastQuads());
         o.addProperty("farTilesPerFrame", com.meakaandre.quicksilver.terrain.FarLayer.lastTiles());
+        // package 12c: far terrain's memory at the window's end: its GPU bytes (arenas), its samples on the heap, the
+        // tiles held, and the JVM's used heap after the window (noisy: for the report)
+        o.addProperty("farGpuKB", com.meakaandre.quicksilver.terrain.FarLayer.bytesHeld() / 1024);
+        o.addProperty("farVramKB", com.meakaandre.quicksilver.terrain.TerrainStore.farArenaBytes() / 1024);
+        o.addProperty("farHeapKB", com.meakaandre.quicksilver.far.FarTerrain.heapBytes() / 1024);
+        o.addProperty("farTilesHeld", com.meakaandre.quicksilver.terrain.FarLayer.tilesHeld());
+        Runtime rt = Runtime.getRuntime();
+        o.addProperty("heapUsedMB", (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024));
         return o;
     }
 
@@ -339,7 +368,14 @@ final class SpeedBench {
         JsonObject hooks = new JsonObject();
         com.meakaandre.quicksilver.mixin.speed.SpeedMixins.RESULT.forEach(hooks::addProperty);
         out.add("hooks", hooks);
-        for (Window w : done) if (w.profile) out.add("profile", w.result);
+        JsonObject profiles = new JsonObject();
+        for (Window w : done) {
+            if (!w.profile) continue;
+            if (w.setting == null) out.add("profile", w.result);
+            else profiles.add(w.label.substring("profile ".length()), w.result);
+        }
+        // package 12c: stage profiles with a switch set ("profile:<switch>=<value>" in the scene's speedAb)
+        if (profiles.size() > 0) out.add("profiles", profiles);
         JsonArray ab = new JsonArray();
         for (Object[] t : tested) {
             Speed.Setting s = (Speed.Setting) t[0];
@@ -363,7 +399,8 @@ final class SpeedBench {
             for (String k : List.of("frameMsAvg", "frameMsP50", "fps", "low1pctFps", "drawCallsPerFrame", "uploadBytesPerFrame",
                 "terrainTrianglesPerFrame", "sectionsInFogPerFrame", "cutoutLayersSkippedPerFrame", "entitiesHiddenPerFrame",
                 "blockEntitiesHiddenPerFrame", "particlesDropped", "occlusionDrawnPerFrame", "occlusionCulledPerFrame", "occlusionCulledPct",
-                "stillFramesDrawnInFull", "farCpuMsPerSecond", "farQuadsPerFrame", "farTilesPerFrame")) {
+                "stillFramesDrawnInFull", "farCpuMsPerSecond", "farQuadsPerFrame", "farTilesPerFrame", "farGpuKB", "farVramKB", "farHeapKB", "farTilesHeld",
+                "heapUsedMB")) {
                 double a = median(off, k), b = median(on, k);
                 JsonObject m = new JsonObject();
                 m.addProperty("off", r2(a));

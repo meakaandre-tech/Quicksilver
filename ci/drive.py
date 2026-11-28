@@ -439,8 +439,8 @@ def main():
             if os.environ.get("RUN", "").startswith("speed-") and sc.get("speedAb"):
                 budget += 120 + 150 * len(sc["speedAb"])
                 # package 12: far terrain's first pass before its first "on" round
-                if any(a.startswith("option.far-terrain") for a in sc["speedAb"]):
-                    budget += 300
+                # (package 12c: each far terrain distance and far profile has its own first pass)
+                budget += 300 * sum(1 for a in sc["speedAb"] if "option.far-terrain" in a)
             pressed = 0.0
             result = "timeout"
             while time.time() < budget:
