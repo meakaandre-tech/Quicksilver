@@ -30,12 +30,15 @@ school laptop with Intel UHD graphics) as well as on new machines.
 - **Pixel art look** (off by default). The world is drawn as chunky pixel art in vanilla's own colours, with dithered
   shading and dark outlines on block edges. The HUD and menus stay sharp. Pixel size, dithering and outlines are
   options.
-- **Far terrain** (off by default; Quality turns it on at 96 chunks). Shows simple terrain out to 32, 64, 96 or 128
-  chunks without loading those chunks. It is worked out from the world's own generator on one background thread, so
-  world-gen mods and datapacks such as Terralith show up correctly. Chunks you have loaded replace the estimate. In
-  single player it uses the world's seed. On a server it needs Quicksilver on the server too, and the seed, which a
-  server only shares if its owner turns that on (see "Server owners" below). On a Quicksilver server that doesn't share
-  it, far terrain shows only land you have already seen; on a server without Quicksilver, far terrain stays off.
+- **Far terrain** (off by default; Quality turns it on at 128 chunks). Shows simple terrain out to 32, 64, 96, 128, 192
+  or 256 chunks (192 and 256 are for strong GPUs) without loading those chunks. It is worked out from the world's own
+  generator on one background thread, so world-gen mods and datapacks such as Terralith show up correctly: hills,
+  biomes, ground blocks, water in its biome's colour, snow and ice where the game would put them, trees shaped by kind
+  and the outlines of villages, mansions and ocean monuments. Chunks you have loaded replace the estimate. It is kept on
+  disk per world (at most 256 MB each), so a second visit shows it at once. In single player it uses the world's seed. On
+  a server the seed comes only from a Quicksilver server whose owner turns sharing on (see "Server owners" below); on
+  any other server far terrain shows the land you have seen there, which Quicksilver remembers on your computer (nothing
+  is sent). Underground (no sky light) it isn't drawn.
 - **Server and memory modules.** Lithium-style shortcuts for entity lookups, mob AI and block entity ticking; faster
   chunk saving; smaller block-state tables (FerriteCore's idea). Each one checks at start-up that its hooks
   are in place and otherwise leaves that job to vanilla. They work in single player and on a dedicated server.
@@ -48,7 +51,7 @@ Open it from **Options → Video Settings → Quicksilver...**, from Mod Menu's 
 It has the preset at the top, then:
 
 - **Look:** Normal or Pixel art, with pixel size, dithering and outlines.
-- **Far terrain:** off, 32, 64, 96 or 128 chunks.
+- **Far terrain:** off, 32, 64, 96, 128, 192 or 256 chunks; Far cache and Seen chunks (both on).
 - **Lighting:** dynamic lights (Off, Fast, Fancy).
 - **Speed options (change the look):** opaque leaves, simple water, far detail, entity, block entity and particle
   distances, particle density.
@@ -93,12 +96,13 @@ vanilla's 479 MB.
 - **Doesn't run with Sodium or Iris shader packs.** Quicksilver does Sodium's job. With Sodium or Iris installed,
   Quicksilver turns itself off, tells you once, and the game runs as if it weren't there.
 - **Far terrain needs the seed.** In single player that is automatic. On a server, the server must run Quicksilver and
-  have `far-terrain-share=on`. A Quicksilver server without it gives only land you have already seen; a server without
-  Quicksilver gives no far terrain. A dimension whose
+  have `far-terrain-share=on`. On any other server far terrain shows only land you have already seen there (remembered
+  between visits). A dimension whose
   generator isn't noise-based (superflat, void, custom generators) also shows only land you have seen.
 - **Create and Flywheel are only smoke-tested.** Create's machines, belts and contraptions are checked to load and draw
   in CI, but not picture by picture.
-- Far terrain is simpler than real terrain: no structures, and trees as simple shapes.
+- Far terrain is simpler than real terrain: trees and big structures as simple shapes; a few structures the game would
+  leave out may still show as outlines.
 - While flying into new terrain, a section can appear a few frames later than in vanilla (uploads are spread out for
   smoother frame times).
 

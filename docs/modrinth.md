@@ -47,9 +47,9 @@ first on a school laptop with Intel UHD graphics, and runs on new machines too.
   and flaming arrows light up their surroundings as they move. Mods can add their own light sources with a data file.
 - **Pixel art look** (off by default). The world in chunky pixels with vanilla's colours, dithering and outlines. The
   HUD stays sharp, and it usually runs faster.
-- **Far terrain** (off by default; on in the Quality preset). See hills, forests and snowy peaks out to 128 chunks
-  without loading them. Quicksilver works them out from the world's own generator, so Terralith and other world-gen
-  mods look right.
+- **Far terrain** (off by default; on in the Quality preset). See hills, forests, snowy peaks, lakes and villages out to 256
+  chunks without loading them. Quicksilver works them out from the world's own generator, so Terralith and other
+  world-gen mods look right, and keeps them on disk so the next visit shows them at once.
 - **Server and memory modules.** Faster entity, hopper and mob AI ticks, cheaper chunk saving and smaller block-state
   tables, in single player and on servers.
 - **A built-in benchmark:** `/qs bench`.
@@ -71,7 +71,7 @@ water and glass 244 → 393, nether 236 → 383, mobs 229 → 316. 1% lows staye
   If either is installed, Quicksilver turns itself off and tells you.
 - **Far terrain needs the world's seed.** In single player it has it. On a server, the server needs Quicksilver with
   `far-terrain-share=on` in `config/quicksilver.properties` (off by default: the seed lets players find ores and
-  bases). A Quicksilver server without it gives only land you have seen; a server without Quicksilver, no far terrain.
+  bases). Any other server shows the land you have seen there (remembered on your computer, nothing sent).
 - **Create and Flywheel:** tested to load and draw, not checked picture by picture yet.
 - Needs **Fabric API**. Java 25.
 

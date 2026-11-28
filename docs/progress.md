@@ -66,6 +66,10 @@ push the tag `v1.0.0` on a green main (after R2).
 
 **Branch cleanup** (2026-11-27): `package-12`, `release-prep` and their `ci-logs-*` branches deleted with `[cleanup]`.
 
+**Package 12c** (far terrain, round two: cheaper, further, disk and seen-chunks caches, a better look, the cliff seam,
+underground, pixel art over far terrain, a much wider far suite): see "Package 12c" below, "Decisions for Andre" there.
+STATUS_12C
+
 **Still to do, in order:** R2 (laptop bench,
 `docs/laptop-bench.md`, "R2"; its low-end instance keeps its two lines, which the file now reads as `preset=custom`, and
 `preset=low-end` turns on more; add pixel art against Normal), R (release: laptop bench, then Modrinth).
@@ -75,6 +79,8 @@ push the tag `v1.0.0` on a green main (after R2).
 **Later, after the release:** phase 2 beyond P2-4 (P2-5, P2-6). P2-3b stays shelved (branch `p2-3b`).
 
 Everything below this section is history where it disagrees with it (SIFTEC suites, strict limits, the old plan).
+
+PACKAGE_12C_SECTION
 
 ## Release prep (2026-11-27, branch `release-prep`)
 
