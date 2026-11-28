@@ -1,0 +1,11 @@
+# P2-4: a kill mid-save (ci/server/chunks-run.sh kill): the 625 chunks within 12 of chunk 0,0 loaded, all marked changed
+# and saved with save-all flush at tick 100 (about 2 s of writes on CI); the run that is killed is killed (kill -9)
+# about a second after tick 100 starts. Its pair, not killed, runs to tick 200: the complete save.
+window minecraft:overworld 0 0 12
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+dirty-at 100
+at 100 save-all flush
+ticks 200
+
+at 0 tick sprint 200

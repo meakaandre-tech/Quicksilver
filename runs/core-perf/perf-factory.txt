@@ -1,0 +1,46 @@
+perf suite=core
+86f16178a3cecc887a85a4cfe9a79d92fa7341d8f39b5951a4d6ad800ab657a6  core/fabric-api.jar
+pack lock: set core matches ci/pack-lock.txt
+fabric server 26.3, loader 0.19.5, fabric api 0.161.0+26.3 in /home/runner/work/Quicksilver/Quicksilver/srv
+4
+model name	: Intel(R) Xeon(R) 6973P-C
+openjdk version "25.0.5.1" 2026-11-17 LTS
+== scene factory (scripted-run-core-factory.txt, 12000 ticks sprinting, keep: world)
+factory vanilla r1: mspt avg/p50/p99 0.29 0.182 1.796 steady -  (35 s)
+factory quicksilver r1: mspt avg/p50/p99 0.258 0.167 1.73 steady -  (27 s)
+factory quicksilver r2: mspt avg/p50/p99 0.257 0.162 1.617 steady -  (25 s)
+factory vanilla r2: mspt avg/p50/p99 0.293 0.194 1.695 steady -  (26 s)
+factory vanilla r3: mspt avg/p50/p99 0.282 0.176 1.798 steady -  (27 s)
+factory quicksilver r3: mspt avg/p50/p99 0.273 0.171 1.551 steady -  (27 s)
+factory quicksilver r4: mspt avg/p50/p99 0.273 0.175 1.567 steady -  (28 s)
+factory vanilla r4: mspt avg/p50/p99 0.29 0.214 1.527 steady -  (27 s)
+factory vanilla r5: mspt avg/p50/p99 0.267 0.19 1.511 steady -  (27 s)
+factory quicksilver r5: mspt avg/p50/p99 0.273 0.18 1.624 steady -  (26 s)
+factory quicksilver r6: mspt avg/p50/p99 0.251 0.156 1.47 steady -  (25 s)
+factory vanilla r6: mspt avg/p50/p99 0.273 0.186 1.609 steady -  (27 s)
+factory vanilla r7: mspt avg/p50/p99 0.296 0.182 1.917 steady -  (26 s)
+factory quicksilver r7: mspt avg/p50/p99 0.259 0.16 1.678 steady -  (27 s)
+factory quicksilver r8: mspt avg/p50/p99 0.28 0.181 1.882 steady -  (27 s)
+/tmp/sout/core-perf/factory/quicksilver8/rec.jfr: 2575 server-thread samples while ticking
+factory vanilla r8: mspt avg/p50/p99 0.284 0.188 1.898 steady -  (26 s)
+/tmp/sout/core-perf/factory/vanilla8/rec.jfr: 2666 server-thread samples while ticking
+== scene village (scripted-run-core-village.txt, 4800 ticks sprinting, keep: world-report)
+village vanilla r1: mspt avg/p50/p99 1.114 0.692 6.247 steady -  (28 s)
+village quicksilver r1: mspt avg/p50/p99 0.918 0.57 5.878 steady -  (26 s)
+village quicksilver r2: mspt avg/p50/p99 1.021 0.649 6.054 steady -  (29 s)
+village vanilla r2: mspt avg/p50/p99 1.126 0.694 5.844 steady -  (28 s)
+village vanilla r3: mspt avg/p50/p99 1.167 0.702 6.792 steady -  (29 s)
+village quicksilver r3: mspt avg/p50/p99 0.922 0.609 5.453 steady -  (26 s)
+village quicksilver r4: mspt avg/p50/p99 0.943 0.655 5.305 steady -  (29 s)
+village vanilla r4: mspt avg/p50/p99 1.147 0.685 6.9 steady -  (29 s)
+village vanilla r5: mspt avg/p50/p99 1.171 0.85 6.475 steady -  (29 s)
+village quicksilver r5: mspt avg/p50/p99 0.989 0.605 5.704 steady -  (28 s)
+village quicksilver r6: mspt avg/p50/p99 0.923 0.514 5.16 steady -  (29 s)
+village vanilla r6: mspt avg/p50/p99 1.133 0.691 6.088 steady -  (26 s)
+village vanilla r7: mspt avg/p50/p99 1.07 0.681 5.775 steady -  (29 s)
+village quicksilver r7: mspt avg/p50/p99 0.962 0.554 5.522 steady -  (27 s)
+village quicksilver r8: mspt avg/p50/p99 1.034 0.615 6.062 steady -  (30 s)
+/tmp/sout/core-perf/village/quicksilver8/rec.jfr: 3812 server-thread samples while ticking
+village vanilla r8: mspt avg/p50/p99 1.28 0.841 7.208 steady -  (31 s)
+/tmp/sout/core-perf/village/vanilla8/rec.jfr: 4594 server-thread samples while ticking
+perf done

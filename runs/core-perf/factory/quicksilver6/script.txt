@@ -1,0 +1,387 @@
+# The core suite's factory scene (phase 2, P2-3): vanilla hoppers, furnaces, comparators and chests as players build
+# them, for block entity ticking (hoppers moving items, hoppers waiting with nothing to take, furnaces smelting,
+# comparators reading containers). Same format as scripted-run-core.txt; played by the perf job
+# (ci/server/perf-run.sh) for MSPT, its saved worlds compared with vanilla's (ci/server/compare-p2.py).
+area minecraft:overworld -4 -4 3 3
+
+cmd time set 1000
+cmd weather clear 100000
+cmd gamerule spawn_mobs false
+cmd gamerule random_tick_speed 0
+
+cmd fill -44 199 -44 19 199 15 minecraft:stone
+
+# 16 hopper chains: a full chest of cobblestone through 12 hoppers into a chest, read by a comparator lighting a lamp
+cmd setblock -42 201 -42 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -42 -31 200 -42 minecraft:hopper[facing=east]
+cmd setblock -30 200 -42 minecraft:chest
+cmd setblock -29 200 -42 minecraft:comparator[facing=west]
+cmd setblock -28 200 -42 minecraft:redstone_lamp
+cmd setblock -42 201 -40 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -40 -31 200 -40 minecraft:hopper[facing=east]
+cmd setblock -30 200 -40 minecraft:chest
+cmd setblock -29 200 -40 minecraft:comparator[facing=west]
+cmd setblock -28 200 -40 minecraft:redstone_lamp
+cmd setblock -42 201 -38 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -38 -31 200 -38 minecraft:hopper[facing=east]
+cmd setblock -30 200 -38 minecraft:chest
+cmd setblock -29 200 -38 minecraft:comparator[facing=west]
+cmd setblock -28 200 -38 minecraft:redstone_lamp
+cmd setblock -42 201 -36 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -36 -31 200 -36 minecraft:hopper[facing=east]
+cmd setblock -30 200 -36 minecraft:chest
+cmd setblock -29 200 -36 minecraft:comparator[facing=west]
+cmd setblock -28 200 -36 minecraft:redstone_lamp
+cmd setblock -42 201 -34 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -34 -31 200 -34 minecraft:hopper[facing=east]
+cmd setblock -30 200 -34 minecraft:chest
+cmd setblock -29 200 -34 minecraft:comparator[facing=west]
+cmd setblock -28 200 -34 minecraft:redstone_lamp
+cmd setblock -42 201 -32 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -32 -31 200 -32 minecraft:hopper[facing=east]
+cmd setblock -30 200 -32 minecraft:chest
+cmd setblock -29 200 -32 minecraft:comparator[facing=west]
+cmd setblock -28 200 -32 minecraft:redstone_lamp
+cmd setblock -42 201 -30 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -30 -31 200 -30 minecraft:hopper[facing=east]
+cmd setblock -30 200 -30 minecraft:chest
+cmd setblock -29 200 -30 minecraft:comparator[facing=west]
+cmd setblock -28 200 -30 minecraft:redstone_lamp
+cmd setblock -42 201 -28 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -28 -31 200 -28 minecraft:hopper[facing=east]
+cmd setblock -30 200 -28 minecraft:chest
+cmd setblock -29 200 -28 minecraft:comparator[facing=west]
+cmd setblock -28 200 -28 minecraft:redstone_lamp
+cmd setblock -42 201 -26 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -26 -31 200 -26 minecraft:hopper[facing=east]
+cmd setblock -30 200 -26 minecraft:chest
+cmd setblock -29 200 -26 minecraft:comparator[facing=west]
+cmd setblock -28 200 -26 minecraft:redstone_lamp
+cmd setblock -42 201 -24 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -24 -31 200 -24 minecraft:hopper[facing=east]
+cmd setblock -30 200 -24 minecraft:chest
+cmd setblock -29 200 -24 minecraft:comparator[facing=west]
+cmd setblock -28 200 -24 minecraft:redstone_lamp
+cmd setblock -42 201 -22 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -22 -31 200 -22 minecraft:hopper[facing=east]
+cmd setblock -30 200 -22 minecraft:chest
+cmd setblock -29 200 -22 minecraft:comparator[facing=west]
+cmd setblock -28 200 -22 minecraft:redstone_lamp
+cmd setblock -42 201 -20 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -20 -31 200 -20 minecraft:hopper[facing=east]
+cmd setblock -30 200 -20 minecraft:chest
+cmd setblock -29 200 -20 minecraft:comparator[facing=west]
+cmd setblock -28 200 -20 minecraft:redstone_lamp
+cmd setblock -42 201 -18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -18 -31 200 -18 minecraft:hopper[facing=east]
+cmd setblock -30 200 -18 minecraft:chest
+cmd setblock -29 200 -18 minecraft:comparator[facing=west]
+cmd setblock -28 200 -18 minecraft:redstone_lamp
+cmd setblock -42 201 -16 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -16 -31 200 -16 minecraft:hopper[facing=east]
+cmd setblock -30 200 -16 minecraft:chest
+cmd setblock -29 200 -16 minecraft:comparator[facing=west]
+cmd setblock -28 200 -16 minecraft:redstone_lamp
+cmd setblock -42 201 -14 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -14 -31 200 -14 minecraft:hopper[facing=east]
+cmd setblock -30 200 -14 minecraft:chest
+cmd setblock -29 200 -14 minecraft:comparator[facing=west]
+cmd setblock -28 200 -14 minecraft:redstone_lamp
+cmd setblock -42 201 -12 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -42 200 -12 -31 200 -12 minecraft:hopper[facing=east]
+cmd setblock -30 200 -12 minecraft:chest
+cmd setblock -29 200 -12 minecraft:comparator[facing=west]
+cmd setblock -28 200 -12 minecraft:redstone_lamp
+
+# 24 furnaces fed by hoppers: raw iron from above, coal from the side, smelted iron out below into a chest
+cmd setblock -42 198 -8 minecraft:chest
+cmd setblock -42 199 -8 minecraft:hopper[facing=down]
+cmd setblock -42 200 -8 minecraft:furnace[facing=north]
+cmd setblock -42 201 -8 minecraft:hopper[facing=down]
+cmd setblock -42 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -41 200 -8 minecraft:hopper[facing=west]
+cmd setblock -41 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -39 198 -8 minecraft:chest
+cmd setblock -39 199 -8 minecraft:hopper[facing=down]
+cmd setblock -39 200 -8 minecraft:furnace[facing=north]
+cmd setblock -39 201 -8 minecraft:hopper[facing=down]
+cmd setblock -39 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -38 200 -8 minecraft:hopper[facing=west]
+cmd setblock -38 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -36 198 -8 minecraft:chest
+cmd setblock -36 199 -8 minecraft:hopper[facing=down]
+cmd setblock -36 200 -8 minecraft:furnace[facing=north]
+cmd setblock -36 201 -8 minecraft:hopper[facing=down]
+cmd setblock -36 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -35 200 -8 minecraft:hopper[facing=west]
+cmd setblock -35 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -33 198 -8 minecraft:chest
+cmd setblock -33 199 -8 minecraft:hopper[facing=down]
+cmd setblock -33 200 -8 minecraft:furnace[facing=north]
+cmd setblock -33 201 -8 minecraft:hopper[facing=down]
+cmd setblock -33 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -32 200 -8 minecraft:hopper[facing=west]
+cmd setblock -32 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -30 198 -8 minecraft:chest
+cmd setblock -30 199 -8 minecraft:hopper[facing=down]
+cmd setblock -30 200 -8 minecraft:furnace[facing=north]
+cmd setblock -30 201 -8 minecraft:hopper[facing=down]
+cmd setblock -30 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -29 200 -8 minecraft:hopper[facing=west]
+cmd setblock -29 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -27 198 -8 minecraft:chest
+cmd setblock -27 199 -8 minecraft:hopper[facing=down]
+cmd setblock -27 200 -8 minecraft:furnace[facing=north]
+cmd setblock -27 201 -8 minecraft:hopper[facing=down]
+cmd setblock -27 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -26 200 -8 minecraft:hopper[facing=west]
+cmd setblock -26 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -24 198 -8 minecraft:chest
+cmd setblock -24 199 -8 minecraft:hopper[facing=down]
+cmd setblock -24 200 -8 minecraft:furnace[facing=north]
+cmd setblock -24 201 -8 minecraft:hopper[facing=down]
+cmd setblock -24 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -23 200 -8 minecraft:hopper[facing=west]
+cmd setblock -23 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -21 198 -8 minecraft:chest
+cmd setblock -21 199 -8 minecraft:hopper[facing=down]
+cmd setblock -21 200 -8 minecraft:furnace[facing=north]
+cmd setblock -21 201 -8 minecraft:hopper[facing=down]
+cmd setblock -21 202 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -20 200 -8 minecraft:hopper[facing=west]
+cmd setblock -20 201 -8 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -42 198 -4 minecraft:chest
+cmd setblock -42 199 -4 minecraft:hopper[facing=down]
+cmd setblock -42 200 -4 minecraft:furnace[facing=north]
+cmd setblock -42 201 -4 minecraft:hopper[facing=down]
+cmd setblock -42 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -41 200 -4 minecraft:hopper[facing=west]
+cmd setblock -41 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -39 198 -4 minecraft:chest
+cmd setblock -39 199 -4 minecraft:hopper[facing=down]
+cmd setblock -39 200 -4 minecraft:furnace[facing=north]
+cmd setblock -39 201 -4 minecraft:hopper[facing=down]
+cmd setblock -39 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -38 200 -4 minecraft:hopper[facing=west]
+cmd setblock -38 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -36 198 -4 minecraft:chest
+cmd setblock -36 199 -4 minecraft:hopper[facing=down]
+cmd setblock -36 200 -4 minecraft:furnace[facing=north]
+cmd setblock -36 201 -4 minecraft:hopper[facing=down]
+cmd setblock -36 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -35 200 -4 minecraft:hopper[facing=west]
+cmd setblock -35 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -33 198 -4 minecraft:chest
+cmd setblock -33 199 -4 minecraft:hopper[facing=down]
+cmd setblock -33 200 -4 minecraft:furnace[facing=north]
+cmd setblock -33 201 -4 minecraft:hopper[facing=down]
+cmd setblock -33 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -32 200 -4 minecraft:hopper[facing=west]
+cmd setblock -32 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -30 198 -4 minecraft:chest
+cmd setblock -30 199 -4 minecraft:hopper[facing=down]
+cmd setblock -30 200 -4 minecraft:furnace[facing=north]
+cmd setblock -30 201 -4 minecraft:hopper[facing=down]
+cmd setblock -30 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -29 200 -4 minecraft:hopper[facing=west]
+cmd setblock -29 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -27 198 -4 minecraft:chest
+cmd setblock -27 199 -4 minecraft:hopper[facing=down]
+cmd setblock -27 200 -4 minecraft:furnace[facing=north]
+cmd setblock -27 201 -4 minecraft:hopper[facing=down]
+cmd setblock -27 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -26 200 -4 minecraft:hopper[facing=west]
+cmd setblock -26 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -24 198 -4 minecraft:chest
+cmd setblock -24 199 -4 minecraft:hopper[facing=down]
+cmd setblock -24 200 -4 minecraft:furnace[facing=north]
+cmd setblock -24 201 -4 minecraft:hopper[facing=down]
+cmd setblock -24 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -23 200 -4 minecraft:hopper[facing=west]
+cmd setblock -23 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -21 198 -4 minecraft:chest
+cmd setblock -21 199 -4 minecraft:hopper[facing=down]
+cmd setblock -21 200 -4 minecraft:furnace[facing=north]
+cmd setblock -21 201 -4 minecraft:hopper[facing=down]
+cmd setblock -21 202 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -20 200 -4 minecraft:hopper[facing=west]
+cmd setblock -20 201 -4 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -42 198 0 minecraft:chest
+cmd setblock -42 199 0 minecraft:hopper[facing=down]
+cmd setblock -42 200 0 minecraft:furnace[facing=north]
+cmd setblock -42 201 0 minecraft:hopper[facing=down]
+cmd setblock -42 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -41 200 0 minecraft:hopper[facing=west]
+cmd setblock -41 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -39 198 0 minecraft:chest
+cmd setblock -39 199 0 minecraft:hopper[facing=down]
+cmd setblock -39 200 0 minecraft:furnace[facing=north]
+cmd setblock -39 201 0 minecraft:hopper[facing=down]
+cmd setblock -39 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -38 200 0 minecraft:hopper[facing=west]
+cmd setblock -38 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -36 198 0 minecraft:chest
+cmd setblock -36 199 0 minecraft:hopper[facing=down]
+cmd setblock -36 200 0 minecraft:furnace[facing=north]
+cmd setblock -36 201 0 minecraft:hopper[facing=down]
+cmd setblock -36 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -35 200 0 minecraft:hopper[facing=west]
+cmd setblock -35 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -33 198 0 minecraft:chest
+cmd setblock -33 199 0 minecraft:hopper[facing=down]
+cmd setblock -33 200 0 minecraft:furnace[facing=north]
+cmd setblock -33 201 0 minecraft:hopper[facing=down]
+cmd setblock -33 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -32 200 0 minecraft:hopper[facing=west]
+cmd setblock -32 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -30 198 0 minecraft:chest
+cmd setblock -30 199 0 minecraft:hopper[facing=down]
+cmd setblock -30 200 0 minecraft:furnace[facing=north]
+cmd setblock -30 201 0 minecraft:hopper[facing=down]
+cmd setblock -30 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -29 200 0 minecraft:hopper[facing=west]
+cmd setblock -29 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -27 198 0 minecraft:chest
+cmd setblock -27 199 0 minecraft:hopper[facing=down]
+cmd setblock -27 200 0 minecraft:furnace[facing=north]
+cmd setblock -27 201 0 minecraft:hopper[facing=down]
+cmd setblock -27 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -26 200 0 minecraft:hopper[facing=west]
+cmd setblock -26 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -24 198 0 minecraft:chest
+cmd setblock -24 199 0 minecraft:hopper[facing=down]
+cmd setblock -24 200 0 minecraft:furnace[facing=north]
+cmd setblock -24 201 0 minecraft:hopper[facing=down]
+cmd setblock -24 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -23 200 0 minecraft:hopper[facing=west]
+cmd setblock -23 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+cmd setblock -21 198 0 minecraft:chest
+cmd setblock -21 199 0 minecraft:hopper[facing=down]
+cmd setblock -21 200 0 minecraft:furnace[facing=north]
+cmd setblock -21 201 0 minecraft:hopper[facing=down]
+cmd setblock -21 202 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:raw_iron",count:64},{Slot:1b,id:"minecraft:raw_iron",count:64}]}
+cmd setblock -20 200 0 minecraft:hopper[facing=west]
+cmd setblock -20 201 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:coal",count:64}]}
+
+# 160 hoppers waiting with nothing to take: 128 under open air (they look for item entities above every tick), 32
+# under empty chests
+cmd fill 0 200 -42 15 200 -35 minecraft:hopper[facing=down]
+cmd fill 0 200 -32 15 200 -31 minecraft:hopper[facing=down]
+cmd fill 0 201 -32 15 201 -31 minecraft:chest
+
+# 4 rings of 4 hoppers passing 5 stacks of items round and round
+cmd setblock 0 200 -26 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 1 200 -26 minecraft:hopper[facing=south]
+cmd setblock 1 200 -25 minecraft:hopper[facing=west]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 0 200 -25 minecraft:hopper[facing=north]
+cmd setblock 4 200 -26 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 5 200 -26 minecraft:hopper[facing=south]
+cmd setblock 5 200 -25 minecraft:hopper[facing=west]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 4 200 -25 minecraft:hopper[facing=north]
+cmd setblock 8 200 -26 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 9 200 -26 minecraft:hopper[facing=south]
+cmd setblock 9 200 -25 minecraft:hopper[facing=west]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 8 200 -25 minecraft:hopper[facing=north]
+cmd setblock 12 200 -26 minecraft:hopper[facing=east]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 13 200 -26 minecraft:hopper[facing=south]
+cmd setblock 13 200 -25 minecraft:hopper[facing=west]{Items:[{Slot:0b,id:"minecraft:iron_ingot",count:64},{Slot:1b,id:"minecraft:gold_ingot",count:32}]}
+cmd setblock 12 200 -25 minecraft:hopper[facing=north]
+
+# a hopper line collecting dropped items: 6 hoppers under item entities
+cmd fill 0 200 -20 5 200 -20 minecraft:hopper[facing=east]
+cmd setblock 6 200 -20 minecraft:chest
+cmd summon minecraft:item 0.5 202 -19.5 {Item:{id:"minecraft:diamond",count:16}}
+cmd summon minecraft:item 1.5 202 -19.5 {Item:{id:"minecraft:diamond",count:16}}
+cmd summon minecraft:item 2.5 202 -19.5 {Item:{id:"minecraft:diamond",count:16}}
+cmd summon minecraft:item 3.5 202 -19.5 {Item:{id:"minecraft:diamond",count:16}}
+cmd summon minecraft:item 4.5 202 -19.5 {Item:{id:"minecraft:diamond",count:16}}
+cmd summon minecraft:item 5.5 202 -19.5 {Item:{id:"minecraft:diamond",count:16}}
+
+# a second block of 16 hopper chains (P2-3: the scene's first version was too light for the perf job to see a saving)
+cmd setblock -20 201 -42 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -42 -9 200 -42 minecraft:hopper[facing=east]
+cmd setblock -8 200 -42 minecraft:chest
+cmd setblock -7 200 -42 minecraft:comparator[facing=west]
+cmd setblock -6 200 -42 minecraft:redstone_lamp
+cmd setblock -20 201 -40 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -40 -9 200 -40 minecraft:hopper[facing=east]
+cmd setblock -8 200 -40 minecraft:chest
+cmd setblock -7 200 -40 minecraft:comparator[facing=west]
+cmd setblock -6 200 -40 minecraft:redstone_lamp
+cmd setblock -20 201 -38 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -38 -9 200 -38 minecraft:hopper[facing=east]
+cmd setblock -8 200 -38 minecraft:chest
+cmd setblock -7 200 -38 minecraft:comparator[facing=west]
+cmd setblock -6 200 -38 minecraft:redstone_lamp
+cmd setblock -20 201 -36 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -36 -9 200 -36 minecraft:hopper[facing=east]
+cmd setblock -8 200 -36 minecraft:chest
+cmd setblock -7 200 -36 minecraft:comparator[facing=west]
+cmd setblock -6 200 -36 minecraft:redstone_lamp
+cmd setblock -20 201 -34 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -34 -9 200 -34 minecraft:hopper[facing=east]
+cmd setblock -8 200 -34 minecraft:chest
+cmd setblock -7 200 -34 minecraft:comparator[facing=west]
+cmd setblock -6 200 -34 minecraft:redstone_lamp
+cmd setblock -20 201 -32 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -32 -9 200 -32 minecraft:hopper[facing=east]
+cmd setblock -8 200 -32 minecraft:chest
+cmd setblock -7 200 -32 minecraft:comparator[facing=west]
+cmd setblock -6 200 -32 minecraft:redstone_lamp
+cmd setblock -20 201 -30 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -30 -9 200 -30 minecraft:hopper[facing=east]
+cmd setblock -8 200 -30 minecraft:chest
+cmd setblock -7 200 -30 minecraft:comparator[facing=west]
+cmd setblock -6 200 -30 minecraft:redstone_lamp
+cmd setblock -20 201 -28 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -28 -9 200 -28 minecraft:hopper[facing=east]
+cmd setblock -8 200 -28 minecraft:chest
+cmd setblock -7 200 -28 minecraft:comparator[facing=west]
+cmd setblock -6 200 -28 minecraft:redstone_lamp
+cmd setblock -20 201 -26 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -26 -9 200 -26 minecraft:hopper[facing=east]
+cmd setblock -8 200 -26 minecraft:chest
+cmd setblock -7 200 -26 minecraft:comparator[facing=west]
+cmd setblock -6 200 -26 minecraft:redstone_lamp
+cmd setblock -20 201 -24 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -24 -9 200 -24 minecraft:hopper[facing=east]
+cmd setblock -8 200 -24 minecraft:chest
+cmd setblock -7 200 -24 minecraft:comparator[facing=west]
+cmd setblock -6 200 -24 minecraft:redstone_lamp
+cmd setblock -20 201 -22 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -22 -9 200 -22 minecraft:hopper[facing=east]
+cmd setblock -8 200 -22 minecraft:chest
+cmd setblock -7 200 -22 minecraft:comparator[facing=west]
+cmd setblock -6 200 -22 minecraft:redstone_lamp
+cmd setblock -20 201 -20 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -20 -9 200 -20 minecraft:hopper[facing=east]
+cmd setblock -8 200 -20 minecraft:chest
+cmd setblock -7 200 -20 minecraft:comparator[facing=west]
+cmd setblock -6 200 -20 minecraft:redstone_lamp
+cmd setblock -20 201 -18 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -18 -9 200 -18 minecraft:hopper[facing=east]
+cmd setblock -8 200 -18 minecraft:chest
+cmd setblock -7 200 -18 minecraft:comparator[facing=west]
+cmd setblock -6 200 -18 minecraft:redstone_lamp
+cmd setblock -20 201 -16 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -16 -9 200 -16 minecraft:hopper[facing=east]
+cmd setblock -8 200 -16 minecraft:chest
+cmd setblock -7 200 -16 minecraft:comparator[facing=west]
+cmd setblock -6 200 -16 minecraft:redstone_lamp
+cmd setblock -20 201 -14 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -14 -9 200 -14 minecraft:hopper[facing=east]
+cmd setblock -8 200 -14 minecraft:chest
+cmd setblock -7 200 -14 minecraft:comparator[facing=west]
+cmd setblock -6 200 -14 minecraft:redstone_lamp
+cmd setblock -20 201 -12 minecraft:chest{Items:[{Slot:0b,id:"minecraft:cobblestone",count:64},{Slot:1b,id:"minecraft:cobblestone",count:64},{Slot:2b,id:"minecraft:cobblestone",count:64},{Slot:3b,id:"minecraft:cobblestone",count:64},{Slot:4b,id:"minecraft:cobblestone",count:64},{Slot:5b,id:"minecraft:cobblestone",count:64},{Slot:6b,id:"minecraft:cobblestone",count:64},{Slot:7b,id:"minecraft:cobblestone",count:64},{Slot:8b,id:"minecraft:cobblestone",count:64},{Slot:9b,id:"minecraft:cobblestone",count:64},{Slot:10b,id:"minecraft:cobblestone",count:64},{Slot:11b,id:"minecraft:cobblestone",count:64},{Slot:12b,id:"minecraft:cobblestone",count:64},{Slot:13b,id:"minecraft:cobblestone",count:64},{Slot:14b,id:"minecraft:cobblestone",count:64},{Slot:15b,id:"minecraft:cobblestone",count:64},{Slot:16b,id:"minecraft:cobblestone",count:64},{Slot:17b,id:"minecraft:cobblestone",count:64},{Slot:18b,id:"minecraft:cobblestone",count:64},{Slot:19b,id:"minecraft:cobblestone",count:64},{Slot:20b,id:"minecraft:cobblestone",count:64},{Slot:21b,id:"minecraft:cobblestone",count:64},{Slot:22b,id:"minecraft:cobblestone",count:64},{Slot:23b,id:"minecraft:cobblestone",count:64},{Slot:24b,id:"minecraft:cobblestone",count:64},{Slot:25b,id:"minecraft:cobblestone",count:64},{Slot:26b,id:"minecraft:cobblestone",count:64}]}
+cmd fill -20 200 -12 -9 200 -12 minecraft:hopper[facing=east]
+cmd setblock -8 200 -12 minecraft:chest
+cmd setblock -7 200 -12 minecraft:comparator[facing=west]
+cmd setblock -6 200 -12 minecraft:redstone_lamp
+# 160 more hoppers under open air
+cmd fill 0 200 0 19 200 7 minecraft:hopper[facing=down]
+
+ticks 1200
+
+
+at 0 tick sprint 12000

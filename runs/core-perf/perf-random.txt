@@ -1,0 +1,46 @@
+perf suite=core
+86f16178a3cecc887a85a4cfe9a79d92fa7341d8f39b5951a4d6ad800ab657a6  core/fabric-api.jar
+pack lock: set core matches ci/pack-lock.txt
+fabric server 26.3, loader 0.19.5, fabric api 0.161.0+26.3 in /home/runner/work/Quicksilver/Quicksilver/srv
+4
+model name	: AMD EPYC 9V45 96-Core Processor
+openjdk version "25.0.5.1" 2026-11-17 LTS
+== scene random (scripted-run-core-random.txt, 24000 ticks sprinting, keep: -)
+random vanilla r1: mspt avg/p50/p99 0.098 0.043 0.654 steady -  (27 s)
+random quicksilver r1: mspt avg/p50/p99 0.099 0.054 0.644 steady -  (21 s)
+random quicksilver r2: mspt avg/p50/p99 0.099 0.044 0.583 steady -  (22 s)
+random vanilla r2: mspt avg/p50/p99 0.109 0.06 0.668 steady -  (22 s)
+random vanilla r3: mspt avg/p50/p99 0.106 0.062 0.656 steady -  (22 s)
+random quicksilver r3: mspt avg/p50/p99 0.094 0.048 0.6 steady -  (23 s)
+random quicksilver r4: mspt avg/p50/p99 0.101 0.058 0.618 steady -  (22 s)
+random vanilla r4: mspt avg/p50/p99 0.111 0.059 0.702 steady -  (22 s)
+random vanilla r5: mspt avg/p50/p99 0.105 0.053 0.655 steady -  (22 s)
+random quicksilver r5: mspt avg/p50/p99 0.11 0.056 0.839 steady -  (23 s)
+random quicksilver r6: mspt avg/p50/p99 0.109 0.043 0.706 steady -  (23 s)
+random vanilla r6: mspt avg/p50/p99 0.106 0.049 0.787 steady -  (22 s)
+random vanilla r7: mspt avg/p50/p99 0.116 0.057 0.814 steady -  (23 s)
+random quicksilver r7: mspt avg/p50/p99 0.112 0.05 0.723 steady -  (23 s)
+random quicksilver r8: mspt avg/p50/p99 0.122 0.059 0.912 steady -  (24 s)
+/tmp/sout/core-perf/random/quicksilver8/rec.jfr: 2360 server-thread samples while ticking
+random vanilla r8: mspt avg/p50/p99 0.126 0.061 1.065 steady -  (24 s)
+/tmp/sout/core-perf/random/vanilla8/rec.jfr: 2319 server-thread samples while ticking
+== scene run (scripted-run-core.txt, 4800 ticks sprinting, keep: -)
+run vanilla r1: mspt avg/p50/p99 0.44 0.232 2.864 steady -  (21 s)
+run quicksilver r1: mspt avg/p50/p99 0.45 0.258 3.358 steady -  (23 s)
+run quicksilver r2: mspt avg/p50/p99 0.427 0.246 2.808 steady -  (22 s)
+run vanilla r2: mspt avg/p50/p99 0.424 0.266 3.08 steady -  (22 s)
+run vanilla r3: mspt avg/p50/p99 0.444 0.28 2.775 steady -  (21 s)
+run quicksilver r3: mspt avg/p50/p99 0.424 0.247 2.664 steady -  (22 s)
+run quicksilver r4: mspt avg/p50/p99 0.383 0.227 2.407 steady -  (21 s)
+run vanilla r4: mspt avg/p50/p99 0.415 0.281 2.467 steady -  (21 s)
+run vanilla r5: mspt avg/p50/p99 0.419 0.229 2.492 steady -  (20 s)
+run quicksilver r5: mspt avg/p50/p99 0.42 0.264 2.67 steady -  (23 s)
+run quicksilver r6: mspt avg/p50/p99 0.429 0.251 2.858 steady -  (22 s)
+run vanilla r6: mspt avg/p50/p99 0.455 0.288 2.888 steady -  (21 s)
+run vanilla r7: mspt avg/p50/p99 0.444 0.275 2.915 steady -  (21 s)
+run quicksilver r7: mspt avg/p50/p99 0.434 0.257 3.075 steady -  (22 s)
+run quicksilver r8: mspt avg/p50/p99 0.474 0.281 3.319 steady -  (22 s)
+/tmp/sout/core-perf/run/quicksilver8/rec.jfr: 1606 server-thread samples while ticking
+run vanilla r8: mspt avg/p50/p99 0.464 0.302 2.982 steady -  (23 s)
+/tmp/sout/core-perf/run/vanilla8/rec.jfr: 1590 server-thread samples while ticking
+perf done
