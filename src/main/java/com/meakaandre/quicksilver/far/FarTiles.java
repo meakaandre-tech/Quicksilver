@@ -79,7 +79,7 @@ final class FarTiles implements Runnable {
     final ConcurrentHashMap<Long, RealChunk> real = new ConcurrentHashMap<>();
     private final Long2ObjectOpenHashMap<Tile> tiles = new Long2ObjectOpenHashMap<>();
     /**
-     * Package 12c: the tiles whose staged mesh is current (made at the spacing wanted, no real chunk waiting, with quads):
+     * Package 12c: the tiles whose staged mesh is current (with quads; a tile waiting for its remake after a real chunk came in keeps its place while its last mesh is drawn):
      * real sections past the hand-over band are left out only over these ({@code FarLayer.covers}). Any thread reads.
      */
     final java.util.Set<Long> current = ConcurrentHashMap.newKeySet();
@@ -518,7 +518,10 @@ final class FarTiles implements Runnable {
         if (t == null) return;
         boolean was = t.dirty;
         t.dirty = true;
-        current.remove(key(tx, tz));
+        // a staged tile keeps covering while it waits for its remake (its last mesh is still drawn): real sections past
+        // the band under it no longer pop in for the few frames each real chunk's arrival takes (CI: far_land's real
+        // edge drawn or not by when a chunk last came in)
+        if (!t.staged) current.remove(key(tx, tz));
         // (review) its edges get skirts at once while it waits for its capped remake, and its neighbours' toward it
         if (!was && t.staged) {
             stage(t);
