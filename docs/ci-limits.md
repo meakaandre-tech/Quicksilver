@@ -3,6 +3,43 @@
 Set in package 0, when Quicksilver draws nothing of its own: every difference between two runs is noise. Frozen when
 package 0 merges; from then on a limit is never raised and a baseline only goes down after a real improvement.
 
+## Package 12c: far terrain, round two (2026-11-28, branch `package-12c`)
+
+With far terrain off, every existing shot, count and gate is unchanged (pixel art's fog tones only apply while far terrain
+draws). New and changed, all in `ci/far-compare.py` and `ci/far-limits.json`:
+
+- **References:** every far shot of the core and far suites from full run 46123595090 (far terrain's look changed: water
+  in its biome's colour, snow and ice, relief, stone cliffs, haze, tree shapes, structures; the off views kept theirs).
+  Core: `lights.far*` from the old-GPU run (full, old-GPU, two-phase) and the Vulkan run's own (`.vulkan.png`).
+- **Limits** by the rule (twice the largest sample, at least 0.001%, rounded up to 0.0005%) from the reference run
+  (0 there), full run 46129755154 and full run 46135147414 (samples per shot in that run's `compare/far.md`). The third run rose 19 limits, most in fresh worlds: the cliff view 8.9 to 11.0% (its off view 3.8 to 7.9%), the shore 5.2 to 7.5% (off 0.3 to 2.0%), Amplified 4.7 to 5.5%, the flight's views after flying and after the teleport 0.7 to 5.8% and 3.8 to 12.3%, the vanilla server's seen views 21 to 23.6%, rain and thunder within 1%. Far terrain in those views is made tile by tile while the shot waits, so which tiles are at their finest spacing when the shot is taken varies too; the seam, checkerboard and flight checks hold those views to their own rules. Large Biomes' far view 0.001 to **0.037%**: full run 46139927177 caught a mob in the near ocean (inside the render distance; 0.0184%), vanilla-only noise, re-collected by the rule. Fresh worlds
+  (Terralith, Amplified, the flight's, the vanilla server's) place their features in a varying order, so their off views
+  and views of real land differ from run to run (up to 4-11%); rain and thunder shots hold the weather's own streaks
+  (22-29%, limits 44-59%: they check little beyond that the shot was taken; the checkerboard and seam checks look at those
+  views more closely).
+- **Seam with cliffs** (`far_cliff`, `far_amplified`): against the same view at render distance 12 with far terrain off
+  (`_truth`): per screen column the far shot's step across the band's edges may exceed the truth's at the same rows by at
+  most 2x the picture's own change + 4, and at most 0.5% of the band's strip may be gaps (the fog's colour where the truth
+  shows land). 12b's rule (2x own + 4 against no step) stays for views without a truth shot.
+- **Flight** (`far-flight`): no frame over a second more than 3 times while flying; no wanted tile missing within 160
+  blocks; far samples, vertices, arenas, real chunks held and direct buffers at most 1.3x the first status lines after
+  warm-up plus a margin (2 MB, 2 MB, 16 MB, 4000 chunks, 64 MB), the heap's lowest reading in the flight's second half at most 1.5x + 256 MB of the warm-up's lowest (the heap saws between GCs, 300-950 MB in one flight, so the medians of three readings 12c first used read 438 to 941 MB in run 46145552939's second attempt while the lowest readings were 386 and 514 MB and the heap fell back to 304 MB right after; a leak raises the floor), the disk
+  cache under its cap; the teleport, the nether and back settle (after the teleport reaches the client); the relog
+  settles in at most half the first visit's time with columns from the disk cache in its own status line.
+- **Seen chunks** (`far-default`, `far-vanilla`): the second session's view against the first's at most 0.001% and 0.24%
+  (samples 0.0 and 0.08-0.12%), with seen chunks read from disk.
+- **Pixel art over far terrain:** in the pale, flat parts of the far view (a 9-pixel neighbourhood's spread under 3,
+  brighter than 140; in rain 90), the share of checkerboard art pixels with the fog tones at most half of it without
+  (`ci.pixel-old-fog`), or at most 0.5%. Measured 0.48% against 24.8% (clear) and 0.0% against 7.5-11.8% (rain).
+- **Vulkan's pixel art island** (`spawn.pixel_island.vulkan`, a per-profile key compare.py now reads): re-collected by the
+  rule from 0.0029 and 0.002 (this package's full runs) and 0.0049 (release prep): **0.01%**, below one missing flower
+  (0.011%). The other profiles keep 0.004%.
+- **Speed gate** (`ci/speed-gates.json`): far terrain at spawn on the old-GPU profile at most **1.22** at 96 and at 128
+  chunks (was 1.35 at 96): measured 1.157-1.166 and 1.138-1.163 in three runs, plus the runner's noise (1.246 once).
+- **Probes:** the nether's floor regex allows the probe's new biome suffix; Amplified, Large Biomes and Nullscape's
+  overworld sample their generator at 900 0; Nullscape's End at 1500 0 must name a `nullscape:` biome.
+- **Pack lock:** set `nullscape` (Fabric API, Lithostitched 2.0.6, Nullscape 2.0.1 by its Fabric jar's own file).
+
 ## Package 12b: the Terralith hole, seed sharing, the perf flake (2026-11-27, branch `package-12`)
 
 - **Terralith view** (`scenes/far.json`, `far_land`): same place (230 high over Terralith's ocean, render distance 8),

@@ -37,8 +37,11 @@ APPLIED_MIN_PCT = 2.0
 SEAM_FACTOR = 2.0
 SEAM_FLOOR = 4.0
 # shots that must show far terrain (the same view with it off is <scene>.<shot>_off where taken, else <scene>.far_off)
-APPLIED = {"core/lights.far", "core/lights.far_real", "core/lights.far_end", "far/far_land.far", "far/far_nether.far", "far/far_flat.far_seen"}
-NETHER_FLOOR = r"sampled from the generator, top ([0-9]|[1-9][0-9]|1[01][0-9]|12[0-2])$"
+APPLIED = {"core/lights.far", "core/lights.far_real", "core/lights.far_end", "far/far_land.far", "far/far_nether.far", "far/far_flat.far_seen",
+           # package 12c
+           "far/far_cliff.far", "far/far_views.snow", "far/far_views.forest", "far/far_views.shore", "far/far_amplified.far",
+           "far/far_largebiomes.far", "far/far_nullscape.far", "far/far_end.far"}
+NETHER_FLOOR = r"sampled from the generator, top ([0-9]|[1-9][0-9]|1[01][0-9]|12[0-2])(, biome .*)?$"
 # probes: (suite/scene, x, z, which line of that probe, regex the line must match)
 PROBES = [
     ("core/lights", 800, -27, 0, r"sampled from the generator"),
@@ -49,16 +52,39 @@ PROBES = [
     ("far/far_nether", 300, 0, 0, NETHER_FLOOR),
     ("far/far_flat", 600, 0, 0, r"nothing \(no real chunk there, and no generator\)"),
     ("far/far_flat", 400, 0, -1, r"real chunk data: real"),
+    # package 12c: the other worlds sample their own generators; the Nullscape pack's End biomes reach far terrain
+    ("far/far_amplified", 900, 0, 0, r"sampled from the generator"),
+    ("far/far_largebiomes", 900, 0, 0, r"sampled from the generator"),
+    ("far/far_nullscape", 900, 0, 0, r"sampled from the generator"),
+    ("far/far_end", 1500, 0, 0, r"sampled from the generator, top \d+, biome nullscape:"),
+    # the seen chunks: the land seen in the first session is real chunk data in the second at once (the disk cache)
+    ("far/far_seen1_vanilla", 400, 0, -1, r"real chunk data: real"),
+    ("far/far_seen2_vanilla", 400, 0, -1, r"real chunk data: real"),
+    ("far/far_seen1_default", 400, 0, -1, r"real chunk data: real"),
+    ("far/far_seen2_default", 400, 0, -1, r"real chunk data: real"),
 ]
 # the runs that play far steps, by suite
-RUNS = {"core": ["quicksilver-full", "quicksilver-old", "quicksilver-vk", "quicksilver-2p-old"], "far": ["far-terralith", "far-flat", "far-default"]}
+RUNS = {"core": ["quicksilver-full", "quicksilver-old", "quicksilver-vk", "quicksilver-2p-old"],
+        "far": ["far-terralith", "far-flat", "far-default", "far-vanilla", "far-amplified", "far-largebiomes", "far-nullscape", "far-flight"]}
 # package 12b: far suite runs whose server keeps the default config (no far-terrain-share line): it must send no seed
 DEFAULT_SERVER_RUNS = {"far-default"}
-# which far suite run plays which scene
-SCENE_RUN = {"far_land": "far-terralith", "far_nether": "far-terralith", "far_flat": "far-flat"}
+# package 12c: runs whose server doesn't send its generator (far-vanilla's runs no Quicksilver at all)
+NO_SHARE_RUNS = {"far-default", "far-vanilla"}
+# which far suite run plays which scene: every run not in the scene's "ciSkipRuns" (package 12c)
 # lines the client logs when far terrain starts, per suite/scene (the source it used)
-SOURCES = {"core/lights": "from the dimension's own generator", "far/far_land": "from the dimension's own generator", "far/far_nether": "from the dimension's own generator",
-           "far/far_flat": "from real chunks only (the generator isn't noise-based)"}
+GEN = "from the dimension's own generator"
+SOURCES = {"core/lights": GEN, "far/far_land": GEN, "far/far_nether": GEN, "far/far_flat": "from real chunks only (the generator isn't noise-based)",
+           "far/far_cliff": GEN, "far/far_views": GEN, "far/far_amplified": GEN, "far/far_largebiomes": GEN, "far/far_nullscape": GEN, "far/far_end": GEN,
+           "far/far_flight": GEN, "far/far_relog": GEN,
+           "far/far_seen1_vanilla": "from real chunks only (the server doesn't run Quicksilver)",
+           "far/far_seen2_vanilla": "from real chunks only (the server doesn't run Quicksilver)",
+           "far/far_seen1_default": "from real chunks only (this server doesn't share its world seed)",
+           "far/far_seen2_default": "from real chunks only (this server doesn't share its world seed)"}
+# package 12c: the cliff seam against real terrain at a larger render distance (<shot>_truth): per screen column the step
+# across the band's edges in the far shot may exceed the truth's step at the same rows by at most SEAM_FACTOR x the
+# picture's own change + SEAM_FLOOR; and gaps (far shot pixels of the fog's colour where the truth shows land) in the strip
+# around the band at most GAP_MAX_PCT of that strip
+GAP_MAX_PCT = 0.5
 
 
 def load(path):
@@ -111,6 +137,167 @@ def seam(shot, mark):
     return {"columns": cols, "step": round(float(np.mean(steps)), 2), "own": round(float(np.mean(own)), 2)}
 
 
+def seam_truth(shot, mark, truth, off):
+    """Package 12c: the cliff seam judged against the truth view (real terrain across the band) and the gaps."""
+    if shot is None or mark is None or truth is None or off is None or shot.shape != mark.shape or truth.shape != shot.shape or off.shape != shot.shape:
+        return None
+    band = (mark[:, :, 0] > 230) & (mark[:, :, 1] < 30) & (mark[:, :, 2] > 230)
+    lum = lambda im: im[:, :, 0] * 0.299 + im[:, :, 1] * 0.587 + im[:, :, 2] * 0.114
+    ls, lt = lum(shot), lum(truth)
+    h = shot.shape[0]
+    excess, own, cols = [], [], 0
+    strip = np.zeros(band.shape, dtype=bool)
+    tops = []
+    for x in range(shot.shape[1]):
+        rows = np.nonzero(band[:, x])[0]
+        if len(rows) < 2:
+            continue
+        top, bottom = rows.min(), rows.max()
+        if top - 10 < 0 or bottom + 10 >= h:
+            continue
+        tops.append(top)
+        strip[max(0, top - 12):min(h, bottom + 13), x] = True
+        s_far = abs(ls[top - 3:top, x].mean() - ls[bottom + 1:bottom + 4, x].mean())
+        s_true = abs(lt[top - 3:top, x].mean() - lt[bottom + 1:bottom + 4, x].mean())
+        excess.append(max(0.0, s_far - s_true))
+        own.append((abs(ls[top - 9:top - 6, x].mean() - ls[top - 3:top, x].mean()) + abs(ls[bottom + 1:bottom + 4, x].mean() - ls[bottom + 7:bottom + 10, x].mean())) / 2)
+        cols += 1
+    if cols < 20:
+        return {"columns": cols}
+    # the fog's colour: the off view (render distance 8) beyond the band, well above it on screen
+    above = int(max(0, min(tops) - 20))
+    fog = np.median(off[:max(1, above)].reshape(-1, 3), axis=0) if above > 0 else None
+    gaps = None
+    if fog is not None:
+        near_fog = np.abs(shot - fog).max(axis=2) <= 10
+        truth_land = np.abs(truth - fog).max(axis=2) > 30
+        n = int(strip.sum())
+        gaps = round(float((near_fog & truth_land & strip).sum() / max(1, n) * 100), 4)
+    return {"columns": cols, "excess": round(float(np.mean(excess)), 2), "own": round(float(np.mean(own)), 2), "gaps": gaps}
+
+
+# package 12c: shots taken for a check only (no stored reference)
+CHECK_ONLY = {"far/far_land.pixel_old", "far/far_land.pixel_rain_old"}
+CHECKER_MAX_SHARE = 0.5
+
+
+def checker_share(img, flat_from, step=3, pale=140):
+    """Package 12c: the share of checkerboard pixels of a pixel art shot (its art pixels sampled at their centres, 3 window
+    pixels a side), counted in the pale, flat areas of the same view without pixel art (fog, haze, sky): a pixel whose right
+    and lower neighbours both differ from it by over 12 and whose diagonal neighbour matches it (within 6)."""
+    if img is None or flat_from is None or img.shape != flat_from.shape:
+        return None, 0
+    lum = lambda im: im[:, :, 0] * 0.299 + im[:, :, 1] * 0.587 + im[:, :, 2] * 0.114
+    a = lum(img)[1::step, 1::step]
+    f = lum(flat_from)
+    # flat and pale in the plain view: a 9-pixel neighbourhood's spread under 3, brighter than 140
+    h, w = f.shape
+    flat = np.zeros_like(f, dtype=bool)
+    from numpy.lib.stride_tricks import sliding_window_view
+    win = sliding_window_view(f, (9, 9))
+    spread = win.max(axis=(2, 3)) - win.min(axis=(2, 3))
+    flat[4:h - 4, 4:w - 4] = (spread < 3) & (f[4:h - 4, 4:w - 4] > pale)
+    m = flat[1::step, 1::step]
+    hh, ww = a.shape
+    a0, ar, ad, ag = a[:hh - 1, :ww - 1], a[:hh - 1, 1:], a[1:, :ww - 1], a[1:, 1:]
+    chk = (np.abs(a0 - ar) > 12) & (np.abs(a0 - ad) > 12) & (np.abs(a0 - ag) <= 6)
+    mm = m[:hh - 1, :ww - 1]
+    n = int(mm.sum())
+    return (round(float((chk & mm).sum() / n * 100), 3) if n else None), n
+
+
+def status_lines(log):
+    """Package 12c: far terrain's status lines' memory part, parsed (CI's flight)."""
+    out = []
+    # the logged status lines only (the chat echoes each one)
+    log = "\n".join(l for l in log.splitlines() if "Quicksilver far terrain status:" in l)
+    for m in re.finditer(r"memory: heap used (\d+) MB, direct (\d+|\?) MB, far samples (\d+) KB, far vertices (\d+) KB, far arenas (\d+) KB, disk cache (-?\d+) KB; frames (\d+), slowest (\d+) ms, (\d+) over 1 s; nearest missing tile (-?\d+) blocks; real chunks (\d+)", log):
+        g = m.groups()
+        out.append({"heap": int(g[0]), "direct": -1 if g[1] == "?" else int(g[1]), "samples": int(g[2]), "vertices": int(g[3]), "arenas": int(g[4]),
+                    "cache": int(g[5]), "frames": int(g[6]), "slowest": int(g[7]), "slow": int(g[8]), "missing": int(g[9]), "real": int(g[10])})
+    return out
+
+
+def flight_checks(d, log, drives, lines, failures):
+    """Package 12c: the 10-minute flight: memory flat (far terrain's own, the real chunks held, the heap and direct
+    buffers), no stall, tiles made ahead (none missing near); the teleport and the nether settle; underground nothing drawn;
+    the relog settles fast from the disk cache."""
+    sts = status_lines(log)
+    entry = next((e for e in drives if e.get("scene") == "far_flight"), None)
+    if entry is None or len(sts) < 10:
+        failures.append(f"far/far-flight: too few status lines ({len(sts)}) for the flight checks")
+        return
+    # the flight's lines: the status lines between the first and the one after the flight (11 or so); warm-up: the first 2
+    fly = sts[1:12]
+    warm, rest = fly[:3], fly[3:]
+    def grow(k, slack):
+        a, b = max(x[k] for x in warm), max(x[k] for x in rest[-3:])
+        return a, b, b <= a * 1.3 + slack
+    for k, slack, label in (("samples", 2048, "far samples KB"), ("vertices", 2048, "far vertices KB"), ("arenas", 16384, "far arenas KB"),
+                            ("real", 4000, "real chunks held"), ("direct", 64, "direct buffers MB")):
+        a, b, ok = grow(k, slack)
+        lines.append(f"| far-flight | flight memory: {label} | first {a}, last {b} (at most 1.3 x + {slack}) | | | {'ok' if ok else '**FAIL**'} |")
+        if not ok:
+            failures.append(f"far/far-flight: {label} grew during the flight: {a} to {b}")
+    # the heap saws between GCs (300-950 MB in one flight), so a median of three readings follows where the saw was;
+    # a leak raises the floor: the lowest reading of the flight's second half against the warm-up's lowest
+    ha = min(x["heap"] for x in warm)
+    second = rest[len(rest) // 2:]
+    hb = min(x["heap"] for x in second)
+    peak = max(x["heap"] for x in fly)
+    ok = hb <= ha * 1.5 + 256
+    lines.append(f"| far-flight | flight memory: heap used MB (lowest reading, after GC) | warm-up {ha}, second half {hb}, peak {peak} (at most 1.5 x + 256) | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append(f"far/far-flight: the heap's floor grew during the flight: {ha} to {hb} MB")
+    caches = [x["cache"] for x in fly if x["cache"] >= 0]
+    ok = not caches or max(caches) <= 256 * 1024
+    lines.append(f"| far-flight | disk cache KB | {caches[:1]} to {caches[-1:]} (cap 262144) | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append(f"far/far-flight: the disk cache passed its cap: {max(caches)} KB")
+    slow = sum(x["slow"] for x in rest)
+    worst = max(x["slowest"] for x in rest)
+    ok = slow <= 3
+    lines.append(f"| far-flight | frames over 1 s while flying | {slow} (slowest {worst} ms; at most 3) | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append(f"far/far-flight: {slow} frames over a second while flying (stalls)")
+    miss = [x["missing"] for x in rest]
+    near = [m for m in miss if 0 <= m < 160]
+    ok = not near
+    lines.append(f"| far-flight | nearest tile not made while flying (blocks) | {miss} (never under 160) | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append(f"far/far-flight: tiles weren't made in time: a wanted tile only {min(near)} blocks away was missing")
+    # underground: not drawn (a status line saying so after the step that put the player in the ground)
+    ok = "underground: not drawn" in log
+    lines.append(f"| far-flight | underground (no sky light) | {'not drawn' if ok else 'drawn'} | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append("far/far-flight: far terrain didn't stand down underground")
+    # the relog: far terrain from the disk cache (columns from it) and settled at once
+    relog = next((e for e in drives if e.get("scene") == "far_relog"), None)
+    first = next((st for st in entry.get("farSteps", []) if st["step"].startswith("#far ") and st.get("settled")), None)
+    again = next((st for st in (relog or {}).get("farSteps", []) if st["step"].startswith("#far ") and st.get("settled")), None)
+    # the relog session's own status line: the last one in the log (review: the whole log's counted the flight's own reads)
+    cached = [int(c) for c in re.findall(r"disk cache columns (\d+)", "\n".join(l for l in log.splitlines() if "Quicksilver far terrain status:" in l))]
+    cached = cached[-1:]
+    ok = again is not None and first is not None and again["seconds"] <= first["seconds"] * 0.5 and cached and cached[0] > 0
+    lines.append(f"| far-flight | relog: settled in {again and again['seconds']} s (first visit {first and first['seconds']} s), disk cache columns {max(cached) if cached else 0} | | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append(f"far/far-flight: after the relog far terrain didn't come from the disk cache at once (settled in {again and again.get('seconds')} s, first {first and first.get('seconds')} s, cache columns {max(cached) if cached else 0})")
+
+
+def seen_checks(d, run, log, lines, failures, limits):
+    """Package 12c: a server that doesn't share its seed: the second session shows the land seen in the first at once."""
+    tag = "vanilla" if run == "far-vanilla" else "default"
+    a = load(os.path.join(d, "shots", f"far_seen1_{tag}.seen.png"))
+    b = load(os.path.join(d, "shots", f"far_seen2_{tag}.seen.png"))
+    v = pct(a, b)
+    lim = limits.get("far", {}).get(f"far_seen2_{tag}.vs_first", 0.001)
+    loaded = [int(c) for c in re.findall(r"seen chunks loaded (\d+)", log)]
+    ok = v is not None and v <= lim and loaded and max(loaded) > 0
+    lines.append(f"| far-{run[4:]} | seen chunks after a relog | second session's view {v}% from the first's (limit {lim}%), seen chunks loaded from disk {max(loaded) if loaded else 0} | | | {'ok' if ok else '**FAIL**'} |")
+    if not ok:
+        failures.append(f"far/{run}: after the relog the seen chunks didn't show at once ({v}% from the first session's view, {max(loaded) if loaded else 0} loaded from disk)")
+
+
 def main():
     res, rep = sys.argv[1], sys.argv[2]
     os.makedirs(rep, exist_ok=True)
@@ -138,7 +325,7 @@ def main():
                 drives.extend(json.load(open(f)))
             for sc in scenes:
                 sid = sc["id"]
-                if suite == "far" and SCENE_RUN.get(sid) != run:
+                if suite == "far" and run in sc.get("ciSkipRuns", []):
                     continue
                 entry = next((e for e in drives if e.get("scene") == sid), None)
                 if entry is None or entry.get("skipped"):
@@ -146,9 +333,19 @@ def main():
                     continue
                 found += 1
                 for st in entry.get("farSteps", []):
-                    if st["step"].startswith("#far ") and not st.get("settled"):
+                    if (st["step"].startswith("#far ") or st["step"].startswith("#settle")) and not st.get("settled"):
                         failures.append(f"{suite}/{run}/{sid}: far terrain didn't settle at '{st['step']}' ({st.get('seconds')} s)")
+                    # package 12c: settle times (a teleport, a dimension change, a relog) and the finds, for the report
+                    if st["step"].startswith(("#settle", "#far ")) and st.get("settled"):
+                        lines.append(f"| {suite}-{run} | {sid}: {st['step']} | settled in {st.get('seconds')} s | | | |")
+                    if st["step"].startswith("#find"):
+                        lines.append(f"| {suite}-{run} | {sid}: {st['step']} | {st.get('found')} | | | {'ok' if st.get('found') and not st['found'].startswith('none') else '**FAIL**'} |")
+                        if not st.get("found") or st["found"].startswith("none"):
+                            failures.append(f"{suite}/{run}/{sid}: '{st['step']}' found nothing")
                 want = SOURCES.get(f"{suite}/{sid}")
+                # package 12c: a server that doesn't send its generator gives real chunks only, whatever the world
+                if run in NO_SHARE_RUNS and want:
+                    want = "from real chunks only"
                 if want and want not in log:
                     failures.append(f"{suite}/{run}/{sid}: far terrain never started {want} (no such line in the client log)")
                 shots = [st[6:].strip() for st in sc["ciFarSteps"] if st.startswith("#shot ")]
@@ -166,12 +363,14 @@ def main():
                     limit = limits.get(suite, {}).get(shot_id)
                     vs = None
                     same_share = None
-                    if not os.path.exists(ref):
+                    if f"{suite}/{shot_id}" in CHECK_ONLY:
+                        pass
+                    elif not os.path.exists(ref):
                         os.makedirs(os.path.join(rep, "new-references", suite), exist_ok=True)
                         shutil.copy(got, os.path.join(rep, "new-references", suite, f"{shot_id}-{run}.png"))
                         failures.append(f"{suite}/{run}/{shot_id}: no stored reference (copied to new-references)")
                     else:
-                        if name.endswith("off"):
+                        if name.endswith("off") or name.endswith("_truth"):
                             # an off shot: the whole picture (the world's own variance; its limit by the rule)
                             vs = pct(a, load(ref))
                         else:
@@ -201,12 +400,33 @@ def main():
                         if applied is None or applied < APPLIED_MIN_PCT:
                             failures.append(f"{suite}/{run}/{shot_id}: differs from the view with far terrain off on only {applied}% of pixels (at least {APPLIED_MIN_PCT}%): far terrain didn't show")
                     sm = None
-                    if (name + "_mark") in shots:
+                    if (name + "_mark") in shots and (name + "_truth") not in shots:
                         sm = seam(a, load(os.path.join(d, "shots", f"{shot_id}_mark.png")))
                         if sm is None or sm.get("columns", 0) < 20:
                             failures.append(f"{suite}/{run}/{shot_id}: the hand-over band wasn't found in its marked shot ({sm})")
                         elif sm["step"] > SEAM_FACTOR * sm["own"] + SEAM_FLOOR:
                             failures.append(f"{suite}/{run}/{shot_id}: a line at the hand-over: step {sm['step']} against the picture's own change {sm['own']} (at most {SEAM_FACTOR} x + {SEAM_FLOOR})")
+                    # package 12c: a shot with a truth view (the cliff seam): its seam against the truth, and gaps
+                    if (name + "_truth") in shots and (name + "_mark") in shots:
+                        offn = f"{name}_off" if f"{name}_off" in shots else "far_off"
+                        st = seam_truth(a, load(os.path.join(d, "shots", f"{shot_id}_mark.png")), load(os.path.join(d, "shots", f"{shot_id}_truth.png")),
+                                        load(os.path.join(d, "shots", f"{sid}.{offn}.png")))
+                        ok = st is not None and st.get("columns", 0) >= 20 and st["excess"] <= SEAM_FACTOR * st["own"] + SEAM_FLOOR and (st.get("gaps") is not None and st["gaps"] <= GAP_MAX_PCT)
+                        lines.append(f"| {suite}-{run} | {shot_id}: seam against real terrain at render distance 12 | excess step {st and st.get('excess')} / own {st and st.get('own')} ({st and st.get('columns')} columns), gaps {st and st.get('gaps')}% of the band's strip (at most {GAP_MAX_PCT}%) | | | {'ok' if ok else '**FAIL**'} |")
+                        if not ok:
+                            failures.append(f"{suite}/{run}/{shot_id}: the cliff seam against real terrain: {st}")
+                        # the seam rule of 12b can't hold where a real cliff stands in the band: the truth rule replaces it
+                        sm = None
+                    if f"{suite}/{shot_id}" in ("far/far_land.pixel", "far/far_land.pixel_rain"):
+                        flat_src = load(os.path.join(d, "shots", f"{sid}.{'far' if name == 'pixel' else 'rain'}.png"))
+                        # (in rain the fog is greyer and darker: pale there is over 90)
+                        pale = 140 if name == "pixel" else 90
+                        new, n = checker_share(a, flat_src, pale=pale)
+                        old, _ = checker_share(load(os.path.join(d, "shots", f"{sid}.{name}_old.png")), flat_src, pale=pale)
+                        ok = new is not None and old is not None and n > 200 and (new <= old * CHECKER_MAX_SHARE or new <= 0.5)
+                        lines.append(f"| {suite}-{run} | {shot_id}: checkerboard in pale flat fog ({n} art pixels) | {new}% with the fog tones, {old}% without (at most {CHECKER_MAX_SHARE} x, or 0.5%) | | | {'ok' if ok else '**FAIL**'} |")
+                        if not ok:
+                            failures.append(f"{suite}/{run}/{shot_id}: pixel art's checkerboard in the fog didn't drop: {new}% against {old}% without the fog tones ({n} art pixels)")
                     seam_txt = f"{sm.get('step')} / {sm.get('own')} ({sm.get('columns')})" if sm else ""
                     lines.append(f"| {suite}-{run} | {shot_id} | {vs} ({limit}){'' if same_share is None else f', on {same_share}%'} | {applied if applied is not None else ''} | {seam_txt} | |")
                 for (key, x, z, which, rx) in PROBES:
@@ -221,6 +441,10 @@ def main():
                     lines.append(f"| {suite}-{run} | probe {x} {z} ({'first' if which == 0 else 'last'}) | {line} | | | {'ok' if ok else '**FAIL**'} |")
                     if not ok:
                         failures.append(f"{suite}/{run}/{sid}: probe {x} {z} ({'first' if which == 0 else 'last'}) said '{line}', expected /{rx}/")
+            if suite == "far" and run == "far-flight":
+                flight_checks(d, log, drives, lines, failures)
+            if suite == "far" and run in NO_SHARE_RUNS:
+                seen_checks(d, run, log, lines, failures, limits)
             if suite == "far":
                 st = os.path.join(d, "server.log")
                 st = open(st, errors="replace").read() if os.path.exists(st) else ""
@@ -251,6 +475,13 @@ def main():
                         failures.append(f"{suite}/{run}: a server with the default config sent its world seed and generator")
                     if not told:
                         failures.append(f"{suite}/{run}: the client never logged that the server didn't share its generator (real chunks only)")
+                elif run == "far-vanilla":
+                    # package 12c: a server without Quicksilver: the client can't ask; real chunks only, nothing sent
+                    clog = log
+                    ok = "the server doesn't run Quicksilver (it can't share its world seed); real chunks only" in clog
+                    lines.append(f"| {suite}-{run} | server without Quicksilver | client {'drew real chunks only' if ok else 'not as expected'} | | | {'ok' if ok else '**FAIL**'} |")
+                    if not ok:
+                        failures.append(f"{suite}/{run}: on a server without Quicksilver the client didn't log real chunks only")
                 elif "Quicksilver far terrain: sent the world's generator" not in st:
                     failures.append(f"{suite}/{run}: the server never sent its world generator (handshake)")
     if found == 0:

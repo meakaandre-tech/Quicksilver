@@ -23,6 +23,19 @@ v=[x for x in json.load(sys.stdin) if x['version_number']=='${p#*@}']
 f=v and next((x for x in v[0]['files'] if x.get('primary')), v[0]['files'][0])
 print(f['url'] if f else '')")
       [ -n "$url" ] || { echo "pack: no Modrinth version ${p#*@} of ${p%%@*}"; bad=1; continue; };;
+    modrinth-latest:*)
+      # package 12c: the newest Modrinth version of a project for a game version and loader (for a jar not pinned yet:
+      # the run records its version and hash; the next commit pins it as modrinth:PROJECT@VERSION and locks it)
+      p=${src#modrinth-latest:}; proj=${p%%@*}; rest=${p#*@}; gv=${rest%%@*}; ld=${rest#*@}
+      got=$(curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "https://api.modrinth.com/v2/project/$proj/version" | python3 -c "
+import json,sys
+v=[x for x in json.load(sys.stdin) if '$gv' in x.get('game_versions',[]) and '$ld' in x.get('loaders',[])]
+v.sort(key=lambda x: x.get('date_published',''), reverse=True)
+f=v and next((x for x in v[0]['files'] if x.get('primary')), v[0]['files'][0])
+print((f['url'] + ' ' + v[0]['version_number']) if f else '')")
+      url=${got%% *}
+      [ -n "$url" ] || { echo "pack: no Modrinth version of $proj for $gv ($ld)"; bad=1; continue; }
+      echo "pack: $key is $proj version ${got#* } (newest for $gv, $ld)";;
     *) echo "pack: unknown source '$src' for $key"; bad=1; continue;;
   esac
   if fetch "$dir/$name" "$url"; then echo "pack: $key <- $url"; else echo "pack: could not fetch $key from $url"; bad=1; fi

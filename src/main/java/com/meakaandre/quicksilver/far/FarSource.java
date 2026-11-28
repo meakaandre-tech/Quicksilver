@@ -40,6 +40,26 @@ final class FarSource {
     record Column(int top, int fluidTop, BlockState block, BlockState fluid, Holder<Biome> biome) {
     }
 
+    /**
+     * Package 12c: the dimension's sea level (the generator's own), and whether its cold places get snow and ice the way
+     * vanilla's freeze step puts them (no ceiling, a sky): vanilla puts snow on the ground and ice on still water after
+     * the surface rules, wherever the biome is cold enough at that height; the sampled column does the same.
+     */
+    final int seaLevel;
+    private final boolean freezes;
+    private static final BlockState SNOW = Blocks.SNOW_BLOCK.defaultBlockState(), ICE = Blocks.ICE.defaultBlockState();
+    /** Package 12c: the biomes of this generator's world (the disk cache names them). */
+    private final net.minecraft.core.HolderGetter<Biome> biomeLookup;
+
+    /** Package 12c: the generator's default block (stone in the overworld): far cliffs are drawn in it. */
+    BlockState rock() {
+        return defaultBlock;
+    }
+
+    net.minecraft.core.HolderGetter<Biome> biomeLookup() {
+        return biomeLookup;
+    }
+
     static final int NONE = Integer.MIN_VALUE;
 
     final ChunkGenerator generator;
@@ -78,13 +98,17 @@ final class FarSource {
     }
 
     /** The source for a noise-based generator, or null for any other. */
-    static FarSource of(ChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access) {
+    static FarSource of(ChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access, long seed) {
         // NoiseBasedChunkGenerator is final: no mod's generator can pass as it
         if (!(generator instanceof NoiseBasedChunkGenerator n)) return null;
-        return new FarSource(n, random, height, ceiling, logicalHeight, access);
+        return new FarSource(n, random, height, ceiling, logicalHeight, access, seed);
     }
 
-    private FarSource(NoiseBasedChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access) {
+    /** Package 12c: the world's big structures from the seed (villages, mansions, ocean monuments), or null under a ceiling. */
+    final FarStructures structures;
+
+    private FarSource(NoiseBasedChunkGenerator generator, RandomState random, LevelHeightAccessor height, boolean ceiling, int logicalHeight, RegistryAccess access,
+                      long seed) {
         this.generator = generator;
         this.noise = generator;
         this.random = random;
@@ -102,10 +126,24 @@ final class FarSource {
         this.context = new WorldGenerationContext(generator, height);
         this.samplers = random.samplersWithContext(SamplerContext.EMPTY_UNCACHED);
         this.scratch = new Scratch(height, PalettedContainerFactory.create(access));
+        this.seaLevel = generator.getSeaLevel();
+        this.biomeLookup = access.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME);
+        this.structures = ceiling ? null : new FarStructures(access, seed, this);
+        this.freezes = !ceiling;
     }
 
     Holder<Biome> biome(int x, int y, int z) {
         return biomes.getNoiseBiome(x >> 2, y >> 2, z >> 2);
+    }
+
+    /** Package 12c: whether vanilla's freeze step would put snow at (x, y, z) in that biome (tree crowns in cold places). */
+    boolean snowAt(Holder<Biome> b, int x, int y, int z) {
+        if (!freezes || com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on()) return false;
+        try {
+            return b.value().coldEnoughToSnow(new BlockPos(x, y, z), seaLevel);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /** A column's heights: the solid top (the y above the top solid block), the fluid's top or {@link #NONE}, the fluid. */
@@ -159,6 +197,20 @@ final class FarSource {
             top = defaultBlock;
         }
         if (top.isAir()) top = defaultBlock;
-        return new Column(solidTop, h.fluidTop(), top, h.fluid(), b);
+        BlockState fluid = h.fluid();
+        // package 12c: vanilla's freeze step: ice on still water and snow on the ground where the biome is cold enough
+        // there (its temperature falls with height, so high mountains get snow caps in temperate biomes too)
+        if (freezes && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on()) {
+            try {
+                if (h.fluidTop() != NONE) {
+                    if (fluid.getFluidState().is(net.minecraft.tags.FluidTags.WATER) && b.value().coldEnoughToSnow(new BlockPos(x, h.fluidTop() - 1, z), seaLevel)) fluid = ICE;
+                } else if (top.getFluidState().isEmpty() && b.value().coldEnoughToSnow(new BlockPos(x, solidTop, z), seaLevel)) {
+                    top = SNOW;
+                }
+            } catch (RuntimeException e) {
+                // a biome that can't answer keeps its blocks
+            }
+        }
+        return new Column(solidTop, h.fluidTop(), top, fluid, b);
     }
 }

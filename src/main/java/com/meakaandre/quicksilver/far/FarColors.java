@@ -52,6 +52,18 @@ final class FarColors {
     /** The block's colour (0xRRGGBB) at (x, z) in that biome, tint included. */
     static int color(BlockState state, Holder<Biome> biome, int x, int y, int z) {
         Base b = BASE.computeIfAbsent(state, FarColors::base);
+        // package 12c: water takes its biome's water colour (12b drew it untinted, a pale grey: water has no block tint
+        // source; the game tints it through its fluid model)
+        if (state.getBlock() instanceof net.minecraft.world.level.block.LiquidBlock && state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
+            && !com.meakaandre.quicksilver.speed.Speed.CI_FAR_OLD_LOOK.on()) {
+            int w = 0x3F76E4;
+            try {
+                if (biome != null) w = biome.value().getWaterColor() & 0xFFFFFF;
+            } catch (Throwable t) {
+                // the default ocean's colour
+            }
+            return multiply(b.rgb, w);
+        }
         if (b.tintIndex < 0) return b.rgb;
         int tint = tint(state, b.tintIndex, biome, x, y, z);
         if (tint == -1) return b.rgb;

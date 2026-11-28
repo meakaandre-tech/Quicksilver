@@ -43,7 +43,9 @@ public final class SettingsScreen extends OptionsSubScreen {
         TEXT.put(Speed.PIXEL_SIZE.key, new String[] {"Pixel size", "How big pixel art's pixels are: Small, Medium or Large (the same at any window size). Changes the look."});
         TEXT.put(Speed.PIXEL_DITHER.key, new String[] {"Dithering", "Pixel art: in-between shades drawn as a fixed pattern of two palette colours. Changes the look."});
         TEXT.put(Speed.PIXEL_OUTLINES.key, new String[] {"Outlines", "Pixel art: a dark one-pixel line on exposed block edges (none between blocks that join). Changes the look."});
-        TEXT.put(Speed.FAR_TERRAIN.key, new String[] {"Far terrain", "Shows the land beyond your render distance out to this many chunks, worked out from the world's own generator (hills, biomes, ground blocks and trees; no buildings). Real chunks replace it once you have been there. Singleplayer, or a server that also runs Quicksilver. Off: none. Changes the look."});
+        TEXT.put(Speed.FAR_TERRAIN.key, new String[] {"Far terrain", "Shows the land beyond your render distance out to this many chunks, worked out from the world's own generator (hills, biomes, ground blocks, trees and the outlines of big structures). Real chunks replace it once you have been there. Singleplayer, or a server that shares its seed; on other servers, the land you have seen there. 192 and 256 are for strong GPUs. Off: none. Changes the look."});
+        TEXT.put(Speed.FAR_CACHE.key, new String[] {"Far cache", "Keeps far terrain's sampled land on disk for each world (at most 256 MB), so it shows at once next time. Emptied when the world's seed, its generator or Quicksilver's version changes. Doesn't change the look."});
+        TEXT.put(Speed.FAR_SEEN.key, new String[] {"Seen chunks", "Remembers the chunks you have seen on each server and world (on your computer only; nothing is sent), so far terrain can show them on servers that don't share their seed. Changes the look."});
         TEXT.put(Speed.FOG_SECTIONS.key, new String[] {"Fog culling", "Skips terrain that is wholly hidden in the distance fog. Doesn't change the look."});
         TEXT.put(Speed.TRANSLUCENT_REGIONS.key, new String[] {"Fewer glass draws", "Draws water, glass and ice in fewer batches on Intel and older GPUs. Doesn't change the look."});
         TEXT.put("block-renderer", new String[] {"Block renderer", "Quicksilver's block and item renderer; off uses vanilla's. Doesn't change the look. Needs a restart."});
@@ -119,10 +121,13 @@ public final class SettingsScreen extends OptionsSubScreen {
         for (Speed.Setting s : LOOK_ROW) look.add(speedButton(s, locked));
         addRows(look);
 
-        // package 12: far terrain (off in Low-end and Balanced, 96 chunks in Quality)
+        // package 12: far terrain (off in Low-end and Balanced, 128 chunks in Quality since package 12c)
         this.list.addHeader(Component.literal("Far terrain"));
         List<AbstractWidget> far = new ArrayList<>();
         far.add(speedButton(Speed.FAR_TERRAIN, locked));
+        // package 12c: its disk caches (on by default, in no preset)
+        far.add(speedButton(Speed.FAR_CACHE, locked));
+        far.add(speedButton(Speed.FAR_SEEN, locked));
         addRows(far);
 
         // package 13: lighting (dynamic lights; off in every preset)
@@ -133,7 +138,7 @@ public final class SettingsScreen extends OptionsSubScreen {
 
         this.list.addHeader(Component.literal("Speed options (change the look)"));
         row = new ArrayList<>();
-        for (Speed.Setting s : Speed.all().values()) if (!s.approximation && s != Speed.DYNAMIC_LIGHTS && s != Speed.FAR_TERRAIN && !LOOK_ROW.contains(s)) row.add(speedButton(s, locked));
+        for (Speed.Setting s : Speed.all().values()) if (!s.approximation && s != Speed.DYNAMIC_LIGHTS && s != Speed.FAR_TERRAIN && s != Speed.FAR_CACHE && s != Speed.FAR_SEEN && !LOOK_ROW.contains(s)) row.add(speedButton(s, locked));
         addRows(row);
 
         this.list.addHeader(Component.literal("Shortcuts you can't see"));

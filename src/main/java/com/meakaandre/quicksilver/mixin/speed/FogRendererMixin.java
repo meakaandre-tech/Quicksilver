@@ -30,5 +30,7 @@ public abstract class FogRendererMixin {
     private void quicksilver$fog(FogData data, CallbackInfo ci) {
         SpeedTerrain.fogWritten(fogEnabled, data.renderDistanceStart, data.renderDistanceEnd, data.environmentalStart, data.environmentalEnd,
             data.color == null ? Float.NaN : data.color.w());
+        // package 12c: its colour too (pixel art's fog tones)
+        if (data.color != null) SpeedTerrain.fogColour(data.color.x(), data.color.y(), data.color.z());
     }
 }

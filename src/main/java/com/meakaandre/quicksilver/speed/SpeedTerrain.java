@@ -52,6 +52,19 @@ public final class SpeedTerrain {
      * The fog hook (render thread, at the end of {@code FogRenderer.updateBuffer}, so after any mod that changes the fog
      * data on its way in): fog switched on (vanilla's debug toggle), both fogs' start and end, the fog colour's alpha.
      */
+    /** Package 12c: the fog's colour vanilla wrote last (0..1 each), or null before it did. */
+    private static volatile float[] fogColour;
+
+    public static void fogColour(float r, float g, float b) {
+        if (!(Float.isFinite(r) && Float.isFinite(g) && Float.isFinite(b))) return;
+        float[] f = fogColour;
+        if (f == null || f[0] != r || f[1] != g || f[2] != b) fogColour = new float[] {r, g, b};
+    }
+
+    public static float[] fogColour() {
+        return fogColour;
+    }
+
     public static void fogWritten(boolean enabled, float renderDistanceStart, float renderDistanceEnd, float environmentalStart,
                                   float environmentalEnd, float alpha) {
         // CI's check of the switch-off: as if the hook had never run (the real "didn't run" path is what it tests)

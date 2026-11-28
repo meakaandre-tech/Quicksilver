@@ -118,6 +118,51 @@ public final class FarLayer {
     /** Bench: tiles left out as off screen in the last frame. */
     private static int lastOffScreen;
 
+    // ---- package 12c: real sections past the band left out where far terrain covers them
+
+    /** The session's tiles whose staged mesh is current (FarTiles.current; FarTerrain.frame sets it), or null. */
+    private static volatile java.util.Set<Long> currentTiles;
+    private static int coveredThisFrame, lastCovered;
+
+    public static void currentTiles(java.util.Set<Long> s) {
+        currentTiles = s;
+    }
+
+    /**
+     * The horizontal distance from the camera (blocks) past which a real section may be left out because far terrain is
+     * drawn in front of real terrain there (beyond the hand-over band's end), or 0 this frame (far terrain off, under a
+     * ceiling, failed, or CI's A/B without it). The section's own tile must be covered too ({@link #covers}).
+     */
+    public static double coverFrom() {
+        // the counter of the frame before
+        lastCovered = coveredThisFrame;
+        coveredThisFrame = 0;
+        if (!on || behindOnly || failed != null || currentTiles == null || PARTS.isEmpty() || mark
+            || com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_COVER.on()) return 0;
+        // only where the ground is a height field: not in a dimension without sky light (the End's floating islands,
+        // whose sides and undersides far terrain can't show; review)
+        var level = net.minecraft.client.Minecraft.getInstance().level;
+        if (level == null || !level.dimensionType().hasSkyLight()) return 0;
+        return handEnd;
+    }
+
+    /** Whether the far tile holding the block column (x, z) is current and in the arenas (render thread). */
+    public static boolean covers(int x, int z) {
+        long key = (long) Math.floorDiv(x, 128) << 32 | (Math.floorDiv(z, 128) & 0xFFFFFFFFL);
+        java.util.Set<Long> cur = currentTiles;
+        return cur != null && PARTS.containsKey(key) && cur.contains(key);
+    }
+
+    /** A real section left out under far terrain this frame (bench). */
+    public static void coveredSection() {
+        coveredThisFrame++;
+    }
+
+    /** Bench: real sections left out under far terrain in the last frame. */
+    public static int lastCovered() {
+        return lastCovered;
+    }
+
     /** This frame's dimension has a ceiling: far terrain never in front of real terrain (FarTerrain.frame sets it). */
     private static boolean behindOnly;
 
@@ -538,6 +583,7 @@ public final class FarLayer {
         Map<TerrainStore.Arena, List<TerrainStore.FarPart>> byArenaBeyond = new IdentityHashMap<>();
         int offScreen = 0, inside = 0;
         boolean test = viewSet;
+        NEAR.clear();
         for (Long2ObjectMap.Entry<TerrainStore.FarPart> en : PARTS.long2ObjectEntrySet()) {
             TerrainStore.FarPart p = en.getValue();
             if (p.arena().closed) continue;
@@ -571,6 +617,10 @@ public final class FarLayer {
                 beyond = Math.sqrt(nx * nx + nz * nz) - 1 >= handEnd;
             }
             (beyond ? byArenaBeyond : byArena).computeIfAbsent(p.arena(), k -> new ArrayList<>()).add(p);
+            if (b != null) {
+                double nx = Math.max(Math.max(b.minX() - camX, camX - b.maxX()), 0), nz = Math.max(Math.max(b.minZ() - camZ, camZ - b.maxZ()), 0);
+                NEAR.put(p, nx * nx + nz * nz);
+            }
             maxQuads = Math.max(maxQuads, p.vertices() / 4);
         }
         lastOffScreen = offScreen;
@@ -600,11 +650,23 @@ public final class FarLayer {
         GpuBuffer indexBuffer = quads.getBuffer();
         boolean separate = RenderSystem.getDevice().getDeviceInfo().features().multiDrawDirectSeparate();
         // nearest first: the band's tiles, then those beyond (hidden pixels of the latter are rejected before shading)
+        // package 12c: each list nearest first, so nearer tiles' depth hides farther pixels before they are shaded
+        if (!com.meakaandre.quicksilver.speed.Speed.CI_FAR_NO_SORT.on()) {
+            for (List<TerrainStore.FarPart> l : byArena.values()) sortNearFirst(l);
+            for (List<TerrainStore.FarPart> l : byArenaBeyond.values()) sortNearFirst(l);
+        }
         if (!byArena.isEmpty()) drawLists(pass, pipeline, indexBuffer, quads, separate, byArena);
         if (!byArenaBeyond.isEmpty()) drawLists(pass, simple, indexBuffer, quads, separate, byArenaBeyond);
         lastBeyond = 0;
         for (List<TerrainStore.FarPart> l : byArenaBeyond.values()) lastBeyond += l.size();
         TerrainStats.drew(lastDraws, 0);
+    }
+
+    private static final java.util.IdentityHashMap<TerrainStore.FarPart, Double> NEAR = new java.util.IdentityHashMap<>();
+
+    private static void sortNearFirst(List<TerrainStore.FarPart> l) {
+        if (l.size() < 2) return;
+        l.sort((a, b) -> Double.compare(NEAR.getOrDefault(a, 0.0), NEAR.getOrDefault(b, 0.0)));
     }
 
     /** Bench: tiles drawn with the plain stage (wholly beyond the band) in the last frame. */
@@ -669,7 +731,7 @@ public final class FarLayer {
         boolean holes = fill && holesSet;
         b.putFloat(mark ? 1f : 0f).putFloat(0).putFloat(holes ? 1f : 0f).putFloat(0);
         // the hole grid's corner against the camera (small numbers: the shader adds them to the eye position), its width
-        b.putFloat((float) (gridCx * 16.0 - camX)).putFloat((float) (gridCz * 16.0 - camZ)).putFloat(GRID).putFloat(0);
+        b.putFloat((float) (gridCx * 16.0 - camX)).putFloat((float) (gridCz * 16.0 - camZ)).putFloat(GRID).putFloat(haze);
         // the lowest drawn section of each column, four columns to a word (byte i of word i / 4 at bits 8 * (i % 4))
         for (int i = 0; i < LOW_WORDS; i++) {
             int w = 0;
@@ -678,6 +740,13 @@ public final class FarLayer {
         }
         b.flip();
         device.createCommandEncoder().writeToBuffer(ubo.slice(), b);
+    }
+
+    /** Package 12c: the haze's share at the fog's end this frame (FarTerrain.frame), 0 for none. */
+    private static float haze;
+
+    public static void haze(float h) {
+        haze = h;
     }
 
     /** Bench: tiles held, quads and draws of the last frame, bytes copied in so far. */

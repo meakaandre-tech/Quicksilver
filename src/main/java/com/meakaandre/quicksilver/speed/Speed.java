@@ -127,16 +127,29 @@ public final class Speed {
      * Package 12: far terrain (design doc, "Far terrain (like Ecstatic)"): 0 off, else how far it reaches, in chunks
      * ({@link #FAR_TERRAIN_CHOICES}). Sampled from the dimension's own noise, biomes and surface rules on background
      * threads, never generating or loading chunks; real chunks replace the samples once they exist. Off by default, in
-     * Low-end and Balanced; 96 in Quality. {@code far/FarTerrain}.
+     * Low-end and Balanced; 128 in Quality (package 12c; 96 before). {@code far/FarTerrain}.
      */
-    public static final Setting FAR_TERRAIN = add(new Setting("option.far-terrain", false, false, 0, 32, 128, "chunks",
-        "terrain beyond the render distance out to this many chunks (32, 64, 96 or 128), sampled from the world's own generator and drawn simply (no structures); real chunks replace it once they exist"));
+    public static final Setting FAR_TERRAIN = add(new Setting("option.far-terrain", false, false, 0, 32, 256, "chunks",
+        "terrain beyond the render distance out to this many chunks (32, 64, 96, 128, 192 or 256), sampled from the world's own generator and drawn simply (big structures as outlines); real chunks replace it once they exist"));
+    /**
+     * Package 12c: far terrain's disk cache of sampled tiles (on by default), in the world's folder in single player and
+     * per server address otherwise, so a second visit shows far terrain at once. Not in presets.
+     */
+    public static final Setting FAR_CACHE = add(new Setting("option.far-cache", false, false, 1, 0, 1, "",
+        "far terrain: keep sampled tiles on disk per world (capped), so a second visit shows them at once"));
+    /**
+     * Package 12c: far terrain's seen-chunks cache (on by default): the real chunks the client has had on a server (or in
+     * a world) kept on disk, so a server that doesn't share its seed still gets far terrain from land seen before. Local
+     * only: nothing is sent. Not in presets.
+     */
+    public static final Setting FAR_SEEN = add(new Setting("option.far-seen", false, false, 1, 0, 1, "",
+        "far terrain: keep the chunks you have seen on disk per server and world, and draw far terrain from them (local only)"));
     /** Package 12: the far terrain distances (chunks); 0 is off. */
-    public static final int[] FAR_TERRAIN_CHOICES = {0, 32, 64, 96, 128};
+    public static final int[] FAR_TERRAIN_CHOICES = {0, 32, 64, 96, 128, 192, 256};
 
     /** Package 11: the pixel art look's own choices, which no preset sets (a preset's look is Normal). */
     public static boolean presetFree(Setting s) {
-        return s == PIXEL_SIZE || s == PIXEL_DITHER || s == PIXEL_OUTLINES;
+        return s == PIXEL_SIZE || s == PIXEL_DITHER || s == PIXEL_OUTLINES || s == FAR_CACHE || s == FAR_SEEN;
     }
 
     // ---- CI only (not listed, not in the config file): checks the speed bench can switch like the others
@@ -149,6 +162,40 @@ public final class Speed {
     public static final Setting CI_FOG_UNCONFIRMED = ci(new Setting("ci.fog-unconfirmed", false, false, 0, 0, 1, "",
         "CI only: fog-sections acts as if vanilla's fog set-up had not run"));
 
+    /**
+     * Package 12c: CI's A/B of far terrain's cost cuts (measured with far terrain on): real sections past the hand-over
+     * band left out under far terrain; far tiles drawn nearest first; the lighter mesh (skirts only where a neighbour's
+     * spacing differs, flat runs merged, 64-block spacing past 128 chunks).
+     */
+    public static final Setting CI_FAR_NO_COVER = ci(new Setting("ci.far-no-cover", false, false, 0, 0, 1, "",
+        "CI only: real sections past far terrain's hand-over band are drawn (12b)"));
+    public static final Setting CI_FAR_NO_SORT = ci(new Setting("ci.far-no-sort", false, false, 0, 0, 1, "",
+        "CI only: far tiles drawn in the map's order (12b)"));
+    public static final Setting CI_FAR_OLD_MESH = ci(new Setting("ci.far-old-mesh", false, false, 0, 0, 1, "",
+        "CI only: far tiles with skirts on every edge, no merged runs, 32-block spacing at most (12b)"));
+
+    /**
+     * Package 12c: CI's switches for far terrain's new look (on: 12b's): snow and ice, the water's level and shores, the
+     * relief shading and the haze ({@code ci.far-old-look}); per-type tree shapes ({@code ci.far-box-trees}); structure
+     * silhouettes ({@code ci.far-no-structures}).
+     */
+    public static final Setting CI_FAR_OLD_LOOK = ci(new Setting("ci.far-old-look", false, false, 0, 0, 1, "",
+        "CI only: far terrain's 12b look (no snow or ice, water at the block top, all-water quads, facing shade only, no haze)"));
+    public static final Setting CI_FAR_BOX_TREES = ci(new Setting("ci.far-box-trees", false, false, 0, 0, 1, "",
+        "CI only: far trees as boxes (12b)"));
+    public static final Setting CI_FAR_FULL_TREES = ci(new Setting("ci.far-full-trees", false, false, 0, 0, 1, "",
+        "CI only: far trees past 16 chunks at full density (12b)"));
+    public static final Setting CI_FAR_NO_STRUCTURES = ci(new Setting("ci.far-no-structures", false, false, 0, 0, 1, "",
+        "CI only: no structure silhouettes in far terrain (12b)"));
+
+    /** Package 12c: CI's check of pixel art's fog tones (on: without them, and with the dithering at full strength in the fog, as before). */
+    public static final Setting CI_PIXEL_OLD_FOG = ci(new Setting("ci.pixel-old-fog", false, false, 0, 0, 1, "",
+        "CI only: pixel art without the fog and sky tones, its dithering not faded in the fog (package 11)"));
+
+    /** Package 12c: CI's A/B of far terrain standing down underground (on: drawn underground too, as in 12b). */
+    public static final Setting CI_FAR_NO_UNDERGROUND = ci(new Setting("ci.far-no-underground", false, false, 0, 0, 1, "",
+        "CI only: far terrain drawn underground too (12b)"));
+
     private static Setting ci(Setting s) {
         CI.put(s.key, s);
         return s;
@@ -157,13 +204,14 @@ public final class Speed {
     /** A switch by name, the CI-only ones included (the speed bench's lookup). */
     public static Setting byKey(String key) {
         Setting s = ALL.get(key);
-        return s != null ? s : Boolean.getBoolean("quicksilver.ci.speed") ? CI.get(key) : null;
+        // package 12c: the far suite's runs switch CI-only switches too (pixel art's old fog, for its checkerboard check)
+        return s != null ? s : Boolean.getBoolean("quicksilver.ci.speed") || Boolean.getBoolean("quicksilver.ci.farCommands") ? CI.get(key) : null;
     }
 
     /** Counted while a speed bench window measures (bench only). */
     public static final LongAdder SECTIONS_IN_FOG = new LongAdder(), SECTIONS_SEEN = new LongAdder(), CUTOUT_SKIPPED = new LongAdder(),
         ENTITIES_HIDDEN = new LongAdder(), BLOCK_ENTITIES_HIDDEN = new LongAdder(), PARTICLES_DROPPED = new LongAdder(),
-        TERRAIN_TRIANGLES = new LongAdder();
+        TERRAIN_TRIANGLES = new LongAdder(), SECTIONS_UNDER_FAR = new LongAdder();
     public static volatile boolean counting;
 
     private static boolean loaded, locked;
@@ -278,7 +326,7 @@ public final class Speed {
         if (locked) return "switches stay off in a measure run";
         boolean offValue = (value == 0 && s != PIXEL_SIZE) || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
         if (!offValue && (value < s.min || value > s.max)) return "takes " + s.min + "-" + s.max + (s.unit.isEmpty() ? "" : " " + s.unit);
-        if (s == FAR_TERRAIN && parse(s, String.valueOf(value)) == null) return "takes off, 32, 64, 96 or 128 chunks";
+        if (s == FAR_TERRAIN && parse(s, String.valueOf(value)) == null) return "takes off, 32, 64, 96, 128, 192 or 256 chunks";
         if (s.value == value) return null;
         s.value = value;
         QuicksilverClient.LOG.info("Quicksilver speed: {} = {}", s.key, show(s));
@@ -308,7 +356,7 @@ public final class Speed {
             if (value == 0 && s.key.equals(PARTICLE_DENSITY.key)) return "particle density takes 1-100";
             boolean offValue = value == 0 || (s.key.equals(PARTICLE_DENSITY.key) && value == 100);
             if (!offValue && (value < s.min || value > s.max)) return s.key + " takes " + s.min + "-" + s.max;
-            if (s == FAR_TERRAIN && parse(s, String.valueOf(value)) == null) return s.key + " takes off, 32, 64, 96 or 128";
+            if (s == FAR_TERRAIN && parse(s, String.valueOf(value)) == null) return s.key + " takes off, 32, 64, 96, 128, 192 or 256";
         }
         boolean remesh = false;
         StringBuilder log = new StringBuilder();
@@ -444,6 +492,8 @@ public final class Speed {
     private static Setting find(String name) {
         Setting s = ALL.get(name);
         if (s != null) return s;
+        // package 12c: CI's far suite switches its CI-only switches by command too
+        if (Boolean.getBoolean("quicksilver.ci.farCommands") && CI.containsKey(name)) return CI.get(name);
         for (Setting t : ALL.values()) if (t.key.endsWith("." + name)) return t;
         return null;
     }

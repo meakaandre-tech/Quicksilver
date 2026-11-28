@@ -2,7 +2,7 @@
   "suite": "far",
   "requiresMod": null,
   "ciOwnCheck": "ci/far-compare.py",
-  "description": "Package 12: far terrain on worlds CI's core suite doesn't have: Terralith's overworld (run far-terralith: a fresh world with Terralith on the server) and a superflat world (run far-flat: no noise-based generator, so far terrain comes from real chunks only). Quicksilver on the server and the client in both; seed 12345. Far shots against stored Quicksilver references (ci/references/far, ci/far-limits.json).",
+  "description": "Package 12: far terrain on worlds CI's core suite doesn't have: Terralith's overworld (run far-terralith: a fresh world with Terralith on the server) and a superflat world (run far-flat: no noise-based generator, so far terrain comes from real chunks only). Quicksilver on the server and the client in both; seed 12345. Far shots against stored Quicksilver references (ci/references/far, ci/far-limits.json). Package 12c: more worlds (Amplified, Large Biomes, the Nullscape data pack with its custom End biomes, three more seeds among them), the cliff seam (east view) against real terrain at render distance 12, the conditions (sunset, night, rain, thunder, pixel art, dynamic lights), the report's views, a server without Quicksilver and the seen-chunks cache across a relog, a 10-minute flight (memory, no stalls), a 10,000-block teleport, the nether and back, and the disk cache across a relog.",
   "preamble": [
     "gamerule advance_time false",
     "gamerule advance_weather false",
@@ -20,7 +20,12 @@
       "settleSeconds": 20,
       "ciSkipRuns": [
         "far-flat",
-        "far-default"
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
       ],
       "ciSkipReason": "the Terralith run's scene",
       "setup": [
@@ -43,9 +48,49 @@
         "#probe 60 0",
         "#probe 90 0",
         "#probe 60 30",
+        "time set 12700",
+        "#wait 4",
+        "#shot sunset",
+        "time set 18000",
+        "#wait 4",
+        "#shot night",
+        "time set 6000",
+        "weather rain",
+        "#wait 12",
+        "#shot rain",
+        "#client quicksilver speed option.look pixel-art",
+        "#wait 4",
+        "#shot pixel_rain",
+        "#client quicksilver speed ci.pixel-old-fog 1",
+        "#wait 3",
+        "#shot pixel_rain_old",
+        "#client quicksilver speed ci.pixel-old-fog 0",
+        "#client quicksilver speed option.look normal",
+        "#wait 2",
+        "weather thunder",
+        "#wait 8",
+        "#shot thunder",
+        "weather clear",
+        "#wait 12",
+        "#client quicksilver speed option.look pixel-art",
+        "#wait 4",
+        "#shot pixel",
+        "#client quicksilver speed ci.pixel-old-fog 1",
+        "#wait 3",
+        "#shot pixel_old",
+        "#client quicksilver speed ci.pixel-old-fog 0",
+        "#wait 2",
+        "#client quicksilver speed option.look normal",
+        "#wait 2",
+        "#client quicksilver speed option.dynamic-lights 1",
+        "#wait 2",
+        "#shot lights",
+        "#client quicksilver speed option.dynamic-lights off",
         "#far off"
       ],
-      "ciViewNote": "package 12b: looking north-west (yaw 135), not east: from the east view a 100-block real cliff stood inside the hand-over band, so the seam check compared the island's top just beyond the band with the ocean just nearer it (a step of about 120 in those columns with no hole at all); of seven other directions shot in run 45939071469, north-west keeps real terrain, ocean and mountains in view and its band crosses no cliff (docs/ci-limits.md, Package 12b)"
+      "ciViewNote": "package 12b: looking north-west (yaw 135), not east: from the east view a 100-block real cliff stood inside the hand-over band, so the seam check compared the island's top just beyond the band with the ocean just nearer it (a step of about 120 in those columns with no hole at all); of seven other directions shot in run 45939071469, north-west keeps real terrain, ocean and mountains in view and its band crosses no cliff (docs/ci-limits.md, Package 12b)",
+      "ciConditionsNote": "package 12c: the same view at sunset, night, in rain and thunder, with pixel art and with dynamic lights (far terrain follows the sky light, the fog's colour and the weather like real terrain)",
+      "ciPixelNote": "package 12c: pixel_old is the same pixel art shot without the fog tones and the dithering's fade (package 11's), for the checkerboard check only (no reference): the share of checkerboard pixels in the pale, flat fog areas of the far shot must drop to at most half of it"
     },
     {
       "id": "far_nether",
@@ -54,7 +99,12 @@
       "settleSeconds": 20,
       "ciSkipRuns": [
         "far-flat",
-        "far-default"
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
       ],
       "ciSkipReason": "the Terralith run's scene",
       "ciNoteNether": "the nether's real terrain walls the view in within a few blocks almost everywhere, so its far terrain is only seen across big caverns; the pocket (80 x 30 x 80 blocks of air over the client's 5 x 5 chunks, 32,000 blocks a fill) stands in for one",
@@ -86,7 +136,12 @@
       "renderDistance": 8,
       "settleSeconds": 20,
       "ciSkipRuns": [
-        "far-terralith"
+        "far-terralith",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
       ],
       "ciSkipReason": "the superflat run's scene",
       "setup": [
@@ -134,6 +189,459 @@
         "#far off"
       ],
       "ciNoteAnimals": "animals are removed right before each shot: superflat's passive mobs wander between runs (0.23% of the off shot in run 45873928148)"
+    },
+    {
+      "id": "far_cliff",
+      "title": "Package 12c: Terralith's east view from 230 high (12b's, with a 100-block real cliff inside the hand-over band): far terrain off, on, its band marked, and the same view with far terrain off at render distance 12 (real terrain across the band: the truth the cliff seam is checked against)",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "the Terralith run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 -90 35"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 -90 35",
+        "#wait 20",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#mark on",
+        "#shot far_mark",
+        "#mark off",
+        "#far off",
+        "#client quicksilver cirenderdistance 12",
+        "#wait 50",
+        "#shot far_truth",
+        "#client quicksilver cirenderdistance 8",
+        "#wait 10"
+      ],
+      "ciShard": 2
+    },
+    {
+      "id": "far_views",
+      "title": "Package 12c: the report's views in Terralith's overworld: a snowy peak, a forest's edge and a shore, each found by far terrain 300-900 blocks from spawn and seen from 220 blocks off (past the band), far terrain off and on",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "the Terralith run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 135 35"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 135 35",
+        "#wait 5",
+        "#far 96",
+        "#find snow",
+        "#wait 40",
+        "#far off",
+        "#shot snow_off",
+        "#far 96",
+        "#shot snow",
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 135 35",
+        "#wait 20",
+        "#find forest",
+        "#wait 40",
+        "#far off",
+        "#shot forest_off",
+        "#far 96",
+        "#shot forest",
+        "execute in minecraft:overworld run tp @a 0.5 230 0.5 135 35",
+        "#wait 20",
+        "#find shore",
+        "#wait 40",
+        "#far off",
+        "#shot shore_off",
+        "#far 96",
+        "#shot shore",
+        "#far off"
+      ],
+      "ciShard": 2
+    },
+    {
+      "id": "far_amplified",
+      "title": "Package 12c: an Amplified world (seed 424242): its overworld from 200 above the ground at spawn looking north-west, far terrain off, on, its band marked, and a probe",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld positioned 0 0 0 run tp @a 0.5 ~ 0.5 135 35"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 320 0.5",
+        "#wait 30",
+        "execute in minecraft:overworld positioned 0.5 320 0.5 run tp @a ~ ~ ~ 135 35",
+        "#wait 10",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#mark on",
+        "#shot far_mark",
+        "#mark off",
+        "#probe 900 0",
+        "#far off",
+        "#client quicksilver cirenderdistance 12",
+        "#wait 50",
+        "#shot far_truth",
+        "#client quicksilver cirenderdistance 8",
+        "#wait 10"
+      ],
+      "ciTruthNote": "package 12c: Amplified's cliffs stand in the band in most views, so its seam is checked against real terrain at render distance 12 (far_truth), as the Terralith east view's"
+    },
+    {
+      "id": "far_largebiomes",
+      "title": "Package 12c: a Large Biomes world (seed 98765): its overworld from 200 above the ground at spawn looking north-west, far terrain off, on, its band marked, and a probe",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld positioned 0 0 0 run tp @a 0.5 ~ 0.5 135 35"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 320 0.5",
+        "#wait 30",
+        "execute in minecraft:overworld positioned 0.5 320 0.5 run tp @a ~ ~ ~ 135 35",
+        "#wait 10",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#mark on",
+        "#shot far_mark",
+        "#mark off",
+        "#probe 900 0",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_nullscape",
+      "title": "Package 12c: a world with the Nullscape data pack (seed 777; its custom End biomes): its overworld from 200 above the ground at spawn looking north-west, far terrain off, on, its band marked, and a probe",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld positioned 0 0 0 run tp @a 0.5 ~ 0.5 135 35"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 320 0.5",
+        "#wait 30",
+        "execute in minecraft:overworld positioned 0.5 320 0.5 run tp @a ~ ~ ~ 135 35",
+        "#wait 10",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#mark on",
+        "#shot far_mark",
+        "#mark off",
+        "#probe 900 0",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_end",
+      "title": "Package 12c: the Nullscape data pack's End (custom biomes) from 700 east of the centre, 150 high, looking east over the outer islands: far terrain off and on, a probe (its biome must be the pack's)",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-flight"
+      ],
+      "ciSkipReason": "the Nullscape run's scene",
+      "setup": [
+        "execute in minecraft:the_end run tp @a 700.5 150 0.5 -90 15"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:the_end run tp @a 700.5 150 0.5 -90 15",
+        "#wait 30",
+        "#shot far_off",
+        "#far 96",
+        "#shot far",
+        "#probe 1500 0",
+        "#probe 1300 300",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_seen1_vanilla",
+      "title": "Package 12c: a server without Quicksilver: real chunks only; a ring of visits 160 blocks out, then the land seen (first session)",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "clientOptions": {
+        "ciSeenSession": 1
+      },
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20",
+        "#wait 10",
+        "#far 96",
+        "execute in minecraft:overworld run tp @a 160.5 120 0.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a 0.5 120 160.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a -160.5 120 0.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a 0.5 120 -160.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a 400.5 120 0.5 -90 20",
+        "#wait 12",
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20",
+        "#wait 12",
+        "#far 96",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot seen",
+        "#probe 400 0",
+        "#client quicksilver far status",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_seen2_vanilla",
+      "title": "Package 12c: the same server after a relog (second session): the seen-chunks cache must show the land seen before at once",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "clientOptions": {
+        "ciSeenSession": 2
+      },
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20",
+        "#wait 10",
+        "#far 96",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot seen",
+        "#probe 400 0",
+        "#client quicksilver far status",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_seen1_default",
+      "title": "Package 12c: a Quicksilver server that doesn't share its seed: real chunks only; a ring of visits 160 blocks out, then the land seen (first session)",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "clientOptions": {
+        "ciSeenSession": 1
+      },
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20",
+        "#wait 10",
+        "#far 96",
+        "execute in minecraft:overworld run tp @a 160.5 120 0.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a 0.5 120 160.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a -160.5 120 0.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a 0.5 120 -160.5 -90 20",
+        "#wait 8",
+        "execute in minecraft:overworld run tp @a 400.5 120 0.5 -90 20",
+        "#wait 12",
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20",
+        "#wait 12",
+        "#far 96",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot seen",
+        "#probe 400 0",
+        "#client quicksilver far status",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_seen2_default",
+      "title": "Package 12c: the same server after a relog (second session): the seen-chunks cache must show the land seen before at once",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "clientOptions": {
+        "ciSeenSession": 2
+      },
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape",
+        "far-flight"
+      ],
+      "ciSkipReason": "that run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 120 0.5 -90 20",
+        "#wait 10",
+        "#far 96",
+        "kill @e[type=!minecraft:player]",
+        "#wait 2",
+        "#shot seen",
+        "#probe 400 0",
+        "#client quicksilver far status",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_flight",
+      "title": "Package 12c: movement on a vanilla world (seed 12345, a Quicksilver server that shares): a 10-minute flight at elytra speed (30 blocks a second) with far terrain's status every minute (tiles, memory, frames), a teleport 10,000 blocks, the nether and back, all at 96 chunks",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "clientOptions": {
+        "ciFlightSession": 1
+      },
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape"
+      ],
+      "ciSkipReason": "the flight run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 200 0.5 -90 10"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 200 0.5 -90 10",
+        "#wait 20",
+        "#far 96",
+        "#shot start",
+        "#client quicksilver far status",
+        "#fly 30 0 600 60",
+        "#settle",
+        "#shot after_flight",
+        "execute in minecraft:overworld run tp @a 10000.5 200 0.5 -90 10",
+        "#settle",
+        "#shot teleport",
+        "execute in minecraft:the_nether run tp @a 0.5 64 0.5 -90 10",
+        "#settle",
+        "execute in minecraft:overworld run tp @a 0.5 200 0.5 -90 10",
+        "#settle",
+        "#shot back",
+        "execute in minecraft:overworld run tp @a 0.5 -30 0.5 -90 10",
+        "#wait 4",
+        "#client quicksilver far status",
+        "execute in minecraft:overworld run tp @a 0.5 200 0.5 -90 10",
+        "#wait 4",
+        "#client quicksilver far status",
+        "#far off"
+      ]
+    },
+    {
+      "id": "far_relog",
+      "title": "Package 12c: the flight's world after a relog (second session): far terrain from the disk cache, so it settles at once at spawn",
+      "renderDistance": 8,
+      "settleSeconds": 20,
+      "clientOptions": {
+        "ciFlightSession": 2
+      },
+      "ciSkipRuns": [
+        "far-terralith",
+        "far-flat",
+        "far-default",
+        "far-vanilla",
+        "far-amplified",
+        "far-largebiomes",
+        "far-nullscape"
+      ],
+      "ciSkipReason": "the flight run's scene",
+      "setup": [
+        "execute in minecraft:overworld run tp @a 0.5 200 0.5 -90 10"
+      ],
+      "ciFarSteps": [
+        "execute in minecraft:overworld run tp @a 0.5 200 0.5 -90 10",
+        "#wait 20",
+        "#far 96",
+        "#shot relog",
+        "#client quicksilver far status",
+        "#far off"
+      ]
     }
   ]
 }

@@ -64,7 +64,8 @@ public final class PixelArt {
      * fog (start, end, 1 if on, projection m11).
      */
     static final BindGroupLayout PARAMS = BindGroupLayout.builder().withUniform("QsPixelArt", UniformType.UNIFORM_BUFFER).build();
-    static final int PARAMS_BYTES = 32;
+    /** Package 12c: two vec4s (projection, fog) and two more: the fog's colour (w: the fog tones on) and the sky's. */
+    static final int PARAMS_BYTES = 64;
     private static GpuBuffer params;
     private static ByteBuffer paramsScratch;
     /** The world's projection this frame (its m22 and m32), from the projection buffer hook; NaN before. */
@@ -261,6 +262,20 @@ public final class PixelArt {
         float[] fog = com.meakaandre.quicksilver.speed.SpeedTerrain.fogForLook();
         boolean fogOn = fog != null && proj;
         b.putFloat(16, fogOn ? fog[0] : 0f).putFloat(20, fogOn ? fog[1] : 0f).putFloat(24, fogOn ? 1f : 0f).putFloat(28, proj ? projM11 : 1f);
+        // package 12c: the fog's and the sky's colours now, as extra tones beside the palette (pale fog, haze and sky had
+        // only far-apart palette colours, so the dithering made a heavy checkerboard of them: far terrain with pixel art)
+        // only while far terrain draws: with it off, pixel art is package 11's exactly (every existing shot unchanged)
+        boolean tones = com.meakaandre.quicksilver.far.FarTerrain.drawing() && !com.meakaandre.quicksilver.speed.Speed.CI_PIXEL_OLD_FOG.on();
+        float[] fc = tones ? com.meakaandre.quicksilver.speed.SpeedTerrain.fogColour() : null;
+        tones &= fc != null;
+        float[] sky = tones ? skyColour(fc) : new float[] {0, 0, 0};
+        if (tones != tonesLogged) {
+            tonesLogged = tones;
+            com.meakaandre.quicksilver.QuicksilverClient.LOG.info("Quicksilver pixel art: fog tones {} (fog colour {}, sky colour {})", tones ? "on" : "off",
+                fc == null ? "none" : java.util.Arrays.toString(fc), java.util.Arrays.toString(sky));
+        }
+        b.putFloat(32, fc != null ? fc[0] : 0f).putFloat(36, fc != null ? fc[1] : 0f).putFloat(40, fc != null ? fc[2] : 0f).putFloat(44, tones ? 1f : 0f);
+        b.putFloat(48, sky[0]).putFloat(52, sky[1]).putFloat(56, sky[2]).putFloat(60, tones ? 1f : 0f);
         // written only when a value changed (review of run 45749687305: no upload a frame that isn't needed)
         boolean same = lastParams != null;
         for (int i = 0; same && i < PARAMS_BYTES / 4; i++) if (Float.floatToRawIntBits(b.getFloat(i * 4)) != lastParams[i]) same = false;
@@ -271,6 +286,33 @@ public final class PixelArt {
     }
 
     private static int[] lastParams;
+    private static boolean tonesLogged;
+    private static java.lang.reflect.Method skyMethod;
+    private static boolean skyLooked;
+
+    /**
+     * Package 12c: the sky's colour at the camera now (the level's own, looked up once by name; a game without it: the fog's
+     * colour stands in), 0..1 each.
+     */
+    private static float[] skyColour(float[] fog) {
+        float[] out = fog != null ? fog.clone() : new float[] {0, 0, 0};
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level == null || mc.player == null) return out;
+            if (!skyLooked) {
+                skyLooked = true;
+                for (java.lang.reflect.Method m : mc.level.getClass().getMethods()) {
+                    if (m.getName().equals("getSkyColor") && m.getParameterCount() == 2 && m.getReturnType() == int.class) skyMethod = m;
+                }
+            }
+            if (skyMethod == null) return out;
+            int c = (int) skyMethod.invoke(mc.level, mc.player.position(), mc.getDeltaTracker().getGameTimeDeltaPartialTick(false));
+            return new float[] {((c >> 16) & 255) / 255f, ((c >> 8) & 255) / 255f, (c & 255) / 255f};
+        } catch (Throwable t) {
+            skyMethod = null;
+            return out;
+        }
+    }
 
     private static void turnOff(Minecraft mc, RenderTarget main) {
         redirect = false;

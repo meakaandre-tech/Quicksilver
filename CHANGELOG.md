@@ -18,11 +18,14 @@ The first public release, for Minecraft 26.3 on Fabric (needs Fabric API).
 - **Dynamic lights** (off by default): held, dropped, burning and glowing light sources light their surroundings; Fast
   and Fancy levels; light levels from data files.
 - **Pixel art look** (off by default): vanilla's colours in chunky pixels with dithering and outlines.
-- **Far terrain** (off by default; 96 chunks in Quality): terrain out to 128 chunks worked out from the world's own
-  generator, without loading chunks; real chunks replace it; works with world-gen mods such as Terralith. Fills the
-  gaps where the game draws no terrain (for example far below the camera over the ocean). Servers running Quicksilver
-  share their seed only with `far-terrain-share=on`; otherwise far terrain shows land the player has seen (and on a
-  server without Quicksilver it stays off).
+- **Far terrain** (off by default; 128 chunks in Quality): terrain out to 256 chunks worked out from the world's own
+  generator, without loading chunks; real chunks replace it; works with world-gen mods such as Terralith. Water in its
+  biome's colour with blended shores, snow and ice where the game would put them, stone cliffs, relief shading and a
+  light haze, trees shaped by kind, villages, mansions and ocean monuments as outlines. Kept on disk per world (capped),
+  so it shows at once on a second visit. Fills the gaps where the game draws no terrain (for example far below the
+  camera over the ocean); not drawn underground. Servers running Quicksilver share their seed only with
+  `far-terrain-share=on`; on any other server far terrain shows the land the player has seen there, remembered between
+  visits on the player's computer.
 - **Server and memory modules:** faster entity lookups, mob AI and block entity ticks, cheaper chunk saving, smaller
   block-state tables; each checks its hooks at start-up and leaves the job to vanilla otherwise.
 - **Bench:** `/qs bench` and a bench-only jar to compare vanilla, Sodium and Quicksilver.

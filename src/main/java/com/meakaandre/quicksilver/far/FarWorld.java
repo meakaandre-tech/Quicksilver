@@ -52,6 +52,26 @@ abstract class FarWorld {
     abstract String describe();
 
     /**
+     * Package 12c: what a dimension's sampled tiles depend on, for the disk cache (another identity empties it): single
+     * player, the world's seed, the dimension's generator as its codec writes it and the data packs; a server, a hash of
+     * its whole handshake. Null: nothing to cache (real chunks only).
+     */
+    String identity(ResourceKey<Level> dimension) {
+        return null;
+    }
+
+    static String sha256(byte[] data) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(data);
+            StringBuilder b = new StringBuilder();
+            for (byte x : d) b.append(String.format("%02x", x));
+            return b.toString();
+        } catch (Exception e) {
+            return Integer.toHexString(java.util.Arrays.hashCode(data));
+        }
+    }
+
+    /**
      * Package 12b: a server that runs Quicksilver but doesn't share its seed (the default): no generator for any
      * dimension, so far terrain is drawn from real chunks only (land the client has had).
      */
@@ -87,12 +107,14 @@ abstract class FarWorld {
     /** Single player: the integrated server's levels. */
     static FarWorld of(MinecraftServer server) {
         return new FarWorld() {
+            private String spIdentity;
+
             @Override
             FarSource source(ResourceKey<Level> dimension) {
                 ServerLevel l = server.getLevel(dimension);
                 if (l == null) return null;
                 return FarSource.of(l.getChunkSource().getGenerator(), l.getChunkSource().randomState(), l, l.dimensionType().hasCeiling(),
-                    l.dimensionType().logicalHeight(), server.registryAccess());
+                    l.dimensionType().logicalHeight(), server.registryAccess(), l.getSeed());
             }
 
             @Override
@@ -104,11 +126,29 @@ abstract class FarWorld {
             String describe() {
                 return "the integrated server's generators";
             }
+
+            @Override
+            String identity(ResourceKey<Level> dimension) {
+                ServerLevel l = server.getLevel(dimension);
+                if (l == null) return null;
+                // the seed, every world registry's contents and every dimension's level stem, as a server's handshake packs
+                // them (review: the generator's codec wrote only registry names, so a world-gen mod's update under the
+                // same name kept its old land cached), hashed once per world
+                if (spIdentity == null) {
+                    try {
+                        spIdentity = "single player " + sha256(FarNet.write(server));
+                    } catch (Throwable t) {
+                        spIdentity = "single player seed " + l.getSeed() + " packs " + server.getPackRepository().getSelectedIds();
+                    }
+                }
+                return spIdentity;
+            }
         };
     }
 
     /** A server's handshake data (deflated, {@link FarNet#write}); throws if it can't be read or loaded. Any thread. */
     static FarWorld decode(byte[] deflated) throws Exception {
+        String handshake = sha256(deflated);
         byte[] raw;
         try (InflaterInputStream in = new InflaterInputStream(new ByteArrayInputStream(deflated))) {
             ByteArrayOutputStream bos = new ByteArrayOutputStream(deflated.length * 4);
@@ -169,7 +209,7 @@ abstract class FarWorld {
                 LevelHeightAccessor height = LevelHeightAccessor.create(type.minY(), type.height());
                 if (!(stem.generator() instanceof NoiseBasedChunkGenerator n)) return null;
                 RandomState random = RandomState.create(noises, seed, n.generatorSettings().value());
-                return FarSource.of(n, random, height, type.hasCeiling(), type.logicalHeight(), loaded);
+                return FarSource.of(n, random, height, type.hasCeiling(), type.logicalHeight(), loaded, seed);
             }
 
             @Override
@@ -180,6 +220,11 @@ abstract class FarWorld {
             @Override
             String describe() {
                 return "the server's generators (" + decoded.size() + " dimensions, " + entries + " registry entries, " + deflated.length / 1024 + " KB)";
+            }
+
+            @Override
+            String identity(ResourceKey<Level> dimension) {
+                return decoded.containsKey(dimension.identifier()) ? "server handshake " + handshake : null;
             }
         };
     }

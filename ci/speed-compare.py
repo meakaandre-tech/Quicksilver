@@ -68,6 +68,27 @@ def main():
             if dsum:
                 lines.append(f"\nDraw calls per profiled frame: {round(dsum, 2)}")
             lines.append("")
+            # package 12c: stage profiles with a switch set ("profile:<switch>=<value>")
+            for label, pj in sorted((j.get("profiles") or {}).items()):
+                lines.append(f"### {scene}: profile with {label} ({pj.get('frames')} frames, {pj.get('profiledFrameMs')} ms per profiled frame)\n")
+                lines.append("| stage | ms/frame | share | draws/frame |\n|---|---|---|---|")
+                for s in (pj.get("stages") or [])[:16]:
+                    lines.append(f"| {s['stage']} | {s['msPerFrame']} | {s['pct']}% | {s.get('drawsPerFrame', '')} |")
+                lines.append("")
+            fars = [e for e in j.get("ab", []) if e["setting"] == "option.far-terrain" and not e.get("with")]
+            if fars:
+                lines.append("Far terrain (package 12c): on side, medians over the rounds; memory at each window's end\n")
+                lines.append("| chunks | frame ms off → on (on/off) | far quads/frame | far tiles drawn | tiles held | far vertices KB | far arenas (VRAM) KB |"
+                             " far samples (heap) KB | heap used MB off → on | sampling CPU ms/s |\n|---|---|---|---|---|---|---|---|---|---|")
+                for e in fars:
+                    m = e["medians"]
+
+                    def g(k, side="on"):
+                        return m.get(k, {}).get(side, "")
+                    lines.append(f"| {e['onValue']} | {g('frameMsAvg', 'off')} → {g('frameMsAvg')} ({m['frameMsAvg']['onOverOff']:.3f}) | {g('farQuadsPerFrame')} |"
+                                 f" {g('farTilesPerFrame')} | {g('farTilesHeld')} | {g('farGpuKB')} | {g('farVramKB')} | {g('farHeapKB')} |"
+                                 f" {g('heapUsedMB', 'off')} → {g('heapUsedMB')} | {g('farCpuMsPerSecond')} |")
+                lines.append("")
             if j.get("ab"):
                 lines.append("| switch (on value) | frame ms off → on | fps off → on | 1% low off → on | draws/frame | upload B/frame |"
                              " terrain triangles/frame | left out (on) |\n|---|---|---|---|---|---|---|---|")
@@ -77,12 +98,12 @@ def main():
                 def pair(k):
                     return f"{m[k]['off']} → {m[k]['on']} ({m[k]['onOverOff']:.3f})"
                 left = []
-                for k, label in (("sectionsInFogPerFrame", "sections in fog/frame"), ("cutoutLayersSkippedPerFrame", "cutout layers/frame"),
+                for k, label in (("sectionsInFogPerFrame", "sections in fog/frame"), ("sectionsUnderFarPerFrame", "sections under far terrain/frame"), ("cutoutLayersSkippedPerFrame", "cutout layers/frame"),
                                  ("entitiesHiddenPerFrame", "entities/frame"), ("blockEntitiesHiddenPerFrame", "block entities/frame"),
                                  ("particlesDropped", "particles dropped")):
-                    if m[k]["on"]:
+                    if k in m and m[k]["on"]:
                         left.append(f"{m[k]['on']} {label}")
-                lines.append(f"| {e['setting']} ({e['onValue']}) | {pair('frameMsAvg')} | {pair('fps')} | {pair('low1pctFps')} |"
+                lines.append(f"| {e['setting']} ({e['onValue']}){' with ' + e['with'] if e.get('with') else ''} | {pair('frameMsAvg')} | {pair('fps')} | {pair('low1pctFps')} |"
                              f" {pair('drawCallsPerFrame')} | {pair('uploadBytesPerFrame')} | {pair('terrainTrianglesPerFrame')} | {', '.join(left) or '-'} |")
             lines.append("")
             # package B: occlusion culling in each switch's windows
@@ -113,7 +134,7 @@ def main():
                         failures.append(f"speed gate {g['setting']} {g['scene']} {run}: no result")
                     continue
                 e = next((x for x in j.get("ab", []) if x["setting"] == g["setting"]
-                          and ("onValue" not in g or x["onValue"] == g["onValue"])), None)
+                          and ("onValue" not in g or x["onValue"] == g["onValue"]) and x.get("with") == g.get("with")), None)
                 if e is None:
                     failures.append(f"speed gate {g['setting']} {g['scene']} {run}: the switch was not measured")
                     continue

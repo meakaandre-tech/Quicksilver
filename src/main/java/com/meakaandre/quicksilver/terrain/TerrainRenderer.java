@@ -275,10 +275,13 @@ public final class TerrainRenderer {
             FarLayer.fail("finding far terrain's holes", t);
         }
         // package 12: far terrain's tiles, copied in before this frame's draws (their own budget)
+        com.meakaandre.quicksilver.bench.StageProfile.push("terrain.far-upload");
         try {
             FarLayer.upload();
         } catch (Throwable t) {
             FarLayer.fail("copying far terrain in", t);
+        } finally {
+            com.meakaandre.quicksilver.bench.StageProfile.pop("terrain.far-upload");
         }
         com.meakaandre.quicksilver.bench.StageProfile.push("terrain.prepare");
         try {
@@ -377,6 +380,10 @@ public final class TerrainRenderer {
         boolean speedCount = com.meakaandre.quicksilver.speed.Speed.counting;
         double fogEnd = com.meakaandre.quicksilver.speed.SpeedTerrain.fogEndThisFrame();
         double farCutout = com.meakaandre.quicksilver.speed.SpeedTerrain.farCutoutBlocks();
+        // package 12c: past the hand-over band's end far terrain is drawn in front of real terrain everywhere: a real
+        // section wholly beyond it (across the ground) is left out where far terrain's tile there is made, current and in
+        // the arenas (FarLayer.covers); 0 while far terrain doesn't draw in front there (off, under a ceiling, failed)
+        double farCover = FarLayer.coverFrom();
         FOGGED.clear();
         AUDIT_MESHES.clear();
         AUDIT_LAYERS.clear();
@@ -394,6 +401,15 @@ public final class TerrainRenderer {
                 TerrainStore.Entry any = es[0] != null ? es[0] : es[1] != null ? es[1] : es[2];
                 if (any == null) continue;
                 double nearXz = 0;
+                if (farCover > 0) {
+                    nearXz = com.meakaandre.quicksilver.speed.SpeedTerrain.nearXz(any.originX, any.originZ);
+                    if (nearXz >= farCover && FarLayer.covers(any.originX, any.originZ)) {
+                        if (speedCount) com.meakaandre.quicksilver.speed.Speed.SECTIONS_UNDER_FAR.increment();
+                        FarLayer.coveredSection();
+                        FOGGED.add(section);
+                        continue;
+                    }
+                }
                 if (fogEnd > 0 || farCutout > 0) {
                     nearXz = com.meakaandre.quicksilver.speed.SpeedTerrain.nearXz(any.originX, any.originZ);
                     if (speedCount) com.meakaandre.quicksilver.speed.Speed.SECTIONS_SEEN.increment();
@@ -970,7 +986,13 @@ public final class TerrainRenderer {
     private static void drawFar(RenderPass pass) {
         try {
             TerrainGpuErrors.Mark mark = TerrainGpuErrors.mark();
-            FarLayer.draw(pass);
+            // package 12c: far terrain's own stage in the speed bench's profile (inside terrain.solid)
+            com.meakaandre.quicksilver.bench.StageProfile.push("terrain.far");
+            try {
+                FarLayer.draw(pass);
+            } finally {
+                com.meakaandre.quicksilver.bench.StageProfile.pop("terrain.far");
+            }
             String err = TerrainGpuErrors.since(mark);
             if (err != null) FarLayer.fail("drawing far terrain", new IllegalStateException("GPU error: " + err));
         } catch (Throwable t) {

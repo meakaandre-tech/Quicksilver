@@ -83,7 +83,8 @@ elif [ -n "$preset" ]; then
   echo "preset run JVM properties:$client_jvm"
 elif [ "${RUN#far-}" != "$RUN" ]; then
   # package 12: the far suite's runs (a fresh Terralith or superflat world): only the upload log the shots wait on
-  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true"
+  # package 12c: and the far steps' CI command (the render distance, for the cliff seam's view)
+  client_jvm="$client_jvm -Dquicksilver.debug.logUploadQueue=true -Dquicksilver.ci.farCommands=true"
   echo "far run JVM properties:$client_jvm"
 elif [ $qs = 1 ]; then
   # package 8: the animation module logs each animated sprite's first use outside terrain, with where it came from
@@ -109,12 +110,13 @@ else
   curl -fsSL -o server/mods/fabric-api.jar "$fapiurl"
   echo "eula=true" > server/eula.txt
 fi
-if [ $qs = 1 ]; then cp dist/quicksilver.jar server/mods/; fi
+# package 12c: far-vanilla's server runs no Quicksilver (far terrain from the chunks the client sees only); its client does
+if [ $qs = 1 ] && [ "$RUN" != far-vanilla ]; then cp dist/quicksilver.jar server/mods/; fi
 # package 12b: a server shares its seed with far terrain only if its owner opts in (far-terrain-share=on; off by default).
 # Every Quicksilver server in CI opts in, so the far steps sample the world's own generator, except far-default's (a
 # superflat world like far-flat's), which keeps the default: ci/far-compare.py checks that it sends no seed and that its
 # client draws real chunks only.
-if [ $qs = 1 ] && [ "$RUN" != far-default ]; then
+if [ $qs = 1 ] && [ "$RUN" != far-default ] && [ "$RUN" != far-vanilla ]; then
   mkdir -p server/config
   printf '\nfar-terrain-share=on\n' >> server/config/quicksilver.properties
   echo "server: far-terrain-share=on"
@@ -128,6 +130,12 @@ if [ "$SUITE" = far ]; then
     packset=terralith
     PACK_CHECK=partial PACK_REPORT="$OUT/pack-sha256-terralith.txt" bash ci/pack-fetch.sh terralith /tmp/terralith-jars || { echo "could not fetch Terralith, or it changed (see above)"; exit 1; }
     cp /tmp/terralith-jars/*.jar server/mods/
+  fi
+  # package 12c: the Nullscape data pack (custom End biomes; a mod jar, with Lithostitched), pinned and locked
+  if [ "$RUN" = far-nullscape ]; then
+    packset=nullscape
+    PACK_CHECK=partial PACK_REPORT="$OUT/pack-sha256-nullscape.txt" bash ci/pack-fetch.sh nullscape /tmp/nullscape-jars || { echo "could not fetch Nullscape, or it changed (see above)"; exit 1; }
+    cp /tmp/nullscape-jars/*.jar server/mods/
   fi
 fi
 # package A: the Create + Flywheel smoke job (suite create): Create Fly, which carries Flywheel, on the server and the
@@ -167,7 +175,14 @@ bash ci/pack-check.sh server/mods $packset complete "$OUT/pack-sha256.txt" || { 
 cd server
 # a view distance that covers the 12-chunk fly-through and no console echo in chat
 leveltype=""; { [ "$RUN" = far-flat ] || [ "$RUN" = far-default ]; } && leveltype='level-type=minecraft\:flat\n'
-printf "${leveltype}"'level-seed=12345\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
+# package 12c: the far suite's other worlds (and three more seeds): Amplified, Large Biomes, the Nullscape pack's
+seed=12345
+case "$RUN" in
+  far-amplified) leveltype='level-type=minecraft\:amplified\n'; seed=424242;;
+  far-largebiomes) leveltype='level-type=minecraft\:large_biomes\n'; seed=98765;;
+  far-nullscape) seed=777;;
+esac
+printf "${leveltype}"'level-seed='"$seed"'\nwhite-list=false\nenforce-whitelist=false\nonline-mode=false\nmax-tick-time=-1\nview-distance=12\ngamemode=creative\ndifficulty=peaceful\nspawn-protection=0\npause-when-empty-seconds=-1\nbroadcast-console-to-ops=false\n' > server.properties
 ls -l mods
 rm -f in.fifo; mkfifo in.fifo
 (java -Xmx3G -jar server.jar --nogui < in.fifo > server.log 2>&1; echo "EXIT $?" >> server.log) &
@@ -186,6 +201,8 @@ lvp=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json 2>/dev/null | head -1)
 case "$RUN" in *-vk) [ -n "$lvp" ] && export VK_DRIVER_FILES="$lvp" VK_ICD_FILENAMES="$lvp";; esac
 mkdir -p run/mods
 for j in server/mods/*.jar; do case "$j" in *fabric-api*) ;; *) cp "$j" run/mods/;; esac; done
+# package 12c: far-vanilla's client has Quicksilver though its server doesn't
+if [ "$RUN" = far-vanilla ]; then cp dist/quicksilver.jar run/mods/; fi
 if [ $benchonly = 1 ]; then
   [ -f dist/quicksilver-bench.jar ] || { echo "dist/quicksilver-bench.jar missing"; exit 1; }
   cp dist/quicksilver-bench.jar run/mods/
@@ -304,6 +321,14 @@ for g in $groups; do
     ids=$(echo $keep)
     if [ -z "$ids" ]; then echo "session $n: no scene with speedAb, not started"; continue; fi
   fi
+  # package 12c: in the far suite, a session whose scenes this run skips all ("ciSkipRuns") isn't started
+  keep=""
+  [ "$SUITE" != far ] && keep="$ids"
+  [ "$SUITE" = far ] && for id in $ids; do
+    python3 -c "import json,sys; s=[x for x in json.load(open('$suitefile'))['scenes'] if x['id']=='$id']; sys.exit(0 if s and '$RUN' not in s[0].get('ciSkipRuns', []) else 1)" && keep="$keep $id"
+  done
+  ids=$(echo $keep)
+  if [ -z "$ids" ]; then echo "session $n: every scene skipped in $RUN, not started"; continue; fi
   if [ -n "$preset" ]; then
     keep=""
     for id in $ids; do case " ${PRESET_SCENES:-spawn flythrough water_glass nether mobs block_entities particles flat_plants} " in *" $id "*) keep="$keep $id";; esac; done
